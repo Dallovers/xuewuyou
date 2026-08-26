@@ -39,6 +39,29 @@ var WG_Gaoshu = (function () {
     return out;
   }
 
+  /* 上下标内容是否适合转成 Unicode 上下标字符。
+   * latexSymbols 在 parseCore 之后才跑，所以此刻 inner 里可能还留着
+   * \rightarrow、\infty 这类命令；逐字符硬转会得到 ₓ\ᵣᵢgₕₜₐᵣᵣₒw 这种乱码。
+   * 这种情况退化成 _(...) / ^(...)，交给后续符号替换正常处理。 */
+  function fitsScript(inner, MAP) {
+    var t = String(inner).replace(/\s+/g, '');
+    if (!t) return false;
+    if (t.length > 8) return false;
+    if (t.indexOf('\\') >= 0) return false;
+    for (var i = 0; i < t.length; i++) {
+      if (!MAP[t[i]]) return false;
+    }
+    return true;
+  }
+  /* 生成上标或下标，不适合转换时退化为括号形式 */
+  function makeScript(kind, inner) {
+    var MAP = kind === '^' ? SUP : SUB;
+    if (fitsScript(inner, MAP)) {
+      return kind === '^' ? toSup(inner) : toSub(inner);
+    }
+    return kind + '(' + inner + ')';
+  }
+
   function latexToText(src) {
     if (!src) return '';
     var s = src;
@@ -166,18 +189,19 @@ var WG_Gaoshu = (function () {
       if ((ch === '^' || ch === '_') && s[i + 1] === '{') {
         var rs = grabBraced(s, i + 1);
         var inner = parseCore(rs.inner);
-        out += ch === '^' ? toSup(inner) : toSub(inner);
+        out += makeScript(ch, inner);
         i = rs.end;
         continue;
       }
       /* 单字符上标/下标（如 x^2, a_n） */
-      if (ch === '^' && s[i + 1] && !/[ \n{}()]/.test(s[i + 1])) {
-        out += toSup(s[i + 1]);
+      /* 单字符上下标（如 x^2, a_n）；反斜杠开头说明后面是命令，不能吃掉 */
+      if (ch === '^' && s[i + 1] && !/[ \n{}()\\]/.test(s[i + 1])) {
+        out += makeScript('^', s[i + 1]);
         i += 2;
         continue;
       }
-      if (ch === '_' && s[i + 1] && !/[ \n{}()]/.test(s[i + 1])) {
-        out += toSub(s[i + 1]);
+      if (ch === '_' && s[i + 1] && !/[ \n{}()\\]/.test(s[i + 1])) {
+        out += makeScript('_', s[i + 1]);
         i += 2;
         continue;
       }
@@ -270,11 +294,162 @@ var WG_Gaoshu = (function () {
   /* ---------- 刷题引擎 ---------- */
   var cfg, queue, idx, correct, wrong, onStats, onEnd;
   var current, startAt, pendingT, mode, tickT, autoT, autoTimer, autoCount;
+  /* 答题卡：题号网格，实时显示对/错/看过，已答的可以回看 */
+  var reviewing = false;
+  /* 回看期间被挡下的自动进入下一题，退出回看时补上，避免卡在已答的题上 */
+  var advanceHeld = false;
+
+  /* 单题状态：right / wrong / viewed / now / todo */
+  function cardState(p, i) {
+    if (!p._answered) return i === idx ? 'now' : 'todo';
+    if (p._viewed) return 'viewed';
+    return p._correct ? 'right' : 'wrong';
+  }
+
+  var KIND_ICON = { choice: '选', 'choice-open': '选', fill: '填', step: '证', view: '阅' };
+
+  function cardHtml() {
+    if (!queue || queue.length < 2) return '';
+    var cells = queue.map(function (p, i) {
+      var st = cardState(p, i);
+      var kind = (p._qe && p._qe.kind) || 'view';
+      var done = p._answered && i !== idx;
+      return '<button class="qcard-cell qc-' + st + (i === idx ? ' qc-cur' : '') + '"' +
+        (done ? '' : ' disabled aria-disabled="true"') +
+        ' data-jump="' + i + '" type="button"' +
+        ' title="第 ' + (i + 1) + ' 题 · ' + (KIND_ICON[kind] || '阅') + '"' +
+        ' aria-label="第 ' + (i + 1) + ' 题">' + (i + 1) + '</button>';
+    }).join('');
+    return '<div class="qcard">' +
+      '<div class="qcard-head">' +
+      '<span class="qcard-title">答题卡</span>' +
+      '<span class="qcard-legend">' +
+      '<i class="lg lg-right"></i>对 <i class="lg lg-wrong"></i>错 ' +
+      '<i class="lg lg-viewed"></i>看过 <i class="lg lg-todo"></i>未答' +
+      '</span></div>' +
+      '<div class="qcard-grid">' + cells + '</div>' +
+      '</div>';
+  }
+
+  /* 判分后就地刷新答题卡，不重绘整题 */
+  function refreshCard() {
+    var area = document.getElementById('customArea');
+    if (!area) return;
+    var old = area.querySelector('.qcard');
+    if (!old) return;
+    var box = document.createElement('div');
+    box.innerHTML = cardHtml();
+    var fresh = box.firstChild;
+    if (!fresh) return;
+    old.parentNode.replaceChild(fresh, old);
+    wireCard(area);
+  }
+
+  /* 答题卡点击：跳回已答过的题，只读回看 */
+  function wireCard(area) {
+    area.querySelectorAll('.qcard-cell[data-jump]').forEach(function (b) {
+      if (b.disabled) return;
+      b.addEventListener('click', function () {
+        var t = parseInt(b.getAttribute('data-jump'), 10);
+        if (isNaN(t) || t === idx) return;
+        /* 已排队的「下一题」先记下来，回看结束再补上，别直接丢掉 */
+        if (pendingT) { clearTimeout(pendingT); pendingT = null; advanceHeld = true; }
+        clearAuto();
+        renderReview(t);
+      });
+    });
+  }
+
+  /* 回看时右上角按钮的文案：有被挡下的进度就变成「继续」 */
+  function backLabel() {
+    var t = advanceHeld ? idx + 1 : idx;
+    if (advanceHeld && t >= queue.length) return '本轮做完了，看结果 →';
+    return (advanceHeld ? '继续做第 ' : '回到第 ') + (t + 1) + ' 题 →';
+  }
+
+  function syncBackBtn() {
+    var b = document.getElementById('bankBackToNow');
+    if (b) b.textContent = backLabel();
+  }
+
+  /* 回看模式：展示题面 + 当时的作答结果 + 解析，不再重复判分 */
+  function renderReview(target) {
+    var area = document.getElementById('customArea');
+    var p = queue[target];
+    if (!p) return;
+    reviewing = true;
+    var st = cardState(p, target);
+    var stem = latexToText(p.stem || (p._qe && p._qe.opts ? p._qe.stem : '') || p.content || '');
+    var letters = ['A', 'B', 'C', 'D'];
+    var html = '<div class="bank-review-bar">' +
+      '<span class="tag-bank dim">回看 · 第 ' + (target + 1) + ' 题</span>' +
+      '<button class="btn primary" id="bankBackToNow">' + backLabel() + '</button>' +
+      '</div>';
+    html += '<div class="bank-q">' + esc(stem) + '</div>';
+    if (p._opts && p._opts.length) {
+      html += '<div class="bank-opts">' + p._opts.map(function (o, i) {
+        var cls = 'bank-opt is-done';
+        if (p._ans && letters[i] === p._ans) cls += ' opt-right';
+        if (p._pick === i && !p._correct) cls += ' opt-wrong';
+        if (p._pick === i && !p._ans) cls += ' opt-pick';
+        return '<div class="' + cls + '"><b class="bank-opt-k">' + letters[i] + '</b>' +
+          '<span class="bank-opt-t">' + esc(latexToText(o)) + '</span></div>';
+      }).join('') + '</div>';
+    }
+    var word = st === 'right' ? '这题答对了' : (st === 'wrong' ? '这题答错了' : '这题当时是直接看解析的');
+    html += '<div class="bank-feedback">' +
+      fxBar(st === 'right' ? 'ok' : (st === 'wrong' ? 'no' : 'info'), word) +
+      (p.solution ? solHtml(p.solution) : '<div class="bank-sol"><p class="sol-p">该题暂无解析</p></div>') +
+      '</div>';
+    area.innerHTML = html + cardHtml();
+    var back = document.getElementById('bankBackToNow');
+    if (back) back.addEventListener('click', exitReview);
+    wireCard(area);
+  }
+
+  /* 已作答的题被重新渲染时（例如从回看返回）还原判定结果 + 解析 + 掌握程度面板。
+     否则三个作答入口都会因 _answered 提前返回，页面就再也走不下去了。 */
+  function restoreAnswered(p) {
+    var fb = document.getElementById('bankFeedback');
+    if (!fb) return;
+    var letters = ['A', 'B', 'C', 'D'];
+    if (p._opts && p._opts.length) {
+      document.querySelectorAll('.bank-opt').forEach(function (b, bi) {
+        b.classList.add('is-done');
+        if (p._ans && letters[bi] === p._ans) b.classList.add('opt-right');
+        if (p._pick === bi && !p._correct) b.classList.add('opt-wrong');
+        if (p._pick === bi && !p._ans) b.classList.add('opt-pick');
+      });
+    }
+    var inp = document.getElementById('bankFillIn');
+    if (inp) inp.disabled = true;
+    var go = document.getElementById('bankFillGo');
+    if (go) go.disabled = true;
+    var sol = document.getElementById('bankShowSol');
+    if (sol) sol.disabled = true;
+    var state = p._viewed ? 'info' : (p._correct ? 'ok' : 'no');
+    var word = p._viewed ? '这题已经看过解析了' : (p._correct ? '这题答对了' : '这题答错了');
+    fb.innerHTML = fxBar(state, word);
+    appendSolution(fb, p, false);
+    showGraspPanel(false);
+  }
+
+  /* 退出回看：把回看期间被挡下的那次「下一题」补上，避免停在已答完的题上 */
+  function exitReview() {
+    reviewing = false;
+    if (advanceHeld) {
+      advanceHeld = false;
+      idx++;
+      if (idx >= queue.length) { end(); return; }
+    }
+    render();
+  }
 
   function start(c, cb) {
     cfg = c;
     onStats = cb.onStats; onEnd = cb.onEnd;
     correct = 0; wrong = 0; idx = 0; startAt = Date.now();
+    reviewing = false; advanceHeld = false;
     if (pendingT) { clearTimeout(pendingT); pendingT = null; }
     if (tickT) { clearInterval(tickT); tickT = null; }
     clearAuto();
@@ -319,13 +494,45 @@ var WG_Gaoshu = (function () {
         });
       });
       shuffle(pool);
+      /* 先增强，再按「可作答程度」排序：
+       * 能判分的（选择/填空）排前面，纯看解析的排后面。
+       * 题库原始字段里 0 道题带 opts/ans，全靠增强层从题面和解析里解出来。 */
+      if (typeof WG_QE !== 'undefined' && WG_QE.enhance) {
+        pool.forEach(function (p) { WG_QE.enhance(p); });
+      }
+      /* 按作答形态筛选：gradable = 只要能自动判分的（选择/填空） */
+      if (c.form && c.form !== 'all') {
+        pool = pool.filter(function (p) {
+          var k = (p._qe && p._qe.kind) || 'view';
+          if (c.form === 'gradable') return k === 'choice' || k === 'fill';
+          if (c.form === 'choice') return k === 'choice' || k === 'choice-open';
+          return k === c.form;
+        });
+      }
+      var RANK = { choice: 0, fill: 1, 'choice-open': 2, step: 3, view: 4 };
       pool.sort(function (a, b) {
-        return (a.type === '选择题' ? 0 : 1) - (b.type === '选择题' ? 0 : 1);
+        var ra = RANK[(a._qe && a._qe.kind) || 'view'];
+        var rb = RANK[(b._qe && b._qe.kind) || 'view'];
+        return (ra == null ? 9 : ra) - (rb == null ? 9 : rb);
       });
     }
     queue = pool.slice(0, n);
+    /* 作答状态是挂在题库对象上的，而题库对象是全局共享的。
+       新开一局必须清掉上一局留下的痕迹，否则再遇到同一道题会
+       直接渲染成「已作答」，连重做的机会都没有——错题重做每次
+       都是同一批题，不清就等于这个按钮是坏的。
+       _qe / _opts / _ans 是推导出来的缓存，留着不影响作答。 */
+    queue.forEach(function (p) {
+      delete p._answered; delete p._pick; delete p._correct; delete p._viewed;
+    });
     if (queue.length === 0) {
-      if (onEnd) onEnd({ win: true, msg: '这里暂时没有题目', correct: 0, wrong: 0, accuracy: 100, score: 0, stars: 3, time: 0 });
+      /* 带了筛选条件却筛空，要说清是筛太窄而不是题库没题 */
+      var narrowed = (c.form && c.form !== 'all') || diff;
+      if (onEnd) onEnd({
+        win: true,
+        msg: narrowed ? '当前筛选条件下没有题目，放宽条件再试试' : '这里暂时没有题目',
+        correct: 0, wrong: 0, accuracy: 100, score: 0, stars: 3, time: 0
+      });
       return;
     }
     mode = c.mode || 'normal';
@@ -349,8 +556,94 @@ var WG_Gaoshu = (function () {
     }
   }
 
+  /* ---------- 解析渲染：重排为段落 + 公式块 ---------- */
+  /* 原来直接把 latexToText 的输出丢进 white-space:pre-wrap，
+   * 源文每个公式前后各一个换行、连接词各占一行，中位行长只有 3 字符，
+   * 读起来非常碎。这里改成语义分块渲染。 */
+  function solBlocks(solution) {
+    var plain = latexToText(solution || '');
+    if (!plain) return [];
+    if (typeof WG_QE === 'undefined' || !WG_QE.reflow) {
+      return [{ kind: 'text', text: plain }];
+    }
+    return WG_QE.reflow(plain);
+  }
+
+  function blockHtml(b) {
+    if (b.kind === 'head') {
+      return '<div class="sol-head">' + esc(b.text) + '</div>';
+    }
+    if (b.kind === 'formula') {
+      return (b.lead ? '<span class="sol-lead">' + esc(b.lead) + '</span>' : '') +
+        '<div class="sol-fx">' + esc(b.text) + '</div>';
+    }
+    return '<p class="sol-p">' + esc(b.text) + '</p>';
+  }
+
+  function solHtml(solution) {
+    var blocks = solBlocks(solution);
+    if (!blocks.length) return '<div class="bank-sol"><p class="sol-p">该题暂无解析</p></div>';
+    return '<div class="bank-sol">' + blocks.map(blockHtml).join('') + '</div>';
+  }
+
+  /* 逐步展开：先只给第一步，点「下一步」逐段揭示 */
+  function solStepHtml(solution) {
+    var blocks = solBlocks(solution);
+    if (!blocks.length) return '<div class="bank-sol"><p class="sol-p">该题暂无解析</p></div>';
+    var steps = (typeof WG_QE !== 'undefined' && WG_QE.toSteps) ? WG_QE.toSteps(blocks) : [blocks];
+    var html = '<div class="bank-sol" id="bankSolSteps">';
+    steps.forEach(function (grp, si) {
+      html += '<div class="sol-step' + (si === 0 ? '' : ' hidden') + '" data-step="' + si + '">' +
+        '<span class="sol-step-no">第 ' + (si + 1) + ' 步</span>' +
+        grp.map(blockHtml).join('') + '</div>';
+    });
+    html += '</div>';
+    if (steps.length > 1) {
+      html += '<div class="sol-step-bar">' +
+        '<button class="btn" id="bankStepNext">展开下一步 <span id="bankStepInfo">1 / ' + steps.length + '</span></button>' +
+        '<button class="btn ghost" id="bankStepAll">全部展开</button>' +
+        '</div>';
+    }
+    return html;
+  }
+
+  /* 绑定逐步展开按钮 */
+  function wireSteps(area) {
+    var wrap = area.querySelector('#bankSolSteps');
+    if (!wrap) return;
+    var steps = wrap.querySelectorAll('.sol-step');
+    var nextBtn = area.querySelector('#bankStepNext');
+    var allBtn = area.querySelector('#bankStepAll');
+    var shown = 1;
+    function sync() {
+      var info = area.querySelector('#bankStepInfo');
+      if (info) info.textContent = shown + ' / ' + steps.length;
+      if (shown >= steps.length && nextBtn) nextBtn.classList.add('hidden');
+    }
+    if (nextBtn) {
+      nextBtn.addEventListener('click', function () {
+        if (shown < steps.length) {
+          steps[shown].classList.remove('hidden');
+          steps[shown].classList.add('sol-step-in');
+          shown++;
+          sync();
+        }
+      });
+    }
+    if (allBtn) {
+      allBtn.addEventListener('click', function () {
+        for (var i = shown; i < steps.length; i++) steps[i].classList.remove('hidden');
+        shown = steps.length;
+        sync();
+      });
+    }
+    sync();
+  }
+
   function render() {
     var area = document.getElementById('customArea');
+    reviewing = false;
+    advanceHeld = false;
     var p = queue[idx];
     current = p;
     var topicName = p.topic || cfg.topic || '综合';
@@ -365,39 +658,84 @@ var WG_Gaoshu = (function () {
       (typeName ? '<span class="tag-bank dim">' + typeName + '</span>' : '') +
       '<span style="font-size:0.78rem;color:var(--muted);margin-left:auto;">第 ' + (idx + 1) + ' / ' + queue.length + ' 题</span>' +
       '</div>';
-    var stem = latexToText(p.stem || p.content || '');
-    var qBody = '<div class="bank-q" style="font-size:1.05rem;font-weight:600;color:var(--ink);line-height:1.9;white-space:pre-wrap;margin-bottom:1rem;">' + esc(stem) + '</div>';
+    /* 增强：把埋在题面里的选项、解析里的答案解出来，决定作答形态 */
+    if (typeof WG_QE !== 'undefined' && WG_QE.enhance) WG_QE.enhance(p);
+    var qe = p._qe || { kind: 'view' };
+    /* 题库自带 opts 优先；否则用增强层解析出的 */
+    var opts = (p.opts && p.opts.length) ? p.opts : qe.opts;
+    var ans = p.ans || qe.ans;
+    var kind = (p.opts && p.opts.length) ? (p.ans ? 'choice' : 'choice-open') : qe.kind;
+    p._kind = kind;
+    p._opts = opts;
+    p._ans = ans;
+
+    /* 选项被解出来时，题干要用去掉选项后的版本 */
+    var rawStem = p.stem || (qe.opts && qe.stem) || p.content || '';
+    var stem = latexToText(rawStem);
+    var qBody = '<div class="bank-q">' + esc(stem) + '</div>';
 
     var content = '';
-    if (p.opts && p.opts.length) {
-      var letters = ['A', 'B', 'C', 'D'];
-      var optBtns = p.opts.map(function (o, i) {
-        return '<button class="btn bank-opt" data-i="' + i + '" style="display:block;width:100%;text-align:left;font-size:0.95rem;padding:0.65rem 0.8rem;line-height:1.6;margin-bottom:0.5rem;white-space:pre-wrap;">' +
-          '<b>' + letters[i] + '.</b> ' + esc(latexToText(o)) + '</button>';
+    var letters = ['A', 'B', 'C', 'D'];
+    if (opts && opts.length) {
+      var optBtns = opts.map(function (o, i) {
+        return '<button class="btn bank-opt" data-i="' + i + '">' +
+          '<b class="bank-opt-k">' + letters[i] + '</b>' +
+          '<span class="bank-opt-t">' + esc(latexToText(o)) + '</span></button>';
       }).join('');
-      content = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0.6rem;align-items:start;">' + optBtns + '</div>';
+      content = '<div class="bank-opts">' + optBtns + '</div>';
+    } else if (kind === 'fill') {
+      /* 填空题：手输答案 + 宽松比对判分 */
+      content =
+        '<div class="bank-fill">' +
+        '<label class="sr-only" for="bankFillIn">你的答案</label>' +
+        '<input type="text" id="bankFillIn" class="bank-fill-in" autocomplete="off" ' +
+        'inputmode="text" placeholder="输入最终答案，如 1/2、ln2、π/4" />' +
+        '<button class="btn primary" id="bankFillGo">提交</button>' +
+        '</div>' +
+        '<button class="btn ghost bank-giveup" id="bankShowSol">想不出来，直接看解析</button>';
+    } else if (kind === 'step') {
+      /* 解答/证明/综合题：先自己做，再逐步展开对照 */
+      content =
+        '<div class="bank-selfhint">先在纸上写出思路，再逐步展开解析对照，比直接看答案有效得多。</div>' +
+        '<button class="btn primary" id="bankShowSol">开始逐步对照 →</button>';
     } else {
-      content = '<button class="btn primary" id="bankShowSol" style="width:100%;padding:0.7rem;">查看解析 / 参考答案</button>';
+      content = '<button class="btn primary" id="bankShowSol">查看解析 / 参考答案</button>';
     }
-    content += '<div id="bankFeedback" style="margin-top:0.9rem;min-height:1.6rem;font-size:0.88rem;color:var(--muted);white-space:pre-wrap;line-height:1.8;"></div>';
+    content += '<div id="bankFeedback" class="bank-feedback"></div>';
     content += '<div id="bankGrasp" class="bank-grasp hidden"></div>';
 
-    area.innerHTML = header + qBody + content;
+    area.innerHTML = header + qBody + content + cardHtml();
     area.classList.remove('hidden');
+    wireCard(area);
 
-    if (p.opts && p.opts.length) {
-      var btns = area.querySelectorAll('.bank-opt');
-      btns.forEach(function (b) {
+    if (opts && opts.length) {
+      area.querySelectorAll('.bank-opt').forEach(function (b) {
         b.addEventListener('click', function () { onChoice(parseInt(b.getAttribute('data-i'), 10)); });
       });
-    } else {
-      var btn = document.getElementById('bankShowSol');
-      if (btn) btn.addEventListener('click', showSolution);
     }
+    if (kind === 'fill') {
+      var input = document.getElementById('bankFillIn');
+      var go = document.getElementById('bankFillGo');
+      if (go) go.addEventListener('click', function () { onFill(input ? input.value : ''); });
+      if (input) {
+        input.addEventListener('keydown', function (e) {
+          if (e.key === 'Enter') { e.preventDefault(); onFill(input.value); }
+        });
+        input.focus();
+      }
+    }
+    var btn = document.getElementById('bankShowSol');
+    if (btn) btn.addEventListener('click', showSolution);
+
+    /* 这题之前已经答过（例如从回看返回、或答完没选掌握程度就跳走了）：
+       把结果原样还原，让流程能继续往下走 */
+    if (p._answered) restoreAnswered(p);
   }
 
   /* 显示把握程度选择 + 自动跳转倒计时（仅答对自动跳转） */
   function showGraspPanel(autoNext) {
+    /* 三条判分路径（选择/填空/看解析）都会走到这里，顺手刷新答题卡 */
+    refreshCard();
     var g = document.getElementById('bankGrasp');
     if (!g) return;
     var autoHtml = autoNext
@@ -445,7 +783,8 @@ var WG_Gaoshu = (function () {
     // 记录做题数据（含把握程度）
     recordAnswer(p, grasp);
     if (grasp === 'master' && mode === 'mistake' && p.id) {
-      WG_Data.removeMistake(p.id);
+      /* 标记攻克，好让错题集算出掌握度 */
+      WG_Data.removeMistake(p.id, { mastered: true });
     }
     if (onStats) onStats(stats());
     scheduleNext();
@@ -454,9 +793,13 @@ var WG_Gaoshu = (function () {
   function recordAnswer(p, grasp) {
     var correctNow = !!p._correct;
     var ansText = '';
-    if (p.opts && p.opts.length && p.ans) {
+    var opts = p._opts || p.opts;
+    var ans = p._ans || p.ans;
+    if (opts && opts.length && ans) {
       var letters = ['A', 'B', 'C', 'D'];
-      ansText = '答案：' + p.ans + '。' + (letters.indexOf(p.ans) >= 0 ? p.opts[letters.indexOf(p.ans)] : '');
+      ansText = '答案：' + ans + '。' + (letters.indexOf(ans) >= 0 ? opts[letters.indexOf(ans)] : '');
+    } else if (p._qe && p._qe.final) {
+      ansText = '答案：' + latexToText(p._qe.final);
     }
     WG_Data.recordAnswer({
       q: p.stem || p.content || '',
@@ -466,48 +809,107 @@ var WG_Gaoshu = (function () {
       qid: p.id != null ? String(p.id) : '',
       type: p.type || '',
       diff: p.difficulty || '',
-      answer: p.ans || '',
+      answer: ans || '',
       correctAns: ansText,
       timeMs: Date.now()
     });
+  }
+
+  /* 统一的判定反馈条 */
+  function fxBar(state, text) {
+    var icon = state === 'ok' ? '✓' : (state === 'no' ? '✗' : '📖');
+    var cls = state === 'ok' ? 'fx-ok' : 'fx-no';
+    var col = state === 'ok' ? 'var(--ok)' : (state === 'no' ? 'var(--danger)' : 'var(--acc2)');
+    return '<div class="bank-fx ' + cls + '"><span class="fx-badge">' + icon + '</span>' +
+      '<span style="color:' + col + ';font-weight:700;">' + esc(text) + '</span></div>';
+  }
+
+  /* 解析区：step 类型逐步展开，其余一次性展示 */
+  function appendSolution(fb, p, stepwise) {
+    if (!p.solution) {
+      fb.innerHTML += '<div class="bank-sol"><p class="sol-p">该题暂无解析</p></div>';
+      return;
+    }
+    fb.innerHTML += stepwise ? solStepHtml(p.solution) : solHtml(p.solution);
+    if (stepwise) wireSteps(fb);
   }
 
   function onChoice(i) {
     if (current._answered) return;
     current._answered = true;
     var p = current;
+    p._pick = i;   /* 记下所选项，回看时还原 */
     var letters = ['A', 'B', 'C', 'D'];
     var fb = document.getElementById('bankFeedback');
     var btns = document.querySelectorAll('.bank-opt');
+    var ans = p._ans || p.ans;
 
-    if (p.ans) {
-      var ok = letters[i] === p.ans;
+    if (ans) {
+      var ok = letters[i] === ans;
       p._correct = ok;
       if (ok) { correct++; } else { wrong++; }
-      var color = ok ? 'var(--ok)' : 'var(--danger)';
-      var mark = ok ? '✓ 回答正确！' : '✗ 回答错误，正确答案是 ' + p.ans;
-      fb.innerHTML = '<div class="bank-fx ' + (ok ? 'fx-ok' : 'fx-no') + '"><span class="fx-badge">' + (ok ? '✓' : '✗') + '</span><span style="color:' + color + ';font-weight:700;">' + mark + '</span></div>';
+      fb.innerHTML = fxBar(ok ? 'ok' : 'no',
+        ok ? '回答正确！' : '回答错误，正确答案是 ' + ans);
       btns.forEach(function (b, bi) {
-        b.style.opacity = bi === i ? '1' : '0.45';
-        if (letters[bi] === p.ans) b.style.borderColor = 'var(--ok)';
-        if (bi === i && !ok) b.style.borderColor = 'var(--danger)';
+        b.classList.add('is-done');
+        if (letters[bi] === ans) b.classList.add('opt-right');
+        if (bi === i && !ok) b.classList.add('opt-wrong');
         if (bi === i) b.classList.add(ok ? 'fx-pick-ok' : 'fx-pick-no');
       });
-      if (p.solution) {
-        fb.innerHTML += '<div class="bank-sol">' + esc(latexToText(p.solution)) + '</div>';
-      }
+      appendSolution(fb, p, false);
       /* 答对自动跳转，答错手动下一题 */
       if (onStats) onStats(stats());
       showGraspPanel(ok);
     } else {
-      // 无答案：显示解析，手动下一题
-      fb.innerHTML = '<div class="bank-fx fx-no"><span class="fx-badge">?</span><span style="color:var(--acc2);font-weight:700;">已选择 ' + letters[i] + '，答案见解析：</span></div>';
-      if (p.solution) {
-        fb.innerHTML += '<div class="bank-sol">' + esc(latexToText(p.solution)) + '</div>';
-      }
+      /* 选项解析出来但答案无法确定：不判分，直接对照解析 */
+      btns.forEach(function (b, bi) {
+        b.classList.add('is-done');
+        if (bi === i) b.classList.add('opt-pick');
+      });
+      fb.innerHTML = fxBar('info', '已选 ' + letters[i] + '，对照解析确认：');
+      appendSolution(fb, p, false);
       if (onStats) onStats(stats());
       showGraspPanel(false);
     }
+  }
+
+  /* 填空题判分：宽松比对（忽略空格、全半角、LaTeX 包装、数值容差） */
+  function onFill(val) {
+    if (current._answered) return;
+    var p = current;
+    var raw = String(val == null ? '' : val).trim();
+    var fb = document.getElementById('bankFeedback');
+    if (!raw) {
+      fb.innerHTML = fxBar('info', '先写点什么再提交吧');
+      return;
+    }
+    current._answered = true;
+    var target = (p._qe && p._qe.final) || '';
+    var targetText = latexToText(target);
+    var ok = false;
+    if (typeof WG_QE !== 'undefined' && WG_QE.sameAnswer) {
+      /* 原始 LaTeX 与渲染后的可读文本都比一遍，提高命中率 */
+      ok = WG_QE.sameAnswer(raw, target) || WG_QE.sameAnswer(raw, targetText);
+    }
+    p._correct = ok;
+    if (ok) { correct++; } else { wrong++; }
+
+    var input = document.getElementById('bankFillIn');
+    if (input) {
+      input.disabled = true;
+      input.classList.add(ok ? 'fill-ok' : 'fill-no');
+    }
+    var go = document.getElementById('bankFillGo');
+    if (go) go.disabled = true;
+
+    fb.innerHTML = fxBar(ok ? 'ok' : 'no',
+      ok ? '答案正确！' : '与参考答案不一致，参考答案：' + targetText);
+    if (!ok) {
+      fb.innerHTML += '<div class="bank-tip">写法不同也可能是对的，请对照解析自行判断，再按下面的掌握程度记录。</div>';
+    }
+    appendSolution(fb, p, false);
+    if (onStats) onStats(stats());
+    showGraspPanel(ok);
   }
 
   function showSolution() {
@@ -518,11 +920,18 @@ var WG_Gaoshu = (function () {
     p._correct = true;
     p._viewed = true;
     var fb = document.getElementById('bankFeedback');
-    if (p.solution) {
-      fb.innerHTML = '<div class="bank-fx fx-no"><span class="fx-badge">📖</span><span style="color:var(--acc2);font-weight:700;">参考答案与解析：</span></div><div class="bank-sol">' + esc(latexToText(p.solution)) + '</div>';
+    /* 填空题放弃作答时，先把参考答案单独点出来 */
+    if (p._kind === 'fill' && p._qe && p._qe.final) {
+      var inp = document.getElementById('bankFillIn');
+      if (inp) inp.disabled = true;
+      var g = document.getElementById('bankFillGo');
+      if (g) g.disabled = true;
+      fb.innerHTML = fxBar('info', '参考答案：' + latexToText(p._qe.final));
     } else {
-      fb.textContent = '该题暂无解析';
+      fb.innerHTML = fxBar('info', '参考答案与解析：');
     }
+    /* 解答/证明/综合题：逐步展开，避免一次性把答案全糊在脸上 */
+    appendSolution(fb, p, p._kind === 'step');
     if (onStats) onStats(stats());
     showGraspPanel(false);
   }
@@ -531,6 +940,8 @@ var WG_Gaoshu = (function () {
     if (pendingT) clearTimeout(pendingT);
     pendingT = setTimeout(function () {
       pendingT = null;
+      /* 正在回看历史题时不抢走画面，记下来等用户点「回到下一题」再补上 */
+      if (reviewing) { advanceHeld = true; syncBackBtn(); return; }
       idx++;
       if (idx >= queue.length) { end(); return; }
       render();

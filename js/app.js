@@ -16,6 +16,7 @@ var WG_Data = (function () {
       if (!d.nick) d.nick = '同学';
       if (!d.answers) d.answers = [];      /* 做题记录 -> 学情分析 */
       if (!d.mistakes) d.mistakes = [];    /* 错题本：[{qid, topic, question, answer, correctAns, wrongCount, lastAt}] */
+      if (!d.cleared) d.cleared = [];      /* 已攻克的错题：[{qid, topic, at}]，掌握度的分母 */
       if (!d.checkin) d.checkin = [];      /* 打卡日期 */
       if (!d.profile) d.profile = null;    /* 登录信息 + 个性化需求 */
       return d;
@@ -66,12 +67,53 @@ var WG_Data = (function () {
       }
       save(d);
     },
-    /* 从错题本移除（重新做对且把握度高时） */
-    removeMistake: function (qid) {
+    /* 从错题本移除。opts.mastered 为真表示「重做答对并标记掌握了」，
+       这类要留一条攻克记录，否则掌握度没有分母，永远算不出进度。 */
+    removeMistake: function (qid, opts) {
       var d = load();
       if (!d.mistakes) return;
-      d.mistakes = d.mistakes.filter(function (x) { return x.qid !== qid; });
+      var hit = d.mistakes.find(function (x) { return String(x.qid) === String(qid); });
+      d.mistakes = d.mistakes.filter(function (x) { return String(x.qid) !== String(qid); });
+      if (hit && opts && opts.mastered) {
+        if (!d.cleared) d.cleared = [];
+        if (!d.cleared.some(function (x) { return String(x.qid) === String(qid); })) {
+          d.cleared.push({ qid: String(qid), topic: hit.topic || '综合', at: Date.now() });
+          if (d.cleared.length > 800) d.cleared = d.cleared.slice(-800);
+        }
+      }
       save(d);
+    },
+    /* 错题按知识点归集成「错题集」，带掌握度。
+       掌握度 = 已攻克 /（已攻克 + 仍未攻克），没有任何记录时算 0。 */
+    mistakeGroups: function () {
+      var d = load();
+      var ms = d.mistakes || [];
+      var cl = d.cleared || [];
+      var g = {};
+      function slot(t) {
+        var k = t || '综合';
+        if (!g[k]) g[k] = { name: k, items: [], cleared: 0 };
+        return g[k];
+      }
+      ms.forEach(function (m) { slot(m.topic).items.push(m); });
+      cl.forEach(function (c) { slot(c.topic).cleared++; });
+      return Object.keys(g).map(function (k) {
+        var v = g[k];
+        var open = v.items.length;
+        var base = open + v.cleared;
+        /* 新错的排前面，同时把反复错的顶上来 */
+        v.items.sort(function (a, b) {
+          var dw = (b.wrongCount || 1) - (a.wrongCount || 1);
+          return dw !== 0 ? dw : (b.lastAt || 0) - (a.lastAt || 0);
+        });
+        return {
+          name: v.name, items: v.items, open: open, cleared: v.cleared,
+          mastery: base ? Math.round(v.cleared / base * 100) : 0
+        };
+      }).sort(function (a, b) {
+        /* 未攻克多的先看，其次掌握度低的先看 */
+        return b.open - a.open || a.mastery - b.mastery;
+      });
     },
     /* 学情分析：按知识点统计正确率、错题分布、把握程度 */
     analyze: function () {
@@ -115,7 +157,11 @@ var WG_App = (function () {
     view: 'home',
     continentId: 'study',
     currentLevel: null,
-    currentIndex: -1
+    currentIndex: -1,
+    /* 「再来一组」怎么重开这一局。各入口自己登记，
+       因为错题重做／随机组卷／模块刷题的关卡都是临时拼的，
+       按 id 回查 CONTINENTS 找不到，也带不回筛选条件。 */
+    replay: null
   };
   var els = {};
 
@@ -135,35 +181,115 @@ var WG_App = (function () {
     state.view = name;
   }
 
-  /* ---------- 模块详情（子模块 + 题数选择） ---------- */
+  /* ---------- 模块详情（子模块 + 题数选择 + 筛选） ---------- */
   var currentCount = 20;
+  /* 筛选条状态：难度（''=不限）与作答形态（'all'=不限） */
+  var currentDiff = '';
+  var currentForm = 'all';
+
+  /* 判断一道题落在哪种作答形态，与 gaoshu.js 的口径保持一致 */
+  function formOf(p) {
+    if (typeof WG_QE !== 'undefined' && WG_QE.enhance) WG_QE.enhance(p);
+    return (p._qe && p._qe.kind) || 'view';
+  }
+
+  function matchForm(p, form) {
+    if (!form || form === 'all') return true;
+    var k = formOf(p);
+    if (form === 'gradable') return k === 'choice' || k === 'fill';
+    if (form === 'choice') return k === 'choice' || k === 'choice-open';
+    return k === form;
+  }
+
+  /* 模块覆盖哪些知识点：topicList 直接用，只给 subject 的（综合刷题）
+     要按学科反查题库，否则题量算成 0，筛选对综合模块整个失效。 */
+  function topicKeysOf(level) {
+    if (!level) return [];
+    if (level.topicList && level.topicList.length) return level.topicList.slice();
+    if (!GAOSHU_BANK) return [];
+    var keys = Object.keys(GAOSHU_BANK);
+    if (level.subject) {
+      keys = keys.filter(function (tk) {
+        var td = GAOSHU_BANK[tk];
+        return td && td.subject === level.subject;
+      });
+    }
+    return keys;
+  }
+
+  /* 当前筛选条件下某知识点还剩多少题，用于卡片上的实时题量 */
+  function countTopic(tk) {
+    var td = GAOSHU_BANK && GAOSHU_BANK[tk];
+    if (!td || !td.problems) return 0;
+    return td.problems.filter(function (p) {
+      if (currentDiff && p.difficulty !== currentDiff) return false;
+      return matchForm(p, currentForm);
+    }).length;
+  }
   function renderModule(level) {
     stopGames();
+    /* 换模块时把筛选条件清干净，别把上一个模块的筛选带过来 */
+    if (state.currentModule !== level) { currentDiff = ''; currentForm = 'all'; }
     state.currentModule = level;
     $('modTitle').textContent = level.name;
     $('modSub').textContent = (level.group || '模块') + ' · 选择子模块开始刷题';
     var subGrid = $('subGrid');
     if (!subGrid) { showView('home'); return; }
     var html = '';
-    /* 全部混合入口 */
-    var allCount = moduleCount(level);
-    html += '<div class="mod-card" data-mode="all"><div class="mod-tag">混合</div>' +
+    /* 题量按当前筛选条件实时计算，避免点进去才发现没题 */
+    var keys = topicKeysOf(level);
+    var allCount = 0;
+    keys.forEach(function (tk) { allCount += countTopic(tk); });
+    if (!keys.length) allCount = moduleCount(level);
+    html += '<div class="mod-card' + (allCount === 0 ? ' mod-card-empty' : '') + '" data-mode="all">' +
+      '<div class="mod-tag">混合</div>' +
       '<div class="mod-name">全部知识点</div>' +
-      '<div class="mod-meta">共 ' + allCount + ' 题，随机混合抽题</div>' +
-      '<div class="mod-go">开始练习 →</div></div>';
+      '<div class="mod-meta">' + (allCount === 0 ? '当前筛选下无题' : '共 ' + allCount + ' 题，随机混合抽题') + '</div>' +
+      '<div class="mod-go">' + (allCount === 0 ? '放宽筛选条件' : '开始练习 →') + '</div></div>';
     /* 子模块 */
-    if (level.topicList) {
-      level.topicList.forEach(function (tk) {
-        var td = GAOSHU_BANK[tk];
-        var cnt = td ? td.problems.length : 0;
-        html += '<div class="mod-card" data-topic="' + tk + '"><div class="mod-tag">' + (level.group || '') + '</div>' +
-          '<div class="mod-name">' + tk + '</div>' +
-          '<div class="mod-meta">' + cnt + ' 题</div>' +
-          '<div class="mod-go">开始练习 →</div></div>';
-      });
-    }
+    keys.forEach(function (tk) {
+      var cnt = countTopic(tk);
+      var total = GAOSHU_BANK[tk] ? GAOSHU_BANK[tk].problems.length : 0;
+      var filtered = (currentDiff || currentForm !== 'all');
+      html += '<div class="mod-card' + (cnt === 0 ? ' mod-card-empty' : '') + '" data-topic="' + tk + '">' +
+        '<div class="mod-tag">' + (level.group || '') + '</div>' +
+        '<div class="mod-name">' + tk + '</div>' +
+        '<div class="mod-meta">' + cnt + ' 题' +
+        (filtered && total !== cnt ? ' <span class="mod-meta-dim">/ 全部 ' + total + '</span>' : '') +
+        '</div>' +
+        '<div class="mod-go">' + (cnt === 0 ? '放宽筛选条件' : '开始练习 →') + '</div></div>';
+    });
     subGrid.innerHTML = html;
+    syncFilterUI();
     showView('module');
+  }
+
+  /* 同步筛选条按钮高亮 + 命中数量提示 */
+  function syncFilterUI() {
+    var box = $('modFilter');
+    if (!box) return;
+    box.querySelectorAll('button[data-diff]').forEach(function (b) {
+      b.classList.toggle('active', (b.getAttribute('data-diff') || '') === currentDiff);
+    });
+    box.querySelectorAll('button[data-form]').forEach(function (b) {
+      b.classList.toggle('active', b.getAttribute('data-form') === currentForm);
+    });
+    var hint = $('modFilterHint');
+    if (!hint) return;
+    var lv = state.currentModule;
+    var tks = topicKeysOf(lv);
+    if (!tks.length) { hint.textContent = ''; return; }
+    var hit = 0, total = 0;
+    tks.forEach(function (tk) {
+      hit += countTopic(tk);
+      total += GAOSHU_BANK[tk] ? GAOSHU_BANK[tk].problems.length : 0;
+    });
+    if (!currentDiff && currentForm === 'all') {
+      hint.textContent = '共 ' + total + ' 题';
+    } else {
+      hint.textContent = '筛选命中 ' + hit + ' / ' + total + ' 题' +
+        (hit === 0 ? '（条件太窄，试试放宽）' : '');
+    }
   }
 
   /* 从模块进入刷题 */
@@ -181,12 +307,28 @@ var WG_App = (function () {
       delete lvl.topicList;
       delete lvl.subject;
     }
-    lvl.n = currentCount > 0 ? currentCount : moduleCount(lv);
+    /* 把筛选条件带进刷题引擎。难度以筛选条为准：选了就按它筛，
+       选「不限」就得删掉关卡自带的 diff，否则引擎仍按「提高」筛，
+       和卡片上按不限难度算出来的题量对不上。 */
+    if (currentDiff) lvl.diff = currentDiff;
+    else delete lvl.diff;
+    lvl.form = currentForm;
+    /* 可用题量按筛选后算，「全部」不会再要到筛掉的题 */
+    var avail = topic ? countTopic(topic) : (function () {
+      var s = 0;
+      topicKeysOf(lv).forEach(function (tk) { s += countTopic(tk); });
+      return s || moduleCount(lv);
+    })();
+    lvl.n = currentCount > 0 ? Math.min(currentCount, avail) : avail;
     state.currentLevel = lvl;
     state.currentIndex = 0;
     state.backView = 'module';
+    /* 再来一组：按当前筛选条件重新抽一批题 */
+    state.replay = function () { startFromModule(mode, topic); };
+    var fname = { all: '', gradable: '可判分', choice: '选择', fill: '填空', step: '解答证明' }[currentForm] || '';
+    var badge = [currentDiff, fname].filter(Boolean).join(' · ');
     $('gameTitle').textContent = lv.name + (topic ? ' · ' + topic : ' · 综合');
-    $('gameSub').textContent = (lv.group || '') + ' · 题库刷题';
+    $('gameSub').textContent = (lv.group || '') + ' · 题库刷题' + (badge ? ' · ' + badge : '');
     $('goalHint').textContent = '连做 ' + lvl.n + ' 道题 · 每题看解析并标记掌握程度';
     if ($('stStars')) $('stStars').textContent = '☆☆☆';
     $('board').classList.add('hidden');
@@ -235,20 +377,35 @@ var WG_App = (function () {
     });
     var html = groups.map(function (g) {
       var items = lvs.filter(function (l) { return (l.group || '其他') === g; });
+      var gTotal = 0;
       var cards = items.map(function (l, i) {
         var rec = data.levels[l.id];
         var stars = rec ? rec.stars : 0;
         var starStr = stars ? '★'.repeat(stars) + '☆'.repeat(3 - stars) : '';
         var cnt = moduleCount(l);
-        return '<div class="mod-card" data-level="' + l.id + '" data-idx="' + i + '">' +
+        gTotal += cnt;
+        var diffTxt = l.diff === 3 ? '拔尖' : l.diff === 1 ? '基础' : '适中';
+        return '<div class="mod-card" data-level="' + l.id + '" data-idx="' + i + '" tabindex="0" role="button">' +
           '<div class="mod-tag">' + g + '</div>' +
           '<div class="mod-name">' + l.name + '</div>' +
-          '<div class="mod-meta">共 ' + cnt + ' 题 · ' + (l.diff === 3 ? '拔尖' : l.diff === 1 ? '基础' : '适中') + '</div>' +
-          (starStr ? '<div class="mod-stars">' + starStr + '</div>' : '<div class="mod-go">开始练习 →</div>') +
+          '<div class="mod-meta"><span class="mod-cnt">' + cnt + ' 题</span>' +
+          '<span class="mod-diff mod-diff-' + (l.diff || 2) + '">' + diffTxt + '</span></div>' +
+          '<div class="mod-foot">' +
+          (starStr ? '<span class="mod-stars">' + starStr + '</span>' : '<span class="mod-stars mod-stars-none">未练习</span>') +
+          '<span class="mod-go">开始练习 →</span>' +
+          '</div>' +
           '</div>';
       }).join('');
-      return '<div class="group-title">' + g + ' <span style="color:var(--muted);font-size:0.78rem;">' + items.length + ' 个模块</span></div>' +
-        '<div class="mod-grid">' + cards + '</div>';
+      /* 每个学科自成一个区块：标题在区块里，卡片网格也在区块里。
+         之前是把标题和网格平铺进一个本身就是网格的容器，标题靠
+         grid-column:1/-1 撑满、卡片网格又只占一格，列宽全乱。 */
+      return '<section class="mod-group">' +
+        '<div class="mg-head">' +
+        '<h3 class="mg-name">' + g + '</h3>' +
+        '<span class="mg-meta">' + items.length + ' 个模块 · ' + gTotal + ' 题</span>' +
+        '</div>' +
+        '<div class="mod-grid">' + cards + '</div>' +
+        '</section>';
     }).join('');
     var box = $(containerId);
     if (box) box.innerHTML = html;
@@ -352,9 +509,9 @@ var WG_App = (function () {
         }).join('');
         var desc = x.desc || '';
         var isLocal = x.link && x.link.indexOf('data/pdf/') === 0;
-        var badge = isLocal ? '<span class="wk-local">已下载</span>' : '<span class="wk-pending">敬请期待</span>';
-        var goText = isLocal ? '打开 PDF →' : '敬请期待';
-        return '<div class="wk-item' + (isLocal ? '' : ' wk-item-pending') + '" data-idx="' + i + '" style="cursor:pointer;">' +
+        var badge = isLocal ? '<span class="wk-local">已下载</span>' : '<span class="wk-pending">原站</span>';
+        var goText = isLocal ? '打开 PDF →' : '查看详情 →';
+        return '<div class="wk-item" data-idx="' + i + '" style="cursor:pointer;">' +
           '<div class="wk-item-head">' + (x.title ? escHtml(x.title) : '') + ' ' + badge + '</div>' +
           (tags ? '<div class="wk-item-tags">' + tags + '</div>' : '') +
           (desc ? '<div class="wk-item-desc">' + escHtml(desc.slice(0, 110)) + '</div>' : '') +
@@ -384,16 +541,22 @@ var WG_App = (function () {
     if (link) {
       if (isLocal) {
         link.href = x.link;
-        link.textContent = '打开本地 PDF ↓';
+        link.textContent = '📖 打开 PDF';
         link.target = '_blank';
-        link.rel = 'noopener noreferrer';
+        link.rel = 'noopener';
+        link.removeAttribute('download');
         link.style.cursor = 'pointer';
+        $('wkdHint').textContent = 'PDF 将在新标签页中打开预览。若浏览器未内嵌预览，会直接下载该文件。';
       } else {
-        link.href = 'javascript:void(0)';
-        link.textContent = '敬请期待 — 资料尚未下载';
-        link.removeAttribute('target');
-        link.removeAttribute('rel');
-        link.style.cursor = 'default';
+        /* 非本地资料：提供原站分类页链接 */
+        var catUrl = x.link || 'https://suncoastmath.cn/pdfs';
+        link.href = catUrl;
+        link.textContent = '🌐 前往原站查看 ↗';
+        link.target = '_blank';
+        link.rel = 'noopener';
+        link.removeAttribute('download');
+        link.style.cursor = 'pointer';
+        $('wkdHint').textContent = '资料托管在 suncoastmath.cn 阳光海岸数学练习室，访问原站可能需要登录/注册。';
       }
     }
     el.classList.remove('hidden');
@@ -408,6 +571,9 @@ var WG_App = (function () {
     state.backView = state.view === 'bank' ? 'bank' : (state.view === 'module' ? 'module' : 'home');
     state.currentLevel = level;
     state.currentIndex = idx;
+    /* 每个入口都登记一次，后开的局覆盖前一局，
+       免得上一局留下的 replay 漏到这一局里 */
+    state.replay = function () { enterLevel(levelId, idx); };
     stopGames();
     $('gameTitle').textContent = level.name;
     $('gameSub').textContent = cont.name + ' · ' + (level.kw || '综合');
@@ -572,6 +738,16 @@ var WG_App = (function () {
         navTo(a.getAttribute('data-nav'));
       });
     }
+    /* 板块标题右侧的「全部模块 →」「资料库 →」：它们带 data-nav，
+       但顶部导航那个委托只认 #topnav 里的 a，按钮接不上，得单独兜。 */
+    document.addEventListener('click', function (e) {
+      var b = e.target.closest ? e.target.closest('.sec-more[data-nav]') : null;
+      if (!b) return;
+      e.preventDefault();
+      closeModal();
+      navTo(b.getAttribute('data-nav'));
+    });
+
     /* 首页快捷入口 */
     $('heroRandom') && $('heroRandom').addEventListener('click', function () { enterRandom(); });
     $('heroBank') && $('heroBank').addEventListener('click', function () { closeModal(); renderBank(); });
@@ -593,6 +769,15 @@ var WG_App = (function () {
             enterLevel(level, +card.getAttribute('data-idx'));
           }
         });
+        /* 卡片带了 tabindex + role=button，就得真的能用键盘开。
+           光给焦点框不接回车，等于挂了个摆设。 */
+        g.addEventListener('keydown', function (e) {
+          if (e.key !== 'Enter' && e.key !== ' ' && e.key !== 'Spacebar') return;
+          var card = e.target.closest ? e.target.closest('.mod-card') : null;
+          if (!card) return;
+          e.preventDefault();
+          card.click();
+        });
       }
     });
     /* 模块详情：子模块点击 */
@@ -601,11 +786,32 @@ var WG_App = (function () {
       subGrid.addEventListener('click', function (e) {
         var card = e.target.closest ? e.target.closest('.mod-card') : null;
         if (!card) return;
+        /* 当前筛选下这张卡没题，直接开会进到空局，先提示放宽条件 */
+        if (card.classList.contains('mod-card-empty')) {
+          toast('当前筛选条件下这里没有题，放宽条件再试试');
+          return;
+        }
         if (card.getAttribute('data-mode') === 'all') {
           startFromModule('all', null);
         } else if (card.getAttribute('data-topic')) {
           startFromModule('topic', card.getAttribute('data-topic'));
         }
+      });
+    }
+    /* 筛选条：难度 / 作答形态，改完就地刷新题量 */
+    var mfb = $('modFilter');
+    if (mfb) {
+      mfb.addEventListener('click', function (e) {
+        var b = e.target.closest ? e.target.closest('button') : null;
+        if (!b) return;
+        if (b.hasAttribute('data-diff')) {
+          currentDiff = b.getAttribute('data-diff') || '';
+        } else if (b.hasAttribute('data-form')) {
+          currentForm = b.getAttribute('data-form') || 'all';
+        } else {
+          return;
+        }
+        if (state.currentModule) renderModule(state.currentModule);
       });
     }
     /* 题数选择 */
@@ -749,7 +955,12 @@ var WG_App = (function () {
       });
     });
 
-    $('mRetry').addEventListener('click', function () { closeModal(); enterLevel(state.currentLevel.id, state.currentIndex); });
+    $('mRetry').addEventListener('click', function () {
+      closeModal();
+      /* 有登记就按登记的方式重开，没登记才退回按 id 找关卡 */
+      if (typeof state.replay === 'function') { state.replay(); return; }
+      if (state.currentLevel) enterLevel(state.currentLevel.id, state.currentIndex);
+    });
     $('mNext').addEventListener('click', function () { closeModal(); goHome(); });
     $('mBack').addEventListener('click', function () { closeModal(); goHome(); });
 
@@ -757,14 +968,28 @@ var WG_App = (function () {
     var misList = $('mistakeList');
     if (misList) {
       misList.addEventListener('click', function (e) {
-        var retry = e.target.closest ? e.target.closest('.mi-retry') : null;
-        var del = e.target.closest ? e.target.closest('.mi-del') : null;
+        var t = e.target;
+        var q = function (sel) { return t.closest ? t.closest(sel) : null; };
+        var retry = q('.mi-retry');
+        var del = q('.mi-del');
+        var redo = q('.ms-redo');
+        var tog = q('.mset-toggle');
         if (retry) {
           retryMistake(retry.getAttribute('data-qid'));
         } else if (del) {
           WG_Data.removeMistake(del.getAttribute('data-qid'));
           toast('已移出错题本', 'ok');
           renderMistakes();
+        } else if (redo) {
+          /* 整组重刷：把这一组的题号一次性喂给引擎 */
+          retryMistakeSet((redo.getAttribute('data-ids') || '').split(','), redo.getAttribute('data-set') || '');
+        } else if (tog) {
+          /* 折叠不重渲染整页，直接切 class，省掉一次全量拼串 */
+          var sec = tog.closest('.mset');
+          if (!sec) return;
+          var folded = sec.classList.toggle('mset-fold');
+          tog.setAttribute('aria-expanded', String(!folded));
+          mistakeOpen[sec.getAttribute('data-set')] = !folded;
         }
       });
     }
@@ -865,6 +1090,9 @@ var WG_App = (function () {
   }
 
   /* ---------- 错题本 ---------- */
+  /* 各错题集的展开/收起状态，只存在内存里，刷新页面回到默认展开 */
+  var mistakeOpen = {};
+
   function renderMistakes() {
     stopGames();
     var d = WG_Data.get();
@@ -879,19 +1107,45 @@ var WG_App = (function () {
         '<div style="font-size:2rem;margin-bottom:0.6rem;">📭</div>' +
         '错题本是空的。<br>答错的题、标记「不会」的题会自动收进来。</div>';
     } else {
-      box.innerHTML = ms.map(function (m, i) {
-        var q = WG_Gaoshu.latexToText(m.question || '').slice(0, 90);
-        var qid = m.qid || '';
-        var date = m.lastAt ? new Date(m.lastAt).toLocaleDateString() : '';
-        return '<div class="mistake-item" data-qid="' + qid + '">' +
-          '<div class="mi-head"><span class="tag-bank">' + (m.topic || '综合') + '</span>' +
-          '<span class="mi-wrong">错 ' + (m.wrongCount || 1) + ' 次</span>' +
-          '<span class="mi-date">' + date + '</span></div>' +
-          '<div class="mi-q">' + escHtml(q) + '</div>' +
-          '<div class="mi-actions">' +
-          '<button class="btn primary mi-retry" data-qid="' + qid + '" style="font-size:0.8rem;">重做这道题</button>' +
-          '<button class="btn ghost mi-del" data-qid="' + qid + '" style="font-size:0.8rem;">移出错题本</button>' +
-          '</div></div>';
+      /* 按知识点归集成错题集：每组一张卡，带掌握度和整组重刷 */
+      box.innerHTML = WG_Data.mistakeGroups().map(function (g) {
+        var open = mistakeOpen[g.name] !== false;   /* 默认展开，收起状态记在内存里 */
+        var ids = g.items.map(function (m) { return m.qid; }).filter(Boolean);
+        var lvl = g.mastery >= 80 ? 'hi' : (g.mastery >= 40 ? 'mid' : 'lo');
+        return '<section class="mset' + (open ? '' : ' mset-fold') + '" data-set="' + escHtml(g.name) + '">' +
+          '<header class="mset-head">' +
+            '<button class="mset-toggle" aria-expanded="' + open + '">' +
+              '<span class="mset-caret" aria-hidden="true">▾</span>' +
+              '<span class="mset-name">' + escHtml(g.name) + '</span>' +
+              '<span class="mset-num">' + g.open + ' 题待攻克</span>' +
+            '</button>' +
+            '<div class="mset-bar" role="img" aria-label="掌握度 ' + g.mastery + '%">' +
+              '<i class="mset-fill mset-' + lvl + '" style="width:' + g.mastery + '%"></i>' +
+            '</div>' +
+            '<span class="mset-pct mset-' + lvl + '">掌握 ' + g.mastery + '%</span>' +
+            (ids.length > 1
+              ? '<button class="btn primary ms-redo" data-ids="' + ids.join(',') + '" data-set="' + escHtml(g.name) + '">整组重刷</button>'
+              : '') +
+          '</header>' +
+          '<div class="mset-body">' +
+            (g.cleared ? '<div class="mset-note">已攻克 ' + g.cleared + ' 题</div>' : '') +
+            g.items.map(function (m) {
+              var q = WG_Gaoshu.latexToText(m.question || '').slice(0, 90);
+              var qid = m.qid || '';
+              var date = m.lastAt ? new Date(m.lastAt).toLocaleDateString() : '';
+              return '<div class="mistake-item" data-qid="' + qid + '">' +
+                '<div class="mi-head">' +
+                (m.markedWeak ? '<span class="mi-weak">标记不会</span>' : '') +
+                '<span class="mi-wrong">错 ' + (m.wrongCount || 1) + ' 次</span>' +
+                '<span class="mi-date">' + date + '</span></div>' +
+                '<div class="mi-q">' + escHtml(q) + '</div>' +
+                '<div class="mi-actions">' +
+                '<button class="btn primary mi-retry" data-qid="' + qid + '" style="font-size:0.8rem;">重做这道题</button>' +
+                '<button class="btn ghost mi-del" data-qid="' + qid + '" style="font-size:0.8rem;">移出错题本</button>' +
+                '</div></div>';
+            }).join('') +
+          '</div>' +
+        '</section>';
       }).join('');
     }
     showView('mistakes');
@@ -901,15 +1155,28 @@ var WG_App = (function () {
     return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   }
 
-  /* 重做单道错题 */
-  function retryMistake(qid) {
+  /* 重做错题：单题或整组，走同一条路径，只是题号集合不同 */
+  function retryMistake(qid) { retryMistakeSet([qid], ''); }
+
+  function retryMistakeSet(ids, setName) {
+    ids = (ids || []).filter(Boolean);
+    if (!ids.length) { toast('这一组没有可重做的题'); return; }
     stopGames();
     state.backView = 'mistakes';
-    state.currentLevel = { id: 'mistake', name: '错题重做', type: 'gaoshu', topic: null, n: 1, mistakeIds: [qid], mode: 'mistake' };
+    var many = ids.length > 1;
+    state.currentLevel = {
+      id: 'mistake', name: many ? '错题集重刷' : '错题重做', type: 'gaoshu',
+      topic: null, n: ids.length, mistakeIds: ids, mode: 'mistake'
+    };
     state.currentIndex = 0;
-    $('gameTitle').textContent = '错题重做';
-    $('gameSub').textContent = '错题本 · 逐题攻破';
-    $('goalHint').textContent = '重新做这道题，答对并标记「掌握了」即移出错题本';
+    /* 再来一组：还刷这一批题号。刚攻克的题已经不在错题本里了，
+       但这里是「再练一遍」而不是「重新抽题」，保留原题组更符合预期。 */
+    state.replay = function () { retryMistakeSet(ids, setName); };
+    $('gameTitle').textContent = many ? '错题集重刷' : '错题重做';
+    $('gameSub').textContent = (setName ? setName + ' · ' : '错题本 · ') + (many ? ids.length + ' 题连刷' : '逐题攻破');
+    $('goalHint').textContent = many
+      ? '逐题重做，答对并标记「掌握了」的题会移出错题本'
+      : '重新做这道题，答对并标记「掌握了」即移出错题本';
     if ($('stStars')) $('stStars').textContent = '☆☆☆';
     $('board').classList.add('hidden');
     $('quizArea').classList.add('hidden');
@@ -982,6 +1249,8 @@ var WG_App = (function () {
     state.currentLevel = { id: 'random', name: '随机组卷', type: 'gaoshu', topic: null, n: 10, diff: null };
     state.currentIndex = 0;
     state.backView = 'home';
+    /* 再来一组：重新随机抽一批 */
+    state.replay = enterRandom;
     $('gameTitle').textContent = '随机组卷';
     $('gameSub').textContent = '高数题库 · 随机抽题';
     $('goalHint').textContent = '随机 10 道题 · 每题看解析并标记掌握程度';

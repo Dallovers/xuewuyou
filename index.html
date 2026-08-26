@@ -3,19 +3,23 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="学无忧 · 大学生备考通关平台：高等数学、线性代数、概率论真题级题库，错题复盘与 AI 讲题。">
+<meta name="theme-color" content="#0a0e1d">
 <title>学无忧 · 大学生备考通关平台</title>
-<link rel="stylesheet" href="css/style.css?v=8">
+<link rel="stylesheet" href="css/style.css?v=13">
 </head>
 <body>
+
+<a href="#mainContent" class="skip-link">跳到主内容</a>
 
 <div class="app">
 
   <!-- 顶部导航 -->
   <header class="topbar">
-    <div class="logo" id="logoBtn">学无忧</div>
-    <span style="font-size:0.72rem;color:var(--muted);letter-spacing:0.2em;">XUE WU YOU</span>
-    <nav class="topnav" id="topnav">
-      <a href="#" data-nav="home" class="active">首页</a>
+    <div class="logo" id="logoBtn" role="button" tabindex="0" aria-label="学无忧，返回首页">学无忧</div>
+    <span style="font-size:0.72rem;color:var(--muted);letter-spacing:0.2em;" aria-hidden="true">XUE WU YOU</span>
+    <nav class="topnav" id="topnav" aria-label="主导航">
+      <a href="#" data-nav="home" class="active" aria-current="page">首页</a>
       <a href="#" data-nav="bank">题库</a>
       <a href="#" data-nav="wenku">学习资料</a>
       <a href="#" data-nav="mistakes">错题本</a>
@@ -23,8 +27,10 @@
       <a href="#" data-nav="ai">AI 助手</a>
     </nav>
     <div class="spacer"></div>
-    <span class="nick" id="nickBtn">玩家：<b id="nickName">未设置</b></span>
+    <button class="nick" id="nickBtn" aria-label="设置昵称">玩家：<b id="nickName">未设置</b></button>
   </header>
+
+  <main id="mainContent">
 
   <!-- 开发者模式面板 -->
   <div id="devPanel" class="hidden" style="border:1px dashed rgba(244,114,182,.5);border-radius:14px;background:rgba(244,114,182,.06);padding:0.9rem 1.1rem;margin-bottom:1.2rem;">
@@ -100,42 +106,55 @@
 
   <!-- ===== 视图：首页 ===== -->
   <div id="view-home">
-    <!-- Hero 区 -->
+    <!-- Hero 区：左侧主张 + 右侧个人数据面板 -->
     <section class="hero">
-      <div class="hero-badge">🎯 大学生备考通关平台</div>
-      <h1 class="hero-title">学习<span style="color:var(--cyan);">无忧</span>，考试<span style="color:var(--gold);">不愁</span></h1>
-      <p class="hero-sub">1823 道真题级题库 · 高等数学 / 线性代数 / 概率论 · 错题复盘</p>
-      <div class="hero-actions">
-        <button class="btn primary" id="heroRandom">🎲 随机组卷</button>
-        <button class="btn" id="heroBank">📚 进入题库</button>
-        <button class="btn ghost" id="heroMistake">📕 错题重刷</button>
+      <div class="hero-main">
+        <div class="hero-badge">🎯 大学生备考通关平台</div>
+        <h1 class="hero-title">学习<span style="color:var(--cyan);">无忧</span>，考试<span style="color:var(--gold);">不愁</span></h1>
+        <p class="hero-sub">1823 道真题级题库，覆盖高等数学、线性代数、概率论，配错题复盘与学情报告。</p>
+        <ul class="hero-chips">
+          <li class="hero-chip">📐 分知识点组卷</li>
+          <li class="hero-chip">✏️ 选择 / 填空 / 步骤</li>
+          <li class="hero-chip">🗂️ 答题卡回看</li>
+          <li class="hero-chip">📕 错题集攻克率</li>
+          <li class="hero-chip">📈 学情报告</li>
+          <li class="hero-chip">🤖 AI 答疑</li>
+        </ul>
+        <div class="hero-actions">
+          <button class="btn primary" id="heroRandom">🎲 随机组卷</button>
+          <button class="btn" id="heroBank">📚 进入题库</button>
+          <button class="btn ghost" id="heroMistake">📕 错题重刷</button>
+        </div>
       </div>
-      <div class="hero-stats">
-        <div class="hs-item"><b>1823</b><span>题库题目</span></div>
-        <div class="hs-item"><b id="hsDone">0</b><span>已做题目</span></div>
-        <div class="hs-item"><b id="hsAcc">—</b><span>正确率</span></div>
-        <div class="hs-item"><b id="hsErr" style="color:var(--danger);">0</b><span>错题数</span></div>
-      </div>
+      <aside class="hero-panel" aria-label="我的学习数据">
+        <div class="hero-panel-head">我的数据</div>
+        <div class="hero-stats">
+          <div class="hs-item"><b>1823</b><span>题库题目</span></div>
+          <div class="hs-item"><b id="hsDone">0</b><span>已做题目</span></div>
+          <div class="hs-item"><b id="hsAcc">—</b><span>正确率</span></div>
+          <div class="hs-item"><b id="hsErr" style="color:var(--danger);">0</b><span>错题数</span></div>
+        </div>
+      </aside>
     </section>
 
     <!-- 题库板块 -->
     <div class="sec-head">
-      <h2>题库</h2>
+      <div class="sec-title"><h2>题库</h2><span class="sec-sub">按学科分组 · 点卡片直接开练</span></div>
       <button class="sec-more" data-nav="bank">全部模块 →</button>
     </div>
-    <div class="mod-grid" id="homeBankGrid"></div>
+    <div class="mod-groups" id="homeBankGrid"></div>
 
     <!-- 学习资料板块 -->
     <div class="sec-head">
-      <h2>学习资料</h2>
+      <div class="sec-title"><h2>学习资料</h2><span class="sec-sub">真题卷 · 教材习题 · 做题本</span></div>
       <button class="sec-more" data-nav="wenku">资料库 →</button>
     </div>
     <div class="wenku-entry-grid" id="homeWenkuGrid"></div>
 
     <!-- 敬请期待板块 -->
     <div class="sec-head">
-      <h2>更多板块</h2>
-      <span style="font-size:0.78rem;color:var(--muted);">Coming Soon</span>
+      <div class="sec-title"><h2>更多板块</h2><span class="sec-sub">正在筹备中的科目</span></div>
+      <span class="sec-flag">Coming Soon</span>
     </div>
     <div class="coming-grid" id="homeComingGrid"></div>
   </div>
@@ -148,7 +167,7 @@
     </div>
     <div class="mp-head"><h2 style="color:#67e8f9;">数学题库</h2>
       <span class="mp-desc">高等数学 · 线性代数 · 概率论 · 英语，按学科归类，全部自由练习</span></div>
-    <div class="mod-grid" id="bankGrid"></div>
+    <div class="mod-groups" id="bankGrid"></div>
   </div>
 
   <!-- ===== 视图：模块详情（子模块） ===== -->
@@ -164,6 +183,24 @@
       <button class="wt-btn active" data-c="20">20 题</button>
       <button class="wt-btn" data-c="50">50 题</button>
       <button class="wt-btn" data-c="0">全部</button>
+    </div>
+    <!-- 筛选：难度 / 作答形态，借鉴题库站的多维筛选，但收敛成一行轻量筛选条 -->
+    <div class="mod-filter" id="modFilter">
+      <div class="mf-row">
+        <span class="mf-label">难度</span>
+        <button class="wt-btn active" data-diff="">不限</button>
+        <button class="wt-btn" data-diff="基础">基础</button>
+        <button class="wt-btn" data-diff="提高">提高</button>
+      </div>
+      <div class="mf-row">
+        <span class="mf-label">作答形态</span>
+        <button class="wt-btn active" data-form="all">不限</button>
+        <button class="wt-btn" data-form="gradable">可判分</button>
+        <button class="wt-btn" data-form="choice">选择</button>
+        <button class="wt-btn" data-form="fill">填空</button>
+        <button class="wt-btn" data-form="step">解答证明</button>
+      </div>
+      <div class="mf-hint" id="modFilterHint"></div>
     </div>
     <div class="mod-grid" id="subGrid"></div>
   </div>
@@ -197,7 +234,7 @@
           <a id="wkdLink" href="#" target="_blank" rel="noopener" class="btn primary" style="font-size:0.82rem;text-decoration:none;">去原站查看 ↗</a>
           <button class="btn ghost" id="wkdClose" style="font-size:0.82rem;">关闭</button>
         </div>
-        <div style="font-size:0.75rem;color:var(--muted);margin-top:0.8rem;">标记「已下载」的资料已保存在本地，可直接打开 PDF；其余资料需在原站登录后查看/下载。</div>
+        <div id="wkdHint" style="font-size:0.75rem;color:var(--muted);margin-top:0.8rem;line-height:1.5;"></div>
       </div>
     </div>
   </div>
@@ -282,37 +319,40 @@
       <h1>错题本 <span style="font-size:0.85rem;color:var(--muted);">共 <b id="mistakeCount" style="color:var(--danger);">0</b> 题</span></h1>
       <span class="en">Mistake Book</span>
     </div>
-    <div style="font-size:0.85rem;color:var(--muted);margin-bottom:1rem;">答错的题、标记「不会」的题会自动收录；重做答对并标记「掌握了」会自动移出。</div>
+    <div style="font-size:0.85rem;color:var(--muted);margin-bottom:1rem;">错题按知识点归成错题集，掌握度 = 已攻克 ÷（已攻克 + 待攻克）。答错的题、标记「不会」的题会自动收录；重做答对并标记「掌握了」即算攻克。</div>
     <div id="mistakeList"></div>
   </div>
 
+  </main>
+
 </div>
 
-<div id="toast"></div>
+<div id="toast" role="status" aria-live="polite"></div>
 
 <!-- ===== AI 助手侧边栏 ===== -->
-<div id="aiFab" title="AI 助手">
-  <span>AI</span>
-</div>
-<div id="aiSide" class="hidden">
+<button id="aiFab" title="AI 助手" aria-label="打开 AI 助手" aria-expanded="false" aria-controls="aiSide">
+  <span aria-hidden="true">AI</span>
+</button>
+<div id="aiSide" class="hidden" role="dialog" aria-label="AI 助手" aria-modal="false">
   <div class="ai-head">
     <b>AI 助手</b>
     <span style="font-size:0.68rem;color:var(--muted);">拍照搜题 · 讲题 · 出题</span>
-    <button id="aiSideCfg" style="background:none;border:none;color:var(--muted);font-size:0.8rem;cursor:pointer;margin-left:auto;">⚙ 配置</button>
-    <button id="aiSideClose" style="background:none;border:none;color:var(--muted);font-size:1.1rem;cursor:pointer;">×</button>
+    <button id="aiSideCfg" aria-label="AI 配置" style="background:none;border:none;color:var(--muted);font-size:0.8rem;cursor:pointer;margin-left:auto;">⚙ 配置</button>
+    <button id="aiSideClose" aria-label="关闭 AI 助手" style="background:none;border:none;color:var(--muted);font-size:1.1rem;cursor:pointer;">×</button>
   </div>
-  <div id="aiMsgs"></div>
+  <div id="aiMsgs" role="log" aria-live="polite" aria-label="对话记录"></div>
   <div class="ai-input-wrap">
     <label id="aiPhotoBtn" title="拍照搜题">
+      <span class="sr-only">上传题目图片</span>
       <input type="file" accept="image/*" id="aiPhotoInput" style="display:none;">
-      <span>📷</span>
+      <span aria-hidden="true">📷</span>
     </label>
-    <input type="text" id="aiInput" placeholder="问我任何学习问题，或拍照搜题…">
+    <input type="text" id="aiInput" aria-label="输入学习问题" placeholder="问我任何学习问题，或拍照搜题…">
     <button id="aiSend">发送</button>
   </div>
   <div id="aiPhotoPreview" class="hidden" style="position:relative;padding:0.3rem 0.5rem;">
-    <img id="aiPhotoImg" style="max-height:90px;border-radius:8px;border:1px solid var(--rule);">
-    <button id="aiPhotoClear" style="position:absolute;top:0;right:0;background:none;border:none;color:var(--danger);font-size:1rem;cursor:pointer;">✕</button>
+    <img id="aiPhotoImg" alt="待识别的题目图片预览" style="max-height:90px;border-radius:8px;border:1px solid var(--rule);">
+    <button id="aiPhotoClear" aria-label="移除图片" style="position:absolute;top:0;right:0;background:none;border:none;color:var(--danger);font-size:1rem;cursor:pointer;">✕</button>
   </div>
 </div>
 
@@ -345,8 +385,10 @@
 <script src="js/logic.js?v=4"></script>
 <script src="js/vector.js?v=4"></script>
 <script src="js/sequence.js?v=4"></script>
-<script src="js/gaoshu.js?v=9"></script>
-<script src="js/app.js?v=8"></script>
+<script src="js/qenhance.js?v=1"></script>
+<script src="js/gaoshu.js?v=12"></script>
+<script src="js/app.js?v=12"></script>
+<script src="js/ux.js?v=1"></script>
 </body>
 </html>
 
