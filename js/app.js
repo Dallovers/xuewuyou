@@ -538,15 +538,21 @@ var WG_App = (function () {
     $('wkdDesc').textContent = desc;
     var link = $('wkdLink');
     var isLocal = x.link && x.link.indexOf('data/pdf/') === 0;
+    var pvWrap = $('wkdPreviewWrap');
+    var pvIfr = $('wkdPreview');
     if (link) {
       if (isLocal) {
         link.href = x.link;
-        link.textContent = '📖 打开 PDF';
+        link.textContent = '↗ 在新标签打开 / 下载';
         link.target = '_blank';
         link.rel = 'noopener';
         link.removeAttribute('download');
         link.style.cursor = 'pointer';
-        $('wkdHint').textContent = 'PDF 将在新标签页中打开预览。若浏览器未内嵌预览，会直接下载该文件。';
+        $('wkdHint').textContent = '上方已内嵌预览。如预览空白，请点击按钮在新标签页打开；若浏览器直接下载该文件属正常行为。';
+        if (pvWrap && pvIfr) {
+          pvWrap.classList.remove('hidden');
+          pvIfr.src = x.link;
+        }
       } else {
         /* 非本地资料：提供原站分类页链接 */
         var catUrl = x.link || 'https://suncoastmath.cn/pdfs';
@@ -557,6 +563,10 @@ var WG_App = (function () {
         link.removeAttribute('download');
         link.style.cursor = 'pointer';
         $('wkdHint').textContent = '资料托管在 suncoastmath.cn 阳光海岸数学练习室，访问原站可能需要登录/注册。';
+        if (pvWrap && pvIfr) {
+          pvWrap.classList.add('hidden');
+          pvIfr.removeAttribute('src');
+        }
       }
     }
     el.classList.remove('hidden');

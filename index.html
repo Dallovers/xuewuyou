@@ -223,13 +223,17 @@
     <div id="wenkuList"></div>
     <!-- 资料详情弹层 -->
     <div id="wenkuDetail" class="hidden" style="position:fixed;inset:0;z-index:100;background:rgba(5,8,20,.7);backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;padding:1rem;">
-      <div style="width:min(100%,560px);max-height:80vh;overflow:auto;border:1px solid var(--rule);border-radius:16px;background:linear-gradient(160deg,var(--bg3),var(--bg2));padding:1.4rem 1.5rem;">
+      <div style="width:min(100%,820px);max-height:90vh;overflow:auto;border:1px solid var(--rule);border-radius:16px;background:linear-gradient(160deg,var(--bg3),var(--bg2));padding:1.4rem 1.5rem;">
         <div style="display:flex;align-items:center;gap:0.6rem;margin-bottom:0.8rem;">
           <span class="tag-bank">资料详情</span>
           <span style="font-size:0.78rem;color:var(--muted);margin-left:auto;" id="wkdMeta"></span>
         </div>
         <div id="wkdTitle" style="font-size:1.05rem;font-weight:800;color:var(--ink);line-height:1.6;margin-bottom:0.6rem;"></div>
         <div id="wkdDesc" style="font-size:0.88rem;color:var(--ink);line-height:1.9;white-space:pre-wrap;margin-bottom:1rem;"></div>
+        <div id="wkdPreviewWrap" class="hidden" style="margin-bottom:0.9rem;">
+          <iframe id="wkdPreview" title="PDF 预览" style="width:100%;height:56vh;min-height:320px;border:1px solid var(--rule);border-radius:12px;background:#fff;display:block;"></iframe>
+          <div style="font-size:0.75rem;color:var(--muted);margin-top:0.4rem;text-align:center;">上方为 PDF 内嵌预览；如需下载文件请点击下方按钮。</div>
+        </div>
         <div style="display:flex;gap:0.6rem;flex-wrap:wrap;align-items:center;">
           <a id="wkdLink" href="#" target="_blank" rel="noopener" class="btn primary" style="font-size:0.82rem;text-decoration:none;">去原站查看 ↗</a>
           <button class="btn ghost" id="wkdClose" style="font-size:0.82rem;">关闭</button>
