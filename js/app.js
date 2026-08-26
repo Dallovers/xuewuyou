@@ -19,9 +19,27 @@ var WG_Data = (function () {
       if (!d.cleared) d.cleared = [];      /* 已攻克的错题：[{qid, topic, at}]，掌握度的分母 */
       if (!d.checkin) d.checkin = [];      /* 打卡日期 */
       if (!d.profile) d.profile = null;    /* 登录信息 + 个性化需求 */
+      if (!d.marks) d.marks = {};          /* 标记的题：qid -> true，跨轮次保留 */
       return d;
     },
     save: save,
+    /* 标记（题目「回头再看」）：单独存一张表，换轮次、换筛选都不丢 */
+    getMarks: function () {
+      var d = load();
+      return d.marks || {};
+    },
+    setMark: function (qid, on) {
+      if (qid == null || qid === '') return;
+      var d = load();
+      if (!d.marks) d.marks = {};
+      if (on) d.marks[String(qid)] = 1;
+      else delete d.marks[String(qid)];
+      save(d);
+    },
+    markCount: function () {
+      var d = load();
+      return Object.keys(d.marks || {}).length;
+    },
     setNick: function (n) { var d = load(); d.nick = n; save(d); },
     setProfile: function (p) {
       var d = load();
@@ -182,7 +200,8 @@ var WG_App = (function () {
   }
 
   /* ---------- 模块详情（子模块 + 题数选择 + 筛选） ---------- */
-  var currentCount = 20;
+  /* 0 = 不限：默认把筛选后的题全放进一轮，答题卡里题库有多少就列多少 */
+  var currentCount = 0;
   /* 筛选条状态：难度（''=不限）与作答形态（'all'=不限） */
   var currentDiff = '';
   var currentForm = 'all';
@@ -329,11 +348,16 @@ var WG_App = (function () {
     var badge = [currentDiff, fname].filter(Boolean).join(' · ');
     $('gameTitle').textContent = lv.name + (topic ? ' · ' + topic : ' · 综合');
     $('gameSub').textContent = (lv.group || '') + ' · 题库刷题' + (badge ? ' · ' + badge : '');
-    $('goalHint').textContent = '连做 ' + lvl.n + ' 道题 · 每题看解析并标记掌握程度';
+    $('goalHint').textContent = (currentCount > 0 ? '本轮 ' + lvl.n + ' 道题' : '共 ' + lvl.n + ' 道题 · 不限量')
+      + ' · 可随时跳题 / 标记 / 结束本轮';
     if ($('stStars')) $('stStars').textContent = '☆☆☆';
     $('board').classList.add('hidden');
     $('quizArea').classList.add('hidden');
     $('customArea').classList.remove('hidden');
+    /* 左侧栏：进度归零 + 目录高亮到当前章节 */
+    resetExamProgress();
+    renderExamNav({ level: lv, topic: topic || null, mode: mode });
+    closeExamSide();
     showView('game');
     WG_Gaoshu.start(lvl, { onStats: renderStats, onEnd: onGameEnd });
   }
@@ -589,15 +613,21 @@ var WG_App = (function () {
     $('gameSub').textContent = cont.name + ' · ' + (level.kw || '综合');
     var isQuiz = level.type === 'quiz' || level.type === 'practice';
     var isGaoshu = level.type === 'gaoshu';
+    /* 题库关卡的 n 已放开为 0（不限量），文案不再写死题数 */
     var goalMap = {
       practice: '连做 ' + (level.n || 10) + ' 题 · 按正确率评分',
-      gaoshu: '连做 ' + (level.n || 10) + ' 道题 · 每题看解析并标记掌握程度'
+      gaoshu: (level.n > 0 ? '本轮 ' + level.n + ' 道题' : '不限量刷题')
+        + ' · 可随时跳题 / 标记 / 结束本轮'
     };
     $('goalHint').textContent = goalMap[level.type] || '';
     if ($('stStars')) $('stStars').textContent = '☆☆☆';
     $('board').classList.toggle('hidden', isQuiz || isGaoshu);
     $('quizArea').classList.toggle('hidden', !isQuiz);
     $('customArea').classList.toggle('hidden', !isGaoshu);
+    /* 从题库/首页直接进关：目录按这一关自己的知识点列 */
+    resetExamProgress();
+    renderExamNav(isGaoshu ? { level: level, topic: level.topic || null, mode: 'all' } : null);
+    closeExamSide();
     showView('game');
     var common = { onStats: renderStats, onEnd: onGameEnd };
     if (level.type === 'gaoshu') {
@@ -631,6 +661,140 @@ var WG_App = (function () {
     if ($('stTime')) $('stTime').textContent = WG_Game.fmtTime(s.time || 0);
     if ($('stSolved')) $('stSolved').textContent = s.solved != null ? s.solved : 0;
     if ($('stScore')) $('stScore').textContent = s.score != null ? s.score : 0;
+    paintExamProgress(s);
+  }
+
+  /* ---------- 练习页左侧边栏：进度 / 章节目录 / 抽屉 ---------- */
+
+  /* 进度条跟着引擎的 progress / total 走。引擎还没给出总题数时
+     显示占位符，别让进度条停在一个假的 0%。 */
+  function paintExamProgress(s) {
+    var txt = $('esProgress'), bar = $('esProgressBar'), fill = $('esProgressFill');
+    if (!txt || !bar || !fill) return;
+    var total = s && s.total ? s.total : 0;
+    var cur = s && s.progress ? s.progress : 0;
+    if (!total) {
+      txt.textContent = '—';
+      fill.style.width = '0%';
+      bar.setAttribute('aria-valuenow', '0');
+      return;
+    }
+    if (cur > total) cur = total;
+    var pct = Math.round(cur / total * 100);
+    /* progress 现在是「已答题数」，跳题不会虚增进度 */
+    txt.textContent = '已答 ' + cur + ' / ' + total;
+    fill.style.width = pct + '%';
+    bar.setAttribute('aria-valuenow', String(pct));
+  }
+
+  /* 每次开局先把进度归零，免得上一局的数字残留在侧栏里 */
+  function resetExamProgress() { paintExamProgress(null); }
+
+  /* 侧栏当前挂在哪个模块上，供目录点击时重开对应章节 */
+  var examNavCtx = null;
+
+  /* 章节目录：把模块下的知识点列成目录，点一条就换到那一章。
+     题库里查不到章节的入口（错题重刷、随机组卷）整块折叠掉。 */
+  function renderExamNav(ctx) {
+    var block = $('examNavBlock'), nav = $('examNav'), hint = $('examNavHint');
+    if (!block || !nav) return;
+    examNavCtx = null;
+    var level = ctx && ctx.level;
+    var keys = level ? topicKeysOf(level) : [];
+    if (!level || keys.length < 1) {
+      block.classList.add('hidden');
+      nav.innerHTML = '';
+      if (hint) hint.textContent = '';
+      return;
+    }
+    examNavCtx = { level: level, topic: ctx.topic || null, mode: ctx.mode || 'topic' };
+    var isAll = !ctx.topic;
+    var allCount = 0;
+    keys.forEach(function (tk) { allCount += countTopic(tk); });
+    var html = '<div class="es-nav-group">' + escHtml(level.name) + '</div>';
+    html += '<button type="button" class="es-nav-item' + (isAll ? ' active' : '') +
+      (allCount === 0 ? ' is-empty' : '') + '" role="listitem" data-mode="all"' +
+      (isAll ? ' aria-current="true"' : '') + '>' +
+      '<span class="es-nav-name">全部知识点</span>' +
+      '<span class="es-nav-count">' + allCount + '</span></button>';
+    keys.forEach(function (tk) {
+      var cnt = countTopic(tk);
+      var on = ctx.topic === tk;
+      html += '<button type="button" class="es-nav-item' + (on ? ' active' : '') +
+        (cnt === 0 ? ' is-empty' : '') + '" role="listitem" data-topic="' + escHtml(tk) + '"' +
+        (on ? ' aria-current="true"' : '') + '>' +
+        '<span class="es-nav-name">' + escHtml(tk) + '</span>' +
+        '<span class="es-nav-count">' + cnt + '</span></button>';
+    });
+    nav.innerHTML = html;
+    if (hint) hint.textContent = keys.length + ' 章';
+    block.classList.remove('hidden');
+  }
+
+  /* 目录点击：换章节等于重开一局，所以直接复用模块刷题入口。
+     但返回目标要保住，别把「从题库进来」改成「从模块进来」。 */
+  function jumpExamNav(btn) {
+    if (!examNavCtx || !btn) return;
+    var topic = btn.getAttribute('data-topic');
+    if (btn.classList.contains('is-empty')) {
+      toast('当前筛选条件下这一章没有题，放宽条件再试试');
+      return;
+    }
+    if (!topic && btn.getAttribute('data-mode') !== 'all') return;
+    closeExamSide();
+    var back = state.backView;
+    state.currentModule = examNavCtx.level;
+    startFromModule(topic ? 'topic' : 'all', topic || null);
+    state.backView = back;
+  }
+
+  /* 窄屏下侧栏收成左侧抽屉 */
+  function openExamSide() {
+    var side = $('examSide'), mask = $('examSideMask'), tg = $('examSideToggle');
+    if (!side) return;
+    side.classList.add('is-open');
+    if (mask) { mask.hidden = false; mask.classList.add('is-open'); }
+    if (tg) tg.setAttribute('aria-expanded', 'true');
+  }
+  function closeExamSide() {
+    var side = $('examSide'), mask = $('examSideMask'), tg = $('examSideToggle');
+    if (!side) return;
+    side.classList.remove('is-open');
+    if (mask) { mask.classList.remove('is-open'); mask.hidden = true; }
+    if (tg) tg.setAttribute('aria-expanded', 'false');
+  }
+  function examSideOpen() {
+    var side = $('examSide');
+    return !!(side && side.classList.contains('is-open'));
+  }
+
+  function bindExamSide() {
+    var tg = $('examSideToggle');
+    if (tg) {
+      tg.addEventListener('click', function () {
+        if (examSideOpen()) closeExamSide(); else openExamSide();
+      });
+    }
+    var mask = $('examSideMask');
+    if (mask) mask.addEventListener('click', closeExamSide);
+    var nav = $('examNav');
+    if (nav) {
+      nav.addEventListener('click', function (e) {
+        var b = e.target.closest ? e.target.closest('.es-nav-item') : null;
+        if (b) jumpExamNav(b);
+      });
+    }
+    /* 答题卡点一格就是跳题，跳完抽屉该自己让开 */
+    var card = $('examCard');
+    if (card) {
+      card.addEventListener('click', function (e) {
+        var c = e.target.closest ? e.target.closest('.qcard-cell') : null;
+        if (c) closeExamSide();
+      });
+    }
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && examSideOpen()) closeExamSide();
+    });
   }
 
   /* ---------- 结算 ---------- */
@@ -734,7 +898,8 @@ var WG_App = (function () {
   function bind() {
     $('logoBtn').addEventListener('click', function () { closeModal(); goHome(); });
     $('nickBtn').addEventListener('click', promptNick);
-    $('backBtn').addEventListener('click', function () { closeModal(); if (state.backView) showView(state.backView); else goHome(); });
+    $('backBtn').addEventListener('click', function () { closeExamSide(); closeModal(); if (state.backView) showView(state.backView); else goHome(); });
+    bindExamSide();
     $('obSubmit').addEventListener('click', onboardSubmit);
 
     /* 顶部导航 */
@@ -1191,6 +1356,10 @@ var WG_App = (function () {
     $('board').classList.add('hidden');
     $('quizArea').classList.add('hidden');
     $('customArea').classList.remove('hidden');
+    /* 错题重刷是临时题组，没有章节可列，目录整块折叠 */
+    resetExamProgress();
+    renderExamNav(null);
+    closeExamSide();
     showView('game');
     WG_Gaoshu.start(state.currentLevel, { onStats: renderStats, onEnd: onGameEnd });
   }
@@ -1256,18 +1425,23 @@ var WG_App = (function () {
   /* 随机组卷：从高数题库随机抽题 */
   function enterRandom() {
     stopGames();
-    state.currentLevel = { id: 'random', name: '随机组卷', type: 'gaoshu', topic: null, n: 10, diff: null };
+    /* n 不传（0）= 不限量：随机打乱整个题库，想做多少做多少 */
+    state.currentLevel = { id: 'random', name: '随机组卷', type: 'gaoshu', topic: null, n: 0, diff: null };
     state.currentIndex = 0;
     state.backView = 'home';
     /* 再来一组：重新随机抽一批 */
     state.replay = enterRandom;
     $('gameTitle').textContent = '随机组卷';
     $('gameSub').textContent = '高数题库 · 随机抽题';
-    $('goalHint').textContent = '随机 10 道题 · 每题看解析并标记掌握程度';
+    $('goalHint').textContent = '全库随机 · 不限量 · 可随时跳题 / 标记 / 结束本轮';
     if ($('stStars')) $('stStars').textContent = '☆☆☆';
     $('board').classList.add('hidden');
     $('quizArea').classList.add('hidden');
     $('customArea').classList.remove('hidden');
+    /* 随机组卷跨章节抽题，目录无从对应，折叠 */
+    resetExamProgress();
+    renderExamNav(null);
+    closeExamSide();
     showView('game');
     WG_Gaoshu.start(state.currentLevel, { onStats: renderStats, onEnd: onGameEnd });
   }

@@ -6,7 +6,7 @@
 <meta name="description" content="学无忧 · 大学生备考通关平台：高等数学、线性代数、概率论真题级题库，错题复盘与 AI 讲题。">
 <meta name="theme-color" content="#0a0e1d">
 <title>学无忧 · 大学生备考通关平台</title>
-<link rel="stylesheet" href="css/style.css?v=13">
+<link rel="stylesheet" href="css/style.css?v=15">
 </head>
 <body>
 
@@ -180,9 +180,10 @@
     <div class="mod-count-bar" id="modCountBar">
       <span style="font-size:0.85rem;color:var(--muted);">每组题数：</span>
       <button class="wt-btn" data-c="10">10 题</button>
-      <button class="wt-btn active" data-c="20">20 题</button>
+      <button class="wt-btn" data-c="20">20 题</button>
       <button class="wt-btn" data-c="50">50 题</button>
-      <button class="wt-btn" data-c="0">全部</button>
+      <button class="wt-btn" data-c="100">100 题</button>
+      <button class="wt-btn active" data-c="0">不限（全部）</button>
     </div>
     <!-- 筛选：难度 / 作答形态，借鉴题库站的多维筛选，但收敛成一行轻量筛选条 -->
     <div class="mod-filter" id="modFilter">
@@ -245,32 +246,108 @@
 
   <!-- ===== 视图：练习 ===== -->
   <div id="view-game" class="hidden">
-    <div class="game-head">
-      <button class="btn ghost" id="backBtn" style="font-size:0.8rem;">← 返回</button>
-      <h2 id="gameTitle">练习</h2>
-      <span class="gh-sub" id="gameSub"></span>
-      <div class="spacer"></div>
-      <span class="gh-sub" id="goalHint"></span>
-    </div>
-    <div class="stats-bar">
-      <div class="stat"><div class="v" id="stTime">00:00</div><div class="k">用时</div></div>
-      <div class="stat"><div class="v good" id="stSolved">0</div><div class="k">答对</div></div>
-      <div class="stat"><div class="v good" id="stScore">0</div><div class="k">得分</div></div>
-    </div>
-    <div class="board-wrap"><div id="board"></div></div>
+    <div class="exam-layout">
 
-    <!-- 专项刷题区域 -->
-    <div id="quizArea" class="hidden" style="max-width:560px;margin:0 auto;">
-      <div style="border:1px solid var(--rule);border-radius:16px;background:linear-gradient(160deg,var(--bg3),var(--bg2));padding:1.4rem 1.5rem;">
-        <div style="font-size:0.8rem;color:var(--acc2);letter-spacing:0.14em;margin-bottom:0.5rem;">专项刷题 · 选对答案得分</div>
-        <div id="quizQ" style="font-size:1.15rem;font-weight:600;color:var(--ink);line-height:1.7;min-height:3rem;margin-bottom:1rem;"></div>
-        <div id="quizOpts" style="display:grid;grid-template-columns:1fr 1fr;gap:0.7rem;"></div>
-        <div id="quizFeed" style="font-size:0.85rem;color:var(--muted);min-height:1.4rem;margin-top:0.8rem;"></div>
+      <!-- ---- 左侧边栏：进度 / 章节目录 / 答题卡 ---- -->
+      <aside class="exam-side" id="examSide" aria-label="练习导航">
+        <div class="exam-side-inner">
+
+          <div class="es-block">
+            <div class="es-head">
+              <span class="es-title">本轮进度</span>
+              <span class="es-progress" id="esProgress">—</span>
+            </div>
+            <div class="es-progress-track" role="progressbar" aria-labelledby="esProgress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="esProgressBar">
+              <div class="es-progress-fill" id="esProgressFill"></div>
+            </div>
+            <div class="es-stats">
+              <div class="es-stat"><b id="stTime">00:00</b><span>用时</span></div>
+              <div class="es-stat"><b class="good" id="stSolved">0</b><span>答对</span></div>
+              <div class="es-stat"><b class="good" id="stScore">0</b><span>得分</span></div>
+            </div>
+          </div>
+
+          <div class="es-block hidden" id="examNavBlock">
+            <div class="es-head">
+              <span class="es-title">章节目录</span>
+              <span class="es-progress" id="examNavHint"></span>
+            </div>
+            <div class="es-nav" id="examNav" role="list"></div>
+          </div>
+
+          <div class="es-block hidden" id="examCardBlock">
+            <div id="examCard"></div>
+          </div>
+
+        </div>
+      </aside>
+
+      <!-- ---- 右侧主答题区 ---- -->
+      <div class="exam-main">
+        <div class="game-head">
+          <button class="btn ghost" id="backBtn" style="font-size:0.8rem;">← 返回</button>
+          <h2 id="gameTitle">练习</h2>
+          <span class="gh-sub" id="gameSub"></span>
+          <div class="spacer"></div>
+          <span class="gh-sub" id="goalHint"></span>
+        </div>
+        <div class="board-wrap"><div id="board"></div></div>
+
+        <!-- 专项刷题区域 -->
+        <div id="quizArea" class="hidden" style="max-width:560px;">
+          <div style="border:1px solid var(--rule);border-radius:16px;background:linear-gradient(160deg,var(--bg3),var(--bg2));padding:1.4rem 1.5rem;">
+            <div style="font-size:0.8rem;color:var(--acc2);letter-spacing:0.14em;margin-bottom:0.5rem;">专项刷题 · 选对答案得分</div>
+            <div id="quizQ" style="font-size:1.15rem;font-weight:600;color:var(--ink);line-height:1.7;min-height:3rem;margin-bottom:1rem;"></div>
+            <div id="quizOpts" style="display:grid;grid-template-columns:1fr 1fr;gap:0.7rem;"></div>
+            <div id="quizFeed" style="font-size:0.85rem;color:var(--muted);min-height:1.4rem;margin-top:0.8rem;"></div>
+          </div>
+        </div>
+
+        <!-- 高数题库刷题区域 -->
+        <div id="customArea" class="hidden"></div>
+      </div>
+
+    </div>
+
+    <!-- 悬浮切题导航：固定在屏幕竖向中间，不随页面滚动 -->
+    <div class="exam-fab-nav hidden" id="examFabNav" aria-label="切换题目">
+      <button class="efab" id="examPrevBtn" type="button" title="上一题" aria-label="上一题">
+        <span aria-hidden="true">↑</span>
+      </button>
+      <span class="efab-pos" id="examFabPos" aria-live="polite">— / —</span>
+      <button class="efab efab-main" id="examNextBtn" type="button" title="下一题" aria-label="下一题">
+        <span aria-hidden="true">↓</span>
+      </button>
+      <button class="efab efab-sm" id="examScratchBtn" type="button" title="草稿纸" aria-label="草稿纸" aria-pressed="false">
+        <span aria-hidden="true">✎</span>
+      </button>
+      <button class="efab efab-sm efab-end" id="examFinishBtn" type="button" title="结束本轮" aria-label="结束本轮">
+        <span aria-hidden="true">■</span>
+      </button>
+    </div>
+
+    <!-- 草稿纸 -->
+    <div class="scratch-panel hidden" id="scratchPanel" role="dialog" aria-label="草稿纸" aria-modal="false">
+      <div class="scratch-head" id="scratchDrag">
+        <span class="scratch-title">草稿纸</span>
+        <div class="scratch-tools">
+          <button class="sc-btn is-on" id="scPen" type="button" aria-pressed="true">画笔</button>
+          <button class="sc-btn" id="scEraser" type="button" aria-pressed="false">橡皮</button>
+          <button class="sc-btn" id="scUndo" type="button">撤销</button>
+          <button class="sc-btn" id="scClear" type="button">清空</button>
+          <button class="sc-btn sc-close" id="scClose" type="button" aria-label="收起草稿纸">✕</button>
+        </div>
+      </div>
+      <div class="scratch-body">
+        <canvas id="scratchCanvas"></canvas>
       </div>
     </div>
 
-    <!-- 高数题库刷题区域 -->
-    <div id="customArea" class="hidden" style="max-width:640px;margin:0 auto;"></div>
+    <!-- 窄屏：抽屉开关 + 遮罩 -->
+    <button class="exam-side-toggle" id="examSideToggle" type="button" aria-controls="examSide" aria-expanded="false">
+      <span aria-hidden="true">☰</span> 目录 / 答题卡
+    </button>
+    <div class="exam-side-mask" id="examSideMask" hidden></div>
   </div>
 
   <!-- ===== 视图：AI 助手 ===== -->
@@ -390,8 +467,9 @@
 <script src="js/vector.js?v=4"></script>
 <script src="js/sequence.js?v=4"></script>
 <script src="js/qenhance.js?v=1"></script>
-<script src="js/gaoshu.js?v=12"></script>
-<script src="js/app.js?v=12"></script>
+<script src="js/scratch.js?v=1"></script>
+<script src="js/gaoshu.js?v=14"></script>
+<script src="js/app.js?v=14"></script>
 <script src="js/ux.js?v=1"></script>
 </body>
 </html>

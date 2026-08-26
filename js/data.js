@@ -13,18 +13,19 @@ var CONTINENTS = [
     color: '#67e8f9',
     unlocked: true,
     levels: [
+      /* n: 0 = 不限量，把这一关覆盖的知识点全部题目放进一轮（答题卡按题库题量列全） */
       /* 高等数学 */
-      { id: 'b1', name: '高数（上册）', type: 'gaoshu', group: '高等数学', topicList: ['函数与极限', '导数与微分', '中值定理', '一元积分'], n: 10, diff: 2, free: true },
-      { id: 'b2', name: '高数（下册）', type: 'gaoshu', group: '高等数学', topicList: ['多元函数微分', '重积分', '曲线曲面积分', '无穷级数', '微分方程'], n: 10, diff: 2, free: true },
-      { id: 'b3', name: '高数综合刷题', type: 'gaoshu', group: '高等数学', subject: '高等数学', n: 15, diff: 2, free: true },
+      { id: 'b1', name: '高数（上册）', type: 'gaoshu', group: '高等数学', topicList: ['函数与极限', '导数与微分', '中值定理', '一元积分'], n: 0, diff: 2, free: true },
+      { id: 'b2', name: '高数（下册）', type: 'gaoshu', group: '高等数学', topicList: ['多元函数微分', '重积分', '曲线曲面积分', '无穷级数', '微分方程'], n: 0, diff: 2, free: true },
+      { id: 'b3', name: '高数综合刷题', type: 'gaoshu', group: '高等数学', subject: '高等数学', n: 0, diff: 2, free: true },
       /* 线性代数 */
-      { id: 'l1', name: '线代基础', type: 'gaoshu', group: '线性代数', topicList: ['行列式', '矩阵运算', '线性方程组', '向量组与秩'], n: 10, diff: 2, free: true },
-      { id: 'l2', name: '线代进阶', type: 'gaoshu', group: '线性代数', topicList: ['特征值与特征向量', '相似对角化', '二次型'], n: 10, diff: 2, free: true },
-      { id: 'l3', name: '线代综合刷题', type: 'gaoshu', group: '线性代数', subject: '线性代数', n: 15, diff: 2, free: true },
+      { id: 'l1', name: '线代基础', type: 'gaoshu', group: '线性代数', topicList: ['行列式', '矩阵运算', '线性方程组', '向量组与秩'], n: 0, diff: 2, free: true },
+      { id: 'l2', name: '线代进阶', type: 'gaoshu', group: '线性代数', topicList: ['特征值与特征向量', '相似对角化', '二次型'], n: 0, diff: 2, free: true },
+      { id: 'l3', name: '线代综合刷题', type: 'gaoshu', group: '线性代数', subject: '线性代数', n: 0, diff: 2, free: true },
       /* 概率论 */
-      { id: 'p1', name: '概率基础', type: 'gaoshu', group: '概率论', topicList: ['随机事件与概率', '一维随机变量', '二维随机变量'], n: 10, diff: 2, free: true },
-      { id: 'p2', name: '概率进阶', type: 'gaoshu', group: '概率论', topicList: ['数字特征', '大数定律与中心极限定理', '参数估计', '假设检验'], n: 10, diff: 2, free: true },
-      { id: 'p3', name: '概率综合刷题', type: 'gaoshu', group: '概率论', subject: '概率论', n: 15, diff: 2, free: true },
+      { id: 'p1', name: '概率基础', type: 'gaoshu', group: '概率论', topicList: ['随机事件与概率', '一维随机变量', '二维随机变量'], n: 0, diff: 2, free: true },
+      { id: 'p2', name: '概率进阶', type: 'gaoshu', group: '概率论', topicList: ['数字特征', '大数定律与中心极限定理', '参数估计', '假设检验'], n: 0, diff: 2, free: true },
+      { id: 'p3', name: '概率综合刷题', type: 'gaoshu', group: '概率论', subject: '概率论', n: 0, diff: 2, free: true },
       /* 英语 */
       { id: 's6', name: '英语高频词', type: 'practice', kw: '英语', bank: 'ENGLISH', group: '英语', n: 10, diff: 2, free: true }
     ],
