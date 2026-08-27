@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
@@ -6,7 +6,7 @@
 <meta name="description" content="学无忧 · 大学生备考通关平台：高等数学、线性代数、概率论真题级题库，错题复盘与 AI 讲题。">
 <meta name="theme-color" content="#0a0e1d">
 <title>学无忧 · 大学生备考通关平台</title>
-<link rel="stylesheet" href="css/style.css?v=15">
+<link rel="stylesheet" href="css/style.css?v=18">
 </head>
 <body>
 
@@ -21,13 +21,14 @@
     <nav class="topnav" id="topnav" aria-label="主导航">
       <a href="#" data-nav="home" class="active" aria-current="page">首页</a>
       <a href="#" data-nav="bank">题库</a>
+      <a href="#" data-nav="study">自习室</a>
       <a href="#" data-nav="wenku">学习资料</a>
       <a href="#" data-nav="mistakes">错题本</a>
       <a href="#" data-nav="report">学情报告</a>
       <a href="#" data-nav="ai">AI 助手</a>
     </nav>
     <div class="spacer"></div>
-    <button class="nick" id="nickBtn" aria-label="设置昵称">玩家：<b id="nickName">未设置</b></button>
+    <button class="nick" id="nickBtn" aria-label="账号与昵称">玩家：<b id="nickName">未设置</b></button>
   </header>
 
   <main id="mainContent">
@@ -111,7 +112,7 @@
       <div class="hero-main">
         <div class="hero-badge">🎯 大学生备考通关平台</div>
         <h1 class="hero-title">学习<span style="color:var(--cyan);">无忧</span>，考试<span style="color:var(--gold);">不愁</span></h1>
-        <p class="hero-sub">1823 道真题级题库，覆盖高等数学、线性代数、概率论，配错题复盘与学情报告。</p>
+        <p class="hero-sub">真题级考点题库，覆盖数学（高数/线代/概率）、四六级核心词汇与雅思阅读写作备考，配错题复盘与学情报告。</p>
         <ul class="hero-chips">
           <li class="hero-chip">📐 分知识点组卷</li>
           <li class="hero-chip">✏️ 选择 / 填空 / 步骤</li>
@@ -122,6 +123,7 @@
         </ul>
         <div class="hero-actions">
           <button class="btn primary" id="heroRandom">🎲 随机组卷</button>
+          <button class="btn" id="heroStudy" style="background:linear-gradient(135deg,rgba(245,158,11,0.2),rgba(16,185,129,0.2));border-color:rgba(245,158,11,0.4);color:#fde68a;">☕ 进入自习室</button>
           <button class="btn" id="heroBank">📚 进入题库</button>
           <button class="btn ghost" id="heroMistake">📕 错题重刷</button>
         </div>
@@ -139,14 +141,14 @@
 
     <!-- 题库板块 -->
     <div class="sec-head">
-      <div class="sec-title"><h2>题库</h2><span class="sec-sub">按学科分组 · 点卡片直接开练</span></div>
+      <div class="sec-title"><h2>核心题库</h2><span class="sec-sub">三大科目大入口 · 点击进入后按子板块细分练习</span></div>
       <button class="sec-more" data-nav="bank">全部模块 →</button>
     </div>
-    <div class="mod-groups" id="homeBankGrid"></div>
+    <div class="subject-portal-grid" id="homeBankGrid"></div>
 
     <!-- 学习资料板块 -->
     <div class="sec-head">
-      <div class="sec-title"><h2>学习资料</h2><span class="sec-sub">真题卷 · 教材习题 · 做题本</span></div>
+      <div class="sec-title"><h2>学习资料</h2><span class="sec-sub">考研真题 · 教材习题 · 雅思备考 · 专题心得</span></div>
       <button class="sec-more" data-nav="wenku">资料库 →</button>
     </div>
     <div class="wenku-entry-grid" id="homeWenkuGrid"></div>
@@ -162,11 +164,13 @@
   <!-- ===== 视图：题库 ===== -->
   <div id="view-bank" class="hidden">
     <div class="page-title">
-      <h1>题库</h1>
+      <button class="btn ghost hidden" id="bankBack" style="font-size:0.8rem;">← 全部学科</button>
+      <h1 id="bankTitle" style="color:#67e8f9;">全科题库</h1>
       <span class="en">Question Bank</span>
     </div>
-    <div class="mp-head"><h2 style="color:#67e8f9;">数学题库</h2>
-      <span class="mp-desc">高等数学 · 线性代数 · 概率论 · 英语，按学科归类，全部自由练习</span></div>
+    <div class="mp-head"><h2 id="bankDesc" style="color:#67e8f9;">全科题库</h2>
+      <span class="mp-desc" id="bankSubDesc">数学（高数 · 线代 · 概率） · 英语（四级 · 六级） · 雅思（阅读 · 词汇 · 写作），按学科与子板块归类，全部自由练习</span></div>
+    <div class="bsb hidden" id="bankSubBar"></div>
     <div class="mod-groups" id="bankGrid"></div>
   </div>
 
@@ -206,20 +210,201 @@
     <div class="mod-grid" id="subGrid"></div>
   </div>
 
+  <!-- ===== 视图：自习室 ===== -->
+  <div id="view-study" class="hidden">
+    <div class="study-room-layout">
+      <!-- 顶部状态栏：自习主题、全屏按钮、离开按钮 -->
+      <div class="sr-topbar">
+        <div class="sr-brand">
+          <span class="sr-brand-dot"></span>
+          <span class="sr-brand-title">学无忧 · 沉浸自习室</span>
+          <span class="sr-mode-badge" id="srModeBadge">🔒 严格模式</span>
+        </div>
+        <div class="sr-user-motto" id="srUserMotto">“保持专注，全力以赴！”</div>
+        <div class="sr-top-actions">
+          <button type="button" class="sr-btn-tool" id="srFullscreenToggle" title="切换网页全屏">
+            <span id="srFsIcon">⛶</span> 全屏沉浸
+          </button>
+          <button type="button" class="sr-btn-tool sr-btn-exit" id="srExitBtn" title="结束自习">
+            <span>🚪</span> 结束自习
+          </button>
+        </div>
+      </div>
+
+      <!-- 核心主体区：左侧专注计时大钟 + 氛围音频台，右侧同桌与便签互动 -->
+      <div class="sr-main-grid">
+        
+        <!-- 左侧核心：专注时钟 & 氛围音效控制台 -->
+        <div class="sr-focus-area">
+          <div class="sr-clock-card">
+            <div class="sr-subject-chip" id="srSubjectLabel">高等数学</div>
+            
+            <!-- 环形倒计时 / 正向计时 -->
+            <div class="sr-clock-wrap">
+              <svg class="sr-ring-svg" viewBox="0 0 280 280">
+                <circle class="sr-ring-bg" cx="140" cy="140" r="120"></circle>
+                <circle class="sr-ring-progress" id="srRingProgress" cx="140" cy="140" r="120"></circle>
+              </svg>
+              <div class="sr-clock-inner">
+                <div class="sr-clock-time" id="srClockTime">25:00</div>
+                <div class="sr-clock-status" id="srClockStatus">深度专注中…</div>
+              </div>
+            </div>
+
+            <!-- 控制按钮组 -->
+            <div class="sr-ctrl-row">
+              <button type="button" class="sr-ctrl-btn" id="srPauseResumeBtn">⏸ 暂停</button>
+              <button type="button" class="sr-ctrl-btn sr-ctrl-plus" id="srPlus5Btn">+5 分钟</button>
+              <button type="button" class="sr-ctrl-btn sr-ctrl-complete" id="srCompleteBtn">✓ 提早完成</button>
+            </div>
+
+            <!-- 今日专注数据小计 -->
+            <div class="sr-stats-strip">
+              <div class="sr-stat-item">
+                <span class="val" id="srStatTodayFocus">0</span>
+                <span class="lbl">今日专注(分)</span>
+              </div>
+              <div class="sr-stat-item">
+                <span class="val" id="srStatCompletedPomo">0</span>
+                <span class="lbl">已达成契约</span>
+              </div>
+              <div class="sr-stat-item">
+                <span class="val" id="srStatDistractCount">0</span>
+                <span class="lbl">切屏提醒(次)</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 伴读音频工作台 -->
+          <div class="sr-audio-card">
+            <div class="sr-audio-head">
+              <div class="sr-card-t">🎧 伴读音频工作台</div>
+              <div class="sr-audio-status" id="srAudioPlayingText">默认音频 · 播放中</div>
+            </div>
+            
+            <!-- 预置氛围音效选择条 -->
+            <div class="sr-sound-chips" id="srSoundChips">
+              <label class="sr-chips-group-label">轻音乐</label>
+              <button type="button" class="sr-schip active" data-sound="music-user">📼 默认音频</button>
+              <button type="button" class="sr-schip" data-sound="music-dreamy">🎹 轻钢琴</button>
+              <button type="button" class="sr-schip" data-sound="music-mystery">🌙 夜色沉静</button>
+              <button type="button" class="sr-schip" data-sound="music-calmant">🍃 心绪平和</button>
+              <button type="button" class="sr-schip" data-sound="music-carefree">🌻 轻快治愈</button>
+              <button type="button" class="sr-schip" data-sound="custom">🎵 本地音频</button>
+              <button type="button" class="sr-schip" data-sound="none">🔇 静音</button>
+            </div>
+
+            <!-- 音量与自定义音频上传通道 -->
+            <div class="sr-audio-ctrls">
+              <div class="sr-vol-box">
+                <span class="sr-vol-icon" id="srVolIcon">🔊</span>
+                <input type="range" id="srVolSlider" min="0" max="100" value="70" class="sr-slider">
+                <span class="sr-vol-num" id="srVolNum">70%</span>
+              </div>
+              
+              <!-- 本地音频选择（支持用户上传自身喜爱的自习伴读音乐） -->
+              <div class="sr-custom-upload hidden" id="srCustomUploadBox">
+                <label class="sr-upload-btn" title="选择本地 MP3 / AAC / WAV 等音频">
+                  <span>📂 选本地音乐</span>
+                  <input type="file" id="srLocalAudioInput" accept="audio/*" style="display:none;">
+                </label>
+                <span class="sr-custom-filename" id="srCustomFileName">未选择文件</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 右侧：同桌自习室群像 + 专注便签与待办打卡 -->
+        <div class="sr-peer-area">
+          
+          <!-- 同桌自习空间（实时群像 & 轻互动） -->
+          <div class="sr-peer-card">
+            <div class="sr-peer-head">
+              <div class="sr-card-t">
+                <span>👥</span> 线上自习同桌 (<span id="srPeerOnlineCount">6</span>人同在)
+              </div>
+              <button type="button" class="sr-btn-sm" id="srCheerAllBtn">✨ 一键互相打气</button>
+            </div>
+            
+            <div class="sr-peer-list" id="srPeerList">
+              <!-- 同桌卡片动态填充 -->
+            </div>
+          </div>
+
+          <!-- 桌面随手便签 / 本轮待办 -->
+          <div class="sr-note-card">
+            <div class="sr-note-head">
+              <div class="sr-card-t">📝 本轮自习便签 / 任务清单</div>
+              <button type="button" class="sr-btn-sm" id="srAddTodoBtn">+ 加一项</button>
+            </div>
+            <div class="sr-todo-list" id="srTodoList">
+              <!-- 待办清单 -->
+            </div>
+            <div class="sr-scratch-quick">
+              <textarea id="srQuickMemo" class="sr-memo-input" placeholder="随时记录解题思路、灵感或稍后待办…"></textarea>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- 严格模式切屏/走神警告遮罩 -->
+  <div class="modal-mask hidden" id="studyDistractMask" role="alertdialog" aria-modal="true" style="z-index:999;">
+    <div class="study-distract-card">
+      <div class="sds-icon">⚠️</div>
+      <h3 class="sds-title">检测到离开自习页面！</h3>
+      <p class="sds-desc">当前处于 <b>🔒 严格自习模式</b>，计时已自动暂停。<br>请克制刷手机或其他页面，回到自习室继续冲刺！</p>
+      <div class="sds-foot">
+        <button type="button" class="btn primary sdc-back-btn" id="studyDistractResume">
+          <span>💪 立即回到自习</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 自习结算总结弹窗 -->
+  <div class="modal-mask hidden" id="studyFinishMask" role="dialog" aria-modal="true">
+    <div class="study-finish-card">
+      <div class="sf-icon">🎉</div>
+      <h2 class="sf-title" id="sfTitle">自习圆满达成！</h2>
+      <div class="sf-motto" id="sfMotto">“保持专注，全力以赴！”</div>
+      
+      <div class="sf-grid">
+        <div class="sf-box">
+          <span class="sf-val" id="sfFocusTime">25</span>
+          <span class="sf-k">专注时长(分钟)</span>
+        </div>
+        <div class="sf-box">
+          <span class="sf-val" id="sfSubject">高等数学</span>
+          <span class="sf-k">自习科目</span>
+        </div>
+        <div class="sf-box">
+          <span class="sf-val" id="sfScoreEarned">+25</span>
+          <span class="sf-k">专注积分奖励</span>
+        </div>
+      </div>
+
+      <div class="sf-actions">
+        <button type="button" class="btn" id="sfNextPomoBtn">☕ 再来一轮</button>
+        <button type="button" class="btn primary" id="sfBackHomeBtn">返回主页</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ===== 视图：学习资料 ===== -->
   <div id="view-wenku" class="hidden">
     <div class="page-title">
       <h1>学习资料</h1>
       <span class="en">Materials</span>
     </div>
-    <div style="font-size:0.85rem;color:var(--muted);margin-bottom:0.8rem;">收录阳光海岸数学练习室公开资料目录（PDF 资料库 1030 份 · 教材习题 · 刷题资料），点击可跳转原站查看。</div>
-    <div class="wenku-tabs" id="wenkuTabs">
-      <button class="wt-btn active" data-wt="pdfs">PDF 资料库 <b id="wtPdfs">1030</b></button>
-      <button class="wt-btn" data-wt="books">教材习题 <b id="wtBooks">8</b></button>
-      <button class="wt-btn" data-wt="materials">刷题资料 <b id="wtMats">15</b></button>
-    </div>
+    <div class="wenku-intro" id="wenkuIntro"></div>
+    <div class="wenku-tabs" id="wenkuTabs"></div>
+    <div class="wenku-filters" id="wenkuFilters"></div>
     <div class="wenku-search" style="margin:0.8rem 0;">
-      <input id="wenkuSearch" type="text" placeholder="搜索资料名称、分类…" style="width:100%;background:var(--bg2);border:1px solid var(--rule);border-radius:10px;padding:0.55rem 0.9rem;color:var(--ink);font-size:0.85rem;outline:none;">
+      <input id="wenkuSearch" type="text" placeholder="搜索资料名称、院校、年份…" style="width:100%;background:var(--bg2);border:1px solid var(--rule);border-radius:10px;padding:0.55rem 0.9rem;color:var(--ink);font-size:0.85rem;outline:none;">
     </div>
     <div id="wenkuList"></div>
     <!-- 资料详情弹层 -->
@@ -358,19 +543,12 @@
     </div>
     <div class="card" style="margin-bottom:1rem;">
       <div style="font-size:0.85rem;color:var(--muted);line-height:1.8;margin-bottom:0.6rem;">
-        答题遇到卡壳？让 AI 帮你讲题、出同类题、解读学情。大模型都走 API，但下面这些平台有<b style="color:var(--acc);">免费额度</b>，学生注册就能用（推荐智谱 GLM-4-Flash，免费模型）。
+        答题遇到卡壳？让 AI 帮你讲题、出同类题、解读学情。大模型由服务端统一代理调用，你只管用，不用注册任何 AI 平台。
       </div>
       <div style="display:flex;gap:0.6rem;flex-wrap:wrap;align-items:center;">
-        <select id="aiProvider" style="background:var(--bg2);color:var(--ink);border:1px solid var(--rule);border-radius:10px;padding:0.55rem 0.8rem;font-size:0.82rem;font-family:inherit;">
-          <option value="zhipu">智谱 GLM（GLM-4-Flash 免费）</option>
-          <option value="deepseek">DeepSeek（新用户送额度）</option>
-          <option value="kimi">Kimi（新用户送额度）</option>
-          <option value="doubao">豆包·火山方舟（新用户送 token）</option>
-          <option value="custom">自定义（填 base 和模型）</option>
-        </select>
-        <input id="aiKeyInput" type="password" placeholder="粘贴该平台的 API Key"
-          style="flex:1;min-width:220px;background:var(--bg2);border:1px solid var(--rule);border-radius:10px;padding:0.55rem 0.9rem;color:var(--ink);font-size:0.85rem;outline:none;">
-        <button class="btn primary" id="aiKeySave" style="font-size:0.82rem;">保存配置</button>
+        <span style="font-size:0.85rem;color:var(--ink);display:inline-flex;align-items:center;gap:0.4rem;">
+          <span style="color:var(--ok);">●</span> AI 已接入服务端代理，密钥由管理员统一配置，前端无需填写。
+        </span>
       </div>
       <div id="aiKeyStatus" style="font-size:0.78rem;color:var(--muted);margin-top:0.5rem;"></div>
     </div>
@@ -437,6 +615,144 @@
   </div>
 </div>
 
+<!-- 自习室入场契约弹窗 -->
+<div class="modal-mask hidden" id="studyModalMask" role="dialog" aria-label="自习室专注设定" aria-modal="true">
+  <div class="study-setup-card">
+    <div class="ssc-head">
+      <div class="ssc-tag"><span>☕</span> 沉浸自习室 · 专注契约</div>
+      <button class="ssc-close" id="studySetupClose" type="button" aria-label="关闭">×</button>
+    </div>
+    
+    <div class="ssc-body">
+      <!-- 科目目标与宣言 -->
+      <div class="ssc-section">
+        <label class="ssc-label">今日自习科目 / 任务目标</label>
+        <div class="ssc-chips" id="studySubjectChips">
+          <button type="button" class="ssc-chip active" data-sub="高等数学">高等数学</button>
+          <button type="button" class="ssc-chip" data-sub="线性代数">线性代数</button>
+          <button type="button" class="ssc-chip" data-sub="概率论">概率论</button>
+          <button type="button" class="ssc-chip" data-sub="英语考级">英语考级</button>
+          <button type="button" class="ssc-chip" data-sub="考研复习">考研复习</button>
+          <button type="button" class="ssc-chip" data-sub="专业课">专业课</button>
+        </div>
+        <input type="text" id="studySubjectInput" class="ssc-input" placeholder="或自定义科目（如：数分习题集、常微分方程）" value="高等数学" maxlength="20">
+      </div>
+
+      <div class="ssc-section">
+        <label class="ssc-label">自习宣言（展示给自习室同伴）</label>
+        <input type="text" id="studyMottoInput" class="ssc-input" placeholder="写一句激励自己的话（如：今天拿下三重积分！）" value="保持专注，全力以赴！" maxlength="35">
+      </div>
+
+      <!-- 时长选择 -->
+      <div class="ssc-section">
+        <label class="ssc-label">计划专注时长</label>
+        <div class="ssc-dur-grid" id="studyDurationGrid">
+          <button type="button" class="ssc-dur-btn" data-min="15">
+            <span class="dur-num">15</span>
+            <span class="dur-unit">分钟 · 极速温习</span>
+          </button>
+          <button type="button" class="ssc-dur-btn active" data-min="25">
+            <span class="dur-num">25</span>
+            <span class="dur-unit">分钟 · 标准番茄</span>
+          </button>
+          <button type="button" class="ssc-dur-btn" data-min="45">
+            <span class="dur-num">45</span>
+            <span class="dur-unit">分钟 · 深度专注</span>
+          </button>
+          <button type="button" class="ssc-dur-btn" data-min="60">
+            <span class="dur-num">60</span>
+            <span class="dur-unit">分钟 · 备考冲刺</span>
+          </button>
+          <button type="button" class="ssc-dur-btn" data-min="0">
+            <span class="dur-num">∞</span>
+            <span class="dur-unit">不限时 · 正向计时</span>
+          </button>
+          <div class="ssc-dur-custom">
+            <input type="number" id="studyCustomMin" min="1" max="180" placeholder="自定义">
+            <span>分钟</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 专注模式严格度与全屏授权 -->
+      <div class="ssc-section">
+        <label class="ssc-label">专注模式设置</label>
+        <div class="ssc-mode-select">
+          <label class="ssc-mode-card active" id="modeCardStrict">
+            <input type="radio" name="studyFocusMode" value="strict" checked>
+            <div class="mode-info">
+              <div class="mode-title">🔒 严格模式（推荐）</div>
+              <div class="mode-desc">开启网页全屏锁定，离开页面或切屏会收到警示并暂停专注。</div>
+            </div>
+          </label>
+          <label class="ssc-mode-card" id="modeCardGentle">
+            <input type="radio" name="studyFocusMode" value="gentle">
+            <div class="mode-info">
+              <div class="mode-title">🍃 自由模式</div>
+              <div class="mode-desc">自由切屏查阅资料，不限制全屏，仅记录累计专注时间。</div>
+            </div>
+          </label>
+        </div>
+      </div>
+
+      <!-- 氛围音效预选 -->
+      <div class="ssc-section">
+        <label class="ssc-label">入场默认氛围音（可随时在室内切换）</label>
+        <div class="ssc-ambient-row" id="studyAmbientRow">
+          <button type="button" class="ssc-amb-btn" data-sound="music-user">📼 默认音频</button>
+          <button type="button" class="ssc-amb-btn" data-sound="music-dreamy">🎹 轻钢琴</button>
+          <button type="button" class="ssc-amb-btn" data-sound="music-calmant">🍃 心绪平和</button>
+          <button type="button" class="ssc-amb-btn" data-sound="music-carefree">🌻 轻快治愈</button>
+          <button type="button" class="ssc-amb-btn" data-sound="music-mystery">🌙 夜色沉静</button>
+          <button type="button" class="ssc-amb-btn" data-sound="none">🔇 静音自习</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="ssc-foot">
+      <button type="button" class="btn ghost" id="studySetupCancel">取消</button>
+      <button type="button" class="btn primary ssc-enter-btn" id="studySetupConfirm">
+        <span>☕ 签订契约 · 进入自习室</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- 登录 / 注册弹窗 -->
+<div class="modal-mask hidden" id="loginModalMask" role="dialog" aria-label="登录学无忧账号" aria-modal="true">
+  <div class="modal" style="max-width:400px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.8rem;">
+      <div style="font-size:1.15rem;font-weight:800;">账号中心</div>
+      <button class="ssc-close" id="loginClose" type="button" aria-label="关闭">×</button>
+    </div>
+    <div style="display:flex;gap:0.5rem;margin-bottom:1rem;">
+      <button type="button" class="btn primary" id="loginTabLogin" style="flex:1;">登录</button>
+      <button type="button" class="btn ghost" id="loginTabReg" style="flex:1;">注册</button>
+    </div>
+    <div style="display:grid;gap:0.75rem;" id="loginForm">
+      <input id="loginUsername" type="text" placeholder="用户名（2-20 位字母/数字/中文）" style="width:100%;background:var(--bg2);border:1px solid var(--rule);border-radius:10px;padding:0.6rem 0.9rem;color:var(--ink);font-size:0.9rem;outline:none;box-sizing:border-box;">
+      <input id="loginPassword" type="password" placeholder="密码（至少 6 位）" style="width:100%;background:var(--bg2);border:1px solid var(--rule);border-radius:10px;padding:0.6rem 0.9rem;color:var(--ink);font-size:0.9rem;outline:none;box-sizing:border-box;">
+      <input id="loginNick" type="text" placeholder="昵称（可选，留空用用户名）" style="display:none;width:100%;background:var(--bg2);border:1px solid var(--rule);border-radius:10px;padding:0.6rem 0.9rem;color:var(--ink);font-size:0.9rem;outline:none;box-sizing:border-box;">
+      <div id="loginMsg" style="font-size:0.82rem;color:#ef4444;min-height:1.1rem;line-height:1.4;"></div>
+      <button class="btn primary" id="loginSubmit" type="button">登 录</button>
+      <div style="font-size:0.78rem;color:var(--muted);line-height:1.7;">
+        登录后：做题记录 / 错题本 / 打卡 / 自习数据自动云端同步，换设备、清缓存都不丢。<br>
+        未登录也能正常使用，只是数据只保存在本机。
+      </div>
+    </div>
+    <!-- 已登录视图 -->
+    <div id="loginAuthed" style="display:none;text-align:center;padding:0.5rem 0;">
+      <div style="font-size:1.05rem;font-weight:700;margin-bottom:0.3rem;">已登录：<b id="loginAuthedNick"></b></div>
+      <div style="font-size:0.8rem;color:var(--muted);margin-bottom:1.1rem;">用户名：<span id="loginAuthedUser"></span></div>
+      <div style="display:grid;gap:0.6rem;">
+        <button class="btn" id="loginChangeNick" type="button">✏️ 修改昵称</button>
+        <button class="btn" id="loginSyncNow" type="button">🔄 立即同步数据</button>
+        <button class="btn ghost" id="loginLogout" type="button" style="color:var(--danger);">退出登录</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- 结算弹窗 -->
 <div class="modal-mask" id="modalMask">
   <div class="modal">
@@ -456,12 +772,16 @@
   </div>
 </div>
 
-<script src="js/data.js?v=4"></script>
+<script src="js/api.js?v=2"></script>
+<script src="js/data.js?v=7"></script>
+<script src="js/english_words.js?v=2"></script>
+<script src="js/ielts_words.js?v=1"></script>
 <script src="js/gaoshu_bank.js?v=8"></script>
 <script src="js/wenku.js?v=8"></script>
-<script src="js/ai.js?v=4"></script>
+<script src="js/wenku_cat.js?v=1"></script>
+<script src="js/ai.js?v=5"></script>
 <script src="js/minesweeper.js?v=4"></script>
-<script src="js/quiz.js?v=4"></script>
+<script src="js/quiz.js?v=7"></script>
 <script src="js/matrix.js?v=4"></script>
 <script src="js/logic.js?v=4"></script>
 <script src="js/vector.js?v=4"></script>
@@ -469,8 +789,14 @@
 <script src="js/qenhance.js?v=1"></script>
 <script src="js/scratch.js?v=1"></script>
 <script src="js/gaoshu.js?v=14"></script>
-<script src="js/app.js?v=14"></script>
+<script src="js/study.js?v=6"></script>
+<script src="js/app.js?v=27"></script>
 <script src="js/ux.js?v=1"></script>
 </body>
 </html>
+
+
+
+
+
 

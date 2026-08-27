@@ -1,96 +1,38 @@
-/* ============ 学无忧 · AI 接入模块（多平台免费大模型） ============
- * 大模型只能通过 API 调用，但有很多"免费额度"平台可供学生使用：
- *  - 智谱 GLM-4-Flash  免费模型，注册即用（推荐，见 open.bigmodel.cn）
- *  - DeepSeek          新用户赠送额度（platform.deepseek.com）
- *  - 豆包 / Kimi       新用户赠送 token
- * 下面预置了各平台的接入配置，Key 存在浏览器 localStorage，演示够用；
- * 正式上线应改为后端代理，避免 Key 泄露。
+/* ============ 学无忧 · AI 接入模块（走后端代理） ============
+ * v5：AI Key 已迁移到服务端（server/），前端通过 /api/ai/* 代理调用，
+ * 不再在浏览器保存或暴露任何 Key。
+ * 平台列表保留用于展示，实际请求由服务端按配置转发。
  * =============================================================== */
 'use strict';
 
 var WG_AI = (function () {
-  var KEY_STORE = 'xwy_ai_key';
-  var PROV_STORE = 'xwy_ai_provider';
-
-  /* 演示用默认 Key（智谱，免费额度）；正式上线前请移除并改为后端代理 */
-  var DEFAULT_KEY = '12b55751eeba4f13b28d1cf5e9463c57.tF2TBMfVLVCukBAR';
-  var DEFAULT_PROVIDER = 'zhipu';
-
-  /* 预置免费/低价平台（OpenAI 兼容格式） */
   var PROVIDERS = {
-    zhipu:  { name: '智谱 GLM（GLM-4-Flash 免费）', base: 'https://open.bigmodel.cn/api/paas/v4', model: 'glm-4-flash' },
-    deepseek: { name: 'DeepSeek（新用户送额度）', base: 'https://api.deepseek.com', model: 'deepseek-chat' },
-    kimi:   { name: 'Kimi（新用户送额度）', base: 'https://api.moonshot.cn/v1', model: 'moonshot-v1-8k' },
-    doubao: { name: '豆包·火山方舟（新用户送 token）', base: 'https://ark.cn-beijing.volces.com/api/v3', model: 'doubao-pro-32k' }
+    zhipu:  { name: '智谱 GLM（GLM-4-Flash 免费）', model: 'glm-4-flash' },
+    deepseek: { name: 'DeepSeek（新用户送额度）', model: 'deepseek-chat' },
+    kimi:   { name: 'Kimi（新用户送额度）', model: 'moonshot-v1-8k' },
+    doubao: { name: '豆包·火山方舟（新用户送 token）', model: 'doubao-pro-32k' }
   };
-  var CUSTOM_BASE = 'xwy_ai_base';
-  var CUSTOM_MODEL = 'xwy_ai_model';
 
-  function ls(k) { try { return localStorage.getItem(k) || ''; } catch (e) { return ''; } }
-  function lss(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
-
-  function getKey() { return ls(KEY_STORE) || DEFAULT_KEY; }
-  function setKey(k) { lss(KEY_STORE, (k || '').trim()); }
-  function getProvider() { return ls(PROV_STORE) || DEFAULT_PROVIDER; }
-  function setProvider(p) { lss(PROV_STORE, p); }
-  function getEndpoint() {
-    var id = getProvider();
-    if (id === 'custom') {
-      return { name: '自定义', base: ls(CUSTOM_BASE) || 'https://api.deepseek.com', model: ls(CUSTOM_MODEL) || 'deepseek-chat' };
-    }
-    return PROVIDERS[id] || PROVIDERS.zhipu;
+  function api() {
+    return window.WG_API;
   }
-  function setCustom(base, model) { lss(CUSTOM_BASE, base); lss(CUSTOM_MODEL, model); }
 
-  /* 核心请求：一次对话补全（支持图片，OpenAI 兼容视觉格式） */
+  /* 核心请求：走服务端代理（Key 在服务端） */
   async function chat(messages, opts) {
     opts = opts || {};
-    var key = getKey();
-    if (!key) { throw { code: 'NO_KEY' }; }
-    var ep = getEndpoint();
-    var model = opts.model || ep.model;
-    var res = await fetch(ep.base + '/chat/completions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
-      body: JSON.stringify({
-        model: model,
-        messages: messages,
-        temperature: opts.temperature != null ? opts.temperature : 0.6,
-        max_tokens: opts.maxTokens || 500,
-        stream: false
-      })
+    var d = await api().aiChat(messages, {
+      temperature: opts.temperature,
+      maxTokens: opts.maxTokens,
+      model: opts.model,
+      provider: opts.provider
     });
-    var data = await res.json();
-    if (!res.ok) { throw { code: 'API_ERR', msg: (data.error && data.error.message) || '请求失败(' + res.status + ')' }; }
-    return data.choices && data.choices[0] && data.choices[0].message ? data.choices[0].message.content : '';
+    return d.content || '';
   }
 
-  /* 拍照搜题：把图片直接发给视觉模型（智谱 GLM-4V-Flash，免费） */
+  /* 拍照搜题：走服务端代理（视觉模型） */
   async function explainPhoto(imageDataUrl, userNote) {
-    var key = getKey();
-    if (!key) { throw { code: 'NO_KEY' }; }
-    var res = await fetch('https://open.bigmodel.cn/api/paas/v4/chat/completions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
-      body: JSON.stringify({
-        model: 'glm-4v-flash',
-        temperature: 0.5,
-        max_tokens: 600,
-        messages: [
-          { role: 'system', content: '你是「学无忧」的 AI 助教。用户会发来一道题的图片，请读出题目并给出清晰、简短的解题思路（150 字以内）。如果图片不是题目，就说明一下。' },
-          {
-            role: 'user',
-            content: [
-              { type: 'text', text: userNote || '帮我看看这道题怎么做？' },
-              { type: 'image_url', image_url: { url: imageDataUrl } }
-            ]
-          }
-        ]
-      })
-    });
-    var data = await res.json();
-    if (!res.ok) { throw { code: 'API_ERR', msg: (data.error && data.error.message) || '请求失败(' + res.status + ')' }; }
-    return data.choices && data.choices[0] && data.choices[0].message ? data.choices[0].message.content : '';
+    var d = await api().aiVision(imageDataUrl, userNote);
+    return d.content || '';
   }
 
   function sys() {
@@ -128,9 +70,6 @@ var WG_AI = (function () {
 
   return {
     PROVIDERS: PROVIDERS,
-    getKey: getKey, setKey: setKey,
-    getProvider: getProvider, setProvider: setProvider,
-    getEndpoint: getEndpoint, setCustom: setCustom,
     chat: chat,
     explainPhoto: explainPhoto,
     explainQuestion: explainQuestion,
@@ -138,9 +77,9 @@ var WG_AI = (function () {
     makePlan: makePlan,
     analyzeStats: analyzeStats,
     errText: function (e) {
-      if (e && e.code === 'NO_KEY') return '还没有配置 API Key：到「AI 助手」页选择一个免费平台（推荐智谱 GLM-4-Flash），粘贴 Key 即可';
-      if (e && e.code === 'API_ERR') return 'AI 请求失败：' + (e.msg || '请检查 Key 是否正确、所选平台是否开通');
-      return 'AI 请求出错：' + (e && e.message ? e.message : '网络异常');
+      if (e && e.status === 401) return '登录已失效，请重新登录后再使用 AI 助手';
+      if (e && e.message) return 'AI 请求失败：' + e.message;
+      return 'AI 请求出错，请检查网络或稍后再试';
     }
   };
 })();

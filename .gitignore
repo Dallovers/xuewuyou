@@ -1,2 +1,4 @@
+data/pdf/
 .git/
-wenguo/
+server/data/
+*.jwt_secret

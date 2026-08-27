@@ -5,10 +5,10 @@
 var CONTINENTS = [
   {
     id: 'study',
-    name: '数学题库',
+    name: '数学',
     group: 'study',
-    tag: 'MATH BANK',
-    desc: '1823 道真题级题库（高等数学 1026 · 线性代数 528 · 概率论 269）+ 英语高频词，按学科归类，全部自由练习',
+    tag: 'MATH',
+    desc: '1823 道真题级题库：高等数学 1026 · 线性代数 528 · 概率论 269，分三大子板块自由练习',
     boss: '',
     color: '#67e8f9',
     unlocked: true,
@@ -25,31 +25,38 @@ var CONTINENTS = [
       /* 概率论 */
       { id: 'p1', name: '概率基础', type: 'gaoshu', group: '概率论', topicList: ['随机事件与概率', '一维随机变量', '二维随机变量'], n: 0, diff: 2, free: true },
       { id: 'p2', name: '概率进阶', type: 'gaoshu', group: '概率论', topicList: ['数字特征', '大数定律与中心极限定理', '参数估计', '假设检验'], n: 0, diff: 2, free: true },
-      { id: 'p3', name: '概率综合刷题', type: 'gaoshu', group: '概率论', subject: '概率论', n: 0, diff: 2, free: true },
-      /* 英语 */
-      { id: 's6', name: '英语高频词', type: 'practice', kw: '英语', bank: 'ENGLISH', group: '英语', n: 10, diff: 2, free: true }
+      { id: 'p3', name: '概率综合刷题', type: 'gaoshu', group: '概率论', subject: '概率论', n: 0, diff: 2, free: true }
     ],
     bossLevel: null
   },
   {
     id: 'english',
-    name: '四六级之岛',
-    tag: 'CET-4/6',
-    desc: '高频词、语法、真题风格题，覆盖四级+六级全部考点',
-    boss: '敬请期待',
+    name: '英语',
+    group: 'english',
+    tag: 'ENGLISH',
+    desc: '四级核心词 1372 + 六级进阶词 1021，已滤掉初高中基础词汇，覆盖四六级全部考点',
+    boss: '',
     color: '#f472b6',
-    unlocked: false,
-    levels: []
+    unlocked: true,
+    levels: [
+      { id: 's7', name: '四级核心词', type: 'practice', kw: '四级词汇', bank: 'ENGLISH_CET4', group: '四级', n: 20, diff: 2, free: true },
+      { id: 's8', name: '六级进阶词', type: 'practice', kw: '六级词汇', bank: 'ENGLISH_CET6', group: '六级', n: 20, diff: 3, free: true }
+    ]
   },
   {
     id: 'ielts',
-    name: '雅思备战营',
+    name: '雅思',
+    group: 'ielts',
     tag: 'IELTS',
-    desc: '听说读写全方位训练，口语题库+写作模板+阅读技巧',
-    boss: '敬请期待',
+    desc: '剑桥雅思真题考点词：阅读同义替换 90 · 核心词汇 66 · 写作高分替换 36，冲 7 分必备',
+    boss: '',
     color: '#a78bfa',
-    unlocked: false,
-    levels: []
+    unlocked: true,
+    levels: [
+      { id: 'i1', name: '阅读同义替换', type: 'practice', kw: '雅思阅读', bank: 'IELTS_SYNONYM', group: '雅思阅读', n: 15, diff: 3, free: true },
+      { id: 'i2', name: '核心词汇', type: 'practice', kw: '雅思词汇', bank: 'IELTS_VOCAB', group: '雅思词汇', n: 15, diff: 2, free: true },
+      { id: 'i3', name: '写作高分替换', type: 'practice', kw: '雅思写作', bank: 'IELTS_WRITING', group: '雅思写作', n: 12, diff: 2, free: true }
+    ]
   },
   {
     id: 'computer',
@@ -82,6 +89,27 @@ function getLevelsOf(continentId) {
 
 function getContinent(id) {
   return CONTINENTS.find(function (x) { return x.id === id; });
+}
+
+/* 在全部已解锁大陆中按 id 查找关卡（跨大陆找模块） */
+function findLevel(levelId) {
+  for (var i = 0; i < CONTINENTS.length; i++) {
+    var c = CONTINENTS[i];
+    if (!c.unlocked) continue;
+    var lv = getLevelsOf(c.id).find(function (l) { return l.id === levelId; });
+    if (lv) return lv;
+  }
+  return null;
+}
+
+/* 查找关卡所属大陆 */
+function findLevelContinent(levelId) {
+  for (var i = 0; i < CONTINENTS.length; i++) {
+    var c = CONTINENTS[i];
+    if (!c.unlocked) continue;
+    if (getLevelsOf(c.id).some(function (l) { return l.id === levelId; })) return c;
+  }
+  return null;
 }
 
 /* ============ 高数题库生成器 ============
@@ -255,21 +283,3 @@ var MATH_BANK = [
   { q: '掷一个骰子，点数为偶数的概率 ×6 = ?', ans: 3, topic: '概率' }
 ];
 
-/* ============ 四六级风格英语题库（高频词 / 语法，答案 0-3） ============ */
-var ENGLISH_BANK = [
-  { q: 'If I ___ you, I would apologize to her immediately.', opts: ['was', 'were', 'be', 'am'], ans: 1, topic: '虚拟语气' },
-  { q: 'The book ___ on the table belongs to my sister.', opts: ['laid', 'lying', 'lied', 'lay'], ans: 1, topic: '分词' },
-  { q: 'Cultural activities can ___ the development of traditional arts.', opts: ['promote', 'promised', 'permitting', 'proceed'], ans: 0, topic: '高频词' },
-  { q: 'Students need to ___ to the new learning environment quickly.', opts: ['adapt', 'adopt', 'admit', 'attach'], ans: 0, topic: '高频词' },
-  { q: 'Climate change will ___ people\'s daily lives in many ways.', opts: ['affect', 'effect', 'afford', 'approach'], ans: 0, topic: '高频词' },
-  { q: 'Reading more books can ___ you a lot in the long run.', opts: ['benefit', 'behave', 'believe', 'borrow'], ans: 0, topic: '高频词' },
-  { q: 'The incident ___ a heated discussion on campus.', opts: ['sparked', 'spoke', 'spent', 'sprang'], ans: 0, topic: '高频词' },
-  { q: 'We should ___ the problem before it gets worse.', opts: ['address', 'advise', 'afford', 'agree'], ans: 0, topic: '高频词' },
-  { q: 'The scandal gradually ___ public trust in the institution.', opts: ['undermined', 'understood', 'undertook', 'updated'], ans: 0, topic: '高频词' },
-  { q: 'Smoking may ___ the risk of heart disease.', opts: ['trigger', 'treat', 'track', 'trade'], ans: 0, topic: '高频词' },
-  { q: 'The new policy will ___ a series of changes.', opts: ['bring about', 'bring up', 'bring down', 'bring out'], ans: 0, topic: '词组' },
-  { q: 'She was ___ to learn that her paper had been accepted.', opts: ['relieved', 'related', 'reminded', 'replaced'], ans: 0, topic: '高频词' },
-  { q: 'The professor\'s lecture ___ the students\' interest in physics.', opts: ['aroused', 'arose', 'arranged', 'arrived'], ans: 0, topic: '高频词' },
-  { q: 'I ___ my keys somewhere in the library.', opts: ['must have left', 'must leave', 'should leave', 'could leave'], ans: 0, topic: '情态动词' },
-  { q: 'Not until he finished the report ___ he leave the lab.', opts: ['did', 'does', 'had', 'was'], ans: 0, topic: '倒装句' }
-];

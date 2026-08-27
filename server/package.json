@@ -1,0 +1,11 @@
+{
+  "name": "xuewuyou-server",
+  "version": "1.0.0",
+  "description": "学无忧学习平台后端：AI Key 代理 + 用户数据云存储（零依赖，纯 Node 内置模块）",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "dependencies": {}
+}

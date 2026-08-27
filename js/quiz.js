@@ -17,8 +17,12 @@ var WG_Quiz = (function () {
     if (pendingQ) { clearTimeout(pendingQ); pendingQ = null; }
     /* 题库去重：整场不重复 */
     bankQueue = [];
-    if (c.bank === 'ENGLISH') bankQueue = ENGLISH_BANK.slice();
-    else if (c.bank === 'MATH') bankQueue = MATH_BANK.slice();
+    if (c.bank === 'MATH') bankQueue = MATH_BANK.slice();
+    else if (c.bank === 'ENGLISH_CET4') bankQueue = ENGLISH_CET4_BANK.slice();
+    else if (c.bank === 'ENGLISH_CET6') bankQueue = ENGLISH_CET6_BANK.slice();
+    else if (c.bank === 'IELTS_SYNONYM') bankQueue = IELTS_SYNONYM_BANK.slice();
+    else if (c.bank === 'IELTS_VOCAB') bankQueue = IELTS_VOCAB_BANK.slice();
+    else if (c.bank === 'IELTS_WRITING') bankQueue = IELTS_WRITING_BANK.slice();
     shuffle(bankQueue);
     if (!isPractice) {
       timerId = setInterval(tick, 1000);
@@ -40,7 +44,8 @@ var WG_Quiz = (function () {
   }
 
   function pickBank() {
-    if (cfg.bank === 'ENGLISH' || cfg.bank === 'MATH') return bankQueue.pop();
+    if (cfg.bank === 'MATH' || cfg.bank === 'ENGLISH_CET4' || cfg.bank === 'ENGLISH_CET6' ||
+        cfg.bank === 'IELTS_SYNONYM' || cfg.bank === 'IELTS_VOCAB' || cfg.bank === 'IELTS_WRITING') return bankQueue.pop();
     return null;
   }
 
@@ -83,7 +88,7 @@ var WG_Quiz = (function () {
       }
     }
     var ansIdx = opts.indexOf(ansVal);
-    current = { text: text, opts: opts, ansIdx: ansIdx, topic: topic };
+    current = { text: text, opts: opts, ansIdx: ansIdx, topic: topic, ph: (bq && bq.ph) || '' };
     renderQuestion();
   }
 
@@ -91,41 +96,82 @@ var WG_Quiz = (function () {
     if (gameOver || !current) return;
     var ok = i === current.ansIdx;
     var correctVal = current.opts[current.ansIdx];
+    var chosenVal = current.opts[i];
     var isPractice = cfg.type === 'practice';
+    markOptions(i, ok);
     if (ok) {
       correct++; combo++; maxCombo = Math.max(maxCombo, combo);
       score += 10 + combo * 2;
       WG_Data.recordAnswer({ q: current.text, topic: current.topic, correct: true, timeMs: Date.now() });
-      feed('✓ 正确！+' + (10 + combo * 2) + ' 分', true);
+      showFeedback(true, chosenVal, correctVal, combo);
     } else {
       wrong++; combo = 0;
       if (!isPractice) lives--;
       WG_Data.recordAnswer({ q: current.text, topic: current.topic, correct: false, timeMs: Date.now() });
-      feed('✗ 错了，正确答案是 ' + correctVal, false);
+      showFeedback(false, chosenVal, correctVal, combo);
       if (onWrong) onWrong(current.text, current.opts[i], correctVal);
       if (!isPractice && lives <= 0) { end(false, '生命耗尽'); return; }
     }
     if (onStats) onStats(stats());
     if (isPractice && correct + wrong >= (cfg.n || 10)) { end(true, ''); return; }
     if (pendingQ) clearTimeout(pendingQ);
-    pendingQ = setTimeout(nextQuestion, ok ? 300 : 900);
+    pendingQ = setTimeout(nextQuestion, ok ? 1800 : 3000);
   }
 
-  function feed(msg, ok) {
-    var el = document.getElementById('quizFeed');
-    el.textContent = msg;
-    el.style.color = ok ? 'var(--ok)' : 'var(--danger)';
+  /* 选项对错高亮：正确绿、选错红、其余变暗 */
+  function markOptions(chosenIdx, ok) {
+    var oEl = document.getElementById('quizOpts');
+    if (!oEl) return;
+    oEl.querySelectorAll('.quiz-opt').forEach(function (b, idx) {
+      b.classList.remove('quiz-opt-right', 'quiz-opt-wrong', 'quiz-opt-dim');
+      if (idx === current.ansIdx) b.classList.add('quiz-opt-right');
+      else if (idx === chosenIdx) b.classList.add('quiz-opt-wrong');
+      else b.classList.add('quiz-opt-dim');
+      b.disabled = true;
+    });
+  }
+
+  /* 精美解析卡片 */
+  function showFeedback(ok, chosenVal, correctVal, combo) {
+    var fEl = document.getElementById('quizFeed');
+    if (!fEl) return;
+    var word = current.text;
+    var ph = current.ph ? current.ph : '';
+    var phHtml = ph ? ' <span class="qf-ph">' + ph + '</span>' : '';
+    var html;
+    if (ok) {
+      html = '<div class="quiz-fb quiz-fb-ok">' +
+        '<div class="qf-icon">✓</div>' +
+        '<div class="qf-main">' +
+        '<div class="qf-title">回答正确 <span class="qf-score">+' + (10 + combo * 2) + ' 分</span>' +
+        (combo >= 2 ? '<span class="qf-combo">🔥 连击 ×' + combo + '</span>' : '') + '</div>' +
+        '<div class="qf-word">' + word + phHtml + '</div>' +
+        '<div class="qf-meaning">释义：<b>' + correctVal + '</b></div>' +
+        '</div></div>';
+    } else {
+      html = '<div class="quiz-fb quiz-fb-no">' +
+        '<div class="qf-icon">✗</div>' +
+        '<div class="qf-main">' +
+        '<div class="qf-title">回答错误</div>' +
+        '<div class="qf-word">' + word + phHtml + '</div>' +
+        '<div class="qf-meaning">正确答案：<b>' + correctVal + '</b></div>' +
+        '<div class="qf-chosen">你选了：' + chosenVal + '</div>' +
+        '</div></div>';
+    }
+    fEl.innerHTML = html;
   }
 
   function renderQuestion() {
     var qEl = document.getElementById('quizQ');
     var oEl = document.getElementById('quizOpts');
-    qEl.textContent = current.text;
+    var fEl = document.getElementById('quizFeed');
+    if (fEl) fEl.innerHTML = '';
+    qEl.innerHTML = current.text + (current.ph ? ' <span class="quiz-ph">' + current.ph + '</span>' : '');
     oEl.innerHTML = '';
     var letters = ['A', 'B', 'C', 'D'];
     current.opts.forEach(function (v, i) {
       var b = document.createElement('button');
-      b.className = 'btn';
+      b.className = 'btn quiz-opt';
       b.style.cssText = 'font-size:1rem;font-weight:600;padding:0.7rem 0.5rem;line-height:1.5;';
       b.textContent = letters[i] + '. ' + v;
       b.addEventListener('click', function () { answer(i); });
