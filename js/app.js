@@ -869,34 +869,15 @@ var WG_App = (function () {
           if (pvWrap && pvIfr) {
             pvWrap.classList.remove('hidden');
             pvIfr.src = x.link;
-            pvIfr.onerror = function () {
-              pvWrap.classList.add('hidden');
-              link.textContent = '🌐 该文件暂未上传到服务器 ↗';
-              link.href = 'https://suncoastmath.cn/pdfs';
-              $('wkdHint').textContent = '⚠️ 这份资料在站内尚未可用，请前往原站查看。';
-              if (modeBar) modeBar.classList.add('hidden');
-            };
           }
-          checkPdfExists(x.link, function (exists) {
-            if (exists) {
-              link.textContent = '↗ 在新标签打开 / 下载';
-              link.style.cursor = 'pointer';
-              $('wkdHint').textContent = '上方已内嵌预览。如预览空白，请点击按钮在新标签页打开；若浏览器直接下载该文件属正常行为。';
-              if (modeBar) {
-                modeBar.classList.remove('hidden');
-                _wkdCurrentPdf = { url: x.link, title: x.title || '' };
-                $('wkdAiStatus').textContent = '';
-              }
-            } else {
-              pvWrap.classList.add('hidden');
-              pvIfr.removeAttribute('src');
-              link.textContent = '🌐 该文件暂未上传到服务器，前往原站查看 ↗';
-              link.href = 'https://suncoastmath.cn/pdfs';
-              link.style.cursor = 'pointer';
-              $('wkdHint').textContent = '⚠️ 这份资料（' + (x.title || '') + '）尚未上传到服务器，如需使用请前往 suncoastmath.cn 阳光海岸数学练习室下载。';
-              if (modeBar) modeBar.classList.add('hidden');
-            }
-          });
+          link.textContent = '↗ 在新标签打开 / 下载';
+          link.style.cursor = 'pointer';
+          $('wkdHint').textContent = '上方已内嵌预览。如预览空白，请点击按钮在新标签页打开；若浏览器直接下载该文件属正常行为。';
+          if (modeBar) {
+            modeBar.classList.remove('hidden');
+            _wkdCurrentPdf = { url: x.link, title: x.title || '' };
+            $('wkdAiStatus').textContent = '';
+          }
         }
             
       } else {
