@@ -829,7 +829,6 @@ var WG_App = (function () {
     var pvIfr = $('wkdPreview');
 
     /* 重置 AI 划词模式状态 */
-    wkdAiPagesData = null;
     hidePdfAiFloatBtn();
     $('wkdAiPanel').classList.add('hidden');
     $('wkdPreviewWrap').classList.remove('hidden');
