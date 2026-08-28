@@ -846,41 +846,59 @@ var WG_App = (function () {
         link.rel = 'noopener';
         link.removeAttribute('download');
         link.style.cursor = 'pointer';
-        if (pvWrap && pvIfr) {
-          pvWrap.classList.remove('hidden');
-          /* 尝试加载 PDF，若失败则显示友好提示 */
-          pvIfr.src = x.link;
-          pvIfr.onerror = function () {
-            pvWrap.classList.add('hidden');
-            link.textContent = '🌐 该文件暂未上传到服务器 ↗';
-            link.href = 'https://suncoastmath.cn/pdfs';
-            $('wkdHint').textContent = '⚠️ 这份资料在站内尚未可用，请前往原站查看。';
-            if (modeBar) modeBar.classList.add('hidden');
-          };
-        }
-        /* 验证文件是否真的存在 */
-        checkPdfExists(x.link, function (exists) {
-          if (exists) {
-            link.textContent = '↗ 在新标签打开 / 下载';
-            link.style.cursor = 'pointer';
-            $('wkdHint').textContent = '上方已内嵌预览。如预览空白，请点击按钮在新标签页打开；若浏览器直接下载该文件属正常行为。';
-            /* 本地 PDF 显示模式切换条 */
-            if (modeBar) {
-              modeBar.classList.remove('hidden');
-              _wkdCurrentPdf = { url: x.link, title: x.title || '' };
-              $('wkdAiStatus').textContent = '';
-            }
-          } else {
-            /* 文件不存在 → 降级为非本地资料 */
+
+        /* 检测文件类型 */
+        var isPdf = x.link.toLowerCase().endsWith('.pdf');
+        var isDocx = x.link.toLowerCase().endsWith('.docx');
+        var isXlsx = x.link.toLowerCase().endsWith('.xlsx');
+
+        if (isDocx || isXlsx) {
+          /* docx/xlsx: 不支持内嵌预览，直接下载 */
+          link.setAttribute('download', '');
+          link.textContent = isDocx ? '📄 下载 Word 文档 (.docx) ↓' : '📊 下载 Excel 表格 (.xlsx) ↓';
+          if (pvWrap && pvIfr) {
             pvWrap.classList.add('hidden');
             pvIfr.removeAttribute('src');
-            link.textContent = '🌐 该文件暂未上传到服务器，前往原站查看 ↗';
-            link.href = 'https://suncoastmath.cn/pdfs';
-            link.style.cursor = 'pointer';
-            $('wkdHint').textContent = '⚠️ 这份资料（' + (x.title || '') + '）尚未上传到服务器，如需使用请前往 suncoastmath.cn 阳光海岸数学练习室下载。';
-            if (modeBar) modeBar.classList.add('hidden');
           }
-        });
+          if (modeBar) modeBar.classList.add('hidden');
+          $('wkdHint').textContent = '该格式不支持浏览器内嵌预览，请点击下方按钮下载后查看。';
+          if (isDocx) $('wkdHint').textContent += ' 推荐使用 WPS 或 Microsoft Word 打开。';
+          if (isXlsx) $('wkdHint').textContent += ' 推荐使用 WPS 或 Microsoft Excel 打开。';
+        } else {
+          /* PDF 文件：正常处理 */
+          if (pvWrap && pvIfr) {
+            pvWrap.classList.remove('hidden');
+            pvIfr.src = x.link;
+            pvIfr.onerror = function () {
+              pvWrap.classList.add('hidden');
+              link.textContent = '🌐 该文件暂未上传到服务器 ↗';
+              link.href = 'https://suncoastmath.cn/pdfs';
+              $('wkdHint').textContent = '⚠️ 这份资料在站内尚未可用，请前往原站查看。';
+              if (modeBar) modeBar.classList.add('hidden');
+            };
+          }
+          checkPdfExists(x.link, function (exists) {
+            if (exists) {
+              link.textContent = '↗ 在新标签打开 / 下载';
+              link.style.cursor = 'pointer';
+              $('wkdHint').textContent = '上方已内嵌预览。如预览空白，请点击按钮在新标签页打开；若浏览器直接下载该文件属正常行为。';
+              if (modeBar) {
+                modeBar.classList.remove('hidden');
+                _wkdCurrentPdf = { url: x.link, title: x.title || '' };
+                $('wkdAiStatus').textContent = '';
+              }
+            } else {
+              pvWrap.classList.add('hidden');
+              pvIfr.removeAttribute('src');
+              link.textContent = '🌐 该文件暂未上传到服务器，前往原站查看 ↗';
+              link.href = 'https://suncoastmath.cn/pdfs';
+              link.style.cursor = 'pointer';
+              $('wkdHint').textContent = '⚠️ 这份资料（' + (x.title || '') + '）尚未上传到服务器，如需使用请前往 suncoastmath.cn 阳光海岸数学练习室下载。';
+              if (modeBar) modeBar.classList.add('hidden');
+            }
+          });
+        }
+            
       } else {
         /* 非本地资料：提供原站分类页链接 */
         var catUrl = x.link || 'https://suncoastmath.cn/pdfs';
