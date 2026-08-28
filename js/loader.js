@@ -5,12 +5,14 @@
  */
 'use strict';
 window.WG_Heavy = (function () {
+  /* 带 ?v= 版本号：这几个文件不在 index.html 的 script 标签里，
+     没有版本号时改了内容也会被浏览器旧缓存挡住（wenku_cat.js 的主题色就属于这种） */
   var FILES = [
-    'js/gaoshu_bank.js',   /* 高数题库 3.7MB */
-    'js/english_words.js', /* 四六级词库 337KB */
-    'js/ielts_words.js',   /* 雅思词库 26KB */
-    'js/wenku.js',         /* 学习资料 182KB */
-    'js/wenku_cat.js'      /* 资料归类 7KB */
+    'js/gaoshu_bank.js?v=1',   /* 高数题库 3.7MB */
+    'js/english_words.js?v=1', /* 四六级词库 337KB */
+    'js/ielts_words.js?v=1',   /* 雅思词库 26KB */
+    'js/wenku.js?v=1',         /* 学习资料 182KB */
+    'js/wenku_cat.js?v=2'      /* 资料归类 7KB */
   ];
   var promise = null;
   var done = false;

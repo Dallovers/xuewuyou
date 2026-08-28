@@ -9,8 +9,9 @@ var WG_Game = (function () {
   var boardEl, els = {};
 
   var NUM_COLORS = [null, 'n1','n2','n3','n4','n5','n6','n7','n8'];
-  var FLAG_SVG = '<svg viewBox="0 0 24 24"><path d="M6 3v18" stroke="#6ea8ff" stroke-width="2.2" stroke-linecap="round"/><path d="M6 4h11l-3 4.2 3 4.2H6z" fill="#6ea8ff"/></svg>';
-  var MINE_SVG = '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="7" fill="#ff6b6b"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M19.1 4.9L17 7M7 17l-2.1 2.1" stroke="#ff6b6b" stroke-width="1.8" stroke-linecap="round"/></svg>';
+  /* 图标压在白色格子上，用亮底可读的深色版本（旧深色主题的 #6ea8ff/#ff6b6b 在白底会发飘） */
+  var FLAG_SVG = '<svg viewBox="0 0 24 24"><path d="M6 3v18" stroke="#496fa8" stroke-width="2.2" stroke-linecap="round"/><path d="M6 4h11l-3 4.2 3 4.2H6z" fill="#496fa8"/></svg>';
+  var MINE_SVG = '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="7" fill="#c63028"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M19.1 4.9L17 7M7 17l-2.1 2.1" stroke="#c63028" stroke-width="1.8" stroke-linecap="round"/></svg>';
 
   function bind() {
     boardEl = document.getElementById('board');

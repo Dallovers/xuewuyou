@@ -55,7 +55,8 @@ var WG_Scratch = (function () {
       ctx.strokeStyle = 'rgba(0,0,0,1)';
     } else {
       ctx.globalCompositeOperation = 'source-over';
-      ctx.strokeStyle = getComputedStyle(canvas).getPropertyValue('color') || '#e8ecff';
+      /* canvas 只认真实色值，不能写 var()；兜底跟 --ink 对齐（亮底深墨青） */
+      ctx.strokeStyle = getComputedStyle(canvas).getPropertyValue('color') || '#16333a';
     }
   }
 

@@ -99,7 +99,7 @@ var WG_Seq = (function () {
     current.arr.forEach(function (x, i) {
       var isQ = x === '?';
       html += '<div style="min-width:44px;padding:0.6rem 0.4rem;border-radius:10px;text-align:center;font-size:1.1rem;font-weight:700;' +
-        (isQ ? 'background:rgba(251,191,36,.18);border:2px dashed var(--gold);color:var(--gold);' : 'background:var(--bg2);border:1px solid var(--rule);') + '">' + x + '</div>';
+        (isQ ? 'background:rgba(166,104,0,.12);border:2px dashed var(--gold);color:var(--gold);' : 'background:var(--bg2);border:1px solid var(--rule);') + '">' + x + '</div>';
     });
     html += '</div>';
     /* 选项 */

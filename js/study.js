@@ -310,7 +310,8 @@
         const idx = parseInt(btn.getAttribute('data-idx'), 10);
         const peer = MOCK_PEERS[idx];
         btn.textContent = '❤️ 已打气';
-        btn.style.color = '#10b981';
+        /* 用语义令牌而非硬编码，跟随主题走 */
+        btn.style.color = 'var(--ok)';
         toast('已向同桌【' + peer.name + '】送出专注鼓励 ✨');
       });
     });
@@ -341,7 +342,7 @@
         const idx = parseInt(btn.getAttribute('data-idx'), 10);
         const peer = peers[idx];
         btn.textContent = '❤️ 已打气';
-        btn.style.color = '#10b981';
+        btn.style.color = 'var(--ok)';
         toast('已向同桌【' + peer.name + '】送出专注鼓励 ✨');
       });
     });
@@ -384,7 +385,7 @@
     if (dom.peerList) {
       dom.peerList.querySelectorAll('.sr-cheer-btn').forEach(btn => {
         btn.textContent = '❤️ 已打气';
-        btn.style.color = '#10b981';
+        btn.style.color = 'var(--ok)';
       });
     }
     toast('已向自习室所有同桌发送了专注打气！共同加油 🚀');
@@ -475,7 +476,7 @@
     if (dom.userMotto) dom.userMotto.textContent = '“' + state.motto + '”';
     if (dom.modeBadge) {
       dom.modeBadge.textContent = state.mode === 'strict' ? '🔒 严格模式' : '🍃 自由模式';
-      dom.modeBadge.style.color = state.mode === 'strict' ? '#fbbf24' : '#38bdf8';
+      dom.modeBadge.style.color = state.mode === 'strict' ? 'var(--warn)' : 'var(--cyan)';
     }
 
     if (dom.soundChips) {

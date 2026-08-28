@@ -108,19 +108,20 @@ var WG_WenkuCat = (function () {
   /* ---------- 大类定义 ---------- */
   var CATS = [
     {
-      id: 'exam', name: '考研真题卷', en: 'Past Papers', icon: '📝', color: '#67e8f9',
+      /* 大类色也是一值两用（--wk-color 装饰 + .wki-name 文字），取压暗保色相版本 */
+      id: 'exam', name: '考研真题卷', en: 'Past Papers', icon: '📝', color: '#367981',
       desc: '数学分析 · 高等代数，按院校与年份归档，真题与解析成对收录'
     },
     {
-      id: 'book', name: '教材习题集', en: 'Textbook', icon: '📚', color: '#a78bfa',
+      id: 'book', name: '教材习题集', en: 'Textbook', icon: '📚', color: '#7763b2',
       desc: '谢惠民 · 丘维声 · 蓝以中，留白做题本与完整解析册配套'
     },
     {
-      id: 'ielts', name: '雅思备考库', en: 'IELTS', icon: '🌍', color: '#34d399',
+      id: 'ielts', name: '雅思备考库', en: 'IELTS', icon: '🌍', color: '#1f7c5a',
       desc: '剑雅同义替换 · 长难句 · 大小作文句式与高阶词汇手册'
     },
     {
-      id: 'topic', name: '专题与心得', en: 'Topics', icon: '💡', color: '#fbbf24',
+      id: 'topic', name: '专题与心得', en: 'Topics', icon: '💡', color: '#8a6914',
       desc: '复变 · 实变 · 泛函等专题资料，含学长学姐备考心得'
     }
   ];

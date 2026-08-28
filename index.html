@@ -4,9 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="description" content="学无忧 · 大学生备考通关平台：高等数学、线性代数、概率论真题级题库，错题复盘与 AI 讲题。">
-<meta name="theme-color" content="#0a0e1d">
+<meta name="theme-color" content="#f2f7f5">
 <title>学无忧 · 大学生备考通关平台</title>
-<link rel="stylesheet" href="css/style.css?v=19">
+<link rel="stylesheet" href="css/style.css?v=21">
   <!-- PDF.js 用于 AI 划词模式 -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js" defer></script>
 </head>
@@ -36,7 +36,7 @@
   <main id="mainContent">
 
   <!-- 开发者模式面板 -->
-  <div id="devPanel" class="hidden" style="border:1px dashed rgba(244,114,182,.5);border-radius:14px;background:rgba(244,114,182,.06);padding:0.9rem 1.1rem;margin-bottom:1.2rem;">
+  <div id="devPanel" class="hidden" style="border:1px dashed rgba(198,40,100,.42);border-radius:14px;background:rgba(198,40,100,.05);padding:0.9rem 1.1rem;margin-bottom:1.2rem;">
     <div style="font-size:0.8rem;font-weight:700;color:var(--pink);letter-spacing:0.1em;margin-bottom:0.6rem;">开发者模式（演示 / 调试用）</div>
     <div style="display:flex;gap:1.2rem;flex-wrap:wrap;align-items:center;">
       <button class="btn ghost" id="devUnlock" style="font-size:0.8rem;">标记全部模块已练习</button>
@@ -115,7 +115,7 @@
       </div>
       <button class="btn primary" id="obSubmit" style="width:100%;margin-top:1.1rem;padding:0.75rem;font-size:1rem;">注册并生成我的学习计划</button>
       <div id="obStatus" style="font-size:0.82rem;color:var(--muted);text-align:center;margin-top:0.7rem;min-height:1.3rem;"></div>
-      <div id="obPlan" class="hidden" style="margin-top:1rem;border:1px solid var(--rule);border-radius:12px;background:rgba(110,168,255,.05);padding:0.9rem 1rem;font-size:0.85rem;color:var(--ink);line-height:1.9;white-space:pre-wrap;"></div>
+      <div id="obPlan" class="hidden" style="margin-top:1rem;border:1px solid var(--rule);border-radius:12px;background:rgba(13,148,136,.06);padding:0.9rem 1rem;font-size:0.85rem;color:var(--ink);line-height:1.9;white-space:pre-wrap;"></div>
       <div style="text-align:center;margin-top:0.9rem;font-size:0.8rem;color:var(--muted);">
         数据云端同步，换设备不丢 · <button type="button" id="obSkip" class="linklike" style="background:none;border:none;color:var(--cyan);cursor:pointer;font-size:0.8rem;padding:0;text-decoration:underline;">跳过，先本地体验 →</button>
       </div>
@@ -140,7 +140,7 @@
         </ul>
         <div class="hero-actions">
           <button class="btn primary" id="heroRandom">🎲 随机组卷</button>
-          <button class="btn" id="heroStudy" style="background:linear-gradient(135deg,rgba(245,158,11,0.2),rgba(16,185,129,0.2));border-color:rgba(245,158,11,0.4);color:#fde68a;">☕ 进入自习室</button>
+          <button class="btn" id="heroStudy" style="background:linear-gradient(135deg,rgba(245,158,11,0.18),rgba(13,148,136,0.16));border-color:rgba(166,104,0,0.38);color:#8a5600;">☕ 进入自习室</button>
           <button class="btn" id="heroBank">📚 进入题库</button>
           <button class="btn ghost" id="heroMistake">📕 错题重刷</button>
         </div>
@@ -182,10 +182,10 @@
   <div id="view-bank" class="hidden">
     <div class="page-title">
       <button class="btn ghost hidden" id="bankBack" style="font-size:0.8rem;">← 全部学科</button>
-      <h1 id="bankTitle" style="color:#67e8f9;">全科题库</h1>
+      <h1 id="bankTitle" style="color:var(--acc);">全科题库</h1>
       <span class="en">Question Bank</span>
     </div>
-    <div class="mp-head"><h2 id="bankDesc" style="color:#67e8f9;">全科题库</h2>
+    <div class="mp-head"><h2 id="bankDesc" style="color:var(--acc);">全科题库</h2>
       <span class="mp-desc" id="bankSubDesc">数学（高数 · 线代 · 概率） · 英语（四级 · 六级） · 雅思（阅读 · 词汇 · 写作），按学科与子板块归类，全部自由练习</span></div>
     <div class="bsb hidden" id="bankSubBar"></div>
     <div class="mod-groups" id="bankGrid"></div>
@@ -425,7 +425,7 @@
     </div>
     <div id="wenkuList"></div>
     <!-- 资料详情弹层 -->
-    <div id="wenkuDetail" class="hidden" style="position:fixed;inset:0;z-index:100;background:rgba(5,8,20,.7);backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;padding:1rem;">
+    <div id="wenkuDetail" class="hidden" style="position:fixed;inset:0;z-index:100;background:rgba(16,74,68,.34);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;padding:1rem;">
       <div style="width:min(100%,820px);max-height:90vh;overflow:auto;border:1px solid var(--rule);border-radius:16px;background:linear-gradient(160deg,var(--bg3),var(--bg2));padding:1.4rem 1.5rem;">
         <!-- 资料详情头部 -->
         <div style="display:flex;align-items:center;gap:0.6rem;margin-bottom:0.8rem;">
@@ -469,7 +469,7 @@
     </div>
 
     <!-- AI 划词提问浮动按钮 -->
-    <div id="wkdAiFloatBtn" style="position:fixed;z-index:120;display:none;background:linear-gradient(135deg,var(--cyan),#3b82f6);color:#fff;border:none;border-radius:20px;padding:0.5rem 1rem;font-size:0.82rem;cursor:pointer;box-shadow:0 4px 18px rgba(59,130,246,.4);align-items:center;gap:0.4rem;transition:opacity .2s,transform .15s;white-space:nowrap;pointer-events:auto;">
+    <div id="wkdAiFloatBtn" style="position:fixed;z-index:120;display:none;background:linear-gradient(135deg,#0d7f98,#3472d8);color:#fff;border:none;border-radius:20px;padding:0.5rem 1rem;font-size:0.82rem;cursor:pointer;box-shadow:0 6px 20px rgba(52,114,216,.28);align-items:center;gap:0.4rem;transition:opacity .2s,transform .15s;white-space:nowrap;pointer-events:auto;">
       <span>🤖</span><span id="wkdAiFloatLabel">问 AI：解释这段内容</span>
     </div>
 
@@ -890,7 +890,7 @@
       <input id="loginUsername" type="text" placeholder="用户名（2-20 位字母/数字/中文）" style="width:100%;background:var(--bg2);border:1px solid var(--rule);border-radius:10px;padding:0.6rem 0.9rem;color:var(--ink);font-size:0.9rem;outline:none;box-sizing:border-box;">
       <input id="loginPassword" type="password" placeholder="密码（至少 6 位）" style="width:100%;background:var(--bg2);border:1px solid var(--rule);border-radius:10px;padding:0.6rem 0.9rem;color:var(--ink);font-size:0.9rem;outline:none;box-sizing:border-box;">
       <input id="loginNick" type="text" placeholder="昵称（可选，留空用用户名）" style="display:none;width:100%;background:var(--bg2);border:1px solid var(--rule);border-radius:10px;padding:0.6rem 0.9rem;color:var(--ink);font-size:0.9rem;outline:none;box-sizing:border-box;">
-      <div id="loginMsg" style="font-size:0.82rem;color:#ef4444;min-height:1.1rem;line-height:1.4;"></div>
+      <div id="loginMsg" style="font-size:0.82rem;color:var(--danger);min-height:1.1rem;line-height:1.4;"></div>
       <button class="btn primary" id="loginSubmit" type="button">登 录</button>
       <div style="font-size:0.78rem;color:var(--muted);line-height:1.7;">
         登录后：做题记录 / 错题本 / 打卡 / 自习数据自动云端同步，换设备、清缓存都不丢。<br>
@@ -930,22 +930,22 @@
 </div>
 
 <script src="js/api.js?v=2" defer></script>
-<script src="js/data.js?v=7" defer></script>
+<script src="js/data.js?v=8" defer></script>
 <script src="js/ai.js?v=6" defer></script>
-<script src="js/minesweeper.js?v=4" defer></script>
+<script src="js/minesweeper.js?v=5" defer></script>
 <script src="js/quiz.js?v=7" defer></script>
-<script src="js/matrix.js?v=4" defer></script>
+<script src="js/matrix.js?v=5" defer></script>
 <script src="js/logic.js?v=4" defer></script>
-<script src="js/vector.js?v=4" defer></script>
-<script src="js/sequence.js?v=4" defer></script>
+<script src="js/vector.js?v=5" defer></script>
+<script src="js/sequence.js?v=5" defer></script>
 <script src="js/qenhance.js?v=1" defer></script>
-<script src="js/scratch.js?v=1" defer></script>
-<script src="js/gaoshu.js?v=14" defer></script>
-<script src="js/study.js?v=6" defer></script>
+<script src="js/scratch.js?v=2" defer></script>
+<script src="js/gaoshu.js?v=15" defer></script>
+<script src="js/study.js?v=7" defer></script>
 <!-- 重型数据延迟加载器：gaoshu_bank / english_words / ielts_words / wenku / wenku_cat
      首屏渲染后后台加载，避免 4.3MB 同步阻塞登录界面 -->
 <script src="js/loader.js?v=1" defer></script>
-<script src="js/app.js?v=29" defer></script>
+<script src="js/app.js?v=31" defer></script>
 <script src="js/ux.js?v=1" defer></script>
 </body>
 </html>

@@ -89,7 +89,7 @@ var WG_Matrix = (function () {
       }
       for (var j = 0; j < 3; j++) {
         html += '<div style="width:52px;height:46px;display:flex;align-items:center;justify-content:center;font-size:1.05rem;font-weight:700;cursor:pointer;' +
-          (isSel ? 'background:rgba(251,191,36,.22);border:1px solid rgba(251,191,36,.5);' : 'border:1px solid var(--rule);') +
+          (isSel ? 'background:rgba(166,104,0,.14);border:1px solid rgba(166,104,0,.45);' : 'border:1px solid var(--rule);') +
           '" data-row="' + i + '" data-col="' + j + '">' + mat[i][j] + '</div>';
       }
       html += '</div>';

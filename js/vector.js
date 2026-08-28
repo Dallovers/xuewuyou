@@ -74,13 +74,13 @@ var WG_Vector = (function () {
     /* 网格 */
     for (var i = -7; i <= 7; i++) {
       var x = C + i * SC;
-      html += '<line x1="' + x + '" y1="20" x2="' + x + '" y2="400" stroke="rgba(122,152,232,.14)" stroke-width="1"/>';
-      html += '<line x1="20" y1="' + x + '" x2="400" y2="' + x + '" stroke="rgba(122,152,232,.14)" stroke-width="1"/>';
+      html += '<line x1="' + x + '" y1="20" x2="' + x + '" y2="400" stroke="rgba(16,74,68,.12)" stroke-width="1"/>';
+      html += '<line x1="20" y1="' + x + '" x2="400" y2="' + x + '" stroke="rgba(16,74,68,.12)" stroke-width="1"/>';
     }
-    html += '<line x1="20" y1="210" x2="400" y2="210" stroke="rgba(122,152,232,.5)" stroke-width="1.5"/>';
-    html += '<line x1="210" y1="20" x2="210" y2="400" stroke="rgba(122,152,232,.5)" stroke-width="1.5"/>';
+    html += '<line x1="20" y1="210" x2="400" y2="210" stroke="rgba(16,74,68,.42)" stroke-width="1.5"/>';
+    html += '<line x1="210" y1="20" x2="210" y2="400" stroke="rgba(16,74,68,.42)" stroke-width="1.5"/>';
     /* 目标 */
-    html += '<circle cx="' + (C + t[0] * SC) + '" cy="' + (C - t[1] * SC) + '" r="9" fill="var(--gold)" stroke="#0a0e1d" stroke-width="2"/>';
+    html += '<circle cx="' + (C + t[0] * SC) + '" cy="' + (C - t[1] * SC) + '" r="9" fill="var(--gold)" stroke="#ffffff" stroke-width="2"/>';
     html += '<text x="' + (C + t[0] * SC + 12) + '" y="' + (C - t[1] * SC - 8) + '" fill="var(--gold)" font-size="13" font-weight="700">目标</text>';
     html += '</svg>';
 

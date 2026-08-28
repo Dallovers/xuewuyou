@@ -10,7 +10,9 @@ var CONTINENTS = [
     tag: 'MATH',
     desc: '1823 道真题级题库：高等数学 1026 · 线性代数 528 · 概率论 269，分三大子板块自由练习',
     boss: '',
-    color: '#67e8f9',
+    /* 主题色一值两用：既作 --sp-color 装饰底，也直接当标题文字色，
+       所以取压暗后仍保留原色相的值，保证纸底 ≥4.6:1 */
+    color: '#367981',
     unlocked: true,
     levels: [
       /* n: 0 = 不限量，把这一关覆盖的知识点全部题目放进一轮（答题卡按题库题量列全） */
@@ -36,7 +38,7 @@ var CONTINENTS = [
     tag: 'ENGLISH',
     desc: '四级核心词 1372 + 六级进阶词 1021，已滤掉初高中基础词汇，覆盖四六级全部考点',
     boss: '',
-    color: '#f472b6',
+    color: '#ab507f',
     unlocked: true,
     levels: [
       { id: 's7', name: '四级核心词', type: 'practice', kw: '四级词汇', bank: 'ENGLISH_CET4', group: '四级', n: 20, diff: 2, free: true },
@@ -50,7 +52,7 @@ var CONTINENTS = [
     tag: 'IELTS',
     desc: '剑桥雅思真题考点词：阅读同义替换 90 · 核心词汇 66 · 写作高分替换 36，冲 7 分必备',
     boss: '',
-    color: '#a78bfa',
+    color: '#7763b2',
     unlocked: true,
     levels: [
       { id: 'i1', name: '阅读同义替换', type: 'practice', kw: '雅思阅读', bank: 'IELTS_SYNONYM', group: '雅思阅读', n: 15, diff: 3, free: true },
@@ -64,7 +66,7 @@ var CONTINENTS = [
     tag: 'NCRE',
     desc: '计算机二级（Office / C语言 / Python）+ 三级四级进阶',
     boss: '敬请期待',
-    color: '#67e8f9',
+    color: '#367981',
     unlocked: false,
     levels: []
   },
@@ -74,7 +76,7 @@ var CONTINENTS = [
     tag: 'FINAL CITY',
     desc: '期末专业课冲刺，Boss 是 DDL 大魔王',
     boss: 'Boss：DDL 大魔王',
-    color: '#fbbf24',
+    color: '#8a6914',
     unlocked: false,
     levels: []
   }

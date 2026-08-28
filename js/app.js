@@ -600,8 +600,8 @@ var WG_App = (function () {
     var comingGrid = $('homeComingGrid');
     if (!comingGrid) return;
     var comingItems = [
-      { id: 'computer', name: '计算机考级', icon: '💻', tag: 'NCRE', desc: '二级Office · C语言 · Python · 数据结构', color: '#67e8f9' },
-      { id: 'final', name: '专业课速通', icon: '⚡', tag: 'MAJOR', desc: '期末速通 · 考研专业课 · 考前突击', color: '#fbbf24' }
+      { id: 'computer', name: '计算机考级', icon: '💻', tag: 'NCRE', desc: '二级Office · C语言 · Python · 数据结构', color: '#367981' },
+      { id: 'final', name: '专业课速通', icon: '⚡', tag: 'MAJOR', desc: '期末速通 · 考研专业课 · 考前突击', color: '#8a6914' }
     ];
     comingGrid.innerHTML = comingItems.map(function (x) {
       return '<div class="coming-card" style="--card-color:' + x.color + ';">' +
@@ -683,11 +683,12 @@ var WG_App = (function () {
     } else {
       if (titleEl) {
         titleEl.textContent = '全科题库';
-        titleEl.style.color = '#67e8f9';
+        /* 跟 index.html 里的 #bankTitle/#bankDesc 保持同一个主色令牌 */
+        titleEl.style.color = 'var(--acc)';
       }
       if (descEl) {
         descEl.textContent = '全科题库';
-        descEl.style.color = '#67e8f9';
+        descEl.style.color = 'var(--acc)';
       }
       if (subDescEl) {
         subDescEl.textContent = '数学（高数 · 线代 · 概率） · 英语（四级 · 六级） · 雅思（阅读 · 词汇 · 写作），按学科与子板块归类，全部自由练习';
@@ -773,7 +774,12 @@ var WG_App = (function () {
     var box = $('wenkuList');
     if (!box) { showView('home'); return; }
     if (!list.length) {
-      box.innerHTML = '<div class="wk-empty">当前筛选下没有资料，放宽条件或换个关键词试试。</div>';
+      /* 统一空态组件：原先 .wk-empty 只有一行字，没图标没标题也没出口 */
+      box.innerHTML = '<div class="empty-state">' +
+        '<div class="es-ic">📚</div>' +
+        '<div class="es-t">当前筛选下没有资料</div>' +
+        '<div class="es-d">放宽条件或换个关键词试试。</div>' +
+        '</div>';
       box._list = [];
     } else {
       var shown = list.slice(0, WK_PAGE_SIZE * wkState.page);
@@ -2308,14 +2314,23 @@ var WG_App = (function () {
     }
 
     if (ms.length === 0) {
-      box.innerHTML = '<div style="text-align:center;padding:2.5rem 1rem;border:1px dashed var(--rule-strong);border-radius:16px;color:var(--muted);">' +
-        '<div style="font-size:2rem;margin-bottom:0.6rem;">📭</div>' +
-        '错题本是空的。<br>答错的题、标记「不会」的题会自动收进来。</div>';
+      /* 统一走 .empty-state（图标+标题+说明+引导动作），
+         原先这里是手写内联样式，跟样式表里的空态组件重复了一份。
+         按钮用 .sec-more[data-nav]，app.js 里已有 document 级委托，不用另加监听。 */
+      box.innerHTML = '<div class="empty-state">' +
+        '<div class="es-ic">📭</div>' +
+        '<div class="es-t">错题本还是空的</div>' +
+        '<div class="es-d">答错的题、标记「不会」的题会自动收进来。<br>先去练一组，让它长起来。</div>' +
+        '<button class="sec-more" data-nav="bank">去题库练一组 →</button>' +
+        '</div>';
     } else if (filterMode) {
       /* 筛选/搜索激活：平铺列出匹配项，避免分组的掌握度造成误导 */
       if (!list.length) {
-        box.innerHTML = '<div style="text-align:center;padding:2.5rem 1rem;border:1px dashed var(--rule-strong);border-radius:16px;color:var(--muted);">' +
-          '<div style="font-size:2rem;margin-bottom:0.6rem;">🔍</div>没有匹配的错题。<br>换个关键词或筛选条件试试。</div>';
+        box.innerHTML = '<div class="empty-state">' +
+          '<div class="es-ic">🔍</div>' +
+          '<div class="es-t">没有匹配的错题</div>' +
+          '<div class="es-d">换个关键词，或把筛选条件放宽一点再试。</div>' +
+          '</div>';
       } else {
         box.innerHTML = '<div class="mset-note">共 ' + list.length + ' 条匹配（已按当前筛选展开）</div>' +
           list.map(mistakeItemHtml).join('');
@@ -2600,7 +2615,11 @@ var WG_App = (function () {
 
   async function loadPdfForAi(pdfUrl, title) {
     var pg = $('wkdAiPages');
-    pg.innerHTML = '<div style="text-align:center;padding:3rem 0;color:var(--muted);font-size:0.9rem;">📖 正在加载 PDF 解析引擎…</div>';
+    /* 统一走 .hg-loading 加载态组件（转圈 + role=status 播报），
+       原先这里是内联样式的一行静态文字：没有动效读者会以为卡死，
+       也不会被读屏软件播报。loader.js 的 WG_Heavy.placeholder 是同一套结构。 */
+    pg.innerHTML = '<div class="hg-loading" role="status" aria-live="polite">' +
+      '<span class="hg-spin" aria-hidden="true"></span>正在加载 PDF 解析引擎…</div>';
     $('wkdAiStatus').textContent = '⏳ 加载引擎…';
 
     /* 检测是否在本地 file:// 协议下运行 */
@@ -2777,8 +2796,12 @@ var WG_App = (function () {
       '</div>';
 
     if (a.answers === 0) {
-      box.innerHTML = html + '<div style="text-align:center;padding:2.5rem 1rem;border:1px dashed var(--rule-strong);border-radius:16px;color:var(--muted);">' +
-        '<div style="font-size:2rem;margin-bottom:0.6rem;">📊</div>还没有做题记录，先去练习一组题吧！</div>';
+      box.innerHTML = html + '<div class="empty-state">' +
+        '<div class="es-ic">📊</div>' +
+        '<div class="es-t">还没有做题记录</div>' +
+        '<div class="es-d">练完一组题，这里会出现正确率、薄弱知识点和提分建议。</div>' +
+        '<button class="sec-more" data-nav="bank">开始第一组 →</button>' +
+        '</div>';
       showView('report');
       return;
     }

@@ -873,7 +873,7 @@ var WG_Gaoshu = (function () {
     var typeName = p.type || '题目';
     var header =
       '<div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;margin-bottom:0.8rem;">' +
-      (subjectName ? '<span class="tag-bank" style="background:rgba(103,232,249,.12);color:var(--cyan);border-color:rgba(103,232,249,.3);">' + subjectName + '</span>' : '') +
+      (subjectName ? '<span class="tag-bank" style="background:rgba(13,130,155,.1);color:var(--cyan);border-color:rgba(13,130,155,.34);">' + subjectName + '</span>' : '') +
       '<span class="tag-bank">' + topicName + '</span>' +
       (diffName ? '<span class="tag-bank dim">' + diffName + '</span>' : '') +
       (typeName ? '<span class="tag-bank dim">' + typeName + '</span>' : '') +
@@ -969,11 +969,11 @@ var WG_Gaoshu = (function () {
       ? '<span id="bankAuto" style="font-size:0.78rem;color:var(--ok);margin-left:auto;">3 秒后自动下一题</span>'
       : '<span style="font-size:0.78rem;color:var(--muted);margin-left:auto;">选完可用右侧悬浮按钮下一题</span>';
     g.innerHTML =
-      '<div style="display:flex;align-items:center;gap:0.6rem;flex-wrap:wrap;margin-top:0.4rem;padding:0.7rem 0.8rem;border:1px solid var(--rule);border-radius:12px;background:rgba(122,152,232,.06);">' +
+      '<div style="display:flex;align-items:center;gap:0.6rem;flex-wrap:wrap;margin-top:0.4rem;padding:0.7rem 0.8rem;border:1px solid var(--rule);border-radius:12px;background:rgba(16,74,68,.04);">' +
       '<span style="font-size:0.85rem;color:var(--muted);">这道题掌握得怎么样？</span>' +
-      '<button class="btn" data-g="master" style="font-size:0.8rem;background:rgba(126,231,135,.12);color:var(--ok);border-color:rgba(126,231,135,.4);">掌握了</button>' +
-      '<button class="btn" data-g="fuzzy" style="font-size:0.8rem;background:rgba(251,191,36,.12);color:var(--gold);border-color:rgba(251,191,36,.4);">有点模糊</button>' +
-      '<button class="btn" data-g="weak" style="font-size:0.8rem;background:rgba(255,107,107,.12);color:var(--danger);border-color:rgba(255,107,107,.4);">不会</button>' +
+      '<button class="btn" data-g="master" style="font-size:0.8rem;background:rgba(14,122,74,.1);color:var(--ok);border-color:rgba(14,122,74,.36);">掌握了</button>' +
+      '<button class="btn" data-g="fuzzy" style="font-size:0.8rem;background:rgba(166,104,0,.1);color:var(--gold);border-color:rgba(166,104,0,.36);">有点模糊</button>' +
+      '<button class="btn" data-g="weak" style="font-size:0.8rem;background:rgba(198,48,40,.1);color:var(--danger);border-color:rgba(198,48,40,.36);">不会</button>' +
       autoHtml +
       '</div>';
     g.classList.remove('hidden');
