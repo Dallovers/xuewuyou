@@ -550,6 +550,70 @@ var WG_App = (function () {
   }
 
   /* ---------- 首页 ---------- */
+  /* 题库总数（数据就绪后刷新顶部统计） */
+  function totalBankCount() {
+    var n = 0;
+    if (typeof GAOSHU_BANK !== 'undefined') {
+      Object.keys(GAOSHU_BANK).forEach(function (tk) {
+        var td = GAOSHU_BANK[tk];
+        if (td && td.problems) n += td.problems.length;
+      });
+    }
+    if (typeof ENGLISH_CET4_BANK !== 'undefined') n += ENGLISH_CET4_BANK.length;
+    if (typeof ENGLISH_CET6_BANK !== 'undefined') n += ENGLISH_CET6_BANK.length;
+    if (typeof IELTS_SYNONYM_BANK !== 'undefined') n += IELTS_SYNONYM_BANK.length;
+    if (typeof IELTS_VOCAB_BANK !== 'undefined') n += IELTS_VOCAB_BANK.length;
+    if (typeof IELTS_WRITING_BANK !== 'undefined') n += IELTS_WRITING_BANK.length;
+    return n;
+  }
+
+  /* 进入需要题库数据的视图前先等数据就绪（重型数据仍在后台加载时兜底） */
+  function gateData(fn) {
+    if (!window.WG_Heavy || WG_Heavy.isReady()) { fn(); return; }
+    toast('题库数据加载中，请稍候…');
+    WG_Heavy.ready().then(fn);
+  }
+
+  /* 首页学习资料板块：按归类后的 4 个大类出入口 */
+  function renderHomeWenku() {
+    var wkGrid = $('homeWenkuGrid');
+    if (!wkGrid || typeof WG_WenkuCat === 'undefined') return;
+    wkGrid.innerHTML = WG_WenkuCat.CATS.map(function (c) {
+      var n = WG_WenkuCat.countOf(c.id);
+      var f = WG_WenkuCat.facetsOf(c.id);
+      /* 副标题优先报学科分布，没有学科维度就报可直接打开的份数 */
+      var sub = f.subjects.slice(0, 3).map(function (s) { return s.key; }).join(' · ');
+      return '<a class="wk-entry wk-entry-cat" data-wenku="' + c.id + '" href="javascript:void(0)" ' +
+        'style="--wk-color:' + c.color + ';">' +
+        '<div class="wk-ic">' + c.icon + '</div>' +
+        '<div class="wk-t">' + escHtml(c.name) + '</div>' +
+        '<div class="wk-c">' + n.total + ' 份' +
+        (n.local ? ' · 可直接看 ' + n.local + ' 份' : '') +
+        (sub ? '<br><span class="wk-sub">' + escHtml(sub) + '</span>' : '') +
+        '</div>' +
+        '</a>';
+    }).join('');
+  }
+
+  /* 首页敬请期待板块 */
+  function renderHomeComing() {
+    var comingGrid = $('homeComingGrid');
+    if (!comingGrid) return;
+    var comingItems = [
+      { id: 'computer', name: '计算机考级', icon: '💻', tag: 'NCRE', desc: '二级Office · C语言 · Python · 数据结构', color: '#67e8f9' },
+      { id: 'final', name: '专业课速通', icon: '⚡', tag: 'MAJOR', desc: '期末速通 · 考研专业课 · 考前突击', color: '#fbbf24' }
+    ];
+    comingGrid.innerHTML = comingItems.map(function (x) {
+      return '<div class="coming-card" style="--card-color:' + x.color + ';">' +
+        '<div class="coming-ic">' + x.icon + '</div>' +
+        '<div class="coming-name">' + x.name + '</div>' +
+        '<div class="coming-tag">' + x.tag + '</div>' +
+        '<div class="coming-desc">' + x.desc + '</div>' +
+        '<div class="coming-badge">敬请期待</div>' +
+        '</div>';
+    }).join('');
+  }
+
   function renderHome() {
     var data = WG_Data.get();
     refreshNickUI();
@@ -561,47 +625,26 @@ var WG_App = (function () {
     $('hsAcc').textContent = doneAll ? Math.round(a.total.c / doneAll * 100) + '%' : '—';
     $('hsErr').textContent = a.mistakes;
 
-    /* 首页题库板块：每个学科只放一个大入口，点进去再细分 */
+    /* 题库 / 资料板块依赖重型数据（gaoshu_bank / wenku），
+       未就绪先渲染占位，后台加载完成后自动补全 */
+    if (window.WG_Heavy && !WG_Heavy.isReady()) {
+      var pg = $('homeBankGrid'), wg = $('homeWenkuGrid');
+      if (pg && !pg.innerHTML) pg.innerHTML = WG_Heavy.placeholder('题库数据加载中…');
+      if (wg && !wg.innerHTML) wg.innerHTML = WG_Heavy.placeholder('资料数据加载中…');
+      if ($('hsTotal')) $('hsTotal').textContent = '…';
+      WG_Heavy.ready().then(function () {
+        if (state.view === 'home') renderHome();
+      });
+      renderHomeComing();
+      showView('home');
+      return;
+    }
+
+    /* 数据就绪：刷新题库总数 + 各板块 */
+    if ($('hsTotal')) $('hsTotal').textContent = totalBankCount();
     renderSubjectPortal('homeBankGrid');
-
-    /* 首页学习资料板块：按归类后的 4 个大类出入口 */
-    var wkGrid = $('homeWenkuGrid');
-    if (wkGrid && typeof WG_WenkuCat !== 'undefined') {
-      wkGrid.innerHTML = WG_WenkuCat.CATS.map(function (c) {
-        var n = WG_WenkuCat.countOf(c.id);
-        var f = WG_WenkuCat.facetsOf(c.id);
-        /* 副标题优先报学科分布，没有学科维度就报可直接打开的份数 */
-        var sub = f.subjects.slice(0, 3).map(function (s) { return s.key; }).join(' · ');
-        return '<a class="wk-entry wk-entry-cat" data-wenku="' + c.id + '" href="javascript:void(0)" ' +
-          'style="--wk-color:' + c.color + ';">' +
-          '<div class="wk-ic">' + c.icon + '</div>' +
-          '<div class="wk-t">' + escHtml(c.name) + '</div>' +
-          '<div class="wk-c">' + n.total + ' 份' +
-          (n.local ? ' · 可直接看 ' + n.local + ' 份' : '') +
-          (sub ? '<br><span class="wk-sub">' + escHtml(sub) + '</span>' : '') +
-          '</div>' +
-          '</a>';
-      }).join('');
-    }
-
-    /* 敬请期待板块 */
-    var comingGrid = $('homeComingGrid');
-    if (comingGrid) {
-      var comingItems = [
-        { id: 'computer', name: '计算机考级', icon: '💻', tag: 'NCRE', desc: '二级Office · C语言 · Python · 数据结构', color: '#67e8f9' },
-        { id: 'final', name: '专业课速通', icon: '⚡', tag: 'MAJOR', desc: '期末速通 · 考研专业课 · 考前突击', color: '#fbbf24' }
-      ];
-      comingGrid.innerHTML = comingItems.map(function (x) {
-        return '<div class="coming-card" style="--card-color:' + x.color + ';">' +
-          '<div class="coming-ic">' + x.icon + '</div>' +
-          '<div class="coming-name">' + x.name + '</div>' +
-          '<div class="coming-tag">' + x.tag + '</div>' +
-          '<div class="coming-desc">' + x.desc + '</div>' +
-          '<div class="coming-badge">敬请期待</div>' +
-          '</div>';
-      }).join('');
-    }
-
+    renderHomeWenku();
+    renderHomeComing();
     showView('home');
   }
 
@@ -1571,7 +1614,14 @@ var WG_App = (function () {
     bindExamSide();
     bindStudySetup();
     bindLoginModal();
-    $('obSubmit').addEventListener('click', onboardSubmit);
+    $('obSubmit') && $('obSubmit').addEventListener('click', onboardSubmit);
+    $('obSkip') && $('obSkip').addEventListener('click', onboardSkip);
+    $('obTabReg') && $('obTabReg').addEventListener('click', function () { setObMode('reg'); });
+    $('obTabLogin') && $('obTabLogin').addEventListener('click', function () { setObMode('login'); });
+    ['obPassword', 'obUsername'].forEach(function (id) {
+      var el = $(id);
+      if (el) el.addEventListener('keydown', function (e) { if (e.key === 'Enter') onboardSubmit(); });
+    });
 
     /* 顶部导航 */
     var topnav = $('topnav');
@@ -1595,10 +1645,10 @@ var WG_App = (function () {
     });
 
     /* 首页快捷入口 */
-    $('heroRandom') && $('heroRandom').addEventListener('click', function () { enterRandom(); });
+    $('heroRandom') && $('heroRandom').addEventListener('click', function () { gateData(enterRandom); });
     $('heroStudy') && $('heroStudy').addEventListener('click', function () { closeModal(); openStudySetup(); });
-    $('heroBank') && $('heroBank').addEventListener('click', function () { closeModal(); renderBank(); });
-    $('heroMistake') && $('heroMistake').addEventListener('click', function () { closeModal(); renderMistakes(); });
+    $('heroBank') && $('heroBank').addEventListener('click', function () { closeModal(); gateData(function () { renderBank(); }); });
+    $('heroMistake') && $('heroMistake').addEventListener('click', function () { closeModal(); gateData(function () { renderMistakes(); }); });
 
     /* 首页学科大入口：点卡片进该学科的细分题库页 */
     var portal = $('homeBankGrid');
@@ -1871,14 +1921,16 @@ var WG_App = (function () {
         var redo = q('.ms-redo');
         var tog = q('.mset-toggle');
         if (retry) {
-          retryMistake(retry.getAttribute('data-qid'));
+          gateData(function () { retryMistake(retry.getAttribute('data-qid')); });
         } else if (del) {
           WG_Data.removeMistake(del.getAttribute('data-qid'));
           toast('已移出错题本', 'ok');
           renderMistakes();
         } else if (redo) {
           /* 整组重刷：把这一组的题号一次性喂给引擎 */
-          retryMistakeSet((redo.getAttribute('data-ids') || '').split(','), redo.getAttribute('data-set') || '');
+          gateData(function () {
+            retryMistakeSet((redo.getAttribute('data-ids') || '').split(','), redo.getAttribute('data-set') || '');
+          });
         } else if (tog) {
           /* 折叠不重渲染整页，直接切 class，省掉一次全量拼串 */
           var sec = tog.closest('.mset');
@@ -1895,21 +1947,41 @@ var WG_App = (function () {
     });
   }
 
-  /* ---------- 登录 + 需求采集 ---------- */
+  /* ---------- 登录 / 注册 + 需求采集（首屏） ---------- */
+  var obMode = 'reg';
+
   function showOnboard() {
     var p = WG_Data.get().profile;
     if (p) {
-      $('obNick').value = p.nick || '';
-      $('obGrade').value = p.grade || '大二';
-      $('obTarget').value = p.target || '期末考试';
-      $('obDate').value = p.examDate || '';
-      $('obHours').value = p.hours || '2';
+      if ($('obNick')) $('obNick').value = (p.nick && p.nick !== '同学') ? p.nick : '';
+      if ($('obGrade')) $('obGrade').value = p.grade || '大二';
+      if ($('obTarget')) $('obTarget').value = p.target || '期末考试';
+      if ($('obDate')) $('obDate').value = p.examDate || '';
+      if ($('obHours')) $('obHours').value = p.hours || '2';
       document.querySelectorAll('#obWeak input').forEach(function (inp) {
         inp.checked = (p.weak || []).indexOf(inp.value) >= 0;
       });
     }
-    $('obStatus').textContent = p && p.plan ? '已有计划：' + (p.planAt ? new Date(p.planAt).toLocaleDateString() : '') + ' 生成，可重新提交更新' : '';
+    /* 已登录用户预填用户名 */
+    if (window.WG_API && WG_API.isLoggedIn()) {
+      var u = WG_API.getUser() || {};
+      if ($('obUsername')) $('obUsername').value = u.username || '';
+    }
+    if ($('obStatus')) $('obStatus').textContent = (p && p.plan) ? '已有计划：' + (p.planAt ? new Date(p.planAt).toLocaleDateString() : '') + ' 生成，可重新提交更新' : '';
+    setObMode('reg');
     showView('onboard');
+  }
+
+  /* 首屏登录/注册 Tab 切换 */
+  function setObMode(mode) {
+    obMode = mode;
+    var tR = $('obTabReg'), tL = $('obTabLogin');
+    if (tR) { tR.classList.toggle('primary', mode === 'reg'); tR.classList.toggle('ghost', mode !== 'reg'); }
+    if (tL) { tL.classList.toggle('primary', mode === 'login'); tL.classList.toggle('ghost', mode !== 'login'); }
+    if ($('obNick')) $('obNick').style.display = mode === 'reg' ? 'block' : 'none';
+    if ($('obPassword')) $('obPassword').setAttribute('autocomplete', mode === 'reg' ? 'new-password' : 'current-password');
+    if ($('obSubmit')) $('obSubmit').textContent = mode === 'reg' ? '注册并生成我的学习计划' : '登录并继续';
+    if ($('obStatus')) $('obStatus').textContent = '';
   }
 
   function daysUntil(dateStr) {
@@ -1960,25 +2032,95 @@ var WG_App = (function () {
     return lines.join('\n');
   }
 
-  function onboardSubmit() {
-    var nick = $('obNick').value.trim() || '同学';
+  /* 提交 = 注册/登录 + 保存需求 + 生成计划。
+     后端可用时账号落到服务端；纯静态部署（GitHub Pages）无后端时自动降级本地模式。 */
+  async function onboardSubmit() {
+    var st = $('obStatus');
+    if (!st) return;
+    st.textContent = '';
+    var username = ($('obUsername') ? $('obUsername').value : '').trim();
+    var password = $('obPassword') ? $('obPassword').value : '';
+    var nick = ($('obNick') ? $('obNick').value : '').trim();
     var weak = Array.from(document.querySelectorAll('#obWeak input:checked')).map(function (i) { return i.value; });
     var profile = {
-      nick: nick, grade: $('obGrade').value, target: $('obTarget').value,
+      nick: nick || username || WG_Data.get().nick || '同学',
+      grade: $('obGrade').value, target: $('obTarget').value,
       examDate: $('obDate').value, weak: weak, hours: $('obHours').value
     };
+
+    var btn = $('obSubmit');
+    var oldTxt = btn ? btn.textContent : '';
+    if (btn) { btn.disabled = true; btn.textContent = '处理中…'; }
+
+    /* 填了账号信息才走云端注册/登录 */
+    if (username && password) {
+      try {
+        if (obMode === 'reg') {
+          st.textContent = '正在注册…';
+          await WG_API.register(username, password, nick);
+        } else {
+          st.textContent = '正在登录…';
+          await WG_API.login(username, password);
+        }
+        /* 登录成功：先把需求 profile 落到本地，再与云端数据合并（云端昵称优先） */
+        WG_Data.setProfile(profile);
+        try {
+          var merged = await WG_API.pullMerge(WG_Data.get());
+          WG_Data.replaceAll(merged);
+        } catch (e) { /* 云端同步失败不阻断本地使用 */ }
+        profile.nick = WG_Data.get().nick || profile.nick;
+        WG_Data.setProfile(profile);
+        refreshNickUI();
+        toast('欢迎回来，' + (WG_Data.get().nick || username), 'ok');
+        finishOnboard(profile);
+        if (btn) { btn.disabled = false; btn.textContent = oldTxt; }
+        return;
+      } catch (e) {
+        /* 无后端（纯静态托管）或网络问题：降级为本地模式，不让用户卡在注册上 */
+        var offline = !e.status || e.status === 404 || e.status === 0 || /fetch|network|failed/i.test(e.message || '');
+        if (offline) {
+          st.textContent = '⚠ 未检测到后端服务，已进入本地模式（数据仅存本机，随时可右上角账号注册）';
+          WG_Data.setProfile(profile);
+          finishOnboard(profile);
+          if (btn) { btn.disabled = false; btn.textContent = oldTxt; }
+          return;
+        }
+        st.textContent = e.message || '操作失败，请稍后再试';
+        if (btn) { btn.disabled = false; btn.textContent = oldTxt; }
+        return;
+      }
+    }
+
+    /* 未填账号：纯本地模式 */
     WG_Data.setProfile(profile);
+    finishOnboard(profile);
+    if (btn) { btn.disabled = false; btn.textContent = oldTxt; }
+  }
+
+  /* 生成个性化学习计划并进入首页 */
+  function finishOnboard(profile) {
     var days = daysUntil(profile.examDate);
     var plan = makeLocalPlan(profile, days);
     WG_Data.saveProfilePlan(plan);
     var st = $('obStatus');
-    st.textContent = '✓ 个性化学习计划已生成！';
+    if (st) st.textContent = '✓ 个性化学习计划已生成！';
     var planEl = $('obPlan');
     if (planEl) {
       planEl.textContent = plan;
       planEl.classList.remove('hidden');
     }
-    setTimeout(function () { goHome(); }, 2500);
+    setTimeout(function () { goHome(); }, 2000);
+  }
+
+  /* 跳过注册：本地体验模式，之后可随时右上角账号注册 */
+  function onboardSkip() {
+    var profile = {
+      nick: '同学', skipped: true, grade: '大二',
+      target: '期末考试', examDate: '', weak: [], hours: '2'
+    };
+    WG_Data.setProfile(profile);
+    toast('已进入本地体验模式，随时可点击右上角「玩家」注册账号');
+    goHome();
   }
 
   function stopGames() {
@@ -2136,7 +2278,7 @@ var WG_App = (function () {
   function navTo(name) {
     stopGames();
     if (name === 'home') renderHome();
-    else if (name === 'bank') renderBank();
+    else if (name === 'bank') gateData(function () { renderBank(); });
     else if (name === 'study') {
       /* 若自习室仍在进行中，直接切回并按需恢复计时；否则弹出入场设置 */
       if (window.StudyRoom && typeof window.StudyRoom.isActive === 'function' && window.StudyRoom.isActive()) {
@@ -2146,8 +2288,8 @@ var WG_App = (function () {
         openStudySetup();
       }
     }
-    else if (name === 'wenku') renderWenku();
-    else if (name === 'mistakes') renderMistakes();
+    else if (name === 'wenku') gateData(function () { renderWenku(); });
+    else if (name === 'mistakes') gateData(function () { renderMistakes(); });
     else if (name === 'report') renderReport();
     else if (name === 'ai') showView('ai');
   }
@@ -2184,6 +2326,8 @@ var WG_App = (function () {
   function init() {
     bind();
     refreshNickUI();
+    /* 首屏（登录/注册界面）立即渲染，重型题库数据后台异步加载不阻塞 */
+    if (window.WG_Heavy) WG_Heavy.load();
     /* 深链：#study 直接进入自习室（默认设置），方便分享直达 */
     if (location.hash === '#study') {
       if (window.StudyRoom && typeof window.StudyRoom.enter === 'function') {

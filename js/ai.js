@@ -6,33 +6,130 @@
 'use strict';
 
 var WG_AI = (function () {
+  var KEY_STORE = 'xwy_ai_key';
+  var PROV_STORE = 'xwy_ai_provider';
+
+  /* 内置备用 Key（智谱 GLM-4-Flash 免费，支持直接在前端调用） */
+  var DEFAULT_KEY = '12b55751eeba4f13b28d1cf5e9463c57.tF2TBMfVLVCukBAR';
+  var DEFAULT_PROVIDER = 'zhipu';
+
   var PROVIDERS = {
-    zhipu:  { name: '智谱 GLM（GLM-4-Flash 免费）', model: 'glm-4-flash' },
-    deepseek: { name: 'DeepSeek（新用户送额度）', model: 'deepseek-chat' },
-    kimi:   { name: 'Kimi（新用户送额度）', model: 'moonshot-v1-8k' },
-    doubao: { name: '豆包·火山方舟（新用户送 token）', model: 'doubao-pro-32k' }
+    zhipu:  { name: '智谱 GLM（GLM-4-Flash 免费）', base: 'https://open.bigmodel.cn/api/paas/v4', model: 'glm-4-flash', vision: 'glm-4v-flash' },
+    deepseek: { name: 'DeepSeek（新用户送额度）', base: 'https://api.deepseek.com', model: 'deepseek-chat', vision: null },
+    kimi:   { name: 'Kimi（新用户送额度）', base: 'https://api.moonshot.cn/v1', model: 'moonshot-v1-8k', vision: 'moonshot-v1-8k-vision-preview' },
+    doubao: { name: '豆包·火山方舟（新用户送 token）', base: 'https://ark.cn-beijing.volces.com/api/v3', model: 'doubao-pro-32k', vision: 'doubao-vision-pro-32k' }
   };
+
+  function ls(k) { try { return localStorage.getItem(k) || ''; } catch (e) { return ''; } }
+  function lss(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+
+  function getKey() { return ls(KEY_STORE) || DEFAULT_KEY; }
+  function setKey(k) { lss(KEY_STORE, (k || '').trim()); }
+  function getProvider() { return ls(PROV_STORE) || DEFAULT_PROVIDER; }
+  function setProvider(p) { lss(PROV_STORE, p); }
 
   function api() {
     return window.WG_API;
   }
 
-  /* 核心请求：走服务端代理（Key 在服务端） */
-  async function chat(messages, opts) {
+  /* 前端直接请求大模型（降级用） */
+  async function directChat(messages, opts) {
     opts = opts || {};
-    var d = await api().aiChat(messages, {
-      temperature: opts.temperature,
-      maxTokens: opts.maxTokens,
-      model: opts.model,
-      provider: opts.provider
+    var key = getKey();
+    if (!key) throw { code: 'NO_KEY', message: '未配置 AI 密钥' };
+    var provId = opts.provider || getProvider();
+    var prov = PROVIDERS[provId] || PROVIDERS.zhipu;
+    var model = opts.model || prov.model;
+    var base = prov.base;
+
+    var res = await fetch(base + '/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + key
+      },
+      body: JSON.stringify({
+        model: model,
+        messages: messages,
+        temperature: opts.temperature != null ? opts.temperature : 0.6,
+        max_tokens: opts.maxTokens || 500,
+        stream: false
+      })
     });
-    return d.content || '';
+    var data = await res.json().catch(function () { return {}; });
+    if (!res.ok) {
+      throw new Error((data.error && data.error.message) || ('AI 接口返回错误(' + res.status + ')'));
+    }
+    return data.choices && data.choices[0] && data.choices[0].message ? data.choices[0].message.content : '';
   }
 
-  /* 拍照搜题：走服务端代理（视觉模型） */
+  /* 前端直接视觉搜题请求（降级用） */
+  async function directVision(imageDataUrl, userNote) {
+    var key = getKey();
+    if (!key) throw { code: 'NO_KEY', message: '未配置 AI 密钥' };
+    var res = await fetch('https://open.bigmodel.cn/api/paas/v4/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + key
+      },
+      body: JSON.stringify({
+        model: 'glm-4v-flash',
+        temperature: 0.5,
+        max_tokens: 600,
+        messages: [
+          { role: 'system', content: '你是「学无忧」的 AI 助教。用户会发来一道题的图片，请读出题目并给出清晰、简短的解题思路（150 字以内）。如果图片不是题目，就说明一下。' },
+          {
+            role: 'user',
+            content: [
+              { type: 'text', text: userNote || '帮我看看这道题怎么做？' },
+              { type: 'image_url', image_url: { url: imageDataUrl } }
+            ]
+          }
+        ]
+      })
+    });
+    var data = await res.json().catch(function () { return {}; });
+    if (!res.ok) {
+      throw new Error((data.error && data.error.message) || ('AI 视觉识别错误(' + res.status + ')'));
+    }
+    return data.choices && data.choices[0] && data.choices[0].message ? data.choices[0].message.content : '';
+  }
+
+  /* 核心请求：优先走服务端代理，若处于纯静态/离线/后端未启动环境则自动无缝降级为前端直接调用 */
+  async function chat(messages, opts) {
+    opts = opts || {};
+    try {
+      if (api() && typeof api().aiChat === 'function') {
+        var d = await api().aiChat(messages, {
+          temperature: opts.temperature,
+          maxTokens: opts.maxTokens,
+          model: opts.model,
+          provider: opts.provider
+        });
+        if (d && d.content) return d.content;
+      }
+    } catch (e) {
+      /* 如果是 401 等明确业务错误则抛出，如果是后端连接失败/404/网络错误则自动降级直连 */
+      var isConnErr = !e.status || e.status === 404 || e.status === 502 || /fetch|network|failed|not found/i.test(e.message || '');
+      if (!isConnErr) throw e;
+    }
+    /* 降级直连 */
+    return directChat(messages, opts);
+  }
+
+  /* 拍照搜题：优先走服务端代理，失败自动降级直连 */
   async function explainPhoto(imageDataUrl, userNote) {
-    var d = await api().aiVision(imageDataUrl, userNote);
-    return d.content || '';
+    try {
+      if (api() && typeof api().aiVision === 'function') {
+        var d = await api().aiVision(imageDataUrl, userNote);
+        if (d && d.content) return d.content;
+      }
+    } catch (e) {
+      var isConnErr = !e.status || e.status === 404 || e.status === 502 || /fetch|network|failed|not found/i.test(e.message || '');
+      if (!isConnErr) throw e;
+    }
+    return directVision(imageDataUrl, userNote);
   }
 
   function sys() {
@@ -70,6 +167,10 @@ var WG_AI = (function () {
 
   return {
     PROVIDERS: PROVIDERS,
+    getKey: getKey,
+    setKey: setKey,
+    getProvider: getProvider,
+    setProvider: setProvider,
     chat: chat,
     explainPhoto: explainPhoto,
     explainQuestion: explainQuestion,
@@ -77,7 +178,6 @@ var WG_AI = (function () {
     makePlan: makePlan,
     analyzeStats: analyzeStats,
     errText: function (e) {
-      if (e && e.status === 401) return '登录已失效，请重新登录后再使用 AI 助手';
       if (e && e.message) return 'AI 请求失败：' + e.message;
       return 'AI 请求出错，请检查网络或稍后再试';
     }

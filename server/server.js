@@ -440,9 +440,11 @@ function serveStatic(req, res) {
   fs.readFile(filePath, (err, buf) => {
     if (err) return sendError(res, 404, '文件不存在');
     const ext = path.extname(filePath).toLowerCase();
+    /* 静态资源带版本号（?v=）由前端控制刷新，可放心长缓存；HTML 不缓存保证即时更新 */
+    const cc = ext === '.html' ? 'no-cache' : 'public, max-age=86400';
     res.writeHead(200, {
       'Content-Type': MIME[ext] || 'application/octet-stream',
-      'Cache-Control': 'no-cache'
+      'Cache-Control': cc
     });
     res.end(buf);
   });

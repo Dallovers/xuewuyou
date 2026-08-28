@@ -3304,3 +3304,8 @@ body.study-fullscreen-active #aiFab {
 .qf-meaning b { color: var(--ok); }
 .qf-chosen { font-size: .8rem; color: var(--muted); margin-top: .15rem; }
 @keyframes qf-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+/* ===== 重型数据加载占位（首屏优化） ===== */
+.hg-loading { display: flex; align-items: center; gap: .6rem; padding: 1.6rem 1rem; justify-content: center; font-size: .85rem; color: var(--muted); border: 1px dashed var(--rule-strong); border-radius: 14px; }
+.hg-spin { width: 14px; height: 14px; border-radius: 50%; border: 2px solid rgba(110,168,255,.25); border-top-color: var(--cyan); animation: hg-rot .8s linear infinite; flex-shrink: 0; }
+@keyframes hg-rot { to { transform: rotate(360deg); } }
