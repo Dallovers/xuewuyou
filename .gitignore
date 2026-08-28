@@ -1,4 +1,4 @@
-data/pdf/
+# data/pdf/
 .git/
 server/data/
 *.jwt_secret
