@@ -2561,6 +2561,25 @@ var WG_App = (function () {
     var pg = $('wkdAiPages');
     pg.innerHTML = '<div style="text-align:center;padding:3rem 0;color:var(--muted);font-size:0.9rem;">📖 正在加载 PDF 解析引擎…</div>';
     $('wkdAiStatus').textContent = '⏳ 加载引擎…';
+
+    /* 检测是否在本地 file:// 协议下运行 */
+    if (location.protocol === 'file:') {
+      pg.innerHTML = '<div style="text-align:center;padding:2rem 1.5rem;color:var(--ink);font-size:0.9rem;line-height:1.9;">' +
+        '<div style="font-size:2rem;margin-bottom:0.8rem;">⚠️</div>' +
+        '<b style="color:var(--danger);">AI 划词研读模式需要 HTTP 服务器环境</b><br><br>' +
+        '浏览器安全策略禁止从 <code>file://</code> 页面读取本地 PDF 文件，' +
+        '因此 PDF.js 无法解析。<br><br>' +
+        '✅ 请使用 <b>「普通阅读」</b>模式（iframe 内嵌预览不受影响）<br>' +
+        '✅ 或访问 <b>线上部署版</b>：<br>' +
+        '<a href="https://dallovers.github.io/xuewuyou/wenguo-deploy/" target="_blank" style="color:var(--cyan);">' +
+        'dallovers.github.io/xuewuyou/wenguo-deploy/</a><br>' +
+        '✅ 或在本地启动 HTTP 服务器：<br>' +
+        '<code style="background:var(--bg3);padding:0.2rem 0.5rem;border-radius:4px;">npx serve . -p 3000</code>' +
+        '</div>';
+      $('wkdAiStatus').textContent = '⚠️ 需 HTTP 服务器';
+      return;
+    }
+
     initPdfJsWorker();
     var ready = await waitForPdfJs(8000);
     if (!ready) {
@@ -2568,7 +2587,7 @@ var WG_App = (function () {
       $('wkdAiStatus').textContent = '❌ 引擎加载失败';
       return;
     }
-    pg.innerHTML = '<div style="text-align:center;padding:3rem 0;color:var(--muted);font-size:0.9rem;">📖 正在解析 PDF 文档，共 ' + title + ' …</div>';
+    pg.innerHTML = '<div style="text-align:center;padding:3rem 0;color:var(--muted);font-size:0.9rem;">📖 正在解析 PDF 文档…</div>';
     $('wkdAiStatus').textContent = '⏳ 解析中…';
     try {
       var loadingTask = pdfjsLib.getDocument(pdfUrl);
@@ -2576,7 +2595,7 @@ var WG_App = (function () {
       var totalPages = pdf.numPages;
       $('wkdAiPageInfo').textContent = '共 ' + totalPages + ' 页';
       pg.innerHTML = '';
-      $('wkdAiStatus').textContent = '✅ 已加载 ' + totalPages + ' 页，选中任意文字即可提问';
+      $('wkdAiStatus').textContent = '✅ 已加载 ' + totalPages + ' 页，选中文字即可提问';
       for (var i = 1; i <= totalPages; i++) {
         var page = await pdf.getPage(i);
         var viewport = page.getViewport({ scale: 1.5 });
@@ -2623,7 +2642,7 @@ var WG_App = (function () {
       });
     } catch (e) {
       var msg = (e && e.message) || '未知错误';
-      if (msg.indexOf('MissingPDF') > -1) msg = 'PDF 文件不存在，可能尚未上传到服务器';
+      if (msg.indexOf('MissingPDF') > -1) msg = 'PDF 文件不存在，请确认文件已上传到服务器（线上版）或已启动本地服务器（本地测试）';
       else if (msg.indexOf('PasswordException') > -1) msg = '该 PDF 受密码保护，无法解析';
       else if (msg.indexOf('InvalidPDF') > -1) msg = 'PDF 文件格式损坏';
       pg.innerHTML = '<div style="text-align:center;padding:2rem 0;color:var(--danger);font-size:0.9rem;">❌ PDF 解析失败：' + escHtml(msg) + '</div>';
