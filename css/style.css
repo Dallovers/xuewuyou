@@ -3856,7 +3856,6 @@ body.study-fullscreen-active #aiFab {
   max-width: 100%;
 }
 #wkdAiPages .pdf-page-wrap canvas {
-  display: block;
   width: 100% !important;
   height: auto !important;
 }
@@ -3908,4 +3907,13 @@ body.study-fullscreen-active #aiFab {
 }
 #wkdAiAnswerContent p {
   margin: 0.5rem 0;
+}
+.ai-answer-pending {
+  text-align: center;
+  padding: 1rem 0;
+  font-size: 1.5rem;
+  color: var(--muted);
+}
+#wkdAiPages {
+  scroll-behavior: smooth;
 }

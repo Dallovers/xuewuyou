@@ -469,8 +469,8 @@
     </div>
 
     <!-- AI 划词提问浮动按钮 -->
-    <div id="wkdAiFloatBtn" class="hidden" style="position:fixed;z-index:120;display:none;background:linear-gradient(135deg,var(--cyan),#3b82f6);color:#fff;border:none;border-radius:20px;padding:0.5rem 1rem;font-size:0.82rem;cursor:pointer;box-shadow:0 4px 18px rgba(59,130,246,.4);align-items:center;gap:0.4rem;transition:opacity .2s;white-space:nowrap;">
-      <span>🤖</span> 问 AI：为什么这里要这样算？
+    <div id="wkdAiFloatBtn" style="position:fixed;z-index:120;display:none;background:linear-gradient(135deg,var(--cyan),#3b82f6);color:#fff;border:none;border-radius:20px;padding:0.5rem 1rem;font-size:0.82rem;cursor:pointer;box-shadow:0 4px 18px rgba(59,130,246,.4);align-items:center;gap:0.4rem;transition:opacity .2s,transform .15s;white-space:nowrap;pointer-events:auto;">
+      <span>🤖</span><span id="wkdAiFloatLabel">问 AI：解释这段内容</span>
     </div>
 
     <!-- AI 问答结果弹窗 -->

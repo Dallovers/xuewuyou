@@ -705,146 +705,6 @@ var WG_App = (function () {
   var wkState = { cat: 'exam', subject: '', school: '', year: '', localOnly: false, page: 1 };
   var WK_PAGE_SIZE = 60;
 
-/* ---- AI 划词研读模式 ---- */
-var _wkdCurrentPdf = null;
-var wkdAiPagesData = null;
-var _wkdAiSelectedText = '';
-
-function initPdfAiWorker() {
-  if (window.pdfjsLib && !pdfjsLib.GlobalWorkerOptions.workerSrc) {
-    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-  }
-}
-
-function hidePdfAiFloatBtn() {
-  var btn = $('wkdAiFloatBtn');
-  if (btn) btn.style.display = 'none';
-  _wkdAiSelectedText = '';
-}
-
-function showPdfAiFloatBtn(x, y, text) {
-  var btn = $('wkdAiFloatBtn');
-  if (!btn) return;
-  _wkdAiSelectedText = (text || '').trim();
-  if (!_wkdAiSelectedText) { btn.style.display = 'none'; return; }
-  btn.style.display = 'inline-flex';
-  btn.style.left = Math.min(x, window.innerWidth - 220) + 'px';
-  btn.style.top = Math.min(y, window.innerHeight - 60) + 'px';
-}
-
-async function loadPdfForAi(pdfUrl, title) {
-  initPdfAiWorker();
-  if (!window.pdfjsLib) {
-    $('wkdAiPages').innerHTML = '<div style="text-align:center;padding:3rem 0;color:var(--danger);font-size:0.9rem;">❌ PDF.js 加载失败，请刷新页面重试</div>';
-    return;
-  }
-  var pg = $('wkdAiPages');
-  pg.innerHTML = '<div style="text-align:center;padding:3rem 0;color:var(--muted);font-size:0.9rem;">📖 正在解析 PDF 文档…</div>';
-  $('wkdAiStatus').textContent = '⏳ 加载中…';
-  try {
-    var loadingTask = pdfjsLib.getDocument(pdfUrl);
-    var pdf = await loadingTask.promise;
-    var totalPages = pdf.numPages;
-    $('wkdAiPageInfo').textContent = '共 ' + totalPages + ' 页';
-    pg.innerHTML = '';
-    $('wkdAiStatus').textContent = '已加载 ' + totalPages + ' 页，选中文字即可提问';
-    for (var i = 1; i <= totalPages; i++) {
-      var page = await pdf.getPage(i);
-      var viewport = page.getViewport({ scale: 1.5 });
-      var wrap = document.createElement('div');
-      wrap.className = 'pdf-page-wrap';
-      wrap.style.width = viewport.width + 'px';
-      wrap.style.maxWidth = '100%';
-      /* 渲染 canvas */
-      var canvas = document.createElement('canvas');
-      canvas.className = 'pdf-canvas';
-      canvas.width = viewport.width;
-      canvas.height = viewport.height;
-      wrap.appendChild(canvas);
-      var ctx = canvas.getContext('2d');
-      await page.render({ canvasContext: ctx, viewport: viewport }).promise;
-      /* 提取文本并创建可选中文本层 */
-      var textContent = await page.getTextContent();
-      if (textContent.items.length) {
-        var textDiv = document.createElement('div');
-        textDiv.className = 'pdf-text-layer';
-        textDiv.style.width = viewport.width + 'px';
-        textDiv.style.height = viewport.height + 'px';
-        textContent.items.forEach(function (item) {
-          var tx = pdfjsLib.Util.transform(viewport.transform, item.transform);
-          var span = document.createElement('span');
-          span.textContent = item.str;
-          span.style.left = tx[4] + 'px';
-          span.style.top = (viewport.height - tx[5] - item.height * viewport.scale) + 'px';
-          span.style.fontSize = Math.max(4, item.height * viewport.scale) + 'px';
-          textDiv.appendChild(span);
-        });
-        wrap.appendChild(textDiv);
-      }
-      pg.appendChild(wrap);
-    }
-    /* 监听选区变化 */
-    $('wkdAiPages').addEventListener('mouseup', onPdfTextSelect);
-    $('wkdAiPages').addEventListener('touchend', onPdfTextSelect);
-  } catch (e) {
-    pg.innerHTML = '<div style="text-align:center;padding:2rem 0;color:var(--danger);font-size:0.9rem;">❌ PDF 解析失败：' + escHtml(e.message || '未知错误') + '</div>';
-    $('wkdAiStatus').textContent = '❌ 加载失败';
-  }
-}
-
-function onPdfTextSelect(e) {
-  setTimeout(function () {
-    var sel = window.getSelection();
-    if (!sel || sel.isCollapsed || !sel.toString().trim()) {
-      hidePdfAiFloatBtn();
-      return;
-    }
-    var text = sel.toString().trim();
-    if (text.length < 3) { hidePdfAiFloatBtn(); return; }
-    if (text.length > 300) text = text.slice(0, 300) + '…';
-    var range = sel.getRangeAt(0);
-    var rect = range.getBoundingClientRect();
-    showPdfAiFloatBtn(rect.right + 8, rect.top - 10, text);
-  }, 10);
-}
-
-function togglePdfMode(mode) {
-  if (mode === 'ai' && _wkdCurrentPdf && _wkdCurrentPdf.url) {
-    $('wkdPreviewWrap').classList.add('hidden');
-    $('wkdAiPanel').classList.remove('hidden');
-    $('wkdModeIframe').classList.remove('active');
-    $('wkdModeAi').classList.add('active');
-    loadPdfForAi(_wkdCurrentPdf.url, _wkdCurrentPdf.title);
-  } else {
-    hidePdfAiFloatBtn();
-    $('wkdAiPanel').classList.add('hidden');
-    $('wkdPreviewWrap').classList.remove('hidden');
-    $('wkdModeAi').classList.remove('active');
-    $('wkdModeIframe').classList.add('active');
-  }
-}
-
-async function askPdfAi() {
-  var text = _wkdAiSelectedText;
-  if (!text) return;
-  hidePdfAiFloatBtn();
-  var ctx = _wkdCurrentPdf ? _wkdCurrentPdf.title : '当前资料';
-  $('wkdAiAnswerContext').textContent = '选自：' + ctx;
-  $('wkdAiAnswerContent').textContent = '';
-  $('wkdAiAnswerLoading').classList.remove('hidden');
-  $('wkdAiAnswerMask').classList.remove('hidden');
-  try {
-    var result = await WG_AI.chat([
-      { role: 'system', content: '你是一位大学数学/英语教学名师。用户正在阅读备考资料，选中了一段文字想让你深度解剖。请用口语化、深入浅出的方式讲解这段文字的核心概念、考试常考方式、易错点。控制在 300 字以内。' },
-      { role: 'user', content: '我阅读的资料是「' + ctx + '」，选中了以下这段内容，请帮我深度解剖：\n\n' + text }
-    ], { maxTokens: 600, temperature: 0.5 });
-    $('wkdAiAnswerContent').textContent = result || 'AI 暂时无法回答，请稍后重试。';
-  } catch (e) {
-    $('wkdAiAnswerContent').textContent = '❌ AI 请求失败：' + (e.message || '网络错误');
-  }
-  $('wkdAiAnswerLoading').classList.add('hidden');
-}
-
   function wkChipRow(label, items, activeKey, attr, colorVar) {
     if (!items.length) return '';
     var chips = '<button class="wkf-chip' + (activeKey ? '' : ' active') + '" data-' + attr + '="">全部</button>' +
@@ -2601,6 +2461,207 @@ async function askPdfAi() {
 
   function escHtml(s) {
     return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  /* ============== AI 划词/划段研读模式 ============== */
+  var _wkdCurrentPdf = null;
+  var _wkdAiSelectedText = '';
+  var _wkdAiTextBuffer = '';
+
+  function initPdfJsWorker() {
+    if (window.pdfjsLib && !pdfjsLib.GlobalWorkerOptions.workerSrc) {
+      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    }
+  }
+
+  function waitForPdfJs(maxMs) {
+    return new Promise(function (resolve) {
+      if (window.pdfjsLib) return resolve(true);
+      var waited = 0;
+      var step = 100;
+      var iv = setInterval(function () {
+        waited += step;
+        if (window.pdfjsLib) { clearInterval(iv); resolve(true); }
+        else if (waited >= maxMs) { clearInterval(iv); resolve(false); }
+      }, step);
+    });
+  }
+
+  function hidePdfAiFloatBtn() {
+    var btn = $('wkdAiFloatBtn');
+    if (btn) btn.style.display = 'none';
+    _wkdAiSelectedText = '';
+  }
+
+  function showPdfAiFloatBtn(x, y, text) {
+    var btn = $('wkdAiFloatBtn');
+    if (!btn) return;
+    _wkdAiSelectedText = (text || '').trim();
+    if (!_wkdAiSelectedText) { btn.style.display = 'none'; return; }
+    var label = $('wkdAiFloatLabel');
+    if (label) {
+      var short = _wkdAiSelectedText.length > 18 ? _wkdAiSelectedText.slice(0, 16) + '…' : _wkdAiSelectedText;
+      label.textContent = '🤖 问 AI：' + short;
+    }
+    btn.style.display = 'inline-flex';
+    btn.style.left = Math.min(x, window.innerWidth - 280) + 'px';
+    btn.style.top = Math.min(y, window.innerHeight - 60) + 'px';
+  }
+
+  function togglePdfMode(mode) {
+    if (mode === 'ai' && _wkdCurrentPdf && _wkdCurrentPdf.url) {
+      $('wkdPreviewWrap').classList.add('hidden');
+      $('wkdAiPanel').classList.remove('hidden');
+      $('wkdModeIframe').classList.remove('active');
+      $('wkdModeAi').classList.add('active');
+      loadPdfForAi(_wkdCurrentPdf.url, _wkdCurrentPdf.title);
+    } else {
+      hidePdfAiFloatBtn();
+      $('wkdAiPanel').classList.add('hidden');
+      $('wkdPreviewWrap').classList.remove('hidden');
+      $('wkdModeAi').classList.remove('active');
+      $('wkdModeIframe').classList.add('active');
+    }
+  }
+
+  function onPdfTextSelect() {
+    clearTimeout(_wkdAiTextBuffer);
+    _wkdAiTextBuffer = setTimeout(function () {
+      var sel = window.getSelection();
+      if (!sel || sel.isCollapsed || !sel.toString().trim()) {
+        hidePdfAiFloatBtn();
+        return;
+      }
+      var text = sel.toString().trim();
+      if (text.length < 3) { hidePdfAiFloatBtn(); return; }
+      if (text.length > 300) text = text.slice(0, 300) + '…';
+      var range = sel.getRangeAt(0);
+      var rect = range.getBoundingClientRect();
+      showPdfAiFloatBtn(rect.right + 6, rect.top - 8, text);
+    }, 80);
+  }
+
+  function guessContentType(text) {
+    var hasNum = /\d/.test(text);
+    var hasEq = /[=＋－×÷±∫∑√π∞∏∂Δθαβγλ]/.test(text);
+    var hasEng = /[a-zA-Z]{2,}/.test(text);
+    var hasCn = /[\u4e00-\u9fff]{2,}/.test(text);
+    if (hasEq && hasNum) return '数学公式/计算';
+    if (hasEng && !hasCn) return '英语/外文段落';
+    if (hasCn && hasEng) return '双语对照/术语';
+    if (hasCn) return '中文概念/定理';
+    return '文字段落';
+  }
+
+  function formatAiAnswer(txt) {
+    if (!txt) return txt;
+    return escHtml(txt).replace(/\n\n+/g, '<br><br>').replace(/\n/g, '<br>');
+  }
+
+  async function loadPdfForAi(pdfUrl, title) {
+    var pg = $('wkdAiPages');
+    pg.innerHTML = '<div style="text-align:center;padding:3rem 0;color:var(--muted);font-size:0.9rem;">📖 正在加载 PDF 解析引擎…</div>';
+    $('wkdAiStatus').textContent = '⏳ 加载引擎…';
+    initPdfJsWorker();
+    var ready = await waitForPdfJs(8000);
+    if (!ready) {
+      pg.innerHTML = '<div style="text-align:center;padding:3rem 0;color:var(--danger);font-size:0.9rem;">❌ PDF.js 加载超时，请检查网络后刷新重试</div>';
+      $('wkdAiStatus').textContent = '❌ 引擎加载失败';
+      return;
+    }
+    pg.innerHTML = '<div style="text-align:center;padding:3rem 0;color:var(--muted);font-size:0.9rem;">📖 正在解析 PDF 文档，共 ' + title + ' …</div>';
+    $('wkdAiStatus').textContent = '⏳ 解析中…';
+    try {
+      var loadingTask = pdfjsLib.getDocument(pdfUrl);
+      var pdf = await loadingTask.promise;
+      var totalPages = pdf.numPages;
+      $('wkdAiPageInfo').textContent = '共 ' + totalPages + ' 页';
+      pg.innerHTML = '';
+      $('wkdAiStatus').textContent = '✅ 已加载 ' + totalPages + ' 页，选中任意文字即可提问';
+      for (var i = 1; i <= totalPages; i++) {
+        var page = await pdf.getPage(i);
+        var viewport = page.getViewport({ scale: 1.5 });
+        var wrap = document.createElement('div');
+        wrap.className = 'pdf-page-wrap';
+        /* 渲染 canvas */
+        var canvas = document.createElement('canvas');
+        canvas.className = 'pdf-canvas';
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+        wrap.appendChild(canvas);
+        var ctx = canvas.getContext('2d');
+        await page.render({ canvasContext: ctx, viewport: viewport }).promise;
+        /* 提取文本 → 创建可选中文本层 */
+        var textContent = await page.getTextContent();
+        if (textContent.items.length) {
+          var textDiv = document.createElement('div');
+          textDiv.className = 'pdf-text-layer';
+          textDiv.style.width = viewport.width + 'px';
+          textDiv.style.height = viewport.height + 'px';
+          textContent.items.forEach(function (item) {
+            var tx = pdfjsLib.Util.transform(viewport.transform, item.transform);
+            var span = document.createElement('span');
+            span.textContent = item.str;
+            span.style.left = tx[4] + 'px';
+            span.style.top = (tx[5] - item.height * viewport.scale) + 'px';
+            span.style.fontSize = Math.max(4, item.height * viewport.scale) + 'px';
+            textDiv.appendChild(span);
+          });
+          wrap.appendChild(textDiv);
+        }
+        pg.appendChild(wrap);
+      }
+      /* 绑定选区监听 */
+      var pgEl = $('wkdAiPages');
+      pgEl.addEventListener('mouseup', onPdfTextSelect);
+      pgEl.addEventListener('touchend', onPdfTextSelect);
+      /* 点击其他地方关闭浮动按钮 */
+      document.addEventListener('mousedown', function (e) {
+        var btn = $('wkdAiFloatBtn');
+        if (btn && btn.style.display !== 'none' && !btn.contains(e.target)) {
+          hidePdfAiFloatBtn();
+        }
+      });
+    } catch (e) {
+      var msg = (e && e.message) || '未知错误';
+      if (msg.indexOf('MissingPDF') > -1) msg = 'PDF 文件不存在，可能尚未上传到服务器';
+      else if (msg.indexOf('PasswordException') > -1) msg = '该 PDF 受密码保护，无法解析';
+      else if (msg.indexOf('InvalidPDF') > -1) msg = 'PDF 文件格式损坏';
+      pg.innerHTML = '<div style="text-align:center;padding:2rem 0;color:var(--danger);font-size:0.9rem;">❌ PDF 解析失败：' + escHtml(msg) + '</div>';
+      $('wkdAiStatus').textContent = '❌ 加载失败';
+    }
+  }
+
+  async function askPdfAi() {
+    var text = _wkdAiSelectedText;
+    if (!text) return;
+    hidePdfAiFloatBtn();
+    var ctx = _wkdCurrentPdf ? _wkdCurrentPdf.title : '当前资料';
+    var type = guessContentType(text);
+    $('wkdAiAnswerContext').textContent = '选自：「' + ctx + '」· ' + type;
+    $('wkdAiAnswerContent').innerHTML = '<div class="ai-answer-pending">⏳</div>';
+    $('wkdAiAnswerLoading').classList.remove('hidden');
+    $('wkdAiAnswerMask').classList.remove('hidden');
+    var systemPrompt = '你是一位大学数学/英语教学名师，擅长用口语化、深入浅出的方式讲解。';
+    if (type === '数学公式/计算') {
+      systemPrompt += '用户选中了一段数学公式或计算过程。请：1) 解释该公式/定理的含义；2) 拆解计算步骤；3) 指出考试中常见的考法和易错点。控制在 350 字以内，适当使用符号表达。';
+    } else if (type === '英语/外文段落') {
+      systemPrompt += '用户选中了一段英文内容。请：1) 翻译关键句子；2) 解析语法结构或长难句；3) 指出该段在考试中的常见考点。控制在 350 字以内。';
+    } else if (type === '双语对照/术语') {
+      systemPrompt += '用户选中了包含中英文的内容。请：1) 解释专业术语的含义；2) 说明该术语在考试中的应用场景；3) 给出一个记忆技巧。控制在 350 字以内。';
+    } else {
+      systemPrompt += '用户选中了一段文字想让你深度解剖。请用通俗易懂的方式讲解这段文字的核心概念、考试常考方式、易错点。控制在 300 字以内。';
+    }
+    try {
+      var result = await WG_AI.chat([
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: '我阅读的资料是「' + ctx + '」，选中了以下这段内容，请帮我深度解剖：\n\n' + text }
+      ], { maxTokens: 800, temperature: 0.5 });
+      $('wkdAiAnswerContent').innerHTML = formatAiAnswer(result || 'AI 暂时无法回答，请稍后重试。');
+    } catch (e) {
+      $('wkdAiAnswerContent').innerHTML = '<div style="color:var(--danger);">❌ AI 请求失败：' + escHtml(e.message || '网络错误') + '</div>';
+    }
+    $('wkdAiAnswerLoading').classList.add('hidden');
   }
 
   /* 重做错题：单题或整组，走同一条路径，只是题号集合不同 */
