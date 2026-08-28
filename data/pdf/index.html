@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>学无忧 · 大学生备考通关平台</title>
+<link rel="stylesheet" href="css/style.css?v=8">
+</head>
+<body>
+
+<div class="app">
+
+  <!-- 顶部导航 -->
+  <header class="topbar">
+    <div class="logo" id="logoBtn">学无忧</div>
+    <span style="font-size:0.72rem;color:var(--muted);letter-spacing:0.2em;">XUE WU YOU</span>
+    <nav class="topnav" id="topnav">
+      <a href="#" data-nav="home" class="active">首页</a>
+      <a href="#" data-nav="bank">题库</a>
+      <a href="#" data-nav="wenku">学习资料</a>
+      <a href="#" data-nav="mistakes">错题本</a>
+      <a href="#" data-nav="report">学情报告</a>
+      <a href="#" data-nav="ai">AI 助手</a>
+    </nav>
+    <div class="spacer"></div>
+    <span class="nick" id="nickBtn">玩家：<b id="nickName">未设置</b></span>
+  </header>
+
+  <!-- 开发者模式面板 -->
+  <div id="devPanel" class="hidden" style="border:1px dashed rgba(244,114,182,.5);border-radius:14px;background:rgba(244,114,182,.06);padding:0.9rem 1.1rem;margin-bottom:1.2rem;">
+    <div style="font-size:0.8rem;font-weight:700;color:var(--pink);letter-spacing:0.1em;margin-bottom:0.6rem;">开发者模式（演示 / 调试用）</div>
+    <div style="display:flex;gap:1.2rem;flex-wrap:wrap;align-items:center;">
+      <button class="btn ghost" id="devUnlock" style="font-size:0.8rem;">标记全部模块已练习</button>
+    </div>
+  </div>
+
+  <!-- ===== 视图：登录 + 需求采集 ===== -->
+  <div id="view-onboard" class="hidden" style="max-width:560px;margin:2rem auto 0;">
+    <div style="text-align:center;margin-bottom:1.4rem;">
+      <div class="logo" style="font-size:2rem;">学无忧</div>
+      <div style="font-size:0.85rem;color:var(--muted);margin-top:0.4rem;">先告诉我你的情况，为你定制个性化学习计划</div>
+    </div>
+    <div style="border:1px solid var(--rule);border-radius:18px;background:linear-gradient(160deg,var(--bg3),var(--bg2));padding:1.6rem 1.5rem;">
+      <div style="display:grid;gap:0.9rem;">
+        <div>
+          <label style="font-size:0.8rem;color:var(--muted);display:block;margin-bottom:0.3rem;">你的昵称</label>
+          <input id="obNick" type="text" placeholder="输入昵称" style="width:100%;background:var(--bg2);border:1px solid var(--rule);border-radius:10px;padding:0.6rem 0.9rem;color:var(--ink);font-size:0.9rem;outline:none;">
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.8rem;">
+          <div>
+            <label style="font-size:0.8rem;color:var(--muted);display:block;margin-bottom:0.3rem;">年级</label>
+            <select id="obGrade" style="width:100%;background:var(--bg2);border:1px solid var(--rule);border-radius:10px;padding:0.6rem 0.7rem;color:var(--ink);font-size:0.9rem;">
+              <option value="大一">大一</option>
+              <option value="大二" selected>大二</option>
+              <option value="大三">大三</option>
+              <option value="大四">大四</option>
+              <option value="考研党">考研党</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-size:0.8rem;color:var(--muted);display:block;margin-bottom:0.3rem;">备考目标</label>
+            <select id="obTarget" style="width:100%;background:var(--bg2);border:1px solid var(--rule);border-radius:10px;padding:0.6rem 0.7rem;color:var(--ink);font-size:0.9rem;">
+              <option value="期末考试">期末考试</option>
+              <option value="四六级">四六级</option>
+              <option value="考研数学">考研数学</option>
+              <option value="计算机二级">计算机二级</option>
+            </select>
+          </div>
+        </div>
+        <div>
+          <label style="font-size:0.8rem;color:var(--muted);display:block;margin-bottom:0.3rem;">考试日期</label>
+          <input id="obDate" type="date" style="width:100%;background:var(--bg2);border:1px solid var(--rule);border-radius:10px;padding:0.55rem 0.9rem;color:var(--ink);font-size:0.9rem;color-scheme:dark;">
+        </div>
+        <div>
+          <label style="font-size:0.8rem;color:var(--muted);display:block;margin-bottom:0.5rem;">薄弱项（可多选）</label>
+          <div id="obWeak" style="display:flex;flex-wrap:wrap;gap:0.5rem;">
+            <label class="chk"><input type="checkbox" value="极限" checked>极限</label>
+            <label class="chk"><input type="checkbox" value="导数">导数</label>
+            <label class="chk"><input type="checkbox" value="积分">积分</label>
+            <label class="chk"><input type="checkbox" value="线代">线代</label>
+            <label class="chk"><input type="checkbox" value="概率">概率</label>
+            <label class="chk"><input type="checkbox" value="英语">英语</label>
+          </div>
+        </div>
+        <div>
+          <label style="font-size:0.8rem;color:var(--muted);display:block;margin-bottom:0.3rem;">每天可学时长</label>
+          <select id="obHours" style="width:100%;background:var(--bg2);border:1px solid var(--rule);border-radius:10px;padding:0.6rem 0.7rem;color:var(--ink);font-size:0.9rem;">
+            <option value="1">约 1 小时</option>
+            <option value="2" selected>约 2 小时</option>
+            <option value="3">约 3 小时</option>
+            <option value="4+">4 小时以上</option>
+          </select>
+        </div>
+      </div>
+      <button class="btn primary" id="obSubmit" style="width:100%;margin-top:1.2rem;padding:0.75rem;font-size:1rem;">生成我的个性化学习计划</button>
+      <div id="obStatus" style="font-size:0.82rem;color:var(--muted);text-align:center;margin-top:0.7rem;min-height:1.3rem;"></div>
+      <div id="obPlan" class="hidden" style="margin-top:1rem;border:1px solid var(--rule);border-radius:12px;background:rgba(110,168,255,.05);padding:0.9rem 1rem;font-size:0.85rem;color:var(--ink);line-height:1.9;white-space:pre-wrap;"></div>
+    </div>
+  </div>
+
+  <!-- ===== 视图：首页 ===== -->
+  <div id="view-home">
+    <!-- Hero 区 -->
+    <section class="hero">
+      <div class="hero-badge">🎯 大学生备考通关平台</div>
+      <h1 class="hero-title">学习<span style="color:var(--cyan);">无忧</span>，考试<span style="color:var(--gold);">不愁</span></h1>
+      <p class="hero-sub">1823 道真题级题库 · 高等数学 / 线性代数 / 概率论 · 错题复盘</p>
+      <div class="hero-actions">
+        <button class="btn primary" id="heroRandom">🎲 随机组卷</button>
+        <button class="btn" id="heroBank">📚 进入题库</button>
+        <button class="btn ghost" id="heroMistake">📕 错题重刷</button>
+      </div>
+      <div class="hero-stats">
+        <div class="hs-item"><b>1823</b><span>题库题目</span></div>
+        <div class="hs-item"><b id="hsDone">0</b><span>已做题目</span></div>
+        <div class="hs-item"><b id="hsAcc">—</b><span>正确率</span></div>
+        <div class="hs-item"><b id="hsErr" style="color:var(--danger);">0</b><span>错题数</span></div>
+      </div>
+    </section>
+
+    <!-- 题库板块 -->
+    <div class="sec-head">
+      <h2>题库</h2>
+      <button class="sec-more" data-nav="bank">全部模块 →</button>
+    </div>
+    <div class="mod-grid" id="homeBankGrid"></div>
+
+    <!-- 学习资料板块 -->
+    <div class="sec-head">
+      <h2>学习资料</h2>
+      <button class="sec-more" data-nav="wenku">资料库 →</button>
+    </div>
+    <div class="wenku-entry-grid" id="homeWenkuGrid"></div>
+
+    <!-- 敬请期待板块 -->
+    <div class="sec-head">
+      <h2>更多板块</h2>
+      <span style="font-size:0.78rem;color:var(--muted);">Coming Soon</span>
+    </div>
+    <div class="coming-grid" id="homeComingGrid"></div>
+  </div>
+
+  <!-- ===== 视图：题库 ===== -->
+  <div id="view-bank" class="hidden">
+    <div class="page-title">
+      <h1>题库</h1>
+      <span class="en">Question Bank</span>
+    </div>
+    <div class="mp-head"><h2 style="color:#67e8f9;">数学题库</h2>
+      <span class="mp-desc">高等数学 · 线性代数 · 概率论 · 英语，按学科归类，全部自由练习</span></div>
+    <div class="mod-grid" id="bankGrid"></div>
+  </div>
+
+  <!-- ===== 视图：模块详情（子模块） ===== -->
+  <div id="view-module" class="hidden">
+    <div class="page-title">
+      <button class="btn ghost" id="modBack" style="font-size:0.8rem;">← 返回题库</button>
+      <h1 id="modTitle">模块</h1>
+      <span class="en" id="modSub">Module</span>
+    </div>
+    <div class="mod-count-bar" id="modCountBar">
+      <span style="font-size:0.85rem;color:var(--muted);">每组题数：</span>
+      <button class="wt-btn" data-c="10">10 题</button>
+      <button class="wt-btn active" data-c="20">20 题</button>
+      <button class="wt-btn" data-c="50">50 题</button>
+      <button class="wt-btn" data-c="0">全部</button>
+    </div>
+    <div class="mod-grid" id="subGrid"></div>
+  </div>
+
+  <!-- ===== 视图：学习资料 ===== -->
+  <div id="view-wenku" class="hidden">
+    <div class="page-title">
+      <h1>学习资料</h1>
+      <span class="en">Materials</span>
+    </div>
+    <div style="font-size:0.85rem;color:var(--muted);margin-bottom:0.8rem;">收录阳光海岸数学练习室公开资料目录（PDF 资料库 1030 份 · 教材习题 · 刷题资料），点击可跳转原站查看。</div>
+    <div class="wenku-tabs" id="wenkuTabs">
+      <button class="wt-btn active" data-wt="pdfs">PDF 资料库 <b id="wtPdfs">1030</b></button>
+      <button class="wt-btn" data-wt="books">教材习题 <b id="wtBooks">8</b></button>
+      <button class="wt-btn" data-wt="materials">刷题资料 <b id="wtMats">15</b></button>
+    </div>
+    <div class="wenku-search" style="margin:0.8rem 0;">
+      <input id="wenkuSearch" type="text" placeholder="搜索资料名称、分类…" style="width:100%;background:var(--bg2);border:1px solid var(--rule);border-radius:10px;padding:0.55rem 0.9rem;color:var(--ink);font-size:0.85rem;outline:none;">
+    </div>
+    <div id="wenkuList"></div>
+    <!-- 资料详情弹层 -->
+    <div id="wenkuDetail" class="hidden" style="position:fixed;inset:0;z-index:100;background:rgba(5,8,20,.7);backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;padding:1rem;">
+      <div style="width:min(100%,560px);max-height:80vh;overflow:auto;border:1px solid var(--rule);border-radius:16px;background:linear-gradient(160deg,var(--bg3),var(--bg2));padding:1.4rem 1.5rem;">
+        <div style="display:flex;align-items:center;gap:0.6rem;margin-bottom:0.8rem;">
+          <span class="tag-bank">资料详情</span>
+          <span style="font-size:0.78rem;color:var(--muted);margin-left:auto;" id="wkdMeta"></span>
+        </div>
+        <div id="wkdTitle" style="font-size:1.05rem;font-weight:800;color:var(--ink);line-height:1.6;margin-bottom:0.6rem;"></div>
+        <div id="wkdDesc" style="font-size:0.88rem;color:var(--ink);line-height:1.9;white-space:pre-wrap;margin-bottom:1rem;"></div>
+        <div style="display:flex;gap:0.6rem;flex-wrap:wrap;align-items:center;">
+          <a id="wkdLink" href="#" target="_blank" rel="noopener" class="btn primary" style="font-size:0.82rem;text-decoration:none;">去原站查看 ↗</a>
+          <button class="btn ghost" id="wkdClose" style="font-size:0.82rem;">关闭</button>
+        </div>
+        <div style="font-size:0.75rem;color:var(--muted);margin-top:0.8rem;">标记「已下载」的资料已保存在本地，可直接打开 PDF；其余资料需在原站登录后查看/下载。</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== 视图：练习 ===== -->
+  <div id="view-game" class="hidden">
+    <div class="game-head">
+      <button class="btn ghost" id="backBtn" style="font-size:0.8rem;">← 返回</button>
+      <h2 id="gameTitle">练习</h2>
+      <span class="gh-sub" id="gameSub"></span>
+      <div class="spacer"></div>
+      <span class="gh-sub" id="goalHint"></span>
+    </div>
+    <div class="stats-bar">
+      <div class="stat"><div class="v" id="stTime">00:00</div><div class="k">用时</div></div>
+      <div class="stat"><div class="v good" id="stSolved">0</div><div class="k">答对</div></div>
+      <div class="stat"><div class="v good" id="stScore">0</div><div class="k">得分</div></div>
+    </div>
+    <div class="board-wrap"><div id="board"></div></div>
+
+    <!-- 专项刷题区域 -->
+    <div id="quizArea" class="hidden" style="max-width:560px;margin:0 auto;">
+      <div style="border:1px solid var(--rule);border-radius:16px;background:linear-gradient(160deg,var(--bg3),var(--bg2));padding:1.4rem 1.5rem;">
+        <div style="font-size:0.8rem;color:var(--acc2);letter-spacing:0.14em;margin-bottom:0.5rem;">专项刷题 · 选对答案得分</div>
+        <div id="quizQ" style="font-size:1.15rem;font-weight:600;color:var(--ink);line-height:1.7;min-height:3rem;margin-bottom:1rem;"></div>
+        <div id="quizOpts" style="display:grid;grid-template-columns:1fr 1fr;gap:0.7rem;"></div>
+        <div id="quizFeed" style="font-size:0.85rem;color:var(--muted);min-height:1.4rem;margin-top:0.8rem;"></div>
+      </div>
+    </div>
+
+    <!-- 高数题库刷题区域 -->
+    <div id="customArea" class="hidden" style="max-width:640px;margin:0 auto;"></div>
+  </div>
+
+  <!-- ===== 视图：AI 助手 ===== -->
+  <div id="view-ai" class="hidden">
+    <div class="page-title">
+      <h1>AI 助手</h1>
+      <span class="en">AI Tutor</span>
+    </div>
+    <div class="card" style="margin-bottom:1rem;">
+      <div style="font-size:0.85rem;color:var(--muted);line-height:1.8;margin-bottom:0.6rem;">
+        答题遇到卡壳？让 AI 帮你讲题、出同类题、解读学情。大模型都走 API，但下面这些平台有<b style="color:var(--acc);">免费额度</b>，学生注册就能用（推荐智谱 GLM-4-Flash，免费模型）。
+      </div>
+      <div style="display:flex;gap:0.6rem;flex-wrap:wrap;align-items:center;">
+        <select id="aiProvider" style="background:var(--bg2);color:var(--ink);border:1px solid var(--rule);border-radius:10px;padding:0.55rem 0.8rem;font-size:0.82rem;font-family:inherit;">
+          <option value="zhipu">智谱 GLM（GLM-4-Flash 免费）</option>
+          <option value="deepseek">DeepSeek（新用户送额度）</option>
+          <option value="kimi">Kimi（新用户送额度）</option>
+          <option value="doubao">豆包·火山方舟（新用户送 token）</option>
+          <option value="custom">自定义（填 base 和模型）</option>
+        </select>
+        <input id="aiKeyInput" type="password" placeholder="粘贴该平台的 API Key"
+          style="flex:1;min-width:220px;background:var(--bg2);border:1px solid var(--rule);border-radius:10px;padding:0.55rem 0.9rem;color:var(--ink);font-size:0.85rem;outline:none;">
+        <button class="btn primary" id="aiKeySave" style="font-size:0.82rem;">保存配置</button>
+      </div>
+      <div id="aiKeyStatus" style="font-size:0.78rem;color:var(--muted);margin-top:0.5rem;"></div>
+    </div>
+    <div class="card">
+      <div style="display:flex;gap:0.6rem;margin-bottom:0.8rem;flex-wrap:wrap;">
+        <button class="btn" id="aiExplainDemo" style="font-size:0.82rem;">讲一道题</button>
+        <button class="btn" id="aiGenDemo" style="font-size:0.82rem;">出 3 道同类题</button>
+        <button class="btn" id="aiPlanDemo" style="font-size:0.82rem;">生成备考计划</button>
+        <button class="btn primary" id="aiMyPlan" style="font-size:0.82rem;">根据我的错题生成计划</button>
+      </div>
+      <div id="aiChat" style="font-size:0.88rem;color:var(--muted);line-height:1.9;white-space:pre-wrap;min-height:4rem;max-height:420px;overflow-y:auto;"></div>
+    </div>
+  </div>
+
+  <!-- ===== 视图：学情报告 ===== -->
+  <div id="view-report" class="hidden">
+    <div class="page-title">
+      <h1>学情报告</h1>
+      <span class="en">Learning Report</span>
+    </div>
+    <div id="reportBody"></div>
+  </div>
+
+  <!-- ===== 视图：错题本 ===== -->
+  <div id="view-mistakes" class="hidden">
+    <div class="page-title">
+      <h1>错题本 <span style="font-size:0.85rem;color:var(--muted);">共 <b id="mistakeCount" style="color:var(--danger);">0</b> 题</span></h1>
+      <span class="en">Mistake Book</span>
+    </div>
+    <div style="font-size:0.85rem;color:var(--muted);margin-bottom:1rem;">答错的题、标记「不会」的题会自动收录；重做答对并标记「掌握了」会自动移出。</div>
+    <div id="mistakeList"></div>
+  </div>
+
+</div>
+
+<div id="toast"></div>
+
+<!-- ===== AI 助手侧边栏 ===== -->
+<div id="aiFab" title="AI 助手">
+  <span>AI</span>
+</div>
+<div id="aiSide" class="hidden">
+  <div class="ai-head">
+    <b>AI 助手</b>
+    <span style="font-size:0.68rem;color:var(--muted);">拍照搜题 · 讲题 · 出题</span>
+    <button id="aiSideCfg" style="background:none;border:none;color:var(--muted);font-size:0.8rem;cursor:pointer;margin-left:auto;">⚙ 配置</button>
+    <button id="aiSideClose" style="background:none;border:none;color:var(--muted);font-size:1.1rem;cursor:pointer;">×</button>
+  </div>
+  <div id="aiMsgs"></div>
+  <div class="ai-input-wrap">
+    <label id="aiPhotoBtn" title="拍照搜题">
+      <input type="file" accept="image/*" id="aiPhotoInput" style="display:none;">
+      <span>📷</span>
+    </label>
+    <input type="text" id="aiInput" placeholder="问我任何学习问题，或拍照搜题…">
+    <button id="aiSend">发送</button>
+  </div>
+  <div id="aiPhotoPreview" class="hidden" style="position:relative;padding:0.3rem 0.5rem;">
+    <img id="aiPhotoImg" style="max-height:90px;border-radius:8px;border:1px solid var(--rule);">
+    <button id="aiPhotoClear" style="position:absolute;top:0;right:0;background:none;border:none;color:var(--danger);font-size:1rem;cursor:pointer;">✕</button>
+  </div>
+</div>
+
+<!-- 结算弹窗 -->
+<div class="modal-mask" id="modalMask">
+  <div class="modal">
+    <div class="m-stars" id="mStars"></div>
+    <div class="m-title win" id="mTitle"></div>
+    <div class="m-sub" id="mSub"></div>
+    <div class="m-stats">
+      <div class="m-stat"><div class="v" id="mTime">—</div><div class="k">用时</div></div>
+      <div class="m-stat"><div class="v" id="mScore">—</div><div class="k">得分</div></div>
+      <div class="m-stat"><div class="v" id="mAcc">—</div><div class="k">正确率</div></div>
+    </div>
+    <div class="m-actions">
+      <button class="btn" id="mRetry">再试一次</button>
+      <button class="btn primary" id="mNext">返回</button>
+      <button class="btn ghost" id="mBack">返回首页</button>
+    </div>
+  </div>
+</div>
+
+<script src="js/data.js?v=4"></script>
+<script src="js/gaoshu_bank.js?v=8"></script>
+<script src="js/wenku.js?v=8"></script>
+<script src="js/ai.js?v=4"></script>
+<script src="js/minesweeper.js?v=4"></script>
+<script src="js/quiz.js?v=4"></script>
+<script src="js/matrix.js?v=4"></script>
+<script src="js/logic.js?v=4"></script>
+<script src="js/vector.js?v=4"></script>
+<script src="js/sequence.js?v=4"></script>
+<script src="js/gaoshu.js?v=9"></script>
+<script src="js/app.js?v=8"></script>
+</body>
+</html>
+

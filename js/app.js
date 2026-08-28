@@ -824,7 +824,7 @@ var WG_App = (function () {
     if (x.tags && x.tags.length) desc += '\n\n分类：' + x.tags.join('、');
     $('wkdDesc').textContent = desc;
     var link = $('wkdLink');
-    var isLocal = x.link && x.link.indexOf('data/pdf/') === 0;
+    var isLocalRef = x.link && x.link.indexOf('data/pdf/') === 0;
     var pvWrap = $('wkdPreviewWrap');
     var pvIfr = $('wkdPreview');
 
@@ -840,24 +840,47 @@ var WG_App = (function () {
     if (modeAi) modeAi.classList.remove('active');
 
     if (link) {
-      if (isLocal) {
+      if (isLocalRef) {
         link.href = x.link;
-        link.textContent = '↗ 在新标签打开 / 下载';
         link.target = '_blank';
         link.rel = 'noopener';
         link.removeAttribute('download');
         link.style.cursor = 'pointer';
-        $('wkdHint').textContent = '上方已内嵌预览。如预览空白，请点击按钮在新标签页打开；若浏览器直接下载该文件属正常行为。';
         if (pvWrap && pvIfr) {
           pvWrap.classList.remove('hidden');
+          /* 尝试加载 PDF，若失败则显示友好提示 */
           pvIfr.src = x.link;
+          pvIfr.onerror = function () {
+            pvWrap.classList.add('hidden');
+            link.textContent = '🌐 该文件暂未上传到服务器 ↗';
+            link.href = 'https://suncoastmath.cn/pdfs';
+            $('wkdHint').textContent = '⚠️ 这份资料在站内尚未可用，请前往原站查看。';
+            if (modeBar) modeBar.classList.add('hidden');
+          };
         }
-        /* 本地 PDF 显示模式切换条 */
-        if (modeBar) {
-          modeBar.classList.remove('hidden');
-          _wkdCurrentPdf = { url: x.link, title: x.title || '' };
-          $('wkdAiStatus').textContent = '';
-        }
+        /* 验证文件是否真的存在 */
+        checkPdfExists(x.link, function (exists) {
+          if (exists) {
+            link.textContent = '↗ 在新标签打开 / 下载';
+            link.style.cursor = 'pointer';
+            $('wkdHint').textContent = '上方已内嵌预览。如预览空白，请点击按钮在新标签页打开；若浏览器直接下载该文件属正常行为。';
+            /* 本地 PDF 显示模式切换条 */
+            if (modeBar) {
+              modeBar.classList.remove('hidden');
+              _wkdCurrentPdf = { url: x.link, title: x.title || '' };
+              $('wkdAiStatus').textContent = '';
+            }
+          } else {
+            /* 文件不存在 → 降级为非本地资料 */
+            pvWrap.classList.add('hidden');
+            pvIfr.removeAttribute('src');
+            link.textContent = '🌐 该文件暂未上传到服务器，前往原站查看 ↗';
+            link.href = 'https://suncoastmath.cn/pdfs';
+            link.style.cursor = 'pointer';
+            $('wkdHint').textContent = '⚠️ 这份资料（' + (x.title || '') + '）尚未上传到服务器，如需使用请前往 suncoastmath.cn 阳光海岸数学练习室下载。';
+            if (modeBar) modeBar.classList.add('hidden');
+          }
+        });
       } else {
         /* 非本地资料：提供原站分类页链接 */
         var catUrl = x.link || 'https://suncoastmath.cn/pdfs';
@@ -875,6 +898,25 @@ var WG_App = (function () {
       }
     }
     el.classList.remove('hidden');
+  }
+
+  /* 检查 PDF 文件在服务器上是否存在 */
+  function checkPdfExists(url, cb) {
+    if (!url || !cb) return;
+    /* 本地 file:// 协议下直接假设文件不存在（AI 划词模式会用别的检测，这里只做降级） */
+    if (location.protocol === 'file:') {
+      cb(false);
+      return;
+    }
+    var xhr = new XMLHttpRequest();
+    xhr.open('HEAD', url, true);
+    xhr.onreadystatechange = function () {
+      if (xhr.readyState === 4) {
+        cb(xhr.status >= 200 && xhr.status < 400);
+      }
+    };
+    xhr.onerror = function () { cb(false); };
+    xhr.send();
   }
 
   /* ---------- 进入学习模块 ---------- */
