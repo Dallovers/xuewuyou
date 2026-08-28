@@ -590,10 +590,49 @@
   <!-- ===== 视图：错题本 ===== -->
   <div id="view-mistakes" class="hidden">
     <div class="page-title">
-      <h1>错题本 <span style="font-size:0.85rem;color:var(--muted);">共 <b id="mistakeCount" style="color:var(--danger);">0</b> 题</span></h1>
+      <h1>错题本 <span style="font-size:0.85rem;color:var(--muted);">共 <b id="mistakeCount" style="color:var(--danger);">0</b> 题待攻克</span></h1>
       <span class="en">Mistake Book</span>
     </div>
-    <div style="font-size:0.85rem;color:var(--muted);margin-bottom:1rem;">错题按知识点归成错题集，掌握度 = 已攻克 ÷（已攻克 + 待攻克）。答错的题、标记「不会」的题会自动收录；重做答对并标记「掌握了」即算攻克。</div>
+
+    <!-- 错题学情概览面板 -->
+    <div class="mistake-dashboard" id="mistakeDashboard">
+      <div class="md-stats-strip">
+        <div class="md-stat-item">
+          <span class="val" id="mdOpenCount">0</span>
+          <span class="lbl">待攻克错题</span>
+        </div>
+        <div class="md-stat-item">
+          <span class="val" id="mdClearedCount">0</span>
+          <span class="lbl">已攻克掌握</span>
+        </div>
+        <div class="md-stat-item">
+          <span class="val" id="mdMasteryPct">0%</span>
+          <span class="lbl">综合攻克率</span>
+        </div>
+        <div class="md-stat-item">
+          <span class="val" id="mdWeakCount">0</span>
+          <span class="lbl">标记「不会」</span>
+        </div>
+      </div>
+      <div class="md-action-row">
+        <div class="md-tip" id="mdSmartTip">💡 智能诊断：系统将根据你的答错频率自动归纳薄弱考点，支持针对每道错题进行「AI 举一反三」针对性攻克。</div>
+        <button type="button" class="btn" id="mdAiDiagnoseBtn" style="font-size:0.82rem;flex-shrink:0;">🧠 AI 错题学情诊断</button>
+      </div>
+    </div>
+
+    <!-- 错题筛选与搜索条 -->
+    <div class="mistake-filter-bar" id="mistakeFilterBar">
+      <div class="mfb-group">
+        <span class="mfb-label">状态筛选</span>
+        <button type="button" class="mfb-chip active" data-mfilter="all">全部错题</button>
+        <button type="button" class="mfb-chip" data-mfilter="weak">仅看标记「不会」</button>
+        <button type="button" class="mfb-chip" data-mfilter="multi">高频错题 (≥2次)</button>
+      </div>
+      <div class="mfb-search-wrap">
+        <input type="text" id="mistakeSearchInput" placeholder="搜索错题题干、知识点关键词…" class="mfb-search">
+      </div>
+    </div>
+
     <div id="mistakeList"></div>
   </div>
 
@@ -602,6 +641,60 @@
 </div>
 
 <div id="toast" role="status" aria-live="polite"></div>
+
+<!-- ===== AI 举一反三·变式题训练弹窗 ===== -->
+<div class="modal-mask hidden" id="aiVariationModal" role="dialog" aria-label="AI 举一反三变式训练" aria-modal="true">
+  <div class="ai-var-card">
+    <div class="ai-var-head">
+      <div class="ai-var-tag">
+        <span>✨</span> AI 举一反三 · 变式训练
+        <span class="ai-var-topic" id="aiVarTopicTag">考点迁移</span>
+      </div>
+      <button class="ai-var-close" id="aiVarClose" type="button" aria-label="关闭">×</button>
+    </div>
+
+    <div class="ai-var-body" id="aiVarBody">
+      <!-- 原错题折叠回顾 -->
+      <details class="ai-var-orig-fold">
+        <summary><span>📌 原错题回顾</span><span class="fold-hint">点击展开/收起</span></summary>
+        <div class="ai-var-orig-q" id="aiVarOrigQ"></div>
+      </details>
+
+      <!-- 变式题出题区 -->
+      <div class="ai-var-main" id="aiVarMain">
+        <!-- 载入中状态 -->
+        <div class="ai-var-loading" id="aiVarLoading">
+          <div class="ai-spinner"></div>
+          <div class="ai-load-txt">AI 名师正在根据考点生成变式题…</div>
+          <div class="ai-load-sub">迁移同类方法 · 改变题型参数 · 启发逆向思维</div>
+        </div>
+
+        <!-- 变式题呈现区 -->
+        <div class="ai-var-content hidden" id="aiVarContent">
+          <div class="ai-var-badge">🎯 举一反三 · 变式拓展题</div>
+          <div class="ai-var-qtext" id="aiVarQText"></div>
+          
+          <!-- 选项选择列表 -->
+          <div class="ai-var-options" id="aiVarOptions"></div>
+
+          <!-- 作答反馈与解析 -->
+          <div class="ai-var-result hidden" id="aiVarResult">
+            <div class="ai-var-status-banner" id="aiVarStatusBanner"></div>
+            <div class="ai-var-analysis-box">
+              <div class="ai-var-analysis-title">💡 名师思路与考点剖析</div>
+              <div class="ai-var-analysis-text" id="aiVarAnalysisText"></div>
+            </div>
+            <div class="ai-var-actions">
+              <button type="button" class="btn primary" id="aiVarMarkMasteredBtn">✓ 变式题通关，移出错题本</button>
+              <button type="button" class="btn" id="aiVarRegenBtn">🔄 再出一道变式题</button>
+              <button type="button" class="btn ghost" id="aiVarDoneCloseBtn">完成并关闭</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
 
 <!-- ===== AI 助手侧边栏 ===== -->
 <button id="aiFab" title="AI 助手" aria-label="打开 AI 助手" aria-expanded="false" aria-controls="aiSide">

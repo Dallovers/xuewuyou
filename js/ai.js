@@ -165,6 +165,53 @@ var WG_AI = (function () {
     ], { maxTokens: 300 });
   }
 
+  async function generateVariation(question, topic) {
+    var prompt = '你是一位考研与大学数学/英语出题名师。请针对以下这道原题及其考察的知识点「' + (topic || '学科考点') + '」，出一道【举一反三·变式训练题】。\n\n'
+      + '【原题内容】：' + question + '\n\n'
+      + '要求：\n'
+      + '1. 题型必须为单项选择题，难度与原题相当或略有迁移拓展（同类方法、不同参数或考查逆向思维）。\n'
+      + '2. 选项包含 A、B、C、D 四个选项。\n'
+      + '3. 请严格按照以下纯 JSON 格式返回，不要包含 markdown 代码块包裹或任何多余文字，确保可直接 JSON.parse：\n'
+      + '{\n'
+      + '  "topic": "' + (topic || '学科考点') + '",\n'
+      + '  "question": "变式题目题干（若有公式请用清晰的文本或标准 LaTeX）",\n'
+      + '  "options": [\n'
+      + '    "A. 选项1",\n'
+      + '    "B. 选项2",\n'
+      + '    "C. 选项3",\n'
+      + '    "D. 选项4"\n'
+      + '  ],\n'
+      + '  "answer": "A",\n'
+      + '  "analysis": "解题步骤与思路深度剖析，讲清与原题的联系与变化点（150字以内）"\n'
+      + '}';
+
+    var text = await chat([
+      { role: 'system', content: '你是「学无忧」智能题库的 AI 出题与变式训练专家。请直接输出合法的标准 JSON，切勿输出额外闲聊。' },
+      { role: 'user', content: prompt }
+    ], { maxTokens: 800, temperature: 0.7 });
+
+    try {
+      var clean = text.trim();
+      if (clean.indexOf('```') >= 0) {
+        clean = clean.replace(/```(?:json)?([\s\S]*?)```/i, '$1').trim();
+      }
+      var parsed = JSON.parse(clean);
+      if (parsed.question && parsed.options && parsed.answer) {
+        return parsed;
+      }
+    } catch (e) {}
+
+    // 解析失败时的兜底提取或结构化
+    return {
+      topic: topic || '知识点变式',
+      question: '变式题：针对原题知识点「' + (topic || '核心考点') + '」的拓展训练',
+      rawText: text,
+      options: ['A. 选项 A', 'B. 选项 B', 'C. 选项 C', 'D. 选项 D'],
+      answer: 'A',
+      analysis: text
+    };
+  }
+
   return {
     PROVIDERS: PROVIDERS,
     getKey: getKey,
@@ -175,6 +222,7 @@ var WG_AI = (function () {
     explainPhoto: explainPhoto,
     explainQuestion: explainQuestion,
     generateQuestions: generateQuestions,
+    generateVariation: generateVariation,
     makePlan: makePlan,
     analyzeStats: analyzeStats,
     errText: function (e) {

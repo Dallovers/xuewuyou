@@ -1920,7 +1920,10 @@ var WG_App = (function () {
         var del = q('.mi-del');
         var redo = q('.ms-redo');
         var tog = q('.mset-toggle');
-        if (retry) {
+        var aiv = q('.btn-ai-var');
+        if (aiv) {
+          openAIVariation(aiv.getAttribute('data-qid'));
+        } else if (retry) {
           gateData(function () { retryMistake(retry.getAttribute('data-qid')); });
         } else if (del) {
           WG_Data.removeMistake(del.getAttribute('data-qid'));
@@ -1941,6 +1944,40 @@ var WG_App = (function () {
         }
       });
     }
+
+    /* 错题本筛选 chips：全部 / 标记不会 / 高频错题 */
+    var mfBar = $('mistakeFilterBar');
+    if (mfBar) {
+      mfBar.addEventListener('click', function (e) {
+        var chip = e.target.closest ? e.target.closest('.mfb-chip') : null;
+        if (!chip) return;
+        mistakeFilter = chip.getAttribute('data-mfilter') || 'all';
+        mfBar.querySelectorAll('.mfb-chip').forEach(function (c) {
+          c.classList.toggle('active', c === chip);
+        });
+        renderMistakes();
+      });
+    }
+    /* 错题关键词搜索（轻量防抖，避免每敲一个键全量重渲染） */
+    var mfSearch = $('mistakeSearchInput');
+    if (mfSearch) {
+      var mfTimer = null;
+      mfSearch.addEventListener('input', function () {
+        clearTimeout(mfTimer);
+        var v = this.value;
+        mfTimer = setTimeout(function () { mistakeKw = v; renderMistakes(); }, 220);
+      });
+    }
+    /* AI 错题学情诊断 */
+    if ($('mdAiDiagnoseBtn')) $('mdAiDiagnoseBtn').addEventListener('click', aiDiagnose);
+
+    /* ===== AI 举一反三 · 变式训练弹窗绑定 ===== */
+    if ($('aiVarClose')) $('aiVarClose').addEventListener('click', closeAIVariation);
+    if ($('aiVarDoneCloseBtn')) $('aiVarDoneCloseBtn').addEventListener('click', closeAIVariation);
+    if ($('aiVarRegenBtn')) $('aiVarRegenBtn').addEventListener('click', regenerateAIVariation);
+    if ($('aiVarMarkMasteredBtn')) $('aiVarMarkMasteredBtn').addEventListener('click', markAIMastered);
+    var aiVarOpts = $('aiVarOptions');
+    if (aiVarOpts) aiVarOpts.addEventListener('click', onVarOptionClick);
 
     document.addEventListener('keydown', function (e) {
       if (state.view === 'game' && e.key.toLowerCase() === 'v' && WG_Game) { /* 看答案快捷键由引擎处理 */ }
@@ -2131,21 +2168,86 @@ var WG_App = (function () {
   /* 各错题集的展开/收起状态，只存在内存里，刷新页面回到默认展开 */
   var mistakeOpen = {};
 
+  /* 错题本筛选状态：all｜weak(标记不会)｜multi(高频错题) */
+  var mistakeFilter = 'all';
+  var mistakeKw = '';
+
+  /* 当前 AI 变式训练会话状态 */
+  var aiVar = { qid: '', question: '', topic: '', answer: '', analysis: '', answered: false, correct: false, working: false };
+
+  function setText(id, v) { var e = $(id); if (e) e.textContent = v; }
+
+  /* 单条错题卡片：错题本统一渲染砖块（分组与筛选平铺共用） */
+  function mistakeItemHtml(m) {
+    var q = WG_Gaoshu.latexToText(m.question || '').slice(0, 90);
+    var qid = m.qid || '';
+    var date = m.lastAt ? new Date(m.lastAt).toLocaleDateString() : '';
+    var topic = m.topic || '';
+    return '<div class="mistake-item' + (m.markedWeak ? ' is-weak' : '') + '" data-qid="' + qid + '">' +
+      '<div class="mi-head">' +
+      (m.markedWeak ? '<span class="mi-weak">不会</span>' : '') +
+      (m.topic ? '<span class="mi-topic-chip">' + escHtml(m.topic) + '</span>' : '') +
+      '<span class="mi-wrong">错 ' + (m.wrongCount || 1) + ' 次</span>' +
+      '<span class="mi-date">' + date + '</span></div>' +
+      '<div class="mi-q">' + escHtml(q) + '</div>' +
+      '<div class="mi-actions">' +
+      '<button class="btn-ai-var" data-qid="' + qid + '" data-topic="' + escHtml(topic) + '" title="AI 根据考点生成变式题，在线作答举一反三">✨ AI 举一反三</button>' +
+      '<button class="btn primary mi-retry" data-qid="' + qid + '" style="font-size:0.8rem;">重做这道题</button>' +
+      '<button class="btn ghost mi-del" data-qid="' + qid + '" style="font-size:0.8rem;">移出错题本</button>' +
+      '</div></div>';
+  }
+
   function renderMistakes() {
     stopGames();
     var d = WG_Data.get();
     var ms = d.mistakes || [];
+    var cl = d.cleared || [];
     var el = $('view-mistakes');
     var box = $('mistakeList');
     var head = $('mistakeCount');
     if (!box) { showView('home'); return; }
     head.textContent = ms.length;
+
+    /* ===== 学情看板：待攻克 / 已攻克 / 综合攻克率 / 标记不会 ===== */
+    var openN = ms.length;
+    var clearedN = cl.length;
+    var base = openN + clearedN;
+    var mastery = base ? Math.round(clearedN / base * 100) : 0;
+    var weakN = ms.filter(function (m) { return m.markedWeak; }).length;
+    setText('mdOpenCount', openN);
+    setText('mdClearedCount', clearedN);
+    setText('mdMasteryPct', mastery + '%');
+    setText('mdWeakCount', weakN);
+    setText('mdSmartTip', '💡 智能诊断：综合攻克率 ' + mastery + '%，待攻克 ' + openN + ' 题。高频错题建议先整组重刷，再用「AI 举一反三」吃透同类考点。');
+
+    /* ===== 多维筛选 + 关键词搜索 ===== */
+    var kw = (mistakeKw || '').trim().toLowerCase();
+    var filterMode = mistakeFilter !== 'all' || kw !== '';
+    var list = ms;
+    if (mistakeFilter === 'weak') list = list.filter(function (m) { return m.markedWeak; });
+    else if (mistakeFilter === 'multi') list = list.filter(function (m) { return (m.wrongCount || 1) >= 2; });
+    if (kw) {
+      list = list.filter(function (m) {
+        var hay = ((m.question || '') + ' ' + (m.topic || '') + ' ' + (m.qid || '')).toLowerCase();
+        return hay.indexOf(kw) >= 0;
+      });
+    }
+
     if (ms.length === 0) {
       box.innerHTML = '<div style="text-align:center;padding:2.5rem 1rem;border:1px dashed var(--rule-strong);border-radius:16px;color:var(--muted);">' +
         '<div style="font-size:2rem;margin-bottom:0.6rem;">📭</div>' +
         '错题本是空的。<br>答错的题、标记「不会」的题会自动收进来。</div>';
+    } else if (filterMode) {
+      /* 筛选/搜索激活：平铺列出匹配项，避免分组的掌握度造成误导 */
+      if (!list.length) {
+        box.innerHTML = '<div style="text-align:center;padding:2.5rem 1rem;border:1px dashed var(--rule-strong);border-radius:16px;color:var(--muted);">' +
+          '<div style="font-size:2rem;margin-bottom:0.6rem;">🔍</div>没有匹配的错题。<br>换个关键词或筛选条件试试。</div>';
+      } else {
+        box.innerHTML = '<div class="mset-note">共 ' + list.length + ' 条匹配（已按当前筛选展开）</div>' +
+          list.map(mistakeItemHtml).join('');
+      }
     } else {
-      /* 按知识点归集成错题集：每组一张卡，带掌握度和整组重刷 */
+      /* 默认：按知识点归集成错题集，每组一张卡，带掌握度和整组重刷 */
       box.innerHTML = WG_Data.mistakeGroups().map(function (g) {
         var open = mistakeOpen[g.name] !== false;   /* 默认展开，收起状态记在内存里 */
         var ids = g.items.map(function (m) { return m.qid; }).filter(Boolean);
@@ -2167,26 +2269,160 @@ var WG_App = (function () {
           '</header>' +
           '<div class="mset-body">' +
             (g.cleared ? '<div class="mset-note">已攻克 ' + g.cleared + ' 题</div>' : '') +
-            g.items.map(function (m) {
-              var q = WG_Gaoshu.latexToText(m.question || '').slice(0, 90);
-              var qid = m.qid || '';
-              var date = m.lastAt ? new Date(m.lastAt).toLocaleDateString() : '';
-              return '<div class="mistake-item" data-qid="' + qid + '">' +
-                '<div class="mi-head">' +
-                (m.markedWeak ? '<span class="mi-weak">标记不会</span>' : '') +
-                '<span class="mi-wrong">错 ' + (m.wrongCount || 1) + ' 次</span>' +
-                '<span class="mi-date">' + date + '</span></div>' +
-                '<div class="mi-q">' + escHtml(q) + '</div>' +
-                '<div class="mi-actions">' +
-                '<button class="btn primary mi-retry" data-qid="' + qid + '" style="font-size:0.8rem;">重做这道题</button>' +
-                '<button class="btn ghost mi-del" data-qid="' + qid + '" style="font-size:0.8rem;">移出错题本</button>' +
-                '</div></div>';
-            }).join('') +
+            g.items.map(mistakeItemHtml).join('') +
           '</div>' +
         '</section>';
       }).join('');
     }
     showView('mistakes');
+  }
+
+  /* ===== AI 举一反三 · 变式训练弹窗 ===== */
+  function openAIVariation(qid) {
+    var d = WG_Data.get();
+    var m = (d.mistakes || []).find(function (x) { return String(x.qid) === String(qid); });
+    if (!m) { toast('未找到这道错题'); return; }
+    aiVar = { qid: m.qid, question: m.question || '', topic: m.topic || '综合', answer: '', analysis: '', answered: false, correct: false, working: false };
+    setText('aiVarOrigQ', '【' + (m.topic || '综合') + '】' + WG_Gaoshu.latexToText(m.question || ''));
+    setText('aiVarTopicTag', m.topic || '综合');
+    $('aiVarLoading').classList.remove('hidden');
+    $('aiVarContent').classList.add('hidden');
+    $('aiVarResult').classList.add('hidden');
+    $('aiVariationModal').classList.remove('hidden');
+    generateAIVariation();
+  }
+
+  function generateAIVariation() {
+    aiVar.answered = false; aiVar.correct = false;
+    $('aiVarLoading').classList.remove('hidden');
+    $('aiVarContent').classList.add('hidden');
+    $('aiVarResult').classList.add('hidden');
+    var mk = $('aiVarMarkMasteredBtn');
+    if (mk) { mk.disabled = true; mk.textContent = '✓ 变式题通关，移出错题本'; }
+    aiVar.working = true;
+    WG_AI.generateVariation(aiVar.question, aiVar.topic).then(function (v) {
+      aiVar.working = false;
+      renderAIVariation(v);
+    }).catch(function (e) {
+      aiVar.working = false;
+      $('aiVarLoading').classList.add('hidden');
+      /* 出题失败：展示原始内容，让错误可见而不是静默 */
+      var errEl = $('aiVarQText');
+      errEl.textContent = '😵 变式题生成失败：' + WG_AI.errText(e);
+      $('aiVarContent').classList.remove('hidden');
+      $('aiVarOptions').innerHTML = '';
+    });
+  }
+
+  /* 「再出一道变式题」：清空上次作答状态后重新出题 */
+  function regenerateAIVariation() {
+    var mk = $('aiVarMarkMasteredBtn');
+    if (mk) { mk.disabled = true; mk.textContent = '✓ 变式题通关，移出错题本'; }
+    $('aiVarOptions').innerHTML = '';
+    $('aiVarResult').classList.add('hidden');
+    generateAIVariation();
+  }
+
+  function renderAIVariation(v) {
+    $('aiVarLoading').classList.add('hidden');
+    $('aiVarContent').classList.remove('hidden');
+    var qtext = $('aiVarQText');
+    qtext.textContent = v.question || '（AI 未返回题干）';
+    /* 选项渲染：剥离「A.」前缀，字母单独成列，点击区更大 */
+    var opts = v.options || [];
+    $('aiVarOptions').innerHTML = opts.map(function (o, i) {
+      var letter = String.fromCharCode(65 + i);
+      var txt = String(o).replace(/^[A-D][.、:：)]?\s*/, '');
+      return '<button type="button" class="ai-var-opt" data-letter="' + letter + '">' +
+        '<b class="ai-var-opt-letter">' + letter + '.</b>' +
+        '<span class="ai-var-opt-text">' + escHtml(txt) + '</span></button>';
+    }).join('');
+    aiVar.answer = String(v.answer || 'A').toUpperCase().replace(/[^A-D]/g, '');
+    if (!aiVar.answer || aiVar.answer.length !== 1) aiVar.answer = 'A';
+    aiVar.analysis = v.analysis || '（AI 未返回详细解析）';
+  }
+
+  /* 选项点击：答对全亮+出解析；答错只标红该项并提示再试，保留继续尝试的机会 */
+  function onVarOptionClick(e) {
+    var btn = e.target.closest ? e.target.closest('.ai-var-opt') : null;
+    if (!btn || btn.disabled || aiVar.working || aiVar.answered && aiVar.correct) return;
+    var letter = btn.getAttribute('data-letter');
+    var ok = letter === aiVar.answer;
+    if (ok) {
+      aiVar.answered = true; aiVar.correct = true;
+      var all = $('aiVarOptions').querySelectorAll('.ai-var-opt');
+      for (var i = 0; i < all.length; i++) {
+        all[i].disabled = true;
+        all[i].classList.add(all[i].getAttribute('data-letter') === aiVar.answer ? 'correct' : 'dim');
+      }
+      var banner = $('aiVarStatusBanner');
+      banner.className = 'ai-var-status-banner ok';
+      banner.textContent = '🎉 回答正确！同类题你已经能举一反三了。';
+      $('aiVarAnalysisText').textContent = aiVar.analysis;
+      $('aiVarResult').classList.remove('hidden');
+      var mk = $('aiVarMarkMasteredBtn');
+      mk.disabled = false;
+      mk.innerHTML = '✓ 变式题通关，移出错题本';
+    } else {
+      btn.disabled = true;
+      btn.classList.add('wrong');
+      toast('再想想，换个选项试试', '');
+    }
+  }
+
+  function closeAIVariation() {
+    $('aiVariationModal').classList.add('hidden');
+    aiVar = { qid: '', question: '', topic: '', answer: '', analysis: '', answered: false, correct: false, working: false };
+  }
+
+  /* 变式题答对 → 标记攻克并移出错题本 */
+  function markAIMastered() {
+    if (!aiVar.qid || !aiVar.correct) return;
+    WG_Data.removeMistake(aiVar.qid, { mastered: true });
+    toast('已攻克！这道错题已移出错题本', 'ok');
+    closeAIVariation();
+    renderMistakes();
+  }
+
+  /* AI 错题学情诊断：调起 AI 助手侧栏，本地统计 + AI 建议 */
+  function aiDiagnose() {
+    var d = WG_Data.get();
+    var ms = d.mistakes || [];
+    var cl = d.cleared || [];
+    var byTopic = {};
+    ms.forEach(function (m) {
+      var t = m.topic || '综合';
+      var c = byTopic[t] || { n: 0, weak: 0 };
+      c.n += (m.wrongCount || 1);
+      if (m.markedWeak) c.weak++;
+      byTopic[t] = c;
+    });
+    var top = Object.keys(byTopic).sort(function (a, b) {
+      return byTopic[b].n - byTopic[a].n || byTopic[b].weak - byTopic[a].weak;
+    }).slice(0, 5);
+    var topStr = top.length
+      ? top.map(function (t) { return t + '(' + byTopic[t].n + ' 次' + (byTopic[t].weak ? '，不熟练' : '') + ')'; }).join('、')
+      : '暂无高频错题';
+    var openN = ms.length;
+    var masterRate = (openN + cl.length) ? Math.round(cl.length / (openN + cl.length) * 100) : 0;
+    var summary = '📊 本地学情快照：待攻克 ' + openN + ' 题 · 已攻克 ' + cl.length + ' 题 · 综合攻克率 ' + masterRate + '%\n'
+      + '🔺 高频薄弱考点：' + topStr + '\n'
+      + '👉 需要 AI 给出针对性补强建议…';
+    aiSideOpen();
+    aiMsgAdd('user', '请根据我的错题学情，给出针对性补强建议');
+    var loading = aiMsgAdd('bot', 'AI 学情诊断中…');
+    loading.classList.add('loading');
+    WG_AI.analyzeStats({ openMistakes: openN, cleared: cl.length, byTopic: byTopic, weakCount: ms.filter(function (m) { return m.markedWeak; }).length })
+      .then(function (reply) {
+        loading.classList.remove('loading');
+        loading.textContent = '【📋 学情摘要】\n' + summary + '\n\n【💡 AI 建议】\n' + reply;
+        aiSaveChat();
+      })
+      .catch(function (e) {
+        loading.classList.remove('loading');
+        loading.textContent = '【📋 学情摘要】\n' + summary + '\n\n（AI 建议生成失败：' + WG_AI.errText(e) + '）';
+        aiSaveChat();
+      });
   }
 
   function escHtml(s) {
