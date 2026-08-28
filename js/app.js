@@ -705,6 +705,146 @@ var WG_App = (function () {
   var wkState = { cat: 'exam', subject: '', school: '', year: '', localOnly: false, page: 1 };
   var WK_PAGE_SIZE = 60;
 
+/* ---- AI 划词研读模式 ---- */
+var _wkdCurrentPdf = null;
+var wkdAiPagesData = null;
+var _wkdAiSelectedText = '';
+
+function initPdfAiWorker() {
+  if (window.pdfjsLib && !pdfjsLib.GlobalWorkerOptions.workerSrc) {
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  }
+}
+
+function hidePdfAiFloatBtn() {
+  var btn = $('wkdAiFloatBtn');
+  if (btn) btn.style.display = 'none';
+  _wkdAiSelectedText = '';
+}
+
+function showPdfAiFloatBtn(x, y, text) {
+  var btn = $('wkdAiFloatBtn');
+  if (!btn) return;
+  _wkdAiSelectedText = (text || '').trim();
+  if (!_wkdAiSelectedText) { btn.style.display = 'none'; return; }
+  btn.style.display = 'inline-flex';
+  btn.style.left = Math.min(x, window.innerWidth - 220) + 'px';
+  btn.style.top = Math.min(y, window.innerHeight - 60) + 'px';
+}
+
+async function loadPdfForAi(pdfUrl, title) {
+  initPdfAiWorker();
+  if (!window.pdfjsLib) {
+    $('wkdAiPages').innerHTML = '<div style="text-align:center;padding:3rem 0;color:var(--danger);font-size:0.9rem;">❌ PDF.js 加载失败，请刷新页面重试</div>';
+    return;
+  }
+  var pg = $('wkdAiPages');
+  pg.innerHTML = '<div style="text-align:center;padding:3rem 0;color:var(--muted);font-size:0.9rem;">📖 正在解析 PDF 文档…</div>';
+  $('wkdAiStatus').textContent = '⏳ 加载中…';
+  try {
+    var loadingTask = pdfjsLib.getDocument(pdfUrl);
+    var pdf = await loadingTask.promise;
+    var totalPages = pdf.numPages;
+    $('wkdAiPageInfo').textContent = '共 ' + totalPages + ' 页';
+    pg.innerHTML = '';
+    $('wkdAiStatus').textContent = '已加载 ' + totalPages + ' 页，选中文字即可提问';
+    for (var i = 1; i <= totalPages; i++) {
+      var page = await pdf.getPage(i);
+      var viewport = page.getViewport({ scale: 1.5 });
+      var wrap = document.createElement('div');
+      wrap.className = 'pdf-page-wrap';
+      wrap.style.width = viewport.width + 'px';
+      wrap.style.maxWidth = '100%';
+      /* 渲染 canvas */
+      var canvas = document.createElement('canvas');
+      canvas.className = 'pdf-canvas';
+      canvas.width = viewport.width;
+      canvas.height = viewport.height;
+      wrap.appendChild(canvas);
+      var ctx = canvas.getContext('2d');
+      await page.render({ canvasContext: ctx, viewport: viewport }).promise;
+      /* 提取文本并创建可选中文本层 */
+      var textContent = await page.getTextContent();
+      if (textContent.items.length) {
+        var textDiv = document.createElement('div');
+        textDiv.className = 'pdf-text-layer';
+        textDiv.style.width = viewport.width + 'px';
+        textDiv.style.height = viewport.height + 'px';
+        textContent.items.forEach(function (item) {
+          var tx = pdfjsLib.Util.transform(viewport.transform, item.transform);
+          var span = document.createElement('span');
+          span.textContent = item.str;
+          span.style.left = tx[4] + 'px';
+          span.style.top = (viewport.height - tx[5] - item.height * viewport.scale) + 'px';
+          span.style.fontSize = Math.max(4, item.height * viewport.scale) + 'px';
+          textDiv.appendChild(span);
+        });
+        wrap.appendChild(textDiv);
+      }
+      pg.appendChild(wrap);
+    }
+    /* 监听选区变化 */
+    $('wkdAiPages').addEventListener('mouseup', onPdfTextSelect);
+    $('wkdAiPages').addEventListener('touchend', onPdfTextSelect);
+  } catch (e) {
+    pg.innerHTML = '<div style="text-align:center;padding:2rem 0;color:var(--danger);font-size:0.9rem;">❌ PDF 解析失败：' + escHtml(e.message || '未知错误') + '</div>';
+    $('wkdAiStatus').textContent = '❌ 加载失败';
+  }
+}
+
+function onPdfTextSelect(e) {
+  setTimeout(function () {
+    var sel = window.getSelection();
+    if (!sel || sel.isCollapsed || !sel.toString().trim()) {
+      hidePdfAiFloatBtn();
+      return;
+    }
+    var text = sel.toString().trim();
+    if (text.length < 3) { hidePdfAiFloatBtn(); return; }
+    if (text.length > 300) text = text.slice(0, 300) + '…';
+    var range = sel.getRangeAt(0);
+    var rect = range.getBoundingClientRect();
+    showPdfAiFloatBtn(rect.right + 8, rect.top - 10, text);
+  }, 10);
+}
+
+function togglePdfMode(mode) {
+  if (mode === 'ai' && _wkdCurrentPdf && _wkdCurrentPdf.url) {
+    $('wkdPreviewWrap').classList.add('hidden');
+    $('wkdAiPanel').classList.remove('hidden');
+    $('wkdModeIframe').classList.remove('active');
+    $('wkdModeAi').classList.add('active');
+    loadPdfForAi(_wkdCurrentPdf.url, _wkdCurrentPdf.title);
+  } else {
+    hidePdfAiFloatBtn();
+    $('wkdAiPanel').classList.add('hidden');
+    $('wkdPreviewWrap').classList.remove('hidden');
+    $('wkdModeAi').classList.remove('active');
+    $('wkdModeIframe').classList.add('active');
+  }
+}
+
+async function askPdfAi() {
+  var text = _wkdAiSelectedText;
+  if (!text) return;
+  hidePdfAiFloatBtn();
+  var ctx = _wkdCurrentPdf ? _wkdCurrentPdf.title : '当前资料';
+  $('wkdAiAnswerContext').textContent = '选自：' + ctx;
+  $('wkdAiAnswerContent').textContent = '';
+  $('wkdAiAnswerLoading').classList.remove('hidden');
+  $('wkdAiAnswerMask').classList.remove('hidden');
+  try {
+    var result = await WG_AI.chat([
+      { role: 'system', content: '你是一位大学数学/英语教学名师。用户正在阅读备考资料，选中了一段文字想让你深度解剖。请用口语化、深入浅出的方式讲解这段文字的核心概念、考试常考方式、易错点。控制在 300 字以内。' },
+      { role: 'user', content: '我阅读的资料是「' + ctx + '」，选中了以下这段内容，请帮我深度解剖：\n\n' + text }
+    ], { maxTokens: 600, temperature: 0.5 });
+    $('wkdAiAnswerContent').textContent = result || 'AI 暂时无法回答，请稍后重试。';
+  } catch (e) {
+    $('wkdAiAnswerContent').textContent = '❌ AI 请求失败：' + (e.message || '网络错误');
+  }
+  $('wkdAiAnswerLoading').classList.add('hidden');
+}
+
   function wkChipRow(label, items, activeKey, attr, colorVar) {
     if (!items.length) return '';
     var chips = '<button class="wkf-chip' + (activeKey ? '' : ' active') + '" data-' + attr + '="">全部</button>' +
@@ -827,6 +967,19 @@ var WG_App = (function () {
     var isLocal = x.link && x.link.indexOf('data/pdf/') === 0;
     var pvWrap = $('wkdPreviewWrap');
     var pvIfr = $('wkdPreview');
+
+    /* 重置 AI 划词模式状态 */
+    wkdAiPagesData = null;
+    hidePdfAiFloatBtn();
+    $('wkdAiPanel').classList.add('hidden');
+    $('wkdPreviewWrap').classList.remove('hidden');
+    var modeBar = $('wkdReadModeBar');
+    if (modeBar) modeBar.classList.add('hidden');
+    var modeIframe = $('wkdModeIframe');
+    var modeAi = $('wkdModeAi');
+    if (modeIframe) modeIframe.classList.add('active');
+    if (modeAi) modeAi.classList.remove('active');
+
     if (link) {
       if (isLocal) {
         link.href = x.link;
@@ -839,6 +992,12 @@ var WG_App = (function () {
         if (pvWrap && pvIfr) {
           pvWrap.classList.remove('hidden');
           pvIfr.src = x.link;
+        }
+        /* 本地 PDF 显示模式切换条 */
+        if (modeBar) {
+          modeBar.classList.remove('hidden');
+          _wkdCurrentPdf = { url: x.link, title: x.title || '' };
+          $('wkdAiStatus').textContent = '';
         }
       } else {
         /* 非本地资料：提供原站分类页链接 */
@@ -1814,6 +1973,21 @@ var WG_App = (function () {
     if (wkd) {
       wkd.addEventListener('click', function (e) {
         if (e.target === wkd) wkd.classList.add('hidden');
+      });
+    }
+    /* AI 划词模式切换 */
+    if ($('wkdModeIframe')) $('wkdModeIframe').addEventListener('click', function () { togglePdfMode('iframe'); });
+    if ($('wkdModeAi')) $('wkdModeAi').addEventListener('click', function () { togglePdfMode('ai'); });
+    /* AI 划词浮动按钮 */
+    if ($('wkdAiFloatBtn')) $('wkdAiFloatBtn').addEventListener('click', askPdfAi);
+    /* AI 划词答案弹窗 */
+    if ($('wkdAiAnswerClose')) $('wkdAiAnswerClose').addEventListener('click', function () {
+      $('wkdAiAnswerMask').classList.add('hidden');
+    });
+    var wkdAns = $('wkdAiAnswerMask');
+    if (wkdAns) {
+      wkdAns.addEventListener('click', function (e) {
+        if (e.target === wkdAns) wkdAns.classList.add('hidden');
       });
     }
 

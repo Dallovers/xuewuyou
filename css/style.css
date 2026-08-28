@@ -3844,3 +3844,68 @@ body.study-fullscreen-active #aiFab {
     align-self: flex-end;
   }
 }
+
+/* ============ AI 划词研读模式 ============ */
+#wkdAiPages .pdf-page-wrap {
+  position: relative;
+  margin: 0 auto 1rem;
+  background: #fff;
+  border-radius: 6px;
+  box-shadow: 0 1px 6px rgba(0,0,0,.12);
+  overflow: hidden;
+  max-width: 100%;
+}
+#wkdAiPages .pdf-page-wrap canvas {
+  display: block;
+  width: 100% !important;
+  height: auto !important;
+}
+#wkdAiPages .pdf-text-layer {
+  position: absolute;
+  left: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  overflow: hidden;
+  user-select: text;
+  cursor: text;
+  line-height: 1;
+}
+#wkdAiPages .pdf-text-layer span {
+  color: transparent;
+  position: absolute;
+  white-space: pre;
+  cursor: text;
+  user-select: text;
+  transform-origin: 0 0;
+}
+#wkdAiPages .pdf-text-layer ::selection {
+  background: rgba(59,130,246,.35);
+  color: transparent;
+}
+#wkdAiPages .pdf-text-layer span::selection {
+  background: rgba(59,130,246,.35);
+  color: transparent;
+}
+#wkdAiFloatBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+#wkdAiFloatBtn:hover {
+  box-shadow: 0 6px 24px rgba(59,130,246,.55);
+  transform: scale(1.04);
+}
+#wkdAiFloatBtn:active {
+  transform: scale(0.96);
+}
+#wkdAiAnswerContent {
+  border-left: 3px solid var(--cyan);
+  padding-left: 0.8rem;
+  background: rgba(110,168,255,.04);
+  border-radius: 0 8px 8px 0;
+  padding: 0.8rem 1rem;
+}
+#wkdAiAnswerContent p {
+  margin: 0.5rem 0;
+}
