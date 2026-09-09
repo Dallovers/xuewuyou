@@ -32,6 +32,35 @@ var WG_AI = (function () {
     return window.WG_API;
   }
 
+  /* ------- 服务端代理可用性探测 -------
+   * 部署在 GitHub Pages / Netlify 等纯静态托管时没有后端，
+   * POST /api/ai/* 会返回 405，白白浪费一次请求。
+   * 这里用一次 GET /api/ai/config 探测：返回 JSON 说明有后端可走代理；
+   * 返回 404/405/HTML 说明纯静态，之后全部直连大模型，避免控制台噪音。 */
+  var proxyState = null;   // null=未知, true=代理可用, false=纯静态/后端不可用
+  var probing = null;
+
+  function probeProxy() {
+    if (probing) return probing;
+    probing = fetch('/api/ai/config', { method: 'GET', cache: 'no-store' })
+      .then(function (r) {
+        var ct = (r.headers.get('content-type') || '').toLowerCase();
+        proxyState = !!(r.ok && ct.indexOf('application/json') >= 0);
+        return proxyState;
+      })
+      .catch(function () {
+        proxyState = false; // 网络失败视为无后端，降级直连
+        return false;
+      });
+    return probing;
+  }
+
+  /* 等待代理探测结果（并发调用只探测一次） */
+  function waitProxyState() {
+    if (proxyState !== null) return Promise.resolve(proxyState);
+    return probeProxy();
+  }
+
   /* 前端直接请求大模型（降级用） */
   async function directChat(messages, opts) {
     opts = opts || {};
@@ -96,11 +125,13 @@ var WG_AI = (function () {
     return data.choices && data.choices[0] && data.choices[0].message ? data.choices[0].message.content : '';
   }
 
-  /* 核心请求：优先走服务端代理，若处于纯静态/离线/后端未启动环境则自动无缝降级为前端直接调用 */
+  /* 核心请求：先探测后端是否可用。纯静态环境(如 GitHub Pages)直接走前端直连；
+     有后端时走服务端代理，代理中途失败也会无缝降级为直连。 */
   async function chat(messages, opts) {
     opts = opts || {};
     try {
-      if (api() && typeof api().aiChat === 'function') {
+      var ok = await waitProxyState();
+      if (ok && api() && typeof api().aiChat === 'function') {
         var d = await api().aiChat(messages, {
           temperature: opts.temperature,
           maxTokens: opts.maxTokens,
@@ -110,9 +141,9 @@ var WG_AI = (function () {
         if (d && d.content) return d.content;
       }
     } catch (e) {
-      /* 静态托管(如 GitHub Pages)不支持 POST，返回 405/404/403；
-         后端未启动或网关错误返回 502/503/500。这些都应该降级直连。
-         只有 401(鉴权失败) 等 AI API 本身的业务错误才不降级。 */
+      /* 代理探测通过但请求仍失败(后端中途下线/网关错误 403/404/405/500/502/503)，
+         标记为不可用并降级直连。只有 401(鉴权失败) 等 AI API 业务错误才不降级。 */
+      proxyState = false;
       var isConnErr = !e.status || e.status === 403 || e.status === 404 || e.status === 405 || e.status === 500 || e.status === 502 || e.status === 503 || /fetch|network|failed|not found|请求失败/i.test(e.message || '');
       if (!isConnErr) throw e;
     }
@@ -120,16 +151,18 @@ var WG_AI = (function () {
     return directChat(messages, opts);
   }
 
-  /* 拍照搜题：优先走服务端代理，失败自动降级直连 */
+  /* 拍照搜题：同 chat，先探测后端，纯静态直接直连 */
   async function explainPhoto(imageDataUrl, userNote) {
     try {
-      if (api() && typeof api().aiVision === 'function') {
+      var ok2 = await waitProxyState();
+      if (ok2 && api() && typeof api().aiVision === 'function') {
         var d = await api().aiVision(imageDataUrl, userNote);
         if (d && d.content) return d.content;
       }
     } catch (e) {
-      var isConnErr = !e.status || e.status === 403 || e.status === 404 || e.status === 405 || e.status === 500 || e.status === 502 || e.status === 503 || /fetch|network|failed|not found|请求失败/i.test(e.message || '');
-      if (!isConnErr) throw e;
+      proxyState = false;
+      var isConnErr2 = !e.status || e.status === 403 || e.status === 404 || e.status === 405 || e.status === 500 || e.status === 502 || e.status === 503 || /fetch|network|failed|not found|请求失败/i.test(e.message || '');
+      if (!isConnErr2) throw e;
     }
     return directVision(imageDataUrl, userNote);
   }
@@ -232,4 +265,9 @@ var WG_AI = (function () {
       return 'AI 请求出错，请检查网络或稍后再试';
     }
   };
+
+  /* 模块加载后立即后台探测一次后端可用性，避免用户首次提问时等待探测 */
+  if (typeof fetch === 'function') {
+    try { probeProxy(); } catch (e) { proxyState = false; }
+  }
 })();
