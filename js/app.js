@@ -1412,9 +1412,11 @@ var WG_App = (function () {
     name.textContent = nick;
     var logged = !!(window.WG_API && WG_API.isLoggedIn());
     if (logged) name.textContent = nick + ' ☁';
-    /* 顶部「退出登录」按钮仅在云端登录时显示 */
+    /* 顶部「退出登录」：登录过（含本地账号）或已建档（本地体验进入主页）后显示。
+       未建档的初始注册页不显示，避免无意义的退出入口。 */
+    var hasProfile = !!WG_Data.get().profile;
     var outBtn = $('topLogoutBtn');
-    if (outBtn) outBtn.style.display = logged ? 'inline-flex' : 'none';
+    if (outBtn) outBtn.style.display = (logged || hasProfile) ? 'inline-flex' : 'none';
   }
 
   function promptNick() {
@@ -1546,13 +1548,34 @@ var WG_App = (function () {
     if (btn) btn.textContent = '🔄 立即同步数据';
   }
 
-  /* 已登录：退出登录 */
+  /* 已登录/已建档：退出登录。
+     云端账号(真后端)退出：清会话、保留本机数据；
+     本地账号 / 本地体验：清除本机学习档案回到注册首页（可换人重新开始）。 */
   function handleLogout() {
-    if (!confirm('确定退出登录吗？本地数据会保留，云端数据不受影响。')) return;
-    WG_API.logout();
+    var api = window.WG_API;
+    var isCloud = !!(api && api.isCloudSession && api.isCloudSession());
+    var logged = !!(api && api.isLoggedIn());
+    var hasProfile = !!WG_Data.get().profile;
+
+    if (isCloud) {
+      if (!confirm('确定退出登录吗？本机数据会保留，云端数据不受影响。')) return;
+      api.logout();
+      closeLogin();
+      refreshNickUI();
+      toast('已退出登录，本机数据已保留', 'ok');
+      goHome();
+      return;
+    }
+    if (!logged && !hasProfile) { toast('当前还没有学习档案'); return; }
+    if (!confirm('确定退出并清除本机学习档案吗？\n将清除做题记录、错题本与学习计划，回到注册首页。')) return;
+    if (logged && api) api.logout();
+    try { localStorage.removeItem('wenguo_v1'); } catch (e) {}
+    try { localStorage.removeItem('wenguo_study_setup'); } catch (e) {}
+    try { localStorage.removeItem('xwy_ai_chat'); } catch (e) {}
     closeLogin();
     refreshNickUI();
-    toast('已退出登录，数据仍保留在本机', 'ok');
+    toast('已退出，本机学习档案已清除', 'ok');
+    showOnboard();
   }
 
   /* ---------- 云端数据同步（登录后自动） ---------- */
@@ -2892,6 +2915,7 @@ var WG_App = (function () {
 
   function goHome() {
     stopGames();
+    refreshNickUI(); // 同步顶部昵称与「退出登录」显隐
     renderHome();
   }
 
