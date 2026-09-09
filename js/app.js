@@ -1602,6 +1602,8 @@ var WG_App = (function () {
       if (!msgs.length) return false;
       aiHistory = [];
       msgs.forEach(function (m) {
+        /* 过滤历史中残留的旧版失败提示(如"AI 请求失败")，避免展示过期错误 */
+        if (m.role === 'bot' && /AI 请求失败|AI 请求出错|AI 接口返回错误/.test(m.text || '')) return;
         if (m.photo) {
           var p = document.createElement('div');
           p.className = 'ai-msg ' + m.role;
