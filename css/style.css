@@ -273,6 +273,9 @@ input::placeholder, textarea::placeholder { color: var(--muted); opacity: 0.75; 
 .topbar .nick:hover { border-color: var(--acc); color: var(--ink); }
 .topbar .nick:active { transform: scale(0.97); }
 .topbar .nick b { color: var(--acc); font-weight: 600; }
+/* 顶部「退出登录」按钮：危险色描边，登录后由 JS 显示 */
+.topbar .nick.logout { margin-left: 0.4rem; color: var(--danger); border-color: rgba(198,48,40,0.35); }
+.topbar .nick.logout:hover { border-color: var(--danger); color: var(--danger); background: rgba(198,48,40,0.07); }
 
 /* ============ 按钮 ============ */
 .btn {

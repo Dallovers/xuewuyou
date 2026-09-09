@@ -1410,7 +1410,11 @@ var WG_App = (function () {
     if (!name) return;
     var nick = WG_Data.get().nick || '同学';
     name.textContent = nick;
-    if (window.WG_API && WG_API.isLoggedIn()) name.textContent = nick + ' ☁';
+    var logged = !!(window.WG_API && WG_API.isLoggedIn());
+    if (logged) name.textContent = nick + ' ☁';
+    /* 顶部「退出登录」按钮仅在云端登录时显示 */
+    var outBtn = $('topLogoutBtn');
+    if (outBtn) outBtn.style.display = logged ? 'inline-flex' : 'none';
   }
 
   function promptNick() {
@@ -1677,6 +1681,12 @@ var WG_App = (function () {
   function bind() {
     $('logoBtn').addEventListener('click', function () { closeModal(); goHome(); });
     $('nickBtn').addEventListener('click', promptNick);
+    /* 顶部「退出登录」快捷入口：直接走云端退出 */
+    var topOut = $('topLogoutBtn');
+    if (topOut) topOut.addEventListener('click', function (e) {
+      e.stopPropagation();
+      handleLogout();
+    });
     $('backBtn').addEventListener('click', function () { closeExamSide(); closeModal(); if (state.backView) showView(state.backView); else goHome(); });
     bindExamSide();
     bindStudySetup();
