@@ -110,8 +110,10 @@ var WG_AI = (function () {
         if (d && d.content) return d.content;
       }
     } catch (e) {
-      /* 如果是 401 等明确业务错误则抛出，如果是后端连接失败/404/网络错误则自动降级直连 */
-      var isConnErr = !e.status || e.status === 404 || e.status === 502 || /fetch|network|failed|not found/i.test(e.message || '');
+      /* 静态托管(如 GitHub Pages)不支持 POST，返回 405/404/403；
+         后端未启动或网关错误返回 502/503/500。这些都应该降级直连。
+         只有 401(鉴权失败) 等 AI API 本身的业务错误才不降级。 */
+      var isConnErr = !e.status || e.status === 403 || e.status === 404 || e.status === 405 || e.status === 500 || e.status === 502 || e.status === 503 || /fetch|network|failed|not found|请求失败/i.test(e.message || '');
       if (!isConnErr) throw e;
     }
     /* 降级直连 */
@@ -126,7 +128,7 @@ var WG_AI = (function () {
         if (d && d.content) return d.content;
       }
     } catch (e) {
-      var isConnErr = !e.status || e.status === 404 || e.status === 502 || /fetch|network|failed|not found/i.test(e.message || '');
+      var isConnErr = !e.status || e.status === 403 || e.status === 404 || e.status === 405 || e.status === 500 || e.status === 502 || e.status === 503 || /fetch|network|failed|not found|请求失败/i.test(e.message || '');
       if (!isConnErr) throw e;
     }
     return directVision(imageDataUrl, userNote);

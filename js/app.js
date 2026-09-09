@@ -1925,7 +1925,7 @@ var WG_App = (function () {
     var aiStatus = $('aiKeyStatus');
     if (aiStatus) {
       aiStatus.textContent = window.WG_API
-        ? 'AI 请求由服务端代理，密钥不经过浏览器。'
+        ? 'AI 由智谱 GLM-4-Flash 驱动，在线直连调用。'
         : 'AI 服务初始化中…';
     }
 
