@@ -1525,6 +1525,11 @@ var WG_App = (function () {
   /* 已登录：立即同步本地数据到云端 */
   async function handleSyncNow() {
     var btn = $('loginSyncNow');
+    /* 本地账号会话没有云端，直接提示即可 */
+    if (window.WG_API && WG_API.isCloudSession && !WG_API.isCloudSession()) {
+      toast('当前为本地账号模式（无后端服务），数据仅存本机', 'ok');
+      return;
+    }
     if (btn) btn.textContent = '⏳ 同步中…';
     try {
       var merged = await WG_API.pullMerge(WG_Data.get());
@@ -1554,6 +1559,8 @@ var WG_App = (function () {
   var syncTimer = null;
   function syncToCloud() {
     if (!window.WG_API || !WG_API.isLoggedIn()) return;
+    /* 本地账号会话（纯静态降级）没有云端，跳过同步避免误导性提示 */
+    if (WG_API.isCloudSession && !WG_API.isCloudSession()) return;
     if (syncTimer) clearTimeout(syncTimer);
     syncTimer = setTimeout(function () {
       syncTimer = null;

@@ -18,6 +18,12 @@ var WG_API = (function () {
   function getToken() { return ls(TOKEN_KEY); }
   function getUser() { try { return JSON.parse(ls(USER_KEY) || 'null'); } catch (e) { return null; } }
   function isLoggedIn() { return !!getToken(); }
+  /* 是否为本地账号会话（后端不可达时降级产生的 local.* token）。
+     本地会话没有真正的云端，应跳过云同步提示，避免误导。 */
+  function isCloudSession() {
+    var t = getToken();
+    return !!(t && t.indexOf('local.') !== 0);
+  }
 
   function emit() {
     listeners.forEach(function (fn) { try { fn(); } catch (e) {} });
@@ -30,8 +36,17 @@ var WG_API = (function () {
     if (token) headers.Authorization = 'Bearer ' + token;
     var opts = { method: method, headers: headers };
     if (body !== undefined) opts.body = JSON.stringify(body);
-    var res = await fetch(BASE + path, opts);
-    var data = await res.json().catch(function () { return {}; });
+    var res, data;
+    try {
+      res = await fetch(BASE + path, opts);
+    } catch (e) {
+      /* 网络层失败（断网/后端未启动/CORS）统一为 status 0 的连接错误 */
+      var ne = new Error('网络连接失败，请检查后端服务是否已启动');
+      ne.code = 'NET';
+      ne.status = 0;
+      throw ne;
+    }
+    data = await res.json().catch(function () { return {}; });
     if (!res.ok) {
       var err = new Error(data.error || ('请求失败(' + res.status + ')'));
       err.code = data.code || 'ERR';
@@ -42,16 +57,45 @@ var WG_API = (function () {
     return data;
   }
 
+  /* 判断是否为"后端不可达"（纯静态托管 / 后端未启动 / 网关错误）。
+     这类错误会被 auth 流程捕获并自动降级为本地账号；业务性 4xx 不降级。 */
+  function isBackendDown(e) {
+    if (!e) return true;
+    if (!e.status) return true; // 0 / undefined：网络层失败
+    return e.status === 403 || e.status === 404 || e.status === 405 ||
+      e.status === 500 || e.status === 502 || e.status === 503 ||
+      /fetch|network|failed|not found|请求失败/i.test(e.message || '');
+  }
+
   /* ---- 认证 ---- */
   async function register(username, password, nick) {
-    var d = await req('POST', '/api/auth/register', { username: username, password: password, nick: nick });
-    setSession(d.token, d.user);
-    return d;
+    try {
+      var d = await req('POST', '/api/auth/register', { username: username, password: password, nick: nick });
+      setSession(d.token, d.user);
+      return d;
+    } catch (e) {
+      /* 后端不可达（如 GitHub Pages 纯静态托管）→ 本地账号模式，注册即成功 */
+      if (isBackendDown(e)) return localSession(username, nick || username);
+      throw e;
+    }
   }
   async function login(username, password) {
-    var d = await req('POST', '/api/auth/login', { username: username, password: password });
-    setSession(d.token, d.user);
-    return d;
+    try {
+      var d = await req('POST', '/api/auth/login', { username: username, password: password });
+      setSession(d.token, d.user);
+      return d;
+    } catch (e) {
+      /* 后端不可达 → 本地账号模式：视为本地身份登录成功 */
+      if (isBackendDown(e)) return localSession(username, username);
+      throw e;
+    }
+  }
+  /* 本地账号会话：无后端时用本地 token 维持"已登录"UI（数据仍只存本机） */
+  function localSession(username, nick) {
+    var user = { username: username || 'demo', nick: nick || username || '同学', local: true };
+    var token = 'local.' + Math.random().toString(36).slice(2) + '.' + Date.now();
+    setSession(token, user);
+    return { token: token, user: user };
   }
   function setSession(token, user) {
     lss(TOKEN_KEY, token);
@@ -104,12 +148,19 @@ var WG_API = (function () {
     return req('POST', '/api/ai/vision', { imageDataUrl: imageDataUrl, userNote: userNote });
   }
 
-  /* ---- 登录后数据同步：拉取云端并合并写回 ---- */
+  /* ---- 登录后数据同步：拉取云端并合并写回 ----
+     后端不可达（纯静态）时静默返回本地数据，不抛错、不阻塞登录流程 */
   async function pullMerge(localData) {
-    var d = await getData();
-    var cloud = d.data || {};
-    var merged = mergeCloudLocal(cloud, localData);
-    await putData(merged); // 双向合并结果回写云端
+    var merged;
+    try {
+      var d = await getData();
+      var cloud = d.data || {};
+      merged = mergeCloudLocal(cloud, localData);
+    } catch (e) {
+      if (!isBackendDown(e)) throw e;
+      merged = mergeCloudLocal({}, localData); // 无后端：仅保留本地
+    }
+    try { await putData(merged); } catch (e) { /* 后端不可达则跳过回写 */ }
     return merged;
   }
 
@@ -160,6 +211,7 @@ var WG_API = (function () {
   return {
     req: req,
     isLoggedIn: isLoggedIn,
+    isCloudSession: isCloudSession,
     getToken: getToken,
     getUser: getUser,
     onAuthChange: onAuthChange,
