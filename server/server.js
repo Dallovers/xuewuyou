@@ -25,9 +25,9 @@ const AI_PROVIDERS = {
   doubao: { name: '豆包', base: 'https://ark.cn-beijing.volces.com/api/v3', model: 'doubao-pro-32k', vision: 'doubao-vision-pro-32k' }
 };
 
-/* 初始服务端 Key：从环境变量读取，否则用内置默认（智谱免费额度）。
- * 生产环境务必用环境变量 AI_API_KEY 覆盖，不要依赖内置默认值。 */
-const AI_DEFAULT_KEY = process.env.AI_API_KEY || '12b55751eeba4f13b28d1cf5e9463c57.tF2TBMfVLVCukBAR';
+/* AI 密钥仅从环境变量或已有服务端配置读取。 */
+const AI_DEFAULT_KEY = process.env.AI_API_KEY || '';
+
 const AI_DEFAULT_PROVIDER = process.env.AI_PROVIDER || 'zhipu';
 
 function getAiConfig() {
@@ -35,8 +35,8 @@ function getAiConfig() {
   return {
     provider: c.provider || AI_DEFAULT_PROVIDER,
     apiKey: c.apiKey || AI_DEFAULT_KEY,
-    base: c.base || '',
-    model: c.model || ''
+    base: c.base || process.env.AI_BASE_URL || '',
+    model: c.model || process.env.AI_MODEL || ''
   };
 }
 
@@ -167,6 +167,8 @@ const routes = [];
 function route(method, pattern, handler) {
   routes.push({ method, pattern, handler });
 }
+
+route('GET', '/api/health', async (req, res) => sendJson(res, 200, { ok: true }));
 
 /* ===== 认证 ===== */
 route('POST', '/api/auth/register', async (req, res) => {
@@ -354,12 +356,15 @@ route('GET', '/api/study/presence', (req, res) => {
 /* ===== AI Key 代理（层0） ===== */
 async function proxyAI(res, options) {
   const cfg = getAiConfig();
+  if (!cfg.apiKey) return sendError(res, 503, '请在 server/.env 配置 AI_API_KEY');
   const provider = AI_PROVIDERS[options.provider || cfg.provider] || AI_PROVIDERS.zhipu;
   const model = options.model || cfg.model || provider.model;
   const base = cfg.base || provider.base;
   try {
     const upstream = await fetch(base + '/chat/completions', {
       method: 'POST',
+      redirect: 'error',
+      signal: AbortSignal.timeout(45000),
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + cfg.apiKey },
       body: JSON.stringify(options.body(model))
     });
@@ -376,6 +381,7 @@ async function proxyAI(res, options) {
 }
 
 route('POST', '/api/ai/chat', async (req, res) => {
+  if (!authUser(req)) return sendError(res, 401, '请先登录云端账号');
   const body = JSON.parse(await readBody(req, 2) || '{}');
   if (!Array.isArray(body.messages) || body.messages.length === 0) {
     return sendError(res, 400, 'messages 不能为空');
@@ -394,6 +400,7 @@ route('POST', '/api/ai/chat', async (req, res) => {
 });
 
 route('POST', '/api/ai/vision', async (req, res) => {
+  if (!authUser(req)) return sendError(res, 401, '请先登录云端账号');
   const body = JSON.parse(await readBody(req, 20) || '{}');
   if (!body.imageDataUrl) return sendError(res, 400, '缺少图片');
   const cfg = getAiConfig();
@@ -423,20 +430,28 @@ route('GET', '/api/ai/config', (req, res) => {
   sendJson(res, 200, { ok: true, provider: cfg.provider, model: cfg.model, hasKey: !!cfg.apiKey });
 });
 
+const integrations = require('./integrations')( { route, authUser, sendJson, readBody, store, getAiConfig, providers: AI_PROVIDERS } );
+require('./learning')({ route, authUser, sendJson, readBody, store, syncReviews:integrations.syncReviews });
+const community = require('./community')({route,authUser,sendJson,readBody,store,syncReviews:integrations.syncReviews});
+
 /* ===== 静态文件（伺服 wenguo 前端） ===== */
 const MIME = {
   '.html': 'text/html; charset=utf-8', '.js': 'application/javascript; charset=utf-8',
   '.css': 'text/css; charset=utf-8', '.json': 'application/json; charset=utf-8',
   '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.gif': 'image/gif',
   '.svg': 'image/svg+xml', '.ico': 'image/x-icon', '.wav': 'audio/wav', '.mp3': 'audio/mpeg',
-  '.pdf': 'application/pdf', '.woff': 'font/woff', '.woff2': 'font/woff2'
+  '.pdf': 'application/pdf', '.woff': 'font/woff', '.woff2': 'font/woff2',
+  '.wasm': 'application/wasm', '.mjs': 'application/javascript', '.ttf': 'font/ttf'
 };
 
 function serveStatic(req, res) {
-  let urlPath = decodeURIComponent((req.url.split('?')[0] || '/'));
+  let urlPath;
+  try { urlPath = decodeURIComponent((req.url.split('?')[0] || '/')); } catch { return sendError(res, 400, '路径格式错误'); }
   if (urlPath === '/') urlPath = '/index.html';
   const filePath = path.normalize(path.join(ROOT, urlPath));
-  if (!filePath.startsWith(ROOT)) return sendError(res, 403, '禁止访问');
+  const relative = path.relative(ROOT, filePath);
+  const parts = relative.split(path.sep);
+  if (relative.startsWith('..') || path.isAbsolute(relative) || parts.some(p => p.startsWith('.')) || !['index.html', 'js', 'css', 'audio', 'data', 'vendor'].includes(parts[0])) return sendError(res, 403, '禁止访问');
   fs.readFile(filePath, (err, buf) => {
     if (err) return sendError(res, 404, '文件不存在');
     const ext = path.extname(filePath).toLowerCase();
@@ -462,7 +477,7 @@ const server = http.createServer(async (req, res) => {
       try {
         await r.handler(req, res);
       } catch (e) {
-        if (!res.headersSent) sendError(res, 500, '服务器内部错误: ' + (e.message || e));
+        if (!res.headersSent) sendError(res, e instanceof SyntaxError ? 400 : 500, e instanceof SyntaxError ? '请求格式错误' : '服务器内部错误');
       }
       return;
     }
@@ -471,7 +486,8 @@ const server = http.createServer(async (req, res) => {
   serveStatic(req, res);
 });
 
-server.listen(PORT, () => {
+community.attach(server);
+if (require.main === module) server.listen(PORT, process.env.HOST || '127.0.0.1', () => {
   console.log('学无忧后端已启动: http://localhost:' + PORT);
   console.log('  - AI Key 代理:  /api/ai/chat, /api/ai/vision');
   console.log('  - 用户认证:     /api/auth/register, /api/auth/login, /api/auth/me');
@@ -480,3 +496,6 @@ server.listen(PORT, () => {
 });
 
 
+
+if (require.main === module) process.on('SIGTERM', async () => { await community.close(); await integrations.close(); process.exit(0); });
+module.exports = { server, integrations, community };

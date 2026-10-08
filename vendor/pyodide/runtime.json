@@ -1,0 +1,21 @@
+{
+  "version": "314.0.7",
+  "packages": [
+    "numpy",
+    "sympy",
+    "mpmath",
+    "matplotlib",
+    "contourpy",
+    "cycler",
+    "six",
+    "fonttools",
+    "kiwisolver",
+    "packaging",
+    "pillow",
+    "pyparsing",
+    "python-dateutil",
+    "pytz"
+  ],
+  "source": "https://github.com/pyodide/pyodide",
+  "license": "MPL-2.0"
+}

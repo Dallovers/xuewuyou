@@ -5,6 +5,19 @@ server/data/
 
 # 超大文件
 *.zip
+!vendor/pyodide/python_stdlib.zip
 *.rar
 *.7z
+node_modules/
+.env
+.env.*
+!.env.example
+services/ragflow/
+services/mineru/.venv/
+services/mineru/uploads/
+services/learning/.venv/
+services/learning/.ready
+__pycache__/
+audit-report.json
+previews/
 

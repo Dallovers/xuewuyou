@@ -6,167 +6,25 @@
 'use strict';
 
 var WG_AI = (function () {
-  var KEY_STORE = 'xwy_ai_key';
-  var PROV_STORE = 'xwy_ai_provider';
-
-  /* 内置备用 Key（智谱 GLM-4-Flash 免费，支持直接在前端调用） */
-  var DEFAULT_KEY = '12b55751eeba4f13b28d1cf5e9463c57.tF2TBMfVLVCukBAR';
-  var DEFAULT_PROVIDER = 'zhipu';
-
   var PROVIDERS = {
     zhipu:  { name: '智谱 GLM（GLM-4-Flash 免费）', base: 'https://open.bigmodel.cn/api/paas/v4', model: 'glm-4-flash', vision: 'glm-4v-flash' },
     deepseek: { name: 'DeepSeek（新用户送额度）', base: 'https://api.deepseek.com', model: 'deepseek-chat', vision: null },
     kimi:   { name: 'Kimi（新用户送额度）', base: 'https://api.moonshot.cn/v1', model: 'moonshot-v1-8k', vision: 'moonshot-v1-8k-vision-preview' },
     doubao: { name: '豆包·火山方舟（新用户送 token）', base: 'https://ark.cn-beijing.volces.com/api/v3', model: 'doubao-pro-32k', vision: 'doubao-vision-pro-32k' }
   };
-
-  function ls(k) { try { return localStorage.getItem(k) || ''; } catch (e) { return ''; } }
-  function lss(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
-
-  function getKey() { return ls(KEY_STORE) || DEFAULT_KEY; }
-  function setKey(k) { lss(KEY_STORE, (k || '').trim()); }
-  function getProvider() { return ls(PROV_STORE) || DEFAULT_PROVIDER; }
-  function setProvider(p) { lss(PROV_STORE, p); }
-
-  function api() {
-    return window.WG_API;
-  }
-
-  /* ------- 服务端代理可用性探测 -------
-   * 部署在 GitHub Pages / Netlify 等纯静态托管时没有后端，
-   * POST /api/ai/* 会返回 405，白白浪费一次请求。
-   * 这里用一次 GET /api/ai/config 探测：返回 JSON 说明有后端可走代理；
-   * 返回 404/405/HTML 说明纯静态，之后全部直连大模型，避免控制台噪音。 */
-  var proxyState = null;   // null=未知, true=代理可用, false=纯静态/后端不可用
-  var probing = null;
-
-  function probeProxy() {
-    if (probing) return probing;
-    probing = fetch('/api/ai/config', { method: 'GET', cache: 'no-store' })
-      .then(function (r) {
-        var ct = (r.headers.get('content-type') || '').toLowerCase();
-        proxyState = !!(r.ok && ct.indexOf('application/json') >= 0);
-        return proxyState;
-      })
-      .catch(function () {
-        proxyState = false; // 网络失败视为无后端，降级直连
-        return false;
-      });
-    return probing;
-  }
-
-  /* 等待代理探测结果（并发调用只探测一次） */
-  function waitProxyState() {
-    if (proxyState !== null) return Promise.resolve(proxyState);
-    return probeProxy();
-  }
-
-  /* 前端直接请求大模型（降级用） */
-  async function directChat(messages, opts) {
-    opts = opts || {};
-    var key = getKey();
-    if (!key) throw { code: 'NO_KEY', message: '未配置 AI 密钥' };
-    var provId = opts.provider || getProvider();
-    var prov = PROVIDERS[provId] || PROVIDERS.zhipu;
-    var model = opts.model || prov.model;
-    var base = prov.base;
-
-    var res = await fetch(base + '/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + key
-      },
-      body: JSON.stringify({
-        model: model,
-        messages: messages,
-        temperature: opts.temperature != null ? opts.temperature : 0.6,
-        max_tokens: opts.maxTokens || 500,
-        stream: false
-      })
-    });
-    var data = await res.json().catch(function () { return {}; });
-    if (!res.ok) {
-      throw new Error((data.error && data.error.message) || ('AI 接口返回错误(' + res.status + ')'));
-    }
-    return data.choices && data.choices[0] && data.choices[0].message ? data.choices[0].message.content : '';
-  }
-
-  /* 前端直接视觉搜题请求（降级用） */
-  async function directVision(imageDataUrl, userNote) {
-    var key = getKey();
-    if (!key) throw { code: 'NO_KEY', message: '未配置 AI 密钥' };
-    var res = await fetch('https://open.bigmodel.cn/api/paas/v4/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + key
-      },
-      body: JSON.stringify({
-        model: 'glm-4v-flash',
-        temperature: 0.5,
-        max_tokens: 600,
-        messages: [
-          { role: 'system', content: '你是「学无忧」的 AI 助教。用户会发来一道题的图片，请读出题目并给出清晰、简短的解题思路（150 字以内）。如果图片不是题目，就说明一下。' },
-          {
-            role: 'user',
-            content: [
-              { type: 'text', text: userNote || '帮我看看这道题怎么做？' },
-              { type: 'image_url', image_url: { url: imageDataUrl } }
-            ]
-          }
-        ]
-      })
-    });
-    var data = await res.json().catch(function () { return {}; });
-    if (!res.ok) {
-      throw new Error((data.error && data.error.message) || ('AI 视觉识别错误(' + res.status + ')'));
-    }
-    return data.choices && data.choices[0] && data.choices[0].message ? data.choices[0].message.content : '';
-  }
-
-  /* 核心请求：先探测后端是否可用。纯静态环境(如 GitHub Pages)直接走前端直连；
-     有后端时走服务端代理，代理中途失败也会无缝降级为直连。 */
+  var PROV_STORE = 'xwy_ai_provider';
+  function getProvider() { try { return localStorage.getItem(PROV_STORE) || 'zhipu'; } catch { return 'zhipu'; } }
+  function setProvider(p) { try { localStorage.setItem(PROV_STORE, p); } catch {} }
+  function getKey() { return ''; }
+  function setKey() { throw new Error('请在 server/.env 配置密钥'); }
   async function chat(messages, opts) {
-    opts = opts || {};
-    try {
-      var ok = await waitProxyState();
-      if (ok && api() && typeof api().aiChat === 'function') {
-        var d = await api().aiChat(messages, {
-          temperature: opts.temperature,
-          maxTokens: opts.maxTokens,
-          model: opts.model,
-          provider: opts.provider
-        });
-        if (d && d.content) return d.content;
-      }
-    } catch (e) {
-      /* 代理探测通过但请求仍失败(后端中途下线/网关错误 403/404/405/500/502/503)，
-         标记为不可用并降级直连。只有 401(鉴权失败) 等 AI API 业务错误才不降级。 */
-      proxyState = false;
-      var isConnErr = !e.status || e.status === 403 || e.status === 404 || e.status === 405 || e.status === 500 || e.status === 502 || e.status === 503 || /fetch|network|failed|not found|请求失败/i.test(e.message || '');
-      if (!isConnErr) throw e;
-    }
-    /* 降级直连 */
-    return directChat(messages, opts);
+    if (!window.WG_API) throw new Error('请通过网站启动脚本访问');
+    return (await WG_API.aiChat(messages, opts || {})).content;
   }
-
-  /* 拍照搜题：同 chat，先探测后端，纯静态直接直连 */
   async function explainPhoto(imageDataUrl, userNote) {
-    try {
-      var ok2 = await waitProxyState();
-      if (ok2 && api() && typeof api().aiVision === 'function') {
-        var d = await api().aiVision(imageDataUrl, userNote);
-        if (d && d.content) return d.content;
-      }
-    } catch (e) {
-      proxyState = false;
-      var isConnErr2 = !e.status || e.status === 403 || e.status === 404 || e.status === 405 || e.status === 500 || e.status === 502 || e.status === 503 || /fetch|network|failed|not found|请求失败/i.test(e.message || '');
-      if (!isConnErr2) throw e;
-    }
-    return directVision(imageDataUrl, userNote);
+    if (!window.WG_API) throw new Error('请通过网站启动脚本访问');
+    return (await WG_API.aiVision(imageDataUrl, userNote)).content;
   }
-
   function sys() {
     return { role: 'system', content: '你是「学无忧」学习平台的 AI 助教，面向备考大学生（四六级、考研、期末）。回答要简洁、口语化、有耐心，多用步骤和思路，少讲空话。' };
   }
@@ -266,8 +124,4 @@ var WG_AI = (function () {
     }
   };
 
-  /* 模块加载后立即后台探测一次后端可用性，避免用户首次提问时等待探测 */
-  if (typeof fetch === 'function') {
-    try { probeProxy(); } catch (e) { proxyState = false; }
-  }
 })();

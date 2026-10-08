@@ -1,0 +1,24 @@
+# Free preview: local JSON data is reset on idle/restart/redeploy.
+# For persistent storage, select a paid plan and mount a disk at /app/server/data.
+services:
+  - type: web
+    name: xuewuyou-campus
+    runtime: docker
+    plan: free
+    region: singapore
+    branch: main
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /api/health
+    autoDeployTrigger: checksPass
+    envVars:
+      - key: HOST
+        value: 0.0.0.0
+      - key: NODE_ENV
+        value: production
+      - key: DATA_DIR
+        value: /app/server/data
+      - key: LEARNING_PYTHON
+        value: /opt/learning/bin/python
+      - key: JWT_SECRET
+        generateValue: true

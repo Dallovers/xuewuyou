@@ -102,12 +102,12 @@ var WG_Quiz = (function () {
     if (ok) {
       correct++; combo++; maxCombo = Math.max(maxCombo, combo);
       score += 10 + combo * 2;
-      WG_Data.recordAnswer({ q: current.text, topic: current.topic, correct: true, timeMs: Date.now() });
+      WG_Data.recordAnswer({ q: current.text, topic: current.topic, correct: true, answer: String(chosenVal), correctAns: String(correctVal), timeMs: Date.now() });
       showFeedback(true, chosenVal, correctVal, combo);
     } else {
       wrong++; combo = 0;
       if (!isPractice) lives--;
-      WG_Data.recordAnswer({ q: current.text, topic: current.topic, correct: false, timeMs: Date.now() });
+      WG_Data.recordAnswer({ q: current.text, topic: current.topic, correct: false, answer: String(chosenVal), correctAns: String(correctVal), timeMs: Date.now() });
       showFeedback(false, chosenVal, correctVal, combo);
       if (onWrong) onWrong(current.text, current.opts[i], correctVal);
       if (!isPractice && lives <= 0) { end(false, '生命耗尽'); return; }

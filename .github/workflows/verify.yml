@@ -1,0 +1,43 @@
+name: Verify learning and community
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.11'
+      - name: Install learning engine
+        run: |
+          python -m venv services/learning/.venv
+          services/learning/.venv/bin/pip install -r services/learning/requirements.txt
+      - name: Install server and check
+        working-directory: server
+        run: |
+          npm ci
+          npm run check
+          npm test
+      - name: Build deployable image
+        run: docker build -t xuewuyou:verify .
+      - name: Verify container frontend and Python engine
+        run: |
+          docker run -d --name xwy-check -p 3000:3000 xuewuyou:verify
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:3000/api/health; then break; fi
+            sleep 1
+          done
+          curl --fail --silent http://127.0.0.1:3000/api/health
+          curl --fail --silent http://127.0.0.1:3000/vendor/pyodide/python_stdlib.zip -o /tmp/python_stdlib.zip
+          echo '{"action":"health"}' | docker exec -i xwy-check /opt/learning/bin/python /app/services/learning/worker.py
+          docker stop xwy-check

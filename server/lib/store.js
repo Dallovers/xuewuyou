@@ -12,7 +12,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const DATA_DIR = path.join(__dirname, '..', 'data');
+const DATA_DIR = process.env.DATA_DIR ? path.resolve(process.env.DATA_DIR) : path.join(__dirname, '..', 'data');
 
 const FILES = {
   users: 'users.json',
@@ -20,7 +20,10 @@ const FILES = {
   studyDaily: 'study_daily.json',
   studySetup: 'study_setup.json',
   aiConfig: 'ai_config.json',
-  presence: 'presence.json'
+  presence: 'presence.json',
+  integrations: 'integrations.json',
+  learning: 'learning.json',
+  community: 'community.json'
 };
 
 const cache = {};

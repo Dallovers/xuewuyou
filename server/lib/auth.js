@@ -9,7 +9,7 @@ const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 
-const SECRET_FILE = path.join(__dirname, '..', 'data', '.jwt_secret');
+const SECRET_FILE = path.join(process.env.DATA_DIR ? path.resolve(process.env.DATA_DIR) : path.join(__dirname, '..', 'data'), '.jwt_secret');
 const TOKEN_TTL = 7 * 24 * 3600 * 1000; // 7 天
 
 function getSecret() {

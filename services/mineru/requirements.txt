@@ -1,0 +1,2 @@
+# MinerU self-hosted V1 API, rather than the removed /file_parse interface.
+mineru>=4.0,<5.0

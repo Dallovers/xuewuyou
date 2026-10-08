@@ -927,6 +927,7 @@ var WG_Gaoshu = (function () {
     content += '<div id="bankGrasp" class="bank-grasp hidden"></div>';
 
     area.innerHTML = header + qBody + content;
+    if (window.WG_Learning) WG_Learning.attachQuestion(area, { qid:String(p.id), question:p.stem || p.content, topic:topicName });
     area.classList.remove('hidden');
     paintCard();
 

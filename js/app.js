@@ -7,10 +7,12 @@ var WG_Data = (function () {
     try { return JSON.parse(localStorage.getItem(KEY)) || {}; }
     catch (e) { return {}; }
   }
+  function stableQuestionId(s) { var hash = 2166136261; for (var i = 0; i < s.length; i++) hash = Math.imul(hash ^ s.charCodeAt(i), 16777619); return (hash >>> 0).toString(16); }
   function save(d) {
     localStorage.setItem(KEY, JSON.stringify(d));
     /* 登录后自动同步到云端（防抖由 syncToCloud 负责） */
     if (window.WG_SyncHook) window.WG_SyncHook();
+    window.dispatchEvent(new CustomEvent('xwy:data-changed'));
   }
 
   return {
@@ -64,7 +66,7 @@ var WG_Data = (function () {
       if (!d.answers) d.answers = [];
       var rec = {
         q: a.q || '', topic: a.topic || '综合', correct: !!a.correct,
-        grasp: a.grasp || '', qid: a.qid || '', type: a.type || '',
+        grasp: a.grasp || '', qid: a.qid || 'quick-' + stableQuestionId(a.q || ''), type: a.type || '',
         diff: a.diff || '', timeMs: a.timeMs || Date.now()
       };
       d.answers.push(rec);
@@ -73,14 +75,14 @@ var WG_Data = (function () {
       /* 错题本：答错 或 标记「不会」的题自动收录 */
       if (!a.correct || a.grasp === 'weak') {
         if (!d.mistakes) d.mistakes = [];
-        var m = d.mistakes.find(function (x) { return x.qid === a.qid; });
+        var m = d.mistakes.find(function (x) { return String(x.qid) === rec.qid; });
         if (m) {
           m.wrongCount++;
           m.lastAt = Date.now();
           if (a.grasp === 'weak') m.markedWeak = true;
         } else {
           d.mistakes.push({
-            qid: a.qid || '', topic: a.topic || '综合',
+            qid: rec.qid, topic: a.topic || '综合',
             question: a.q || '', answer: a.answer || '', correctAns: a.correctAns || '',
             wrongCount: 1, markedWeak: a.grasp === 'weak', lastAt: Date.now()
           });
@@ -193,23 +195,27 @@ var WG_App = (function () {
 
   function $ (id) { return document.getElementById(id); }
   function showView(name) {
+    document.body.classList.toggle('integration-view', name === 'review' || name === 'knowledge' || name === 'learning' || name === 'community');
     /* 离开自习室视图时通知 StudyRoom 暂停计时（如去刷题、切到其他页面） */
     if (state.view === 'study' && name !== 'study' &&
         window.StudyRoom && typeof window.StudyRoom.onViewHidden === 'function') {
       window.StudyRoom.onViewHidden();
     }
-    ['home', 'bank', 'module', 'study', 'wenku', 'game', 'report', 'mistakes', 'ai', 'onboard'].forEach(function (v) {
+    ['home', 'bank', 'module', 'study', 'wenku', 'game', 'report', 'mistakes', 'review', 'knowledge', 'learning', 'community', 'ai', 'onboard'].forEach(function (v) {
       var el = $('view-' + v);
       if (el) el.classList.toggle('hidden', v !== name);
     });
     /* 导航高亮 */
-    if (['home', 'bank', 'study', 'wenku', 'report', 'mistakes', 'ai'].indexOf(name) >= 0) {
+    if (['home', 'bank', 'study', 'wenku', 'report', 'mistakes', 'review', 'knowledge', 'learning', 'community', 'ai'].indexOf(name) >= 0) {
       var links = document.querySelectorAll('#topnav a');
       links.forEach(function (a) {
         a.classList.toggle('active', a.getAttribute('data-nav') === name);
+        if (a.getAttribute('data-nav') === name) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
       });
     }
     state.view = name;
+    document.body.dataset.view = name;
+    window.dispatchEvent(new CustomEvent('xwy:view-changed', {detail:{view:name,module:state.currentModule || null,continent:bankFilter || null}}));
   }
 
   /* ---------- 模块详情（子模块 + 题数选择 + 筛选） ---------- */
@@ -2886,6 +2892,9 @@ var WG_App = (function () {
     else if (name === 'wenku') gateData(function () { renderWenku(); });
     else if (name === 'mistakes') gateData(function () { renderMistakes(); });
     else if (name === 'report') renderReport();
+    else if (name === 'review' || name === 'knowledge') { showView(name); window.WG_Integrations && WG_Integrations.open(name); }
+    else if (name === 'learning') { showView(name); window.WG_Learning && WG_Learning.open(); }
+    else if (name === 'community') { showView(name); window.WG_Community && WG_Community.load(); }
     else if (name === 'ai') showView('ai');
   }
 
@@ -2957,7 +2966,23 @@ var WG_App = (function () {
   /* 供自习室引擎调用：重新打开入场设置弹窗 */
   window.StudyAppBridge = {
     openSetup: function () { openStudySetup(); },
-    navTo: function (name) { navTo(name); }
+    navTo: function (name) { navTo(name); },
+    openBank: function(id){gateData(function(){renderBank(id || null);});},
+    openModule: function(id){gateData(function(){var level=typeof findLevel==='function'?findLevel(id):null;if(!level)return;if(level.type==='gaoshu')renderModule(level);else enterLevel(id,0);});},
+    practiceModule: function(topic){gateData(function(){if(state.currentModule)startFromModule(topic?'topic':'all',topic || null);});},
+    practice: function (topic, qid) {
+      gateData(function () {
+        stopGames();
+        var lvl = { id:'learning', name:topic, type:'gaoshu', topic:topic, n:10 };
+        if (qid) { lvl.mistakeIds=[String(qid)]; lvl.n=1; }
+        state.currentLevel=lvl; state.backView='learning'; state.replay=function(){ window.StudyAppBridge.practice(topic,qid); };
+        $('gameTitle').textContent=topic + ' · 专项练习'; $('gameSub').textContent='学习工作台';
+        $('goalHint').textContent='独立作答后，可在题目白板保留推导过程';
+        $('board').classList.add('hidden'); $('quizArea').classList.add('hidden'); $('customArea').classList.remove('hidden');
+        resetExamProgress(); renderExamNav(null); closeExamSide(); showView('game');
+        WG_Gaoshu.start(lvl,{onStats:renderStats,onEnd:onGameEnd});
+      });
+    }
   };
 
   return { init: init };

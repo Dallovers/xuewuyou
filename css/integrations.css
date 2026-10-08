@@ -1,0 +1,42 @@
+.integration-page {padding:24px 0 48px; max-width:1120px; margin:auto; font-size:16px; line-height:1.6}
+.integration-heading {display:flex; gap:16px; justify-content:space-between; align-items:center; flex-wrap:wrap; margin-bottom:20px}
+.integration-heading h1 {font-size:28px; margin:0 0 8px}
+.integration-muted {color:var(--muted); margin:8px 0}
+.integration-card {padding:24px; border:1px solid var(--rule); border-left:3px solid var(--acc); border-radius:var(--r); background:var(--bg2); margin:16px 0; min-width:0}
+.integration-stats {display:grid; grid-template-columns:1fr 1fr 2fr; gap:16px}
+.integration-stats strong {display:block; font-size:24px; overflow-wrap:anywhere}
+.integration-stats span {color:var(--muted)}
+.integration-layout {display:grid; grid-template-columns:minmax(260px, 1fr) minmax(0, 1.7fr); gap:24px}
+.integration-prose {white-space:pre-wrap; overflow-wrap:anywhere; line-height:1.8;overflow-x:auto}
+.integration-option {display:flex; align-items:flex-start; gap:12px; min-height:48px; padding:12px 16px; margin:8px 0; background:var(--bg3); border:1px solid var(--rule); border-radius:8px; cursor:pointer; overflow-wrap:anywhere}
+.integration-option input {margin-top:7px; flex-shrink:0}
+.integration-option:has(input:checked) {border-color:var(--acc); box-shadow:0 0 0 1px var(--acc)}
+.integration-page label {display:block; font-weight:600; margin:8px 0}
+.integration-page .integration-option,.integration-page .integration-doc-title {display:flex}
+.integration-page textarea,.integration-page select {width:100%; min-height:44px; border:1px solid var(--rule-strong); border-radius:8px; background:var(--bg2); color:var(--ink); padding:12px; font:inherit; box-sizing:border-box}
+.integration-page textarea {min-height:120px; resize:vertical}
+.integration-page input[type=file] {width:100%; margin:12px 0; font:inherit}
+.integration-page .btn {min-height:44px; font-size:14px; white-space:normal}
+.integration-page button:disabled {opacity:.55; cursor:wait}
+.integration-page [hidden] {display:none!important}
+.integration-actions {display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin:16px 0 0}
+.integration-status {min-height:26px; color:var(--ink-2); overflow-wrap:anywhere}
+.integration-error {color:var(--danger); overflow-wrap:anywhere}
+.integration-document {border-bottom:1px solid var(--rule); padding:16px 0}
+.integration-doc-title {gap:12px; align-items:flex-start; overflow-wrap:anywhere}
+.integration-doc-title input {margin-top:6px; flex-shrink:0}
+.integration-citation {margin-top:16px; border:1px solid var(--rule); padding:16px; border-radius:8px}
+.integration-citation summary {cursor:pointer; min-height:44px; overflow-wrap:anywhere}
+.integration-dialog {width:min(850px,calc(100% - 32px)); max-height:85vh; padding:24px; border:1px solid var(--rule); border-radius:12px; background:var(--bg2); color:var(--ink); box-sizing:border-box}
+.integration-dialog::backdrop {background:rgba(16,51,58,.35)}
+.integration-dialog pre {white-space:pre-wrap; overflow-wrap:anywhere; font:inherit; line-height:1.8; max-height:60vh; overflow:auto}
+.integration-dialog .btn {min-height:44px}
+.integration-view #aiFab {display:none}
+.topbar {flex-wrap:wrap}
+.topbar>.logo,.topbar>.nick {flex-shrink:0;white-space:nowrap}
+.topnav {flex-wrap:wrap;flex-basis:100%;order:5;width:100%;margin-left:0;gap:8px}
+.integration-prose .katex-display {max-width:100%;overflow:auto}
+.integration-prose .katex {white-space:normal;font-size:1.05em}
+.integration-page h2 {font-size:22px}
+.topnav a {min-height:44px; display:flex; align-items:center}
+@media(max-width:760px){.integration-layout{grid-template-columns:1fr;gap:0}.integration-page{padding:16px 0 32px}.integration-card{padding:16px}.integration-stats{grid-template-columns:1fr 1fr}.integration-stats>div:last-child{grid-column:1/-1}.integration-heading h1{font-size:24px}.topbar{flex-wrap:wrap}.topnav{order:5;width:100%;overflow:visible;white-space:normal;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px}.integration-page textarea{font-size:16px}}
