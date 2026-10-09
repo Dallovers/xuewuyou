@@ -258,7 +258,7 @@ var WG_Gaoshu = (function () {
 
   /* 符号级替换：希腊字母、函数名、运算符、括号命令等 */
   function latexSymbols(s) {
-    /* \left. / ight. 空定界符 */
+    /* \left. / \right. 空定界符 */
     s = s.replace(/\\left\./g, '').replace(/\\right\./g, '');
     /* \left / \right / \big 等（保留括号符号） */
     s = s.replace(/\\left\b/g, '').replace(/\\right\b/g, '');
@@ -927,7 +927,7 @@ var WG_Gaoshu = (function () {
     content += '<div id="bankGrasp" class="bank-grasp hidden"></div>';
 
     area.innerHTML = header + qBody + content;
-    if (window.WG_Learning) WG_Learning.attachQuestion(area, { qid:String(p.id), question:p.stem || p.content, topic:topicName });
+    if (window.WG_Whiteboard) WG_Whiteboard.attachQuestion(area, { qid:String(p.id), question:p.stem || p.content, topic:topicName });
     area.classList.remove('hidden');
     paintCard();
 

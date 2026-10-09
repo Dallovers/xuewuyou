@@ -37,10 +37,10 @@ window.WG_Integrations = (function () {
     review = requested ? result.cards.find(function(c){return c.qid === requested;}) || null : result.cards[0] || null; eventId = crypto.randomUUID();
     $('reviewQuestion').hidden = !review; $('reviewResult').hidden = true; $('reviewNextButton').hidden = true;
     text('reviewMessage', review ? '先独立作答，再选择熟练程度。答错会自动安排再次复习。' : (result.total ? '今天到期的复习已完成。下一次复习时间见上方。' : '当前没有错题。去题库练习，答错的题会自动进入复习队列。'));
-    if (requested && !review) text('reviewMessage','计划中的这道题当前未到复习时间。可返回学习工作台更新计划，或刷新查看其他到期题。');
+    if (requested && !review) text('reviewMessage','这道题当前未到复习时间。可刷新查看其他到期题，或从错题本重新练习。');
     if (!review) return;
     text('reviewTopic', review.topic); text('reviewStem', math(review.question));
-    if (window.WG_Learning) WG_Learning.attachQuestion($('reviewStem'), review);
+    if (window.WG_Whiteboard) WG_Whiteboard.attachQuestion($('reviewStem'), review);
     var opts = $('reviewOptions'); opts.replaceChildren();
     review.options.forEach(function (o, i) {
       var label = add(opts, 'label', undefined, 'integration-option');

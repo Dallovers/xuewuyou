@@ -8,9 +8,9 @@
 <title>学无忧 · 大学生备考通关平台</title>
 <link rel="stylesheet" href="css/style.css?v=21">
 <link rel="stylesheet" href="css/integrations.css?v=1">
-<link rel="stylesheet" href="css/learning.css?v=1">
+<link rel="stylesheet" href="css/whiteboard.css?v=1">
 <link rel="stylesheet" href="css/atlas.css?v=2">
-<link rel="stylesheet" href="css/community.css?v=1">
+<link rel="stylesheet" href="css/community.css?v=2">
 <link rel="stylesheet" href="vendor/katex/katex.min.css">
 <script src="vendor/katex/katex.min.js" defer></script>
 <script src="vendor/katex/contrib/auto-render.min.js" defer></script>
@@ -45,7 +45,6 @@
       <a href="#" data-nav="report">学情报告</a>
       <a href="#" data-nav="review">智能复习</a>
       <a href="#" data-nav="knowledge">课程问答</a>
-      <a href="#" data-nav="learning">学习工作台</a>
       <a href="#" data-nav="community">校园互动</a>
       <a href="#" data-nav="ai">AI 助手</a>
     </nav>
@@ -736,7 +735,7 @@
     <div class="community-hero"><div><span class="atlas-kicker">CAMPUS CONNECTIONS</span><h1 id="communityTitle">一起学习，也一起探索</h1><p>找到学习搭子，讨论同一道题，发起一次五题挑战。</p></div><span id="communityConnection" class="community-status">实时通知待连接</span></div>
     <div class="community-tabs" role="tablist" aria-label="校园互动功能">
       <button id="community-tab-friends" data-community-tab="friends" role="tab" aria-controls="community-friends" aria-selected="true">学习搭子</button>
-      <button id="community-tab-posts" data-community-tab="posts" role="tab" aria-controls="community-posts" aria-selected="false" tabindex="-1">留言与讨论</button>
+      <button id="community-tab-posts" data-community-tab="posts" role="tab" aria-controls="community-posts" aria-selected="false" tabindex="-1">留言板</button>
       <button id="community-tab-arena" data-community-tab="arena" role="tab" aria-controls="community-arena" aria-selected="false" tabindex="-1">好友竞技场</button>
     </div>
     <div class="community-notice" id="communityNotice" hidden><span>有新的校园互动，刷新后查看。</span><button id="communityRefresh" class="btn ghost">刷新互动</button></div>
@@ -750,50 +749,32 @@
       </div><section class="community-card"><div class="community-section-head"><h2>寻找学习搭子</h2><button id="buddySearch" class="btn ghost">查找</button></div><div class="community-filter"><label>课程<select id="buddyFilter"><option value="">全部课程</option></select></label><label>昵称<input id="buddySearchText" maxlength="40" placeholder="搜索公开昵称"></label></div><div id="buddyDirectory"></div></section></div>
     </div>
     <div id="community-posts" role="tabpanel" aria-labelledby="community-tab-posts" hidden>
-      <section class="community-card"><div class="community-section-head"><h2 id="postScopeTitle">校园留言亭</h2><button id="postResetScope" class="btn ghost">返回校园留言</button></div><div id="postQuestion" class="community-question"></div><p id="postReplyContext" class="community-muted"></p>
-        <form id="postForm" class="community-form"><label>分享想法或推导<textarea id="postText" rows="4" maxlength="3000" required placeholder="支持 Markdown、代码块与公式，例如 \(x^2\)。"></textarea></label><div class="community-actions"><button type="submit" class="btn primary">发布留言</button><button id="postCancelReply" class="btn ghost" type="button" hidden>取消回复</button><button id="postRefresh" class="btn ghost" type="button">刷新讨论</button></div></form>
-      </section><div id="postList"></div>
+      <section class="message-wall" aria-labelledby="postScopeTitle">
+        <div class="message-wall-heading">
+          <div><span class="wall-eyebrow">NOTES FROM CAMPUS</span><h2 id="postScopeTitle">校园留言板</h2><p class="wall-intro">把想说的话贴在这里，等一个同频的人回应。</p></div>
+          <div class="community-actions"><button id="postWrite" class="btn primary" type="button" aria-controls="postComposer" aria-expanded="false">写一张便签</button><button id="postRefresh" class="btn ghost" type="button">刷新留言板</button><button id="postResetScope" class="btn ghost" type="button" hidden>返回校园留言板</button></div>
+        </div>
+        <div id="postQuestion" class="community-question wall-question" hidden></div>
+        <details id="postComposer" class="wall-composer">
+          <summary>写下你的想法</summary>
+          <form id="postForm" class="community-form">
+            <label for="postText">便签内容<textarea id="postText" rows="4" maxlength="3000" required placeholder="分享今天的小收获，约一次自习，或留下你的解题思路…" aria-describedby="postHelp postReplyContext"></textarea></label>
+            <p id="postHelp" class="community-muted">最多 3000 字，支持 Markdown、代码块和数学公式，例如 \(x^2\)。</p><p id="postReplyContext" class="community-muted" role="status"></p>
+            <div class="community-actions"><button type="submit" class="btn primary">贴到留言板</button><button id="postCancelReply" class="btn ghost" type="button" hidden>取消回复</button><button id="postComposerClose" class="btn ghost" type="button">收起</button></div>
+          </form>
+        </details>
+        <div class="wall-surface"><div class="wall-topline"><span>每一张便签，都有一个故事</span><span id="postCount" role="status" aria-live="polite">正在读取留言…</span></div><div id="postList" class="sticky-wall" aria-label="校园留言便签"></div><p class="wall-footnote">留言对已登录的同学可见 · 点击回复，接住一个想法</p></div>
+      </section>
     </div>
     <div id="community-arena" role="tabpanel" aria-labelledby="community-tab-arena" hidden>
       <section class="community-card"><h2>发起五题挑战</h2><p class="community-muted">双方完成同一组五道客观题，可以分别作答。每人开始后限时 15 分钟，服务器判分；正确题数优先，相同时比较用时，双方交卷后开放解析。邀请 24 小时有效。</p><form id="challengeCreateForm" class="community-form community-challenge-create"><label>邀请学习搭子<select id="challengeFriend" required></select></label><label>挑战主题<select id="challengeTopic" required></select></label><button class="btn primary" type="submit">发起挑战</button></form></section>
       <div class="community-columns"><section class="community-card"><div class="community-section-head"><h2>我的挑战</h2><button id="challengeRefresh" class="btn ghost">刷新挑战</button></div><div id="challengeList"></div></section><section id="challengeDetail" class="community-card"><h2>选择一场挑战</h2><p class="community-muted">添加学习搭子后即可发起挑战。当前为异步挑战，双方无需同时在线。</p></section></div>
     </div>
   </section>
-  <section id="view-learning" class="hidden integration-page learning-page" aria-labelledby="learningTitle">
-    <div class="learning-head"><div><p class="learning-eyebrow">把练习变成可追踪的进步</p><h1 id="learningTitle">学习工作台</h1></div><button class="btn ghost" id="learningRefresh" type="button">更新学情</button></div>
-    <p id="learningMessage" class="integration-message" role="status" aria-live="polite"></p>
-    <div class="learning-tabs" role="tablist" aria-label="学习工具">
-      <button id="tab-map" role="tab" aria-selected="true" aria-controls="learning-map" data-learning-tab="map" class="btn primary">知识地图与掌握度</button>
-      <button id="tab-plan" role="tab" aria-selected="false" aria-controls="learning-plan" data-learning-tab="plan" tabindex="-1" class="btn ghost">备考计划</button>
-      <button id="tab-lab" role="tab" aria-selected="false" aria-controls="learning-lab" data-learning-tab="lab" tabindex="-1" class="btn ghost">数学实验室</button>
-    </div>
-    <div id="learning-map" role="tabpanel" aria-labelledby="tab-map">
-      <div class="learning-summary" id="masterySummary">等待同步答题记录</div>
-      <p class="integration-muted">箭头表示课程先修关系。掌握度来自客观题记录的 BKT 估计，使用固定初始参数；少于 5 次作答会标为样本较少。自评题不参与计算。</p>
-      <div class="learning-actions"><label for="mapSubject">课程</label><select id="mapSubject"><option value="">全部课程</option></select><button type="button" class="btn ghost" id="mapFit">完整地图</button><button type="button" class="btn ghost" id="mapZoomIn">放大</button><button type="button" class="btn ghost" id="mapZoomOut">缩小</button><span class="integration-muted">灰：未评估 · 橙：待巩固 · 绿：估计 ≥ 80%</span></div>
-      <div class="learning-map-grid"><div id="knowledgeGraph" role="img" aria-label="课程知识关系图，下方主题按钮提供相同操作"></div><aside id="topicDetail" class="learning-card" aria-live="polite"><h2>选择一个主题</h2><p>查看掌握度、错题与练习入口。</p></aside></div>
-      <div id="topicList" class="topic-list" aria-label="知识主题列表"></div>
-    </div>
-    <div id="learning-plan" role="tabpanel" aria-labelledby="tab-plan" hidden>
-      <div class="learning-two"><form id="planForm" class="learning-card"><h2>安排接下来的练习</h2><p class="integration-muted">每次练习 20 分钟，间隔 5 分钟。优先安排到期错题和薄弱主题；完成的任务会在重新排程时保留。时间按北京时间。</p>
-        <div class="learning-fields"><label>开始日期<input id="planStartDate" type="date" required></label><label>复习截止日期<input id="planExamDate" type="date" required></label><label>每天开始时间<input id="planStartTime" type="time" value="18:00" required></label><label>每天结束时间<input id="planEndTime" type="time" value="20:00" required></label></div>
-        <label for="planBlocked">课表 / 已占用时间（每行：日期,开始,结束）</label><textarea id="planBlocked" rows="3" placeholder="2026-10-09,18:30,19:15"></textarea>
-        <fieldset class="plan-topic-fieldset"><legend>复习主题（不选则安排全部）</legend><div id="planTopics" class="plan-topics"></div></fieldset>
-        <button class="btn primary" id="planGenerate" type="submit">生成 / 重新安排</button><p id="planMessage" role="status" aria-live="polite"></p>
-      </form><div class="learning-card"><div class="learning-head"><h2>我的备考日程</h2><button type="button" id="planExport" class="btn ghost" disabled>导出日历</button></div><div id="planResult"><p class="integration-muted">填写时间后生成计划。</p></div></div></div>
-    </div>
-    <div id="learning-lab" role="tabpanel" aria-labelledby="tab-lab" hidden>
-      <p class="integration-muted">在浏览器中运行 Python、NumPy、SymPy 与 Matplotlib。运行结果可保存为实验；首次初始化约需数秒。代码运行上限 20 秒，可随时停止。</p>
-      <div id="labContext" class="learning-summary">自由实验</div>
-      <div class="learning-actions"><label for="labTemplate">实验模板</label><select id="labTemplate"><option value="calculus">导数与积分</option><option value="matrix">矩阵与特征值</option><option value="probability">概率模拟</option><option value="plot">函数图像</option></select><button type="button" class="btn ghost" id="labLoadTemplate">载入模板</button><button type="button" class="btn ghost" id="labClearContext">清除题目关联</button></div>
-      <div class="learning-two"><div class="learning-card"><label for="labCode">Python 代码</label><textarea id="labCode" class="lab-code" rows="15" spellcheck="false" maxlength="20000"></textarea><div class="learning-actions"><button class="btn primary" id="labRun" type="button">运行实验</button><button class="btn ghost" id="labStop" type="button" disabled>停止</button><button class="btn ghost" id="labCodeExport" type="button">导出 .py</button></div></div><div class="learning-card"><h2>计算结果</h2><p id="labStatus" role="status" aria-live="polite">尚未运行</p><pre id="labOutput" class="lab-output"></pre><div id="labImages"></div><label for="labTitle">实验名称</label><input id="labTitle" value="数学实验" maxlength="80"><button id="labSave" type="button" class="btn ghost" disabled>保存实验结果</button></div></div>
-      <div class="learning-card"><h2>已保存的实验</h2><div id="labHistory"></div></div>
-    </div>
-  </section>
   </main>
   </div>
   <dialog id="questionBoardDialog" class="question-board-dialog" aria-labelledby="questionBoardTitle">
-    <div class="learning-head"><h2 id="questionBoardTitle">题目专属草稿白板</h2><div class="learning-actions"><button id="boardSave" type="button" class="btn primary" disabled>保存草稿</button><button id="boardExport" type="button" class="btn ghost" disabled>导出 PNG</button><button id="boardClose" type="button" class="btn ghost">关闭</button></div></div>
+    <div class="board-head"><h2 id="questionBoardTitle">题目专属草稿白板</h2><div class="board-actions"><button id="boardSave" type="button" class="btn primary" disabled>保存草稿</button><button id="boardExport" type="button" class="btn ghost" disabled>导出 PNG</button><button id="boardClose" type="button" class="btn ghost">关闭</button></div></div>
     <p id="boardQuestion" class="board-question"></p><p id="boardStatus" role="status" aria-live="polite"></p><div id="boardFrameHost"></div>
   </dialog>
 
@@ -1052,18 +1033,18 @@
 <script src="js/sequence.js?v=5" defer></script>
 <script src="js/qenhance.js?v=1" defer></script>
 <script src="js/scratch.js?v=2" defer></script>
-<script src="js/gaoshu.js?v=16" defer></script>
+<script src="js/gaoshu.js?v=wall-16" defer></script>
 <script src="js/study.js?v=7" defer></script>
 <!-- 重型数据延迟加载器：gaoshu_bank / english_words / ielts_words / wenku / wenku_cat
      首屏渲染后后台加载，避免 4.3MB 同步阻塞登录界面 -->
 <script src="js/loader.js?v=1" defer></script>
-<script src="js/app.js?v=40" defer></script>
-<script src="js/integrations.js?v=2" defer></script>
-<script src="js/learning.js?v=3" defer></script>
-<script src="js/community.js?v=2" defer></script>
-<script src="js/campus-registry.js?v=1" defer></script>
+<script src="js/app.js?v=41" defer></script>
+<script src="js/integrations.js?v=wall-2" defer></script>
+<script src="js/whiteboard.js?v=1" defer></script>
+<script src="js/community.js?v=3" defer></script>
+<script src="js/campus-registry.js?v=2" defer></script>
 <script src="js/atlas-assets.js?v=2" defer></script>
-<script src="js/atlas.js?v=3" defer></script>
+<script src="js/atlas.js?v=4" defer></script>
 <script src="js/ux.js?v=1" defer></script>
 </body>
 </html>

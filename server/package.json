@@ -7,7 +7,7 @@
     "start": "node --env-file-if-exists=.env server.js",
     "dev": "node --env-file-if-exists=.env --watch server.js",
     "test": "node --test test/*.test.js",
-    "check": "node --check server.js && node --check integrations/index.js && node --check learning/index.js && node --check community/index.js && node --check ../js/integrations.js && node --check ../js/learning.js && node --check ../js/math-worker.js && node --check ../js/atlas.js && node --check ../js/atlas-assets.js && node --check ../js/campus-registry.js && node --check ../js/community.js",
+    "check": "node --check server.js && node --check integrations/index.js && node --check learning/index.js && node --check community/index.js && node --check ../js/integrations.js && node --check ../js/whiteboard.js && node --check ../js/math-worker.js && node --check ../js/atlas.js && node --check ../js/atlas-assets.js && node --check ../js/campus-registry.js && node --check ../js/community.js",
     "postinstall": "node scripts/vendor.js",
     "vendor:math": "node scripts/vendor-math.js"
   },

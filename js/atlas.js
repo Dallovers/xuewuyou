@@ -46,12 +46,12 @@ window.WG_Atlas = (function () {
     return [
       {id:'bank',label:'课程探索区',kind:'college',color:0x649573,sub:'数学 · 英语 · 雅思',description:'从课程大地图进入模块，再选择章节关卡。每个知识点都有自己的学习足迹。',facts:['课程模块对应原题库','各主题显示作答记录、错题和掌握估计'],action:'进入课程地图',go:function(){navigate('bank');}},
       {id:'wenku',label:'资料图书馆',kind:'library',color:0xc59758,sub:count(a.documents,'份私有资料'),description:'阅读学习资料，上传课程讲义；已配置课程问答服务的资料可以用于检索。',facts:['原资料库可直接阅读','已上传 '+count(a.documents,'份')+' · 索引就绪 '+count(a.readyDocuments,'份')],action:'进入资料馆',go:function(){navigate('wenku');},secondary:'上传并提问',more:function(){navigate('knowledge');}},
-      {id:'lab',label:'数学实验室',kind:'laboratory',color:0x729ca0,sub:count(a.experiments,'个实验'),description:'把题目中的公式变成可运行的 Python 实验，求导、积分、求特征值，或画出函数图像。',facts:['保存了 '+count(a.experiments,'个实验'),'题目白板 '+count(a.boards,'份')+' · 从题目中可直接打开'],action:'进入实验室',go:function(){navigate('learning','lab');}},
-      {id:'plan',label:'备考任务站',kind:'station',color:0xb98a60,sub:count(a.planned,'项待完成'),description:'设定复习截止日期与可用时间，让排程器把到期错题和主题练习放进日程。',facts:['待完成 '+count(a.planned,'项')+' · 已完成 '+count(a.completed,'项'),'课表占用会参与实际排程'],action:'查看备考计划',go:function(){navigate('learning','plan');}},
+      {id:'lab',label:'题目草稿屋',kind:'laboratory',color:0x729ca0,sub:count(a.boards,'份题目草稿'),description:'进入练习后打开题目白板，按题号保存推导。',facts:['题目白板 '+count(a.boards,'份'),'练习与挑战复盘均可打开'],action:'选一道题写草稿',go:function(){navigate('bank');}},
+      {id:'social',label:'社交广场',kind:'station',color:0xb98a60,sub:count(a.friends,'位学习搭子'),description:'找到学习搭子，看看校园留言板。',facts:['好友邀请需要对方确认','留言板可分享想法与解题思路'],action:'看看留言板',go:function(){navigate('community','posts');}},
       {id:'review',label:'记忆复习站',kind:'lodge',color:0x9a9e67,sub:count(a.due,'题到期'),description:'优先复习已经到期的错题。完成后真实更新 FSRS 记录与下次复习时间。',facts:['复习卡片 '+count(a.reviews,'张'),'到期数量来自服务器当前时间'],action:'开始到期复习',go:function(){navigate('review');}},
       {id:'study',label:'专注自习馆',kind:'college',color:0x72997e,sub:count(a.focusMinutes,'分钟专注'),description:'进入已有沉浸自习室，设置专注时长与环境声音，让学习时间留下记录。',facts:['累计云端专注 '+count(a.focusMinutes,'分钟'),'自习时长来自已保存的专注记录'],action:'进入自习室',go:function(){navigate('study');}},
       {id:'mistakes',label:'错题修复工坊',kind:'workshop',color:0xbc8b68,sub:a.mistakes+' 道待巩固',state:a.mistakes?'weak':'unknown',description:'把答错的题作为待修复的知识点，查看解析、重新练习，并保留自己的推导草稿。',facts:['当前错题 '+a.mistakes+' 道','已攻克错题 '+count(a.cleared,'道')],action:'进入错题工坊',go:function(){navigate('mistakes');}},
-      {id:'report',label:'学情观测塔',kind:'tower',color:0x71958d,sub:a.answers+' 次作答记录',description:'观察自己的学习状态：哪里有记录，哪里需要巩固，哪些数据尚不足以评估。',facts:['作答记录 '+a.answers+' 次，包含原网站自评记录','BKT 仅使用客观题，不等同考试分数'],action:'查看学情报告',go:function(){navigate('report');},secondary:'知识与掌握度',more:function(){navigate('learning','map');}}
+      {id:'report',label:'学情观测塔',kind:'tower',color:0x71958d,sub:a.answers+' 次作答记录',description:'观察自己的学习状态：哪里有记录，哪里需要巩固，哪些数据尚不足以评估。',facts:['作答记录 '+a.answers+' 次，包含原网站自评记录','BKT 仅使用客观题，不等同考试分数'],action:'查看学情报告',go:function(){navigate('report');},secondary:'知识与掌握度',more:function(){navigate('report');}}
     ];
   }
   function bankNodes() {
@@ -71,7 +71,7 @@ window.WG_Atlas = (function () {
     var l=state.module;if(!l)return[];
     var topics=l.topicList||[];if(l.subject&&typeof GAOSHU_BANK!=='undefined')topics=Object.keys(GAOSHU_BANK).filter(function(t){return GAOSHU_BANK[t].subject===l.subject;});
     return topics.map(function(topic,i){var m=topicMeta(topic), matching=$('subGrid').querySelector('[data-topic="'+CSS.escape(topic)+'"]'), filtered=matching?matching.querySelector('.mod-meta').textContent:'';
-      return{id:topic,label:topic,kind:i%3===0?'college':i%3===1?'tower':'lodge',color:topicState(m)==='weak'?0xc3a071:topicState(m)==='stable'?0x608c62:0x89a48a,state:topicState(m),sub:topicLabel(m),description:'这个地点对应「'+topic+'」的真实题库与学习记录。地图状态来自你的作答，而不是预设通关动画。',facts:[filtered||'题库 '+m.total+' 题','作答 '+m.records+' 次 · 当前错题 '+m.mistakes+' 道',m.model?'客观记录 '+m.model.observations+' 次 · 下一题答对估计 '+Math.round(m.model.nextCorrect*100)+'%':'客观题记录不足或模型暂不可用'],action:matching&&matching.classList.contains('mod-card-empty')?'当前筛选下没有题':'开始这一关',disabled:matching&&matching.classList.contains('mod-card-empty'),go:function(){StudyAppBridge.practiceModule(topic);},secondary:'公式实验',more:function(){WG_Learning.openLab(null,topic);},model:m.model};
+      return{id:topic,label:topic,kind:i%3===0?'college':i%3===1?'tower':'lodge',color:topicState(m)==='weak'?0xc3a071:topicState(m)==='stable'?0x608c62:0x89a48a,state:topicState(m),sub:topicLabel(m),description:'这个地点对应「'+topic+'」的真实题库与学习记录。地图状态来自你的作答，而不是预设通关动画。',facts:[filtered||'题库 '+m.total+' 题','作答 '+m.records+' 次 · 当前错题 '+m.mistakes+' 道',m.model?'客观记录 '+m.model.observations+' 次 · 下一题答对估计 '+Math.round(m.model.nextCorrect*100)+'%':'客观题记录不足或模型暂不可用'],action:matching&&matching.classList.contains('mod-card-empty')?'当前筛选下没有题':'开始这一关',disabled:matching&&matching.classList.contains('mod-card-empty'),go:function(){StudyAppBridge.practiceModule(topic);},model:m.model};
     });
   }
   function currentConfig() {
@@ -138,14 +138,13 @@ window.WG_Atlas = (function () {
   }
   function transform() { var plane=$('atlasPlane');if(plane)plane.style.transform='translate('+Math.max(-25,Math.min(25,state.offset.x))+'%,'+Math.max(-25,Math.min(25,state.offset.y))+'%) scale('+state.zoom+')'; }
   function snapshotNote() {
-    if(!WG_API.isCloudSession())return'本地体验：作答和错题来自本机。登录云端账号后，可同步复习、专注时长、计划和掌握估计。';
+    if(!WG_API.isCloudSession())return'本地体验：作答和错题来自本机。登录云端账号后，可同步复习、专注时长和掌握估计。';
     if(state.snapshot)return'最近同步 '+new Date(state.snapshot.generatedAt).toLocaleTimeString('zh-CN')+' · '+(state.snapshot.modelError?'掌握估计暂不可用；原功能和学习记录仍可查看。':'地图使用真实学习记录。BKT 为固定参数估计，不等同考试成绩。');
     return'正在同步学习状态；地图地点和现有功能可直接使用。';
   }
   function mission(root) {
     var a=activity(), box=make(root,'div',undefined,'atlas-mission'),copy=make(box,'div'),title,desc,callback;
     if(a.due>0){title='今天的下一步：复习 '+a.due+' 道到期错题';desc='先把已到期的复习处理掉，再探索新的章节。';callback=function(){navigate('review');};}
-    else if(state.snapshot&&state.snapshot.plan&&state.snapshot.plan.scheduled.some(function(t){return!t.done;})){var t=state.snapshot.plan.scheduled.find(function(t){return!t.done;});title='计划中的下一步：'+t.topic;desc='计划任务 '+t.label+'，查看安排后开始练习。';callback=function(){navigate('learning','plan');};}
     else{title='今天的下一步：选择一个课程，留下第一段足迹';desc='从基础章节开始，作答后可观察错题与掌握估计怎样变化。';callback=function(){navigate('bank');};}
     make(copy,'strong',title);make(copy,'p',desc);button(box,'前往学习',callback,'btn primary');
   }
