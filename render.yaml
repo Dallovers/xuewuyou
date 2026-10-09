@@ -1,5 +1,4 @@
-# Free preview: local JSON data is reset on idle/restart/redeploy.
-# For persistent storage, select a paid plan and mount a disk at /app/server/data.
+# Free web service + external Neon PostgreSQL. No paid disk or database required.
 services:
   - type: web
     name: xuewuyou-campus
@@ -22,3 +21,7 @@ services:
         value: /opt/learning/bin/python
       - key: JWT_SECRET
         generateValue: true
+      - key: DATABASE_URL
+        sync: false
+      - key: FRONTEND_ORIGIN
+        value: https://dallovers.github.io

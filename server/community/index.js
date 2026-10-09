@@ -16,8 +16,8 @@ module.exports = function({route,authUser,sendJson,readBody,store,syncReviews}) 
   const profile = (data,id) => data.profiles[id] || {visible:false,nick:(store.get('users',id,{})||{}).nick || '同学',subjects:[],goal:'',availability:''};
   const person = (data,id) => {const p=profile(data,id);return {id,nick:p.nick,visible:p.visible,subjects:p.visible?p.subjects:[],goal:p.visible?p.goal:'',availability:p.visible?p.availability:'',online:p.visible&&!!connections.get(id)};};
   const friendship = (data,a,b) => !!data.friends[key(a,b)];
-  const notify = (ids,kind) => {if(namespace)for(const id of new Set(ids))namespace.to('user:'+id).emit('community:changed',{kind});};
-  const postNotice = () => namespace?.emit('community:changed',{kind:'posts'});
+  const notify = (ids,kind) => store.afterCommit(() => {if(namespace)for(const id of new Set(ids))namespace.to('user:'+id).emit('community:changed',{kind});});
+  const postNotice = () => store.afterCommit(() => namespace?.emit('community:changed',{kind:'posts'}));
   function deliverLearning(s,c,id){
     const mine=c.sessions[id];if(!mine?.records||mine.delivered)return;
     const existing=store.get('userData',id,{payload:{}}),payload=clone(existing.payload||{});payload.answers=payload.answers||[];payload.mistakes=payload.mistakes||[];
@@ -26,7 +26,8 @@ module.exports = function({route,authUser,sendJson,readBody,store,syncReviews}) 
     payload.answers=payload.answers.slice(-5000);payload.mistakes=payload.mistakes.slice(-500);store.set('userData',id,{...existing,payload,updatedAt:Date.now()});syncReviews(id);mine.delivered=true;save(s);
   }
   // Resume an interrupted result-to-learning delivery after a server restart.
-  const recovery=state();for(const c of recovery.challenges)for(const id of c.members)if(c.sessions[id]?.records&&!c.sessions[id].delivered)deliverLearning(recovery,c,id);
+  function recover() { const recovery=state();for(const c of recovery.challenges)for(const id of c.members)if(c.sessions[id]?.records&&!c.sessions[id].delivered)deliverLearning(recovery,c,id); }
+  if (!store.database) recover();
   function limited(id,kind,max) {
     const k=id+':'+kind,now=Date.now(),hits=(limits.get(k)||[]).filter(t=>now-t<60000);
     if(hits.length>=max)fail('操作频繁，请稍后再试',429);
@@ -152,13 +153,13 @@ module.exports = function({route,authUser,sendJson,readBody,store,syncReviews}) 
     c.status='cancelled';save(s);notify(c.members,'challenges');return {};
   });
   function attach(server) {
-    io=new Server(server,{serveClient:false,maxHttpBufferSize:10000});namespace=io.of('/community');
-    namespace.use((socket,next)=>{const user=authUser({headers:{authorization:'Bearer '+(socket.handshake.auth?.token||'')}});if(!user)return next(new Error('请登录云端账号'));socket.data.uid=user.id;next();});
+    io=new Server(server,{serveClient:false,maxHttpBufferSize:10000,cors:{origin:process.env.FRONTEND_ORIGIN || 'https://dallovers.github.io',methods:['GET','POST']}});namespace=io.of('/community');
+    namespace.use((socket,next)=>{store.run(()=>{const user=authUser({headers:{authorization:'Bearer '+(socket.handshake.auth?.token||'')}});if(!user)return next(new Error('请登录云端账号'));socket.data.uid=user.id;next();},{readOnly:true}).catch(()=>next(new Error('账号验证暂不可用，请重试')));});
     namespace.on('connection',socket=>{
       const id=socket.data.uid;socket.join('user:'+id);connections.set(id,(connections.get(id)||0)+1);
-      const timer=setInterval(()=>{if(!authUser({headers:{authorization:'Bearer '+(socket.handshake.auth?.token||'')}}))socket.disconnect(true);},60000);timer.unref();
+      const timer=setInterval(()=>{store.run(()=>{if(!authUser({headers:{authorization:'Bearer '+(socket.handshake.auth?.token||'')}}))socket.disconnect(true);},{readOnly:true}).catch(()=>socket.disconnect(true));},60000);timer.unref();
       socket.on('disconnect',()=>{clearInterval(timer);const n=(connections.get(id)||1)-1;if(n)connections.set(id,n);else connections.delete(id);});
     });
   }
-  return {attach,close:()=>new Promise(resolve=>{if(io)io.close(resolve);else resolve();})};
+  return {attach,recover,close:()=>new Promise(resolve=>{if(io)io.close(resolve);else resolve();})};
 };

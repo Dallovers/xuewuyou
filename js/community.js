@@ -20,9 +20,9 @@ window.WG_Community=(function(){
     nodes.forEach(function(n){n.nodeValue=n.nodeValue.replace(pattern,function(_,index){return saved[Number(index)];});});
     body.querySelectorAll('a').forEach(function(a){a.rel='nofollow noreferrer';});math(body);
   }
-  function library(){if(libraries)return libraries;libraries=Promise.all([['/vendor/socketio/socket.io.min.js','io'],['/vendor/markdown-it/markdown-it.min.js','markdownit']].map(function(item){if(window[item[1]])return Promise.resolve();return new Promise(function(resolve,reject){var s=document.createElement('script');s.src=item[0];s.onload=resolve;s.onerror=function(){reject(new Error('校园互动资源加载失败，请重新启动网站后刷新'));};document.head.appendChild(s);});})).catch(function(e){libraries=null;throw e;});return libraries;}
+  function library(){if(libraries)return libraries;libraries=Promise.all([['/vendor/socketio/socket.io.min.js','io'],['/vendor/markdown-it/markdown-it.min.js','markdownit']].map(function(item){if(window[item[1]])return Promise.resolve();return new Promise(function(resolve,reject){var s=document.createElement('script');s.src=WG_Runtime.asset(item[0]);s.onload=resolve;s.onerror=function(){reject(new Error('校园互动资源加载失败，请重新启动网站后刷新'));};document.head.appendChild(s);});})).catch(function(e){libraries=null;throw e;});return libraries;}
   async function connect(){var session=epoch;if(!cloud())return;await library();if(session!==epoch||socket)return;
-    socket=io('/community',{auth:function(cb){cb({token:WG_API.getToken()});}});
+    socket=io((WG_API.getBase()||location.origin)+'/community',{auth:function(cb){cb({token:WG_API.getToken()});}});
     socket.on('connect',function(){$('communityConnection').textContent='实时通知已连接';});socket.on('disconnect',function(){$('communityConnection').textContent='连接中断，可手动刷新';});socket.on('connect_error',function(){$('communityConnection').textContent='通知暂不可用，可手动刷新';});
     socket.on('community:changed',function(event){if(session!==epoch)return;$('communityNotice').hidden=false;$('communityNotice').firstElementChild.textContent=event.kind==='posts'?'有新的留言或回复，刷新后查看。':'搭子或挑战状态已更新，刷新后查看。';window.dispatchEvent(new CustomEvent('xwy:community-changed',{detail:event}));});
   }

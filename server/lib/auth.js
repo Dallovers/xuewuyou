@@ -14,6 +14,7 @@ const TOKEN_TTL = 7 * 24 * 3600 * 1000; // 7 天
 
 function getSecret() {
   if (process.env.JWT_SECRET) return process.env.JWT_SECRET;
+  if (process.env.DATABASE_URL) throw new Error('数据库部署必须配置固定 JWT_SECRET，确保重启后登录仍有效');
   try {
     if (fs.existsSync(SECRET_FILE)) {
       return fs.readFileSync(SECRET_FILE, 'utf8').trim();

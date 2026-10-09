@@ -103,16 +103,20 @@ module.exports = function register({ route, authUser, sendJson, readBody, store,
   ownRoute('GET', '/api/integrations/export', (req, res, uid) => sendJson(res, 200, { ok: true, schemaVersion: 1, exportedAt: new Date().toISOString(), data: state(uid) }));
 
   function schedule(uid, docId) {
+    if (store.database) return store.afterCommit(() => scheduleCommitted(uid,docId));
+    return scheduleCommitted(uid,docId);
+  }
+  function scheduleCommitted(uid, docId) {
     const key = uid + '/' + docId;
     if (busy.has(key)) return;
     busy.add(key);
-    const task = (queues.get(uid) || Promise.resolve()).then(async () => {
+    const task = (queues.get(uid) || Promise.resolve()).then(() => store.run(async () => {
       try {
         let d = document(uid, docId);
         let text = d.markdown;
         if (!text) {
           updateDoc(uid, docId, { status: 'parsing', error: '' });
-          const bytes = await fs.promises.readFile(path.join(filesRoot, uid, docId));
+          const bytes = store.database ? await store.getFile(uid,docId) : await fs.promises.readFile(path.join(filesRoot, uid, docId));
           text = /\.(txt|md)$/i.test(d.filename) ? new TextDecoder('utf-8', { fatal: true }).decode(bytes) : await miner.parse(d.filename, bytes);
           if (!text.trim() || text.length > 300000) fail(400, '资料文本为空或超过 30 万字符');
           updateDoc(uid, docId, { markdown: text, status: 'parsed', error: '' });
@@ -127,9 +131,9 @@ module.exports = function register({ route, authUser, sendJson, readBody, store,
         updateDoc(uid, docId, { status: 'indexing', error: '' });
       } catch (e) { updateDoc(uid, docId, { status: 'failed', error: e.statusCode ? e.message : '解析或索引失败，请检查服务后重试' }); }
       finally { busy.delete(key); }
-    });
+    }));
     queues.set(uid, task);
-    task.finally(() => { if (queues.get(uid) === task) queues.delete(uid); });
+    task.finally(() => { if (queues.get(uid) === task) queues.delete(uid); }).catch(()=>{});
   }
   ownRoute('POST', '/api/knowledge/upload', async (req, res, uid) => {
     const b = await body(req, 12);
@@ -146,7 +150,8 @@ module.exports = function register({ route, authUser, sendJson, readBody, store,
     await fs.promises.mkdir(dir, { recursive: true });
     // A second check after I/O keeps concurrent uploads under the per-user quota.
     if (state(uid).documents.length >= 50) fail(400, '资料数量已达上限');
-    await fs.promises.writeFile(path.join(dir, docId), bytes, { flag: 'wx' });
+    if (store.database) await store.putFile(uid,docId,bytes);
+    else await fs.promises.writeFile(path.join(dir, docId), bytes, { flag: 'wx' });
     const d = { id: docId, filename, bytes: bytes.length, status: 'queued', createdAt: Date.now(), updatedAt: Date.now(), markdown: '', error: '' };
     mutate(uid, s => { if (s.documents.length >= 50) { fs.unlinkSync(path.join(dir, docId)); fail(400, '资料数量已达上限'); } s.documents.push(d); });
     schedule(uid, docId); sendJson(res, 202, { ok: true, document: publicDoc(d) });
@@ -173,7 +178,8 @@ module.exports = function register({ route, authUser, sendJson, readBody, store,
     busy.add(key);
     try {
       if (d.ragDocumentId) await rag.deleteDocument(state(uid).datasetId, d.ragDocumentId);
-      await fs.promises.unlink(path.join(filesRoot, uid, d.id)).catch(e => { if (e.code !== 'ENOENT') throw e; });
+      if (store.database) await store.deleteFile(uid,d.id);
+      else await fs.promises.unlink(path.join(filesRoot, uid, d.id)).catch(e => { if (e.code !== 'ENOENT') throw e; });
       mutate(uid, s => { s.documents = s.documents.filter(x => x.id !== d.id); });
       sendJson(res, 200, { ok: true });
     } finally { busy.delete(key); }

@@ -7,7 +7,14 @@
 var WG_API = (function () {
   var TOKEN_KEY = 'xwy_token';
   var USER_KEY = 'xwy_user';
-  var BASE = ''; // 同源部署，直接用相对路径；跨域时可改为后端地址
+  var BASE = String(window.WG_DEPLOY && window.WG_DEPLOY.apiBase || '').replace(/\/$/,'');
+  if (BASE) {
+    var backendUrl=new URL(BASE);
+    if (backendUrl.username || backendUrl.password || backendUrl.pathname !== '/' || backendUrl.search || backendUrl.hash ||
+      (backendUrl.protocol !== 'https:' && !(backendUrl.protocol === 'http:' && /^(localhost|127\.0\.0\.1)$/.test(backendUrl.hostname)))) throw new Error('后端地址必须是 HTTPS 网站来源地址');
+    BASE=backendUrl.origin;
+  }
+  function staticOnly() {return !!(window.WG_Runtime && WG_Runtime.staticHosting && !BASE);}
 
   var listeners = []; // 登录状态变化回调
 
@@ -22,7 +29,7 @@ var WG_API = (function () {
      本地会话没有真正的云端，应跳过云同步提示，避免误导。 */
   function isCloudSession() {
     var t = getToken();
-    return !!(t && t.indexOf('local.') !== 0);
+    return !!(!staticOnly() && t && t.indexOf('local.') !== 0);
   }
 
   function emit() {
@@ -31,10 +38,11 @@ var WG_API = (function () {
   function onAuthChange(fn) { listeners.push(fn); }
 
   async function req(method, path, body) {
+    if (staticOnly()) throw Object.assign(new Error('云端服务尚未连接，目前数据仅保存在本浏览器'),{status:503});
     var headers = { 'Content-Type': 'application/json' };
     var token = getToken();
     if (token) headers.Authorization = 'Bearer ' + token;
-    var opts = { method: method, headers: headers };
+    var opts = { method: method, headers: headers, signal:AbortSignal.timeout(90000) };
     if (body !== undefined) opts.body = JSON.stringify(body);
     var res, data;
     try {
@@ -46,7 +54,7 @@ var WG_API = (function () {
       ne.status = 0;
       throw ne;
     }
-    data = await res.json().catch(function () { return {}; });
+    data = await res.json().catch(function () { throw Object.assign(new Error('后端返回了无效响应，请检查服务地址或稍后重试'),{status:502}); });
     if (!res.ok) {
       var err = new Error(data.error || ('请求失败(' + res.status + ')'));
       err.code = data.code || 'ERR';
@@ -75,7 +83,7 @@ var WG_API = (function () {
       return d;
     } catch (e) {
       /* 后端不可达（如 GitHub Pages 纯静态托管）→ 本地账号模式，注册即成功 */
-      if (isBackendDown(e)) return localSession(username, nick || username);
+      if (!BASE && isBackendDown(e)) return localSession(username, nick || username);
       throw e;
     }
   }
@@ -86,7 +94,7 @@ var WG_API = (function () {
       return d;
     } catch (e) {
       /* 后端不可达 → 本地账号模式：视为本地身份登录成功 */
-      if (isBackendDown(e)) return localSession(username, username);
+      if (!BASE && isBackendDown(e)) return localSession(username, username);
       throw e;
     }
   }
@@ -209,6 +217,7 @@ var WG_API = (function () {
   }
 
   return {
+    getBase: function(){return BASE;},
     req: req,
     isLoggedIn: isLoggedIn,
     isCloudSession: isCloudSession,

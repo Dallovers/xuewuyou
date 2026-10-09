@@ -4,8 +4,9 @@ const status=message=>postMessage({type:'status',message});
 async function ready(){
   if(runtime)return runtime;
   if(!loading)loading=(async()=>{
-    status('正在加载本地 Python 环境…');const {loadPyodide}=await import('/vendor/pyodide/pyodide.mjs');
-    runtime=await loadPyodide({indexURL:'/vendor/pyodide/',stdout:line=>{if(stdout.length<90000)stdout+=line+'\n';},stderr:line=>{if(stderr.length<10000)stderr+=line+'\n';}});
+    const vendor=new URL('../vendor/pyodide/',self.location.href).href;
+    status('正在加载本地 Python 环境…');const {loadPyodide}=await import(vendor+'pyodide.mjs');
+    runtime=await loadPyodide({indexURL:vendor,stdout:line=>{if(stdout.length<90000)stdout+=line+'\n';},stderr:line=>{if(stderr.length<10000)stderr+=line+'\n';}});
     status('正在准备 NumPy / SymPy / Matplotlib…');await runtime.loadPackage(['numpy','sympy','matplotlib']);
     await runtime.runPythonAsync("import matplotlib\nmatplotlib.use('Agg')\nimport matplotlib.pyplot as plt\n");return runtime;
   })();return loading;

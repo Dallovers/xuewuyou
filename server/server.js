@@ -475,7 +475,16 @@ const server = http.createServer(async (req, res) => {
   for (const r of routes) {
     if (r.method === req.method && urlPath === r.pattern) {
       try {
-        await r.handler(req, res);
+        if (!store.database || urlPath === '/api/health') await r.handler(req, res);
+        else {
+          // Do not acknowledge a write until COMMIT has completed successfully.
+          let status=200, headers={}, body='';
+          const reply={headersSent:false, writeHead(code,value){status=code;headers=value;this.headersSent=true;}, end(value){body=value;}};
+          await store.run(() => r.handler(req,reply), {
+            readOnly:urlPath.startsWith('/api/ai/'), commit:()=>status<400
+          });
+          res.writeHead(status,headers); res.end(body);
+        }
       } catch (e) {
         if (!res.headersSent) sendError(res, e instanceof SyntaxError ? 400 : 500, e instanceof SyntaxError ? '请求格式错误' : '服务器内部错误');
       }
@@ -487,15 +496,22 @@ const server = http.createServer(async (req, res) => {
 });
 
 community.attach(server);
-if (require.main === module) server.listen(PORT, process.env.HOST || '127.0.0.1', () => {
+server.requestTimeout = 30000;
+async function start(port=PORT,host=process.env.HOST || '127.0.0.1') {
+  await store.init();
+  if (store.database) await store.run(community.recover);
+  await new Promise((resolve,reject) => {server.once('error',reject);server.listen(port,host,()=>{server.removeListener('error',reject);resolve();});});
+  return server;
+}
+if (require.main === module) start().then(() => {
   console.log('学无忧后端已启动: http://localhost:' + PORT);
   console.log('  - AI Key 代理:  /api/ai/chat, /api/ai/vision');
   console.log('  - 用户认证:     /api/auth/register, /api/auth/login, /api/auth/me');
   console.log('  - 数据同步:     /api/data, /api/study/stats, /api/study/setup');
   console.log('  - 前端页面:     http://localhost:' + PORT + '/');
-});
+}).catch(async () => { console.error('启动失败：请检查 DATABASE_URL、数据库连接权限和 JWT_SECRET'); await store.close(); process.exit(1); });
 
 
 
-if (require.main === module) process.on('SIGTERM', async () => { await community.close(); await integrations.close(); process.exit(0); });
-module.exports = { server, integrations, community };
+if (require.main === module) process.on('SIGTERM', async () => { server.close(); await integrations.close(); await community.close(); await store.close(); process.exit(0); });
+module.exports = { server, integrations, community, start };

@@ -83,4 +83,7 @@ function del(name, key) {
   }
 }
 
-module.exports = { get, set, del, read, write };
+const local = { get, set, del, read, write, database: false,
+  init: async () => {}, close: async () => {},
+  run: async fn => fn(), afterCommit: fn => fn() };
+module.exports = process.env.DATABASE_URL ? require('./store-postgres') : local;

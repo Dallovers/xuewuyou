@@ -15,7 +15,7 @@ window.WG_Atlas = (function () {
   function button(parent, text, callback, cls) { var b=make(parent,'button',text,cls||'btn ghost'); b.type='button'; b.onclick=callback; return b; }
   function engine() {
     if(window.Phaser)return Promise.resolve();
-    if(!enginePromise)enginePromise=new Promise(function(resolve,reject){var s=document.createElement('script');s.src='/vendor/phaser/phaser.min.js';s.onload=resolve;s.onerror=function(){enginePromise=null;reject(new Error('地图资源未准备好，请运行启动网站脚本后刷新。'));};document.head.appendChild(s);});
+    if(!enginePromise)enginePromise=new Promise(function(resolve,reject){var s=document.createElement('script');s.src=WG_Runtime.asset('/vendor/phaser/phaser.min.js');s.onload=resolve;s.onerror=function(){enginePromise=null;reject(new Error('地图资源未准备好，请运行启动网站脚本后刷新。'));};document.head.appendChild(s);});
     return enginePromise;
   }
   function dispose() { state.generation++; if(state.game){state.game.destroy(true);state.game=null;}state.scene=null; }
@@ -160,7 +160,7 @@ window.WG_Atlas = (function () {
     })();return state.pending;
   }
   function backgroundKey(config) { if(config.key==='campus')return'campus';var group=state.view==='module'&&state.module&&state.module.group;return state.continent==='english'?'english':state.continent==='ielts'?'ielts':group==='线性代数'?'algebra':group==='概率论'?'probability':'mathematics'; }
-  function validAsset(value) { return typeof value==='string'&&/^\/vendor\/atlas-art\/[a-zA-Z0-9_./-]+\.(png|webp|svg)$/.test(value)&&!value.includes('..')?value:null; }
+  function validAsset(value) { return typeof value==='string'&&/^\/vendor\/atlas-art\/[a-zA-Z0-9_./-]+\.(png|webp|svg)$/.test(value)&&!value.includes('..')?WG_Runtime.asset(value):null; }
   async function draw(config,parent,generation) {
     await engine();if(generation!==state.generation||!document.contains(parent))return;
     var positions=coords(config), height=sceneHeight(config),assets=window.WG_AtlasAssets||{},bg=validAsset((assets.backgrounds||{})[backgroundKey(config)]), reduced=matchMedia('(prefers-reduced-motion:reduce)').matches;
