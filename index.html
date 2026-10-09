@@ -11,6 +11,7 @@
 <link rel="stylesheet" href="css/whiteboard.css?v=1">
 <link rel="stylesheet" href="css/atlas.css?v=2">
 <link rel="stylesheet" href="css/community.css?v=2">
+<link rel="stylesheet" href="css/message-wall-art.css?v=1">
 <link rel="stylesheet" href="vendor/katex/katex.min.css">
 <script src="vendor/katex/katex.min.js" defer></script>
 <script src="vendor/katex/contrib/auto-render.min.js" defer></script>
@@ -749,7 +750,7 @@
       </div><section class="community-card"><div class="community-section-head"><h2>寻找学习搭子</h2><button id="buddySearch" class="btn ghost">查找</button></div><div class="community-filter"><label>课程<select id="buddyFilter"><option value="">全部课程</option></select></label><label>昵称<input id="buddySearchText" maxlength="40" placeholder="搜索公开昵称"></label></div><div id="buddyDirectory"></div></section></div>
     </div>
     <div id="community-posts" role="tabpanel" aria-labelledby="community-tab-posts" hidden>
-      <section class="message-wall" aria-labelledby="postScopeTitle">
+      <section class="message-wall wall-illustrated" aria-labelledby="postScopeTitle">
         <div class="message-wall-heading">
           <div><span class="wall-eyebrow">NOTES FROM CAMPUS</span><h2 id="postScopeTitle">校园留言板</h2><p class="wall-intro">把想说的话贴在这里，等一个同频的人回应。</p></div>
           <div class="community-actions"><button id="postWrite" class="btn primary" type="button" aria-controls="postComposer" aria-expanded="false">写一张便签</button><button id="postRefresh" class="btn ghost" type="button">刷新留言板</button><button id="postResetScope" class="btn ghost" type="button" hidden>返回校园留言板</button></div>
@@ -763,7 +764,7 @@
             <div class="community-actions"><button type="submit" class="btn primary">贴到留言板</button><button id="postCancelReply" class="btn ghost" type="button" hidden>取消回复</button><button id="postComposerClose" class="btn ghost" type="button">收起</button></div>
           </form>
         </details>
-        <div class="wall-surface"><div class="wall-topline"><span>每一张便签，都有一个故事</span><span id="postCount" role="status" aria-live="polite">正在读取留言…</span></div><div id="postList" class="sticky-wall" aria-label="校园留言便签"></div><p class="wall-footnote">留言对已登录的同学可见 · 点击回复，接住一个想法</p></div>
+        <div class="wall-topline"><span>每一张便签，都有一个故事</span><span id="postCount" role="status" aria-live="polite">正在读取留言…</span></div><div class="wall-surface"><div id="postList" class="sticky-wall" aria-label="校园留言便签"></div></div><p class="wall-footnote">留言对已登录的同学可见 · 点击回复，接住一个想法</p>
       </section>
     </div>
     <div id="community-arena" role="tabpanel" aria-labelledby="community-tab-arena" hidden>
