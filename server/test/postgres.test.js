@@ -36,7 +36,7 @@ after(async()=>{if(!configured)return;await stopServer();if(store)await store.cl
 test('PostgreSQL rolls back failed writes and serializes competing read-modify-write operations',{skip:!configured},async()=>{
   await assert.rejects(store.run(()=>{store.set('studySetup','rollback',{value:1});throw new Error('expected rollback');}),/expected rollback/);
   await store.run(()=>assert.equal(store.get('studySetup','rollback'),undefined));
-  await Promise.all(Array.from({length:12},()=>store.run(async()=>{const n=store.get('studyDaily','counter',0);await delay(3);store.set('studyDaily','counter',n+1);}))); 
+  await Promise.all(Array.from({length:12},()=>store.run(async()=>{const n=store.get('studyDaily','counter',0);await delay(3);store.set('studyDaily','counter',n+1);})));
   await store.run(()=>assert.equal(store.get('studyDaily','counter'),12));
   await assert.rejects(store.run(()=>store.set('studySetup','readOnly',1),{readOnly:true}),/只读/);
   let emitted=false;await store.run(()=>{store.set('studySetup','cancelled',1);store.afterCommit(()=>{emitted=true;});},{commit:()=>false});

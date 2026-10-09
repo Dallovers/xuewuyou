@@ -1,5 +1,7 @@
 # 学无忧 · 校园互动版
 
+网站：[打开学无忧](https://dallovers.github.io/xuewuyou/) · 后端：[健康检查](https://xuewuyou-campus.onrender.com/api/health)。免费后端闲置后需要唤醒，请稍等约一分钟。
+
 [![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/Dallovers/xuewuyou)
 
 完整后端部署见 [部署与队友分享](部署与队友分享.md)。免费方案使用 Render 后端＋Neon PostgreSQL，配置 DATABASE_URL 后，账号、留言、挑战、学习记录与上传资料保存到数据库。免费后端会休眠，首次访问可能需要约一分钟。详见 [免费后端搭建指南](免费后端搭建指南.md)。
