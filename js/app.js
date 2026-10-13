@@ -2948,10 +2948,12 @@ var WG_App = (function () {
     }
     /* 已登录：静默拉取云端数据合并到本地（失败不影响使用） */
     if (window.WG_API && WG_API.isLoggedIn()) {
+      var startupToken = WG_API.getToken();
       WG_API.pullMerge(WG_Data.get()).then(function (merged) {
+        if (startupToken !== WG_API.getToken()) return;
         WG_Data.replaceAll(merged);
         refreshNickUI();
-        if (state.view !== 'onboard') renderHome();
+        if (state.view === 'home') renderHome();
       }).catch(function () {
         /* token 失效（401）等：刷新登录态显示，清除残留的 ☁ 标识 */
         refreshNickUI();

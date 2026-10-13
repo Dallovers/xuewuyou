@@ -159,17 +159,22 @@ var WG_API = (function () {
   /* ---- 登录后数据同步：拉取云端并合并写回 ----
      后端不可达（纯静态）时静默返回本地数据，不抛错、不阻塞登录流程 */
   async function pullMerge(localData) {
-    var merged;
+    var merged, sessionToken = getToken();
+    function sameSession() { if (sessionToken !== getToken()) throw Object.assign(new Error('登录状态已变化，请重试'), { status:409, code:'SESSION_CHANGED' }); }
+    function latestLocal() { return typeof WG_Data !== 'undefined' ? WG_Data.get() : localData; }
     try {
       var d = await getData();
+      sameSession();
       var cloud = d.data || {};
-      merged = mergeCloudLocal(cloud, localData);
+      merged = mergeCloudLocal(mergeCloudLocal(cloud, localData), latestLocal());
     } catch (e) {
       if (!isBackendDown(e)) throw e;
-      merged = mergeCloudLocal({}, localData); // 无后端：仅保留本地
+      merged = mergeCloudLocal({}, latestLocal()); // 无后端：仅保留当前本地记录
     }
-    try { await putData(merged); } catch (e) { /* 后端不可达则跳过回写 */ }
-    return merged;
+    sameSession();
+    try { var written = await putData(merged); sameSession(); merged = mergeCloudLocal(written.data || merged, latestLocal()); } catch (e) { if (e.code === 'SESSION_CHANGED') throw e; /* 后端不可达则跳过回写 */ }
+    sameSession();
+    return mergeCloudLocal(merged, latestLocal());
   }
 
   /* 云端与本地合并（与后端 mergeData 逻辑一致的前端版） */
