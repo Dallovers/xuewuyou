@@ -76,14 +76,15 @@ window.WG_Atlas = (function () {
     });
   }
   function currentConfig() {
-    if(state.view==='home')return{id:'campusAtlas',key:'campus',title:'你的学习，正在生长',eyebrow:'校园地图',intro:'沿着校园地图探索课程，把每一次练习变成可见的学习足迹。',nodes:campusNodes()};
+    if(state.view==='home')return{id:'campusAtlas',key:'campus',title:'把学习，变成一场探索',eyebrow:'校园地图',intro:'沿着校园地图探索课程，把每一次练习变成可见的学习足迹。',nodes:campusNodes()};
     if(state.view==='bank')return{id:'courseAtlas',key:'courses-'+(state.continent||'all'),title:'课程探索地图',eyebrow:'学科与课程',intro:'一个模块，一张地图。选择课程地点，继续你的章节探索。',nodes:bankNodes()};
     if(state.view==='module')return{id:'moduleAtlas',key:'module-'+(state.module&&state.module.id),title:'章节探索地图',eyebrow:'章节与路线',intro:'路线表示建议先修顺序。所有章节都可进入，状态随你的真实记录更新。',nodes:moduleNodes()};
     return null;
   }
   function heading(root,config) {
-    var head=make(root,'div',undefined,'atlas-heading'),copy=make(head,'div');make(copy,'span',config.eyebrow,'atlas-kicker');var title=make(copy,state.view==='module'?'h2':'h1',config.title);if(state.view==='home')title.id='campusTitle';if(state.view==='bank')title.id='courseAtlasTitle';make(copy,'p',config.intro);
+    var head=make(root,'div',undefined,'atlas-heading'),copy=make(head,'div');make(copy,'span',config.eyebrow,'atlas-kicker');var title=make(copy,state.view==='module'?'h2':'h1',config.title);if(state.view==='home'){title.id='campusTitle';title.replaceChildren();make(title,'span','把学习，','atlas-title-line');make(title,'span','变成一场探索','atlas-title-line');}if(state.view==='bank')title.id='courseAtlasTitle';make(copy,'p',config.intro);
     var actions=make(head,'div',undefined,'atlas-toolbar');button(actions,'地图说明',openGuide);
+    if(state.view==='home')button(actions,'进入课程地图',function(){navigate('bank');},'btn primary');
     var refresh=button(actions,'同步学习状态',function(){refreshSnapshot(true);});refresh.id='atlasRefresh';
     if(state.view!=='module')button(actions,$('view-'+state.view).classList.contains('atlas-show-list')?'返回地图':'列表视图',function(){ $('view-'+state.view).classList.toggle('atlas-show-list');render(); });
   }

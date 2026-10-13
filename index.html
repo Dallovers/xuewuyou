@@ -6,6 +6,7 @@
 <meta name="description" content="学无忧 · 大学生备考通关平台：高等数学、线性代数、概率论真题级题库，错题复盘与 AI 讲题。">
 <meta name="theme-color" content="#234333">
 <title>学无忧 · 大学生备考通关平台</title>
+<link rel="preload" href="vendor/campus-theme/fonts/campus-serif.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="css/style.css?v=21">
 <link rel="stylesheet" href="css/integrations.css?v=1">
 <link rel="stylesheet" href="css/whiteboard.css?v=1">
@@ -14,6 +15,7 @@
 <link rel="stylesheet" href="css/message-wall-art.css?v=1">
 <link rel="stylesheet" href="css/study-rooms.css?v=1">
 <link rel="stylesheet" href="css/campus-theme.css?v=1">
+<link rel="stylesheet" href="css/campus-adventure.css?v=1">
 <link rel="stylesheet" href="vendor/katex/katex.min.css">
 <script src="vendor/katex/katex.min.js" defer></script>
 <script src="vendor/katex/contrib/auto-render.min.js" defer></script>
@@ -650,11 +652,11 @@
     </div>
     <div class="card" style="margin-bottom:1rem;">
       <div style="font-size:0.85rem;color:var(--muted);line-height:1.8;margin-bottom:0.6rem;">
-        答题遇到卡壳？让 AI 帮你讲题、出同类题、解读学情。大模型由服务端统一代理调用，你只管用，不用注册任何 AI 平台。
+        围绕题目和学习记录提问，获得讲解与复习建议。AI 服务可用时，回答会显示在下方。
       </div>
       <div style="display:flex;gap:0.6rem;flex-wrap:wrap;align-items:center;">
         <span style="font-size:0.85rem;color:var(--ink);display:inline-flex;align-items:center;gap:0.4rem;">
-          <span style="color:var(--ok);">●</span> AI 已接入服务端代理，密钥由管理员统一配置，前端无需填写。
+          可以先选择一道题，或根据自己的错题记录提出问题。
         </span>
       </div>
       <div id="aiKeyStatus" style="font-size:0.78rem;color:var(--muted);margin-top:0.5rem;"></div>
@@ -1066,9 +1068,10 @@
 <script src="js/community.js?v=3" defer></script>
 <script src="js/study-rooms.js?v=1" defer></script>
 <script src="js/campus-registry.js?v=3" defer></script>
-<script src="js/atlas-assets.js?v=2" defer></script>
-<script src="js/atlas.js?v=6" defer></script>
+<script src="js/atlas-assets.js?v=3" defer></script>
+<script src="js/atlas.js?v=7" defer></script>
 <script src="js/ux.js?v=1" defer></script>
+<script src="js/campus-interactions.js?v=1" defer></script>
 </body>
 </html>
 
