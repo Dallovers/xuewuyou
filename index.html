@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="description" content="学无忧 · 大学生备考通关平台：高等数学、线性代数、概率论真题级题库，错题复盘与 AI 讲题。">
-<meta name="theme-color" content="#f2f7f5">
+<meta name="theme-color" content="#234333">
 <title>学无忧 · 大学生备考通关平台</title>
 <link rel="stylesheet" href="css/style.css?v=21">
 <link rel="stylesheet" href="css/integrations.css?v=1">
@@ -13,6 +13,7 @@
 <link rel="stylesheet" href="css/community.css?v=2">
 <link rel="stylesheet" href="css/message-wall-art.css?v=1">
 <link rel="stylesheet" href="css/study-rooms.css?v=1">
+<link rel="stylesheet" href="css/campus-theme.css?v=1">
 <link rel="stylesheet" href="vendor/katex/katex.min.css">
 <script src="vendor/katex/katex.min.js" defer></script>
 <script src="vendor/katex/contrib/auto-render.min.js" defer></script>
@@ -27,9 +28,9 @@
 
   <!-- 顶部导航 -->
   <header class="topbar">
-    <div class="logo" id="logoBtn" role="button" tabindex="0" aria-label="学无忧，返回首页">学无忧</div>
+    <div class="logo" id="logoBtn" role="button" tabindex="0" aria-label="学无忧，返回首页"><svg class="brand-emblem" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 4h6a4 4 0 0 1 3 1.4A4 4 0 0 1 15 4h6v15h-6a4 4 0 0 0-3 1.4A4 4 0 0 0 9 19H3zM12 5.4v15M6 8h3M15 8h3M6 12h3M15 12h3"/></svg>学无忧</div>
     <span style="font-size:0.72rem;color:var(--muted);letter-spacing:0.2em;" aria-hidden="true">XUE WU YOU</span>
-    <span class="atlas-brand-badge">学习探索空间</span>
+    <span class="atlas-brand-badge">你的学习校园</span>
     <div class="spacer"></div>
     <button class="btn ghost atlas-menu-toggle" id="atlasMenuToggle" type="button" aria-expanded="false" aria-controls="atlasSidebar">导航</button>
     <button class="nick" id="nickBtn" aria-label="账号与昵称">玩家：<b id="nickName">未设置</b></button>
@@ -37,15 +38,17 @@
   </header>
   <div class="atlas-layout">
   <aside class="atlas-sidebar" id="atlasSidebar" aria-label="学习导航">
-    <p class="atlas-nav-caption">我的学习空间</p>
+    <p class="atlas-nav-caption">我的校园</p>
     <nav class="topnav" id="topnav" aria-label="主导航">
       <a href="#" data-nav="home" class="active" aria-current="page">校园地图</a>
       <a href="#" data-nav="bank">课程地图</a>
       <a href="#" data-nav="rooms">自习室<span id="roomsInviteBadge" class="rooms-nav-badge" hidden>0</span></a>
       <a href="#" data-nav="wenku">学习资料</a>
+      <span class="atlas-nav-group">学习记录</span>
       <a href="#" data-nav="mistakes">错题本</a>
       <a href="#" data-nav="report">学情报告</a>
       <a href="#" data-nav="review">智能复习</a>
+      <span class="atlas-nav-group">交流与探索</span>
       <a href="#" data-nav="knowledge">课程问答</a>
       <a href="#" data-nav="community">校园互动</a>
       <a href="#" data-nav="ai">AI 助手</a>
@@ -64,11 +67,14 @@
 
   <!-- ===== 视图：登录 / 注册 + 需求采集（首屏秒开） ===== -->
   <div id="view-onboard" style="max-width:560px;margin:1.1rem auto 0;padding-bottom:2.5rem;">
-    <div style="text-align:center;margin-bottom:1rem;">
-      <div class="logo" style="font-size:1.9rem;">学无忧</div>
-      <div style="font-size:0.85rem;color:var(--muted);margin-top:0.35rem;">注册即得个性化学习计划 · 做题记录云端同步</div>
+    <div class="onboard-welcome">
+      <div class="logo">学无忧</div>
+      <p>给认真学习的你，<br>一座可以停留的校园。</p>
+      <div class="onboard-description">探索课程，留下学习足迹。<br>也和同伴一起，走过每一段备考时光。</div>
     </div>
-    <div style="border:1px solid var(--rule);border-radius:18px;background:linear-gradient(160deg,var(--bg3),var(--bg2));padding:1.35rem 1.4rem;">
+    <div class="onboard-form-panel" style="border:1px solid var(--rule);border-radius:18px;background:linear-gradient(160deg,var(--bg3),var(--bg2));padding:1.35rem 1.4rem;">
+      <h1 class="onboard-caption">欢迎来到学无忧</h1>
+      <p class="onboard-subcaption">登录后同步学习记录，也可以先本地体验。</p>
       <!-- 登录 / 注册 切换 -->
       <div style="display:flex;gap:0.5rem;margin-bottom:1rem;">
         <button type="button" class="btn primary" id="obTabReg" style="flex:1;">注册</button>
@@ -76,14 +82,14 @@
       </div>
       <!-- 账号区：注册填用户名/密码/昵称，登录只填用户名/密码 -->
       <div id="obAccount" style="display:grid;gap:0.72rem;margin-bottom:0.9rem;">
+        <label class="onboard-account-label" for="obUsername">用户名</label>
         <input id="obUsername" type="text" placeholder="用户名（2-20 位字母/数字/中文）" autocomplete="username" style="width:100%;background:var(--bg2);border:1px solid var(--rule);border-radius:10px;padding:0.6rem 0.9rem;color:var(--ink);font-size:0.9rem;outline:none;box-sizing:border-box;">
+        <label class="onboard-account-label" for="obPassword">密码</label>
         <input id="obPassword" type="password" placeholder="密码（至少 6 位）" autocomplete="new-password" style="width:100%;background:var(--bg2);border:1px solid var(--rule);border-radius:10px;padding:0.6rem 0.9rem;color:var(--ink);font-size:0.9rem;outline:none;box-sizing:border-box;">
-        <input id="obNick" type="text" placeholder="昵称（可选，留空用用户名）" style="width:100%;background:var(--bg2);border:1px solid var(--rule);border-radius:10px;padding:0.6rem 0.9rem;color:var(--ink);font-size:0.9rem;outline:none;box-sizing:border-box;">
+        <input id="obNick" aria-label="昵称（可选）" type="text" placeholder="昵称（可选，留空用用户名）" style="width:100%;background:var(--bg2);border:1px solid var(--rule);border-radius:10px;padding:0.6rem 0.9rem;color:var(--ink);font-size:0.9rem;outline:none;box-sizing:border-box;">
       </div>
-      <!-- 分隔线 -->
-      <div style="display:flex;align-items:center;gap:0.6rem;margin-bottom:0.85rem;font-size:0.78rem;color:var(--muted);">
-        <span style="flex:1;height:1px;background:var(--rule);"></span> 我的学习情况 <span style="flex:1;height:1px;background:var(--rule);"></span>
-      </div>
+      <details id="obPreferences" class="onboard-preferences" open>
+      <summary>我的学习情况</summary>
       <!-- 需求采集区 -->
       <div style="display:grid;gap:0.85rem;">
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.8rem;">
@@ -132,6 +138,7 @@
           </select>
         </div>
       </div>
+      </details>
       <button class="btn primary" id="obSubmit" style="width:100%;margin-top:1.1rem;padding:0.75rem;font-size:1rem;">注册并生成我的学习计划</button>
       <div id="obStatus" style="font-size:0.82rem;color:var(--muted);text-align:center;margin-top:0.7rem;min-height:1.3rem;"></div>
       <div id="obPlan" class="hidden" style="margin-top:1rem;border:1px solid var(--rule);border-radius:12px;background:rgba(13,148,136,.06);padding:0.9rem 1rem;font-size:0.85rem;color:var(--ink);line-height:1.9;white-space:pre-wrap;"></div>
@@ -253,7 +260,7 @@
 
   <!-- ===== 视图：自习室 ===== -->
   <section id="view-rooms" class="hidden integration-page rooms-page" aria-labelledby="roomsTitle">
-    <div class="rooms-hero"><div><span class="rooms-eyebrow">FOCUS TOGETHER</span><h1 id="roomsTitle">一起坐下来，专注一会儿</h1><p class="rooms-muted">约上学习搭子，定下本轮目标，让每一分钟都有真实的陪伴。</p><span id="roomsConnection" class="room-badge">登录后连接实时自习室</span></div><div class="rooms-actions"><button id="roomsRefresh" class="btn ghost" type="button">刷新房间</button><button id="roomsPersonal" class="btn ghost" type="button">个人自习</button></div></div>
+    <div class="rooms-hero"><div><span class="rooms-eyebrow">多人自习室</span><h1 id="roomsTitle">一起坐下来，专注一会儿</h1><p class="rooms-muted">约上学习搭子，定下本轮目标，让每一分钟都有真实的陪伴。</p><span id="roomsConnection" class="room-badge">登录后连接实时自习室</span></div><div class="rooms-actions"><button id="roomsRefresh" class="btn ghost" type="button">刷新房间</button><button id="roomsPersonal" class="btn ghost" type="button">个人自习</button></div></div>
     <p id="roomsMessage" class="rooms-message" role="status" aria-live="polite"></p>
     <div class="rooms-summary"><div><strong id="roomsOnline">—</strong><span>正在共同专注</span></div><div><strong id="roomsCount">—</strong><span>可见自习房间</span></div><div><strong id="roomsHistoryCount">—</strong><span>最近自习记录</span></div></div>
     <section id="roomCurrent" class="rooms-card room-current" aria-label="当前自习房间" hidden></section>
@@ -447,11 +454,12 @@
 
   <!-- ===== 视图：学习资料 ===== -->
   <div id="view-wenku" class="hidden">
-    <button class="btn primary" type="button" data-integration-nav="knowledge">上传课程资料并提问</button>
     <div class="page-title">
       <h1>学习资料</h1>
       <span class="en">Materials</span>
+      <div class="page-heading-actions"><button class="btn primary" type="button" data-integration-nav="knowledge">上传课程资料并提问</button></div>
     </div>
+    <p class="page-intro">找到需要的讲义与练习，把资料读懂，再把知识用起来。</p>
     <div class="wenku-intro" id="wenkuIntro"></div>
     <div class="wenku-tabs" id="wenkuTabs"></div>
     <div class="wenku-filters" id="wenkuFilters"></div>
@@ -668,16 +676,18 @@
       <h1>学情报告</h1>
       <span class="en">Learning Report</span>
     </div>
+    <p class="page-intro">从真实作答记录中，看看自己的进步与下一步。</p>
     <div id="reportBody"></div>
   </div>
 
   <!-- ===== 视图：错题本 ===== -->
   <div id="view-mistakes" class="hidden">
-    <button class="btn primary" type="button" data-integration-nav="review">按复习计划重做错题</button>
     <div class="page-title">
       <h1>错题本 <span style="font-size:0.85rem;color:var(--muted);">共 <b id="mistakeCount" style="color:var(--danger);">0</b> 题待攻克</span></h1>
       <span class="en">Mistake Book</span>
+      <div class="page-heading-actions"><button class="btn primary" type="button" data-integration-nav="review">按复习计划重做错题</button></div>
     </div>
+    <p class="page-intro">把暂时没懂的题留下来，下一次再认真解开。</p>
 
     <!-- 错题学情概览面板 -->
     <div class="mistake-dashboard" id="mistakeDashboard">
@@ -744,7 +754,7 @@
   </section>
 
   <section id="view-community" class="hidden integration-page community-page" aria-labelledby="communityTitle">
-    <div class="community-hero"><div><span class="atlas-kicker">CAMPUS CONNECTIONS</span><h1 id="communityTitle">一起学习，也一起探索</h1><p>找到学习搭子，讨论同一道题，发起一次五题挑战。</p></div><span id="communityConnection" class="community-status">实时通知待连接</span></div>
+    <div class="community-hero"><div><span class="atlas-kicker">校园互动</span><h1 id="communityTitle">一起学习，也一起探索</h1><p>找到学习搭子，讨论同一道题，发起一次五题挑战。</p></div><span id="communityConnection" class="community-status">实时通知待连接</span></div>
     <div class="community-tabs" role="tablist" aria-label="校园互动功能">
       <button id="community-tab-friends" data-community-tab="friends" role="tab" aria-controls="community-friends" aria-selected="true">学习搭子</button>
       <button id="community-tab-posts" data-community-tab="posts" role="tab" aria-controls="community-posts" aria-selected="false" tabindex="-1">留言板</button>
@@ -763,7 +773,7 @@
     <div id="community-posts" role="tabpanel" aria-labelledby="community-tab-posts" hidden>
       <section class="message-wall wall-illustrated" aria-labelledby="postScopeTitle">
         <div class="message-wall-heading">
-          <div><span class="wall-eyebrow">NOTES FROM CAMPUS</span><h2 id="postScopeTitle">校园留言板</h2><p class="wall-intro">把想说的话贴在这里，等一个同频的人回应。</p></div>
+          <div><h2 id="postScopeTitle">校园留言板</h2><p class="wall-intro">把想说的话贴在这里，等一个同频的人回应。</p></div>
           <div class="community-actions"><button id="postWrite" class="btn primary" type="button" aria-controls="postComposer" aria-expanded="false">写一张便签</button><button id="postRefresh" class="btn ghost" type="button">刷新留言板</button><button id="postResetScope" class="btn ghost" type="button" hidden>返回校园留言板</button></div>
         </div>
         <div id="postQuestion" class="community-question wall-question" hidden></div>
@@ -1050,14 +1060,14 @@
 <!-- 重型数据延迟加载器：gaoshu_bank / english_words / ielts_words / wenku / wenku_cat
      首屏渲染后后台加载，避免 4.3MB 同步阻塞登录界面 -->
 <script src="js/loader.js?v=1" defer></script>
-<script src="js/app.js?v=43" defer></script>
+<script src="js/app.js?v=44" defer></script>
 <script src="js/integrations.js?v=wall-2" defer></script>
 <script src="js/whiteboard.js?v=1" defer></script>
 <script src="js/community.js?v=3" defer></script>
 <script src="js/study-rooms.js?v=1" defer></script>
 <script src="js/campus-registry.js?v=3" defer></script>
 <script src="js/atlas-assets.js?v=2" defer></script>
-<script src="js/atlas.js?v=5" defer></script>
+<script src="js/atlas.js?v=6" defer></script>
 <script src="js/ux.js?v=1" defer></script>
 </body>
 </html>

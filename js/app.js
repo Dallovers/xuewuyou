@@ -2145,6 +2145,7 @@ var WG_App = (function () {
     if (tR) { tR.classList.toggle('primary', mode === 'reg'); tR.classList.toggle('ghost', mode !== 'reg'); }
     if (tL) { tL.classList.toggle('primary', mode === 'login'); tL.classList.toggle('ghost', mode !== 'login'); }
     if ($('obNick')) $('obNick').style.display = mode === 'reg' ? 'block' : 'none';
+    if ($('obPreferences')) $('obPreferences').open = mode === 'reg';
     if ($('obPassword')) $('obPassword').setAttribute('autocomplete', mode === 'reg' ? 'new-password' : 'current-password');
     if ($('obSubmit')) $('obSubmit').textContent = mode === 'reg' ? '注册并生成我的学习计划' : '登录并继续';
     if ($('obStatus')) $('obStatus').textContent = '';

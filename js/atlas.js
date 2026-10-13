@@ -2,7 +2,7 @@
 window.WG_Atlas = (function () {
   var $ = function (id) { return document.getElementById(id); };
   var state = { view:null, module:null, continent:null, snapshot:null, selected:{}, game:null, scene:null, generation:0, epoch:0, pending:null, dirty:false, revision:0, zoom:1, offset:{x:0,y:0} };
-  var enginePromise = null, refreshTimer = null;
+  var enginePromise = null, refreshTimer = null, queuedRefresh = false, queuedSync = false;
   var points = [[295,240],[575,165],[840,245],[895,390],[640,435],[390,445],[175,360],[555,305],[730,320],[365,155],[490,525],[820,505]];
   var icons = {
     home:'M3 10 12 3l9 7v10H3z M9 20v-7h6v7', bank:'M3 5l6-2 6 2 6-2v16l-6 2-6-2-6 2z M9 3v16 M15 5v16',
@@ -76,9 +76,9 @@ window.WG_Atlas = (function () {
     });
   }
   function currentConfig() {
-    if(state.view==='home')return{id:'campusAtlas',key:'campus',title:'你的学习，正在生长',eyebrow:'XUE WU YOU · LEARNING CAMPUS',intro:'沿着校园地图探索课程，把每一次练习变成可见的学习足迹。',nodes:campusNodes()};
-    if(state.view==='bank')return{id:'courseAtlas',key:'courses-'+(state.continent||'all'),title:'课程探索地图',eyebrow:'COURSE EXPEDITION',intro:'一个模块，一张地图。选择课程地点，继续你的章节探索。',nodes:bankNodes()};
-    if(state.view==='module')return{id:'moduleAtlas',key:'module-'+(state.module&&state.module.id),title:'章节探索地图',eyebrow:'CHAPTER EXPEDITION',intro:'路线表示建议先修顺序。所有章节都可进入，状态随你的真实记录更新。',nodes:moduleNodes()};
+    if(state.view==='home')return{id:'campusAtlas',key:'campus',title:'你的学习，正在生长',eyebrow:'校园地图',intro:'沿着校园地图探索课程，把每一次练习变成可见的学习足迹。',nodes:campusNodes()};
+    if(state.view==='bank')return{id:'courseAtlas',key:'courses-'+(state.continent||'all'),title:'课程探索地图',eyebrow:'学科与课程',intro:'一个模块，一张地图。选择课程地点，继续你的章节探索。',nodes:bankNodes()};
+    if(state.view==='module')return{id:'moduleAtlas',key:'module-'+(state.module&&state.module.id),title:'章节探索地图',eyebrow:'章节与路线',intro:'路线表示建议先修顺序。所有章节都可进入，状态随你的真实记录更新。',nodes:moduleNodes()};
     return null;
   }
   function heading(root,config) {
@@ -151,12 +151,14 @@ window.WG_Atlas = (function () {
   }
   async function refreshSnapshot(sync) {
     if(!WG_API.isCloudSession())return;
-    if(state.pending)return state.pending;
+    // A presence/view update can arrive while the previous snapshot is in flight.
+    // Fetch again afterwards so its older result cannot swallow that update.
+    if(state.pending){queuedRefresh=true;queuedSync=queuedSync||!!sync;return state.pending;}
     var session=state.epoch,revision=state.revision,b=$('atlasRefresh');if(b){b.disabled=true;b.textContent='同步中…';}
     state.pending=(async function(){
       try{if(sync)await WG_API.putData(WG_Data.get());var value=await WG_API.req('GET','/api/learning/twin');if(session!==state.epoch)return;state.snapshot=value;state.dirty=revision!==state.revision;if(currentConfig())render();}
       catch(e){if(session===state.epoch&&$('atlasSyncNote'))$('atlasSyncNote').textContent='同步失败：'+e.message+'。地图保留本机的作答和错题数据，可重试同步。';}
-      finally{if(session===state.epoch){state.pending=null;var current=$('atlasRefresh');if(current){current.disabled=false;current.textContent='同步学习状态';}if(revision!==state.revision&&currentConfig()){clearTimeout(refreshTimer);refreshTimer=setTimeout(function(){refreshSnapshot(true);},500);}}}
+      finally{if(session===state.epoch){state.pending=null;var current=$('atlasRefresh');if(current){current.disabled=false;current.textContent='同步学习状态';}var repeat=queuedRefresh||revision!==state.revision,write=queuedSync||revision!==state.revision;queuedRefresh=false;queuedSync=false;if(repeat&&currentConfig()){clearTimeout(refreshTimer);refreshTimer=setTimeout(function(){refreshSnapshot(write);},500);}}}
     })();return state.pending;
   }
   function backgroundKey(config) { if(config.key==='campus')return'campus';var group=state.view==='module'&&state.module&&state.module.group;return state.continent==='english'?'english':state.continent==='ielts'?'ielts':group==='线性代数'?'algebra':group==='概率论'?'probability':'mathematics'; }
@@ -225,7 +227,7 @@ window.WG_Atlas = (function () {
   document.addEventListener('visibilitychange',function(){if(!document.hidden&&currentConfig())refreshSnapshot(false);});
   window.addEventListener('xwy:study-changed',function(){if(currentConfig())refreshSnapshot(false);});
   window.addEventListener('xwy:community-changed',function(){if(currentConfig())refreshSnapshot(false);});
-  WG_API.onAuthChange(function(){state.epoch++;state.pending=null;state.snapshot=null;state.selected={};state.dirty=false;state.revision++;clearTimeout(refreshTimer);dispose();['campusAtlas','courseAtlas','moduleAtlas'].forEach(function(id){$(id).replaceChildren();});});
+  WG_API.onAuthChange(function(){state.epoch++;state.pending=null;queuedRefresh=false;queuedSync=false;state.snapshot=null;state.selected={};state.dirty=false;state.revision++;clearTimeout(refreshTimer);dispose();['campusAtlas','courseAtlas','moduleAtlas'].forEach(function(id){$(id).replaceChildren();});});
   $('atlasMenuToggle').onclick=function(){var open=document.body.classList.toggle('atlas-menu-open');$('atlasMenuToggle').setAttribute('aria-expanded',String(open));};
   document.addEventListener('keydown',function(e){if(e.key==='Escape')closeMenu();});
   document.querySelectorAll('#topnav a').forEach(function(a){var ns='http://www.w3.org/2000/svg',svg=document.createElementNS(ns,'svg'),path=document.createElementNS(ns,'path');svg.setAttribute('viewBox','0 0 24 24');svg.setAttribute('fill','none');svg.setAttribute('stroke','currentColor');svg.setAttribute('stroke-width','1.6');svg.setAttribute('stroke-linejoin','round');svg.setAttribute('stroke-linecap','round');svg.setAttribute('aria-hidden','true');svg.classList.add('atlas-nav-icon');path.setAttribute('d',icons[a.dataset.nav]||icons.home);svg.appendChild(path);a.prepend(svg);});
