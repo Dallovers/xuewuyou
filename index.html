@@ -12,6 +12,7 @@
 <link rel="stylesheet" href="css/atlas.css?v=2">
 <link rel="stylesheet" href="css/community.css?v=2">
 <link rel="stylesheet" href="css/message-wall-art.css?v=1">
+<link rel="stylesheet" href="css/study-rooms.css?v=1">
 <link rel="stylesheet" href="vendor/katex/katex.min.css">
 <script src="vendor/katex/katex.min.js" defer></script>
 <script src="vendor/katex/contrib/auto-render.min.js" defer></script>
@@ -40,7 +41,7 @@
     <nav class="topnav" id="topnav" aria-label="主导航">
       <a href="#" data-nav="home" class="active" aria-current="page">校园地图</a>
       <a href="#" data-nav="bank">课程地图</a>
-      <a href="#" data-nav="study">自习室</a>
+      <a href="#" data-nav="rooms">自习室<span id="roomsInviteBadge" class="rooms-nav-badge" hidden>0</span></a>
       <a href="#" data-nav="wenku">学习资料</a>
       <a href="#" data-nav="mistakes">错题本</a>
       <a href="#" data-nav="report">学情报告</a>
@@ -251,6 +252,16 @@
   </div>
 
   <!-- ===== 视图：自习室 ===== -->
+  <section id="view-rooms" class="hidden integration-page rooms-page" aria-labelledby="roomsTitle">
+    <div class="rooms-hero"><div><span class="rooms-eyebrow">FOCUS TOGETHER</span><h1 id="roomsTitle">一起坐下来，专注一会儿</h1><p class="rooms-muted">约上学习搭子，定下本轮目标，让每一分钟都有真实的陪伴。</p><span id="roomsConnection" class="room-badge">登录后连接实时自习室</span></div><div class="rooms-actions"><button id="roomsRefresh" class="btn ghost" type="button">刷新房间</button><button id="roomsPersonal" class="btn ghost" type="button">个人自习</button></div></div>
+    <p id="roomsMessage" class="rooms-message" role="status" aria-live="polite"></p>
+    <div class="rooms-summary"><div><strong id="roomsOnline">—</strong><span>正在共同专注</span></div><div><strong id="roomsCount">—</strong><span>可见自习房间</span></div><div><strong id="roomsHistoryCount">—</strong><span>最近自习记录</span></div></div>
+    <section id="roomCurrent" class="rooms-card room-current" aria-label="当前自习房间" hidden></section>
+    <section id="roomInvitePanel" class="rooms-card" hidden><h2>邀请学习搭子</h2><form id="roomInviteForm" class="rooms-form rooms-invite-form"><label>我的学习搭子<select id="roomFriend" required><option value="">先添加学习搭子</option></select></label><button class="btn primary" type="submit">发送自习邀请</button></form><button id="roomsFindBuddy" class="btn ghost" type="button">去添加学习搭子</button></section>
+    <div class="rooms-layout"><section class="rooms-card"><h2>创建一间自习室</h2><form id="roomCreateForm" class="rooms-form"><label>房间名称<input id="roomTitle" maxlength="60" required placeholder="例如：今晚一起学高数"></label><label>学习课程<input id="roomSubject" maxlength="60" value="高等数学" required></label><label>本轮共同目标<textarea id="roomGoal" rows="2" maxlength="240" placeholder="例如：完成极限练习，再一起复盘两道错题"></textarea></label><div class="rooms-fields"><label>共同专注时长（分钟）<input id="roomDuration" type="number" min="5" max="120" value="25" required></label><label>人数上限<select id="roomCapacity"><option value="2">2 人</option><option value="4" selected>4 人</option><option value="6">6 人</option><option value="8">8 人</option></select></label></div><label>房间开放方式<select id="roomVisibility"><option value="invite">邀请制 · 仅受邀好友可加入</option><option value="public">公开 · 已登录同学可加入</option></select></label><button class="btn primary" type="submit">创建房间</button><p class="rooms-muted">至少两位同学在线并准备后，由房主开始。离开页面、休息或断线后的时间不会一直累计。</p></form></section><div><section class="rooms-card"><h2>收到的自习邀请</h2><div id="roomInvitations"></div></section><section class="rooms-card"><h2>自习大厅</h2><div id="roomDirectory"></div></section></div></div>
+    <details class="rooms-card rooms-history"><summary>我的小组自习记录</summary><div id="roomHistory"></div></details>
+  </section>
+
   <div id="view-study" class="hidden">
     <div class="study-room-layout">
       <!-- 顶部状态栏：自习主题、全屏按钮、离开按钮 -->
@@ -361,7 +372,7 @@
           <div class="sr-peer-card">
             <div class="sr-peer-head">
               <div class="sr-card-t">
-                <span>👥</span> 线上自习同桌 (<span id="srPeerOnlineCount">6</span>人同在)
+                <span>👥</span> 线上自习同桌 (<span id="srPeerOnlineCount">0</span>人同在)
               </div>
               <button type="button" class="sr-btn-sm" id="srCheerAllBtn">✨ 一键互相打气</button>
             </div>
@@ -1035,17 +1046,18 @@
 <script src="js/qenhance.js?v=1" defer></script>
 <script src="js/scratch.js?v=2" defer></script>
 <script src="js/gaoshu.js?v=wall-16" defer></script>
-<script src="js/study.js?v=7" defer></script>
+<script src="js/study.js?v=8" defer></script>
 <!-- 重型数据延迟加载器：gaoshu_bank / english_words / ielts_words / wenku / wenku_cat
      首屏渲染后后台加载，避免 4.3MB 同步阻塞登录界面 -->
 <script src="js/loader.js?v=1" defer></script>
-<script src="js/app.js?v=41" defer></script>
+<script src="js/app.js?v=42" defer></script>
 <script src="js/integrations.js?v=wall-2" defer></script>
 <script src="js/whiteboard.js?v=1" defer></script>
 <script src="js/community.js?v=3" defer></script>
-<script src="js/campus-registry.js?v=2" defer></script>
+<script src="js/study-rooms.js?v=1" defer></script>
+<script src="js/campus-registry.js?v=3" defer></script>
 <script src="js/atlas-assets.js?v=2" defer></script>
-<script src="js/atlas.js?v=4" defer></script>
+<script src="js/atlas.js?v=5" defer></script>
 <script src="js/ux.js?v=1" defer></script>
 </body>
 </html>

@@ -11,6 +11,7 @@ window.WG_Atlas = (function () {
     review:'M4 8a8 8 0 1 1-1 7 M4 3v5h5 M12 7v5l3 2', knowledge:'M4 4h16v12H9l-5 4z M8 8h8 M8 12h5',
     learning:'M9 3h6 M10 3v6L4 20h16L14 9V3 M7 15h10', community:'M8 12a4 4 0 1 0 0-8a4 4 0 0 0 0 8 M2 21v-3a6 6 0 0 1 12 0v3 M17 4a4 4 0 0 1 0 8 M17 15a5 5 0 0 1 5 5', ai:'M5 7h14v13H5z M12 3v4 M9 12h.1 M15 12h.1 M9 16h6 M2 10v6 M22 10v6'
   };
+  icons.rooms=icons.study;
   function make(parent, tag, text, cls) { var node=document.createElement(tag); if(text!==undefined)node.textContent=text; if(cls)node.className=cls; parent.appendChild(node); return node; }
   function button(parent, text, callback, cls) { var b=make(parent,'button',text,cls||'btn ghost'); b.type='button'; b.onclick=callback; return b; }
   function engine() {
@@ -36,7 +37,7 @@ window.WG_Atlas = (function () {
   function topicLabel(meta) { return meta.model ? '掌握估计 '+Math.round(meta.model.mastery*100)+'%'+(meta.model.observations<5?' · 样本较少':'') : meta.records ? meta.records+' 次记录 · 掌握度未评估' : '尚未探索'; }
   function activity() {
     var d=WG_Data.get(), a=state.snapshot&&state.snapshot.activity;
-    return Object.assign({ answers:d.answers.length, mistakes:d.mistakes.length, cleared:d.cleared.length, due:null, reviews:0, focusMinutes:null, documents:null, experiments:null, boards:null, planned:null, completed:0,friends:null,challenges:null }, a||{}, {answers:d.answers.length,mistakes:d.mistakes.length});
+    return Object.assign({ answers:d.answers.length, mistakes:d.mistakes.length, cleared:d.cleared.length, due:null, reviews:0, focusMinutes:null, documents:null, experiments:null, boards:null, planned:null, completed:0,friends:null,challenges:null,studyingNow:null }, a||{}, {answers:d.answers.length,mistakes:d.mistakes.length});
   }
   function count(value, unit) { return value===null||value===undefined ? '待同步' : value+' '+(unit||''); }
   function navigate(name, tab) { closeMenu(); if(name==='community'){WG_Community.open(tab);return;}StudyAppBridge.navTo(name); if(tab)setTimeout(function(){var b=$('tab-'+tab);if(b)b.click();},0); }
@@ -222,6 +223,7 @@ window.WG_Atlas = (function () {
   window.addEventListener('xwy:view-changed',function(e){var d=e.detail;state.view=d.view;state.module=d.module;state.continent=d.continent;closeMenu();dispose();['campusAtlas','courseAtlas','moduleAtlas'].forEach(function(id){$(id).replaceChildren();});if(currentConfig()){render();refreshSnapshot(state.dirty);if(window.WG_Heavy&&!WG_Heavy.isReady())WG_Heavy.ready().then(function(){if(currentConfig())render();});}});
   window.addEventListener('xwy:data-changed',function(){state.dirty=true;state.revision++;clearTimeout(refreshTimer);refreshTimer=setTimeout(function(){if(currentConfig()){render();refreshSnapshot(true);}},650);});
   document.addEventListener('visibilitychange',function(){if(!document.hidden&&currentConfig())refreshSnapshot(false);});
+  window.addEventListener('xwy:study-changed',function(){if(currentConfig())refreshSnapshot(false);});
   window.addEventListener('xwy:community-changed',function(){if(currentConfig())refreshSnapshot(false);});
   WG_API.onAuthChange(function(){state.epoch++;state.pending=null;state.snapshot=null;state.selected={};state.dirty=false;state.revision++;clearTimeout(refreshTimer);dispose();['campusAtlas','courseAtlas','moduleAtlas'].forEach(function(id){$(id).replaceChildren();});});
   $('atlasMenuToggle').onclick=function(){var open=document.body.classList.toggle('atlas-menu-open');$('atlasMenuToggle').setAttribute('aria-expanded',String(open));};

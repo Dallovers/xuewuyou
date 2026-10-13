@@ -160,6 +160,7 @@ module.exports = function({route,authUser,sendJson,readBody,store,syncReviews}) 
       const timer=setInterval(()=>{store.run(()=>{if(!authUser({headers:{authorization:'Bearer '+(socket.handshake.auth?.token||'')}}))socket.disconnect(true);},{readOnly:true}).catch(()=>socket.disconnect(true));},60000);timer.unref();
       socket.on('disconnect',()=>{clearInterval(timer);const n=(connections.get(id)||1)-1;if(n)connections.set(id,n);else connections.delete(id);});
     });
+    return namespace;
   }
   return {attach,recover,close:()=>new Promise(resolve=>{if(io)io.close(resolve);else resolve();})};
 };

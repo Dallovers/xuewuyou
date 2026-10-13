@@ -256,10 +256,11 @@ route('PUT', '/api/study/stats', async (req, res) => {
   const body = JSON.parse(await readBody(req, 1) || '{}');
   const day = String(body.day || '');
   if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return sendError(res, 400, '日期格式应为 YYYY-MM-DD');
+  if (['focusMinutes','completed'].some(key=>body[key]!==undefined&&!Number.isFinite(Number(body[key])))) return sendError(res,400,'自习统计须为有效数字');
   const all = store.get('studyDaily', user.id) || {};
   const cur = all[day] || { focusMinutes: 0, completed: 0 };
-  cur.focusMinutes = Math.max(0, Math.round(Number(body.focusMinutes != null ? body.focusMinutes : cur.focusMinutes)));
-  cur.completed = Math.max(0, Math.round(Number(body.completed != null ? body.completed : cur.completed)));
+  cur.focusMinutes = Math.max(cur.focusMinutes || 0, Math.max(0, Math.round(Number(body.focusMinutes != null ? body.focusMinutes : cur.focusMinutes))));
+  cur.completed = Math.max(cur.completed || 0, Math.max(0, Math.round(Number(body.completed != null ? body.completed : cur.completed))));
   all[day] = cur;
   store.set('studyDaily', user.id, all);
   sendJson(res, 200, { ok: true, day, stats: cur });
@@ -431,7 +432,8 @@ route('GET', '/api/ai/config', (req, res) => {
 });
 
 const integrations = require('./integrations')( { route, authUser, sendJson, readBody, store, getAiConfig, providers: AI_PROVIDERS } );
-require('./learning')({ route, authUser, sendJson, readBody, store, syncReviews:integrations.syncReviews });
+const studyRooms = require('./study-rooms')({route,authUser,sendJson,readBody,store});
+require('./learning')({ route, authUser, sendJson, readBody, store, syncReviews:integrations.syncReviews,studyRooms });
 const community = require('./community')({route,authUser,sendJson,readBody,store,syncReviews:integrations.syncReviews});
 
 /* ===== 静态文件（伺服 wenguo 前端） ===== */
@@ -495,11 +497,12 @@ const server = http.createServer(async (req, res) => {
   serveStatic(req, res);
 });
 
-community.attach(server);
+studyRooms.attach(community.attach(server));
 server.requestTimeout = 30000;
 async function start(port=PORT,host=process.env.HOST || '127.0.0.1') {
   await store.init();
   if (store.database) await store.run(community.recover);
+  await store.run(studyRooms.recover);
   await new Promise((resolve,reject) => {server.once('error',reject);server.listen(port,host,()=>{server.removeListener('error',reject);resolve();});});
   return server;
 }
@@ -513,5 +516,5 @@ if (require.main === module) start().then(() => {
 
 
 
-if (require.main === module) process.on('SIGTERM', async () => { server.close(); await integrations.close(); await community.close(); await store.close(); process.exit(0); });
-module.exports = { server, integrations, community, start };
+if (require.main === module) process.on('SIGTERM', async () => { server.close(); studyRooms.close(); await integrations.close(); await community.close(); await store.close(); process.exit(0); });
+module.exports = { server, integrations, community,studyRooms, start };

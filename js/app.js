@@ -195,18 +195,19 @@ var WG_App = (function () {
 
   function $ (id) { return document.getElementById(id); }
   function showView(name) {
-    document.body.classList.toggle('integration-view', name === 'review' || name === 'knowledge' || name === 'community');
+    document.body.classList.toggle('integration-view', name === 'review' || name === 'knowledge' || name === 'community' || name === 'rooms');
+    if (state.view === 'rooms' && name !== 'rooms' && window.WG_Rooms) WG_Rooms.onViewHidden();
     /* 离开自习室视图时通知 StudyRoom 暂停计时（如去刷题、切到其他页面） */
     if (state.view === 'study' && name !== 'study' &&
         window.StudyRoom && typeof window.StudyRoom.onViewHidden === 'function') {
       window.StudyRoom.onViewHidden();
     }
-    ['home', 'bank', 'module', 'study', 'wenku', 'game', 'report', 'mistakes', 'review', 'knowledge', 'community', 'ai', 'onboard'].forEach(function (v) {
+    ['home', 'bank', 'module', 'study', 'wenku', 'game', 'report', 'mistakes', 'review', 'knowledge', 'community', 'rooms', 'ai', 'onboard'].forEach(function (v) {
       var el = $('view-' + v);
       if (el) el.classList.toggle('hidden', v !== name);
     });
     /* 导航高亮 */
-    if (['home', 'bank', 'study', 'wenku', 'report', 'mistakes', 'review', 'knowledge', 'community', 'ai'].indexOf(name) >= 0) {
+    if (['home', 'bank', 'study', 'wenku', 'report', 'mistakes', 'review', 'knowledge', 'community', 'rooms', 'ai'].indexOf(name) >= 0) {
       var links = document.querySelectorAll('#topnav a');
       links.forEach(function (a) {
         a.classList.toggle('active', a.getAttribute('data-nav') === name);
@@ -2893,6 +2894,7 @@ var WG_App = (function () {
     else if (name === 'mistakes') gateData(function () { renderMistakes(); });
     else if (name === 'report') renderReport();
     else if (name === 'review' || name === 'knowledge') { showView(name); window.WG_Integrations && WG_Integrations.open(name); }
+    else if (name === 'rooms') { showView(name); window.WG_Rooms && WG_Rooms.open(); }
     else if (name === 'community') { showView(name); window.WG_Community && WG_Community.load(); }
     else if (name === 'ai') showView('ai');
   }

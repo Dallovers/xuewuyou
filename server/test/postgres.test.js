@@ -55,8 +55,18 @@ test('Accounts, social activity, experiments, boards and uploaded source files s
   assert.equal((await req(a,'/api/learning/experiment','POST',{title:'积分实验',qid:'7036',code:'print(42)',output:'42',images:[]})).status,200);
   const doc=await req(a,'/api/knowledge/upload','POST',{filename:'讲义.md',base64:Buffer.from('# 持久资料\n积分换元').toString('base64')});assert.equal(doc.status,202);
   for(let i=0;i<100;i++){const list=await req(a,'/api/knowledge/documents');if(list.documents[0].status==='parsed')break;await delay(20);}
+  const studyRoom=await req(a,'/api/study/rooms','POST',{title:'持久自习室',subject:'高等数学',goal:'一起复习极限',duration:5,capacity:2,visibility:'invite'});
+  assert.equal(studyRoom.status,200);const roomId=studyRoom.room.id;
+  assert.equal((await req(a,'/api/study/rooms/invite','POST',{id:roomId,to:b.user.id})).status,200);
+  assert.equal((await req(b,'/api/study/rooms/join','POST',{id:roomId})).status,200);
+  for(const [who,instance]of[[a,'postgres-tab-a'],[b,'postgres-tab-b']])assert.equal((await req(who,'/api/study/rooms/member','POST',{id:roomId,instance,visible:true,ready:true,goal:'重启后继续复习'})).status,200);
+  const readyRoom=await req(a,'/api/study/rooms/room?id='+roomId);
+  const focusing=await req(a,'/api/study/rooms/control','POST',{id:roomId,action:'start',version:readyRoom.room.version});assert.equal(focusing.room.phase,'focus');
+  const paused=await req(a,'/api/study/rooms/control','POST',{id:roomId,action:'pause',version:focusing.room.version});assert.equal(paused.room.phase,'paused');
   await stopServer();fs.rmSync(temp,{recursive:true,force:true});fs.mkdirSync(temp);await startServer();
   assert.equal((await req(a,'/api/auth/me')).status,200);
+  const savedRoom=await req(a,'/api/study/rooms/room?id='+roomId);assert.equal(savedRoom.room.phase,'paused');assert.equal(savedRoom.room.remainingMs,paused.room.remainingMs);assert.equal(savedRoom.room.members.length,2);assert.equal(savedRoom.room.members[0].goal,'重启后继续复习');
+  assert.equal((await req(a,'/api/study/rooms/control','POST',{id:roomId,action:'finish',version:savedRoom.room.version})).room.phase,'ended');
   assert.equal((await req(a,'/api/community/home')).friends.length,1);
   assert.equal((await req(a,'/api/community/posts')).posts.length,6);
   assert.equal((await req(a,'/api/community/challenge?id='+duel)).challenge.status,'completed');

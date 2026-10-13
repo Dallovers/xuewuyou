@@ -39,16 +39,6 @@
     'music-carefree': { file: 'audio/carefree.mp3', label: 'Carefree', desc: '轻快治愈' }
   };
 
-  // 模拟同桌数据
-  const MOCK_PEERS = [
-    { name: '林深见鹿', avatar: '🦊', subject: '高等数学 · 极限与连续', time: 42, motto: '今日誓把导数题全拿下！' },
-    { name: '晨曦微光', avatar: '🌱', subject: '线性代数 · 特征值', time: 78, motto: '考研二战，心无旁骛。' },
-    { name: '晚风不眠', avatar: '🌙', subject: '英语真题 · 阅读Part B', time: 25, motto: '每天精读两篇，坚持21天' },
-    { name: '星河长明', avatar: '⭐', subject: '概率论与数理统计', time: 56, motto: '贝叶斯定理真的太神奇了' },
-    { name: '青木自习生', avatar: '🦉', subject: '数据结构与算法', time: 110, motto: '代码写不动就来看高数' },
-    { name: '向阳花开', avatar: '🌻', subject: '高数期末突击 · 微分方程', time: 15, motto: '不挂科就是最大的胜利！' }
-  ];
-
   let dom = {};
 
   function initDom() {
@@ -284,72 +274,15 @@
     }
   }
 
-  // ===== 同桌渲染（优先真实在线用户，无数据时回退演示同桌） =====
-  function renderPeers() {
-    if (!dom.peerList) return;
-    if (dom.peerList.dataset.real === '1') return; // 已有真实数据渲染
-    dom.peerList.innerHTML = MOCK_PEERS.map((p, idx) => `
-      <div class="sr-peer-item" data-idx="${idx}">
-        <div class="sr-peer-top">
-          <span class="sr-peer-avatar">${p.avatar}</span>
-          <div class="sr-peer-info">
-            <div class="sr-peer-name">${p.name}</div>
-            <div class="sr-peer-subj">${p.subject}</div>
-          </div>
-          <span class="sr-peer-time">${p.time}m</span>
-        </div>
-        <div class="sr-peer-motto">“${p.motto}”</div>
-        <div class="sr-peer-action">
-          <button type="button" class="sr-cheer-btn" data-idx="${idx}">✨ 打气</button>
-        </div>
-      </div>
-    `).join('');
-
-    dom.peerList.querySelectorAll('.sr-cheer-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const idx = parseInt(btn.getAttribute('data-idx'), 10);
-        const peer = MOCK_PEERS[idx];
-        btn.textContent = '❤️ 已打气';
-        /* 用语义令牌而非硬编码，跟随主题走 */
-        btn.style.color = 'var(--ok)';
-        toast('已向同桌【' + peer.name + '】送出专注鼓励 ✨');
-      });
-    });
+  // No simulated classmates: personal mode shows only actual presence.
+  function renderPeers(){renderRealPeers([]);}
+  function renderRealPeers(peers){
+    if(!dom.peerList)return;dom.peerList.replaceChildren();
+    if(dom.peerOnlineCount)dom.peerOnlineCount.textContent=peers.length;
+    if(dom.cheerAllBtn){dom.cheerAllBtn.disabled=false;dom.cheerAllBtn.textContent='进入多人房间';dom.cheerAllBtn.title='邀请学习搭子一起专注';}
+    if(!peers.length){const p=document.createElement('p');p.className='community-muted';p.textContent='目前没有其他同学在线。可以进入多人房间邀请学习搭子。';dom.peerList.appendChild(p);return;}
+    for(const peer of peers){const row=document.createElement('div');row.className='sr-peer-item';const name=document.createElement('strong');name.textContent=peer.name||'同学';const desc=document.createElement('p');desc.textContent=(peer.subject||'自习中')+' · '+peer.minutes+' 分钟';row.append(name,desc);dom.peerList.appendChild(row);}
   }
-
-  function renderRealPeers(peers) {
-    if (!dom.peerList) return;
-    if (!peers || !peers.length) { dom.peerList.dataset.real = '0'; renderPeers(); return; }
-    dom.peerList.dataset.real = '1';
-    dom.peerList.innerHTML = peers.map((p, idx) => `
-      <div class="sr-peer-item" data-idx="${idx}">
-        <div class="sr-peer-top">
-          <span class="sr-peer-avatar">${p.avatar || '🧑‍🎓'}</span>
-          <div class="sr-peer-info">
-            <div class="sr-peer-name">${p.name || '同学'}</div>
-            <div class="sr-peer-subj">${p.subject || '自习中'}</div>
-          </div>
-          <span class="sr-peer-time">${p.minutes || 1}m</span>
-        </div>
-        <div class="sr-peer-motto">“${p.motto || '保持专注！'}”</div>
-        <div class="sr-peer-action">
-          <button type="button" class="sr-cheer-btn" data-idx="${idx}">✨ 打气</button>
-        </div>
-      </div>
-    `).join('');
-    dom.peerList.querySelectorAll('.sr-cheer-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const idx = parseInt(btn.getAttribute('data-idx'), 10);
-        const peer = peers[idx];
-        btn.textContent = '❤️ 已打气';
-        btn.style.color = 'var(--ok)';
-        toast('已向同桌【' + peer.name + '】送出专注鼓励 ✨');
-      });
-    });
-    const count = dom.peerOnlineCount;
-    if (count) count.textContent = peers.length;
-  }
-
   /* ===== 在线状态：进入自习室上报心跳，退出下线 ===== */
   let presenceTimer = null;
   function startPresence() {
@@ -381,15 +314,7 @@
     });
   }
 
-  function cheerAllPeers() {
-    if (dom.peerList) {
-      dom.peerList.querySelectorAll('.sr-cheer-btn').forEach(btn => {
-        btn.textContent = '❤️ 已打气';
-        btn.style.color = 'var(--ok)';
-      });
-    }
-    toast('已向自习室所有同桌发送了专注打气！共同加油 🚀');
-  }
+  function cheerAllPeers(){if(window.StudyAppBridge)StudyAppBridge.navTo('rooms');}
 
   // ===== 便签 =====
   function renderTodos() {

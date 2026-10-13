@@ -5,7 +5,7 @@ const { run } = require('./engine');
 const crypto = require('node:crypto');
 const fail = (message, status = 400) => { throw Object.assign(new Error(message), { status }); };
 const clone = x => JSON.parse(JSON.stringify(x));
-module.exports = function ({ route, authUser, sendJson, readBody, store, syncReviews }) {
+module.exports = function ({ route, authUser, sendJson, readBody, store, syncReviews,studyRooms }) {
   const cache = new Map();
   const topicNames = [...new Set([...questions.values()].map(q => q.topic))];
   const state = uid => clone(store.get('learning', uid, { boards: {}, experiments: [], plan: null }));
@@ -68,6 +68,7 @@ module.exports = function ({ route, authUser, sendJson, readBody, store, syncRev
       activity:{ answers:(local.answers || []).length, mistakes:(local.mistakes || []).length, cleared:(local.cleared || []).length,
         reviews:cards.length, due:cards.filter(c=>new Date(c.card?.due).getTime()<=Date.now()).length,
         focusMinutes:daily.reduce((sum,d)=>sum+(Number(d.focusMinutes)||0),0),
+        studyingNow:studyRooms?.snapshot(uid).online||0,
         documents:(integrated.documents || []).length, readyDocuments:(integrated.documents || []).filter(d=>d.status==='ready').length,
         boards:Object.keys(learning.boards).length, experiments:learning.experiments.length,
         friends:Object.values(social.friends).filter(f=>f.members.includes(uid)).length,
