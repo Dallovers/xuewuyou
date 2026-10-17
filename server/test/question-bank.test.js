@@ -72,3 +72,18 @@ test('基础字段完整：题号为数字、题干与章节非空、选项非�
   assert.deepEqual(result.badTopic.map((r) => r.id), [], '存在空章节');
   assert.deepEqual(result.overLimit.map((r) => r.id), [], '存在空白选项');
 });
+
+test('broken 题不进题目池，cosmetic 题保留，池内数量与登记表自洽', () => {
+  const { questions, excluded } = require('../integrations/questions');
+  const broken = Object.entries(KNOWN_DEFECTS).filter(([, d]) => d.severity === 'broken').map(([id]) => id);
+  const cosmetic = Object.entries(KNOWN_DEFECTS).filter(([, d]) => d.severity === 'cosmetic').map(([id]) => id);
+
+  for (const id of broken) {
+    assert.equal(questions.has(id), false, 'id ' + id + ' 标记为 broken，不应出现在题目池');
+  }
+  for (const id of cosmetic) {
+    assert.equal(questions.has(id), true, 'id ' + id + ' 仅选项冗余，应保留在题目池');
+  }
+  assert.equal(excluded.length, broken.length, '被排除的数量应等于 broken 登记数');
+  assert.equal(questions.size, result.uniqueIds - broken.length, '题目池大小应为 去重题号数 - broken 数');
+});

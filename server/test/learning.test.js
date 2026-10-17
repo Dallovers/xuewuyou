@@ -25,7 +25,7 @@ test('real pyBKT posterior matches Bayesian update and missing probe does not ad
 });
 test('map uses bundled bank; mastery rejects self-assessed and duplicate FSRS mirror records',async()=>{
   assert.equal((await req('map','GET',undefined,'')).status,401);
-  const map=await req('map');assert.equal(map.topics.length,25);assert.equal(map.topics.reduce((n,t)=>n+t.total,0),1793);
+  const map=await req('map');assert.equal(map.topics.length,25);assert.equal(map.topics.reduce((n,t)=>n+t.total,0),1785);
   await putAnswers([{qid:'7036',topic:'forged topic',correct:true,timeMs:Date.now()},{qid:'7036',correct:true,type:'FSRS复习',timeMs:Date.now()+1},{qid:'unknown',correct:true,timeMs:Date.now()+2}]);
   const m=await req('mastery');assert.equal(m.engine,'pyBKT');assert.equal(m.count,1);assert.equal(m.topics['函数与极限'].observations,1);
   assert.equal((await req('mastery','GET',undefined,other)).count,0);
