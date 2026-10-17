@@ -21,6 +21,7 @@ let server, integrations, routes, base;
 const PUBLIC_ROUTES = new Map([
   ['GET /api/health', '健康检查，部署探针需要匿名可访问'],
   ['POST /api/auth/register', '注册本身必须在未登录时可用'],
+  ['POST /api/admin/login', '管理员后台自己的登录入口，凭账号密码换 token，本身不能要求已登录'],
   ['GET /api/questions/meta', '题库统计量，不含题目内容或答案，供未登录页面展示规模']
 ]);
 
