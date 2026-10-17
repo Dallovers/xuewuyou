@@ -280,6 +280,7 @@ var WG_QE = (function () {
   /* 常见等价写法归一：分数 / 根号 / 无穷 */
   function canon(s) {
     var t = normAns(s);
+    t = t.replace(/dfrac/g, 'frac');      /* \dfrac 与 \frac 等价，题库里两种都有 */
     t = t.replace(/frac(\d)(\d)/g, '$1/$2');
     t = t.replace(/sqrt/g, '√');
     t = t.replace(/infty|infin/g, '∞');
@@ -287,15 +288,17 @@ var WG_QE = (function () {
     t = t.replace(/·|×/g, '');
     return t;
   }
+  var PURE_NUMBER = /^-?\d+(?:\.\d+)?$/;
   function sameAnswer(a, b) {
     if (a == null || b == null) return false;
     var x = canon(a), y = canon(b);
     if (!x || !y) return false;
     if (x === y) return true;
-    /* 数值容差比对 */
-    var nx = parseFloat(x), ny = parseFloat(y);
-    if (isFinite(nx) && isFinite(ny) && String(nx) === x && String(ny) === y) {
-      return Math.abs(nx - ny) < 1e-9;
+    /* 数值容差比对：只对「纯数字」生效。
+     * 早期写法用 String(parseFloat(x)) === x 来判别，会把 "1.0"、"0.50"、"0.0"
+     * 判成非数字，导致学生写 1.0 而标准答案是 1 时被判错。 */
+    if (PURE_NUMBER.test(x) && PURE_NUMBER.test(y)) {
+      return Math.abs(parseFloat(x) - parseFloat(y)) < 1e-9;
     }
     return false;
   }
