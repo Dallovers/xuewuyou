@@ -209,6 +209,13 @@ var WG_API = (function () {
     setSession(getToken(), d.user);
     return d;
   }
+  /* 拉一次当前账号，顺便刷新本地缓存的 user（role 会在服务端升级后变化，
+   * 本地不刷新就会出现「已经是管理员但界面上没有后台入口」） */
+  async function me() {
+    var d = await req('GET', '/api/auth/me');
+    if (d && d.user) setSession(getToken(), d.user);
+    return d;
+  }
 
   /* ---- 学习数据整包（wenguo_v1） ---- */
   function getData() { return req('GET', '/api/data'); }
@@ -324,6 +331,7 @@ var WG_API = (function () {
     login: login,
     logout: logout,
     updateNick: updateNick,
+    me: me,
     getData: getData,
     putData: putData,
     getStudyStats: getStudyStats,
