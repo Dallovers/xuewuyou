@@ -25,4 +25,23 @@ for (const group of Object.values(ctx.GAOSHU_BANK || {})) {
     });
   }
 }
-module.exports = { questions, excluded: [...excluded] };
+/* 导入批次：独立文件，加载时合并。题号与现有题库冲突的批次整批拒绝，
+ * 不做静默覆盖；不合法的批次会被跳过并记录在 importProblems 里。 */
+const { loadImports } = require('./question-imports');
+const topics = new Set([...questions.values()].map((q) => q.topic));
+const imported = loadImports({ existingIds: new Set(questions.keys()), topics });
+for (const q of imported.questions) {
+  questions.set(q.id, {
+    id: q.id, topic: q.topic, subject: q.subject, question: q.question,
+    options: q.options, answer: q.answer, analysis: q.analysis,
+    selfAssessed: q.selfAssessed,
+    difficulty: q.difficulty, type: q.type, batch: q.batch
+  });
+}
+
+module.exports = {
+  questions,
+  excluded: [...excluded],
+  importedCount: imported.questions.length,
+  importProblems: imported.problems
+};
