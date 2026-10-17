@@ -61,6 +61,7 @@ function view(q, withAnswer) {
     type: d.type || null,
     question: q.question,
     options: q.options,
+    alsoInTopics: q.alsoInTopics || [],
     selfAssessed: q.selfAssessed
   };
   if (withAnswer) {
@@ -112,10 +113,13 @@ module.exports = function ({ route, authUser, sendJson, readBody }) {
     const type = query.get('type');
     const kw = (query.get('q') || '').trim().toLowerCase();
     const includeAnswer = query.get('include') === 'answer';
+    const includeAliases = query.get('includeAliases') === '1';
     if (includeAnswer && !user) fail('读取答案需要登录', 401, 'UNAUTHORIZED');
 
     let rows = all;
-    if (topic) rows = rows.filter((q) => q.topic === topic);
+    /* 默认只按主章节匹配，保证各章节题数之和等于题目总数、不会重复计数；
+     * includeAliases=1 时把「别名章节」也算进来，让学生从任一章节都能找到同一道题。 */
+    if (topic) rows = rows.filter((q) => q.topic === topic || (includeAliases && (q.alsoInTopics || []).includes(topic)));
     if (subject) rows = rows.filter((q) => q.subject === subject);
     if (difficulty) rows = rows.filter((q) => detailOf(q.id).difficulty === difficulty);
     if (type) rows = rows.filter((q) => detailOf(q.id).type === type);

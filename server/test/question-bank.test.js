@@ -74,7 +74,7 @@ test('基础字段完整：题号为数字、题干与章节非空、选项非�
 });
 
 test('broken 题不进题目池，cosmetic 题保留，池内数量与登记表自洽', () => {
-  const { questions, excluded } = require('../integrations/questions');
+  const { questions, excluded, importedCount } = require('../integrations/questions');
   const broken = Object.entries(KNOWN_DEFECTS).filter(([, d]) => d.severity === 'broken').map(([id]) => id);
   const cosmetic = Object.entries(KNOWN_DEFECTS).filter(([, d]) => d.severity === 'cosmetic').map(([id]) => id);
 
@@ -85,5 +85,6 @@ test('broken 题不进题目池，cosmetic 题保留，池内数量与登记表�
     assert.equal(questions.has(id), true, 'id ' + id + ' 仅选项冗余，应保留在题目池');
   }
   assert.equal(excluded.length, broken.length, '被排除的数量应等于 broken 登记数');
-  assert.equal(questions.size, result.uniqueIds - broken.length, '题目池大小应为 去重题号数 - broken 数');
+  assert.equal(questions.size, result.uniqueIds - broken.length + importedCount,
+    '题目池大小应为 去重题号数 − broken 数 + 已导入题数');
 });

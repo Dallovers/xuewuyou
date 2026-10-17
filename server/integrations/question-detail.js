@@ -32,7 +32,15 @@ function loadAll() {
 }
 
 function detailOf(id) {
-  return loadAll().get(String(id)) || { difficulty: '', type: '', isExam: false };
+  const key = String(id);
+  const fromBank = loadAll().get(key);
+  if (fromBank) return fromBank;
+  /* 导入批次里的题目不在 gaoshu_bank.js 中，难度与题型由批次自带 */
+  const q = require('./questions').questions.get(key);
+  if (q && (q.difficulty || q.type)) {
+    return { difficulty: q.difficulty || '', type: q.type || '', isExam: false };
+  }
+  return { difficulty: '', type: '', isExam: false };
 }
 
 module.exports = { detailOf, loadAll };
