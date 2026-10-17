@@ -175,20 +175,26 @@ route('POST', '/api/auth/register', async (req, res) => {
   const body = JSON.parse(await readBody(req, 1) || '{}');
   const username = String(body.username || '').trim();
   const password = String(body.password || '');
-  const nick = String(body.nick || '').trim() || username;
+  const rawNick = String(body.nick || '').trim();
   if (!/^[A-Za-z0-9_\u4e00-\u9fa5]{2,20}$/.test(username)) {
     return sendError(res, 400, '用户名需为 2-20 位字母/数字/下划线/中文');
   }
   if (password.length < 6) return sendError(res, 400, '密码至少 6 位');
+  /* 昵称是公开显示的（留言板、学习搭子、自习室都直接渲染），一旦等于密码，
+   * 等于把密码贴在公屏上。浏览器密码管理器会把密码自动填进紧挨着的文本框，
+   * 昵称框首当其冲——前端已加 autocomplete 提示，这里是最后一道闸，不能省。
+   * 比较必须在截断到 20 字之前：超长密码若先截断，前缀会漏过这道检查。 */
+  if (rawNick && rawNick === password) return sendError(res, 400, '昵称不能与密码相同');
+  const nick = rawNick.slice(0, 20);
   const users = store.get('users') || {};
   const exists = Object.values(users).some((u) => u.username === username);
   if (exists) return sendError(res, 409, '该用户名已被注册');
 
   const id = uid();
-  users[id] = { id, username, passHash: auth.hashPassword(password), nick, createdAt: Date.now() };
+  users[id] = { id, username, passHash: auth.hashPassword(password), nick: nick || username, createdAt: Date.now() };
   store.set('users', users);
   const token = auth.sign({ uid: id });
-  sendJson(res, 200, { ok: true, token, user: { id, username, nick } });
+  sendJson(res, 200, { ok: true, token, user: { id, username, nick: users[id].nick } });
 });
 
 route('POST', '/api/auth/login', async (req, res) => {
@@ -201,7 +207,20 @@ route('POST', '/api/auth/login', async (req, res) => {
     return sendError(res, 401, '用户名或密码错误');
   }
   const token = auth.sign({ uid: user.id });
-  sendJson(res, 200, { ok: true, token, user: { id: user.id, username: user.username, nick: user.nick } });
+  /* 存量脏数据修复：早期没有拦「昵称=密码」，被密码管理器自动填过一次的账号，
+   * 密码已经明文存在 nick 里并公开显示。登录时手上正好有明文密码可用来判定，
+   * 命中就改回用户名，并告诉前端提示用户自己去改。只在完全相等时触发。 */
+  let nick = user.nick;
+  let nickReset = false;
+  if (nick && nick === password) {
+    nick = user.username;
+    nickReset = true;
+    user.nick = nick;
+    const all = store.get('users') || {};
+    all[user.id] = user;
+    store.set('users', all);
+  }
+  sendJson(res, 200, { ok: true, token, user: { id: user.id, username: user.username, nick }, nickReset });
 });
 
 route('GET', '/api/auth/me', (req, res) => {
@@ -215,10 +234,19 @@ route('PUT', '/api/auth/profile', async (req, res) => {
   if (!user) return sendError(res, 401, '未登录');
   const body = JSON.parse(await readBody(req, 1) || '{}');
   if (body.nick && typeof body.nick === 'string') {
-    user.nick = body.nick.trim().slice(0, 20) || user.nick;
-    const users = store.get('users') || {};
-    users[user.id] = user;
-    store.set('users', users);
+    const rawNext = body.nick.trim();
+    /* 改昵称这条路同样要挡住「把密码设成昵称」。同样先比较原文再截断，
+     * 否则超长密码被截成 20 字前缀后校验不到。 */
+    if (rawNext && auth.verifyPassword(rawNext, user.passHash)) {
+      return sendError(res, 400, '昵称不能与密码相同');
+    }
+    const next = rawNext.slice(0, 20);
+    if (next) {
+      user.nick = next;
+      const users = store.get('users') || {};
+      users[user.id] = user;
+      store.set('users', users);
+    }
   }
   sendJson(res, 200, { ok: true, user: { id: user.id, username: user.username, nick: user.nick } });
 });

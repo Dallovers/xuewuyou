@@ -1479,12 +1479,16 @@ var WG_App = (function () {
     var u = $('loginUsername') ? $('loginUsername').value.trim() : '';
     var p = $('loginPassword') ? $('loginPassword').value : '';
     var n = $('loginNick') ? $('loginNick').value.trim() : '';
+    /* 密码管理器会把密码自动填进紧挨密码框的文本框，昵称框首当其冲。
+     * 昵称是公开显示的，绝不能等于密码——发现相等就当没填，让服务端回落到用户名。 */
+    if (n && n === p) n = '';
     if (!u || !p) { msg.textContent = '请输入用户名和密码'; return; }
     try {
+      var d;
       if (loginMode === 'reg') {
-        await WG_API.register(u, p, n);
+        d = await WG_API.register(u, p, n);
       } else {
-        await WG_API.login(u, p);
+        d = await WG_API.login(u, p);
       }
       /* 登录成功：拉取云端数据，与本地合并后写回本地和云端 */
       var merged = await WG_API.pullMerge(WG_Data.get());
@@ -1493,6 +1497,10 @@ var WG_App = (function () {
       refreshNickUI();
       var user = WG_API.getUser() || {};
       toast('欢迎回来，' + (user.nick || u), 'ok');
+      /* 服务端修掉了「昵称存成密码」的脏数据，提醒用户自己再改一次 */
+      if (d && d.nickReset) {
+        setTimeout(function () { toast('昵称原本与密码相同，已改为用户名，请到「账号与昵称」里改掉', 'ok'); }, 1600);
+      }
       renderHome();
     } catch (e) {
       msg.textContent = e.message || '操作失败，请稍后再试';
@@ -2208,6 +2216,8 @@ var WG_App = (function () {
     var username = ($('obUsername') ? $('obUsername').value : '').trim();
     var password = $('obPassword') ? $('obPassword').value : '';
     var nick = ($('obNick') ? $('obNick').value : '').trim();
+    /* 同上：昵称框可能被密码管理器填成密码，昵称是公开的，宁可回落到用户名 */
+    if (nick && nick === password) nick = '';
     var weak = Array.from(document.querySelectorAll('#obWeak input:checked')).map(function (i) { return i.value; });
     var profile = {
       nick: nick || username || WG_Data.get().nick || '同学',

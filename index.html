@@ -89,7 +89,7 @@
         <input id="obUsername" type="text" placeholder="用户名（2-20 位字母/数字/中文）" autocomplete="username" style="width:100%;background:var(--bg2);border:1px solid var(--rule);border-radius:10px;padding:0.6rem 0.9rem;color:var(--ink);font-size:0.9rem;outline:none;box-sizing:border-box;">
         <label class="onboard-account-label" for="obPassword">密码</label>
         <input id="obPassword" type="password" placeholder="密码（至少 6 位）" autocomplete="new-password" style="width:100%;background:var(--bg2);border:1px solid var(--rule);border-radius:10px;padding:0.6rem 0.9rem;color:var(--ink);font-size:0.9rem;outline:none;box-sizing:border-box;">
-        <input id="obNick" aria-label="昵称（可选）" type="text" placeholder="昵称（可选，留空用用户名）" style="width:100%;background:var(--bg2);border:1px solid var(--rule);border-radius:10px;padding:0.6rem 0.9rem;color:var(--ink);font-size:0.9rem;outline:none;box-sizing:border-box;">
+        <input id="obNick" name="nickname" autocomplete="nickname" autocapitalize="off" spellcheck="false" aria-label="昵称（可选）" type="text" placeholder="昵称（可选，留空用用户名）" style="width:100%;background:var(--bg2);border:1px solid var(--rule);border-radius:10px;padding:0.6rem 0.9rem;color:var(--ink);font-size:0.9rem;outline:none;box-sizing:border-box;">
       </div>
       <details id="obPreferences" class="onboard-preferences" open>
       <summary>我的学习情况</summary>
@@ -1005,7 +1005,7 @@
     <div style="display:grid;gap:0.75rem;" id="loginForm">
       <input id="loginUsername" type="text" placeholder="用户名（2-20 位字母/数字/中文）" style="width:100%;background:var(--bg2);border:1px solid var(--rule);border-radius:10px;padding:0.6rem 0.9rem;color:var(--ink);font-size:0.9rem;outline:none;box-sizing:border-box;">
       <input id="loginPassword" type="password" placeholder="密码（至少 6 位）" style="width:100%;background:var(--bg2);border:1px solid var(--rule);border-radius:10px;padding:0.6rem 0.9rem;color:var(--ink);font-size:0.9rem;outline:none;box-sizing:border-box;">
-      <input id="loginNick" type="text" placeholder="昵称（可选，留空用用户名）" style="display:none;width:100%;background:var(--bg2);border:1px solid var(--rule);border-radius:10px;padding:0.6rem 0.9rem;color:var(--ink);font-size:0.9rem;outline:none;box-sizing:border-box;">
+      <input id="loginNick" name="nickname" autocomplete="nickname" autocapitalize="off" spellcheck="false" type="text" placeholder="昵称（可选，留空用用户名）" style="display:none;width:100%;background:var(--bg2);border:1px solid var(--rule);border-radius:10px;padding:0.6rem 0.9rem;color:var(--ink);font-size:0.9rem;outline:none;box-sizing:border-box;">
       <div id="loginMsg" style="font-size:0.82rem;color:var(--danger);min-height:1.1rem;line-height:1.4;"></div>
       <button class="btn primary" id="loginSubmit" type="button">登 录</button>
       <div style="font-size:0.78rem;color:var(--muted);line-height:1.7;">
