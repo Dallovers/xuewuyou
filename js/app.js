@@ -2243,12 +2243,11 @@ var WG_App = (function () {
         if (btn) { btn.disabled = false; btn.textContent = oldTxt; }
         return;
       } catch (e) {
-        /* 无后端（纯静态托管）或网络问题：降级为本地模式，不让用户卡在注册上 */
-        var offline = !e.status || e.status === 404 || e.status === 0 || /fetch|network|failed/i.test(e.message || '');
-        if (offline) {
-          st.textContent = '⚠ 未检测到后端服务，已进入本地模式（数据仅存本机，随时可右上角账号注册）';
-          WG_Data.setProfile(profile);
-          finishOnboard(profile);
+        /* 后端不可达（纯静态托管 / 未启动 / 冷启动超时）。
+           不再自动降级为本地模式：A01 要求「用户明确选择后才进入本地模式」，
+           这里只说明原因，由用户自己点页面上的「跳过，先本地体验」来决定。 */
+        if (WG_API.isBackendDown && WG_API.isBackendDown(e)) {
+          st.textContent = '⚠ 暂时连不上云端（后端可能正在唤醒，首次访问约需 30 秒）。可以稍后重试；如确定先用本地模式，点「跳过，先本地体验」即可。';
           if (btn) { btn.disabled = false; btn.textContent = oldTxt; }
           return;
         }

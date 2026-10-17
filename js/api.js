@@ -42,11 +42,13 @@ var WG_API = (function () {
    * 唤醒后 0.2~0.5s）。因此：单次超时放宽到 60 秒覆盖冷启动，但第 3 秒就
    * 给出"正在唤醒"的提示，不让用户无反馈地干等；失败一律有上限地退避重试，
    * 4xx 一律不重试；冷启动超时 / 断网 / 鉴权失败分别给出不同错误码与文案。 */
-  var REQ_TIMEOUT_MS = 60000;   // 单次请求上限，须覆盖冷启动
-  var WAKE_HINT_MS = 3000;      // 超过此时间未响应即提示"正在唤醒"
-  var MAX_RETRIES = 3;          // 最多重试次数（不含首次）
-  var RETRY_TOTAL_MS = 45000;   // 重试阶段的累计时长上限
-  var RETRY_BASE_MS = 800;      // 退避基数：0.8s / 1.6s / 3.2s
+  /* 时序参数。测试可用 window.WG_API_TIMING 注入更短的取值，生产环境一律取默认值。 */
+  var T = (typeof window !== 'undefined' && window.WG_API_TIMING) || {};
+  var REQ_TIMEOUT_MS = T.reqTimeout || 60000;   // 单次请求上限，须覆盖冷启动
+  var WAKE_HINT_MS = T.wakeHint || 3000;        // 超过此时间未响应即提示"正在唤醒"
+  var MAX_RETRIES = T.maxRetries == null ? 3 : T.maxRetries;  // 最多重试次数（不含首次）
+  var RETRY_TOTAL_MS = T.retryTotal || 45000;   // 重试阶段的累计时长上限
+  var RETRY_BASE_MS = T.retryBase || 800;       // 退避基数：0.8s / 1.6s / 3.2s
 
   /* 状态回调：waking（正在唤醒）/ ready（已恢复）/ retrying（退避重试中）/
      unreachable（最终不可达，此时应由界面询问用户是否改用本地模式）。
@@ -312,6 +314,7 @@ var WG_API = (function () {
     getBase: function(){return BASE;},
     req: req,
     onStatus: onStatus,
+    isBackendDown: isBackendDown,
     isLoggedIn: isLoggedIn,
     isCloudSession: isCloudSession,
     getToken: getToken,
