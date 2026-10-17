@@ -530,4 +530,4 @@ if (require.main === module) start().then(() => {
 
 
 if (require.main === module) process.on('SIGTERM', async () => { server.close(); studyRooms.close(); await integrations.close(); await community.close(); await store.close(); process.exit(0); });
-module.exports = { server, integrations, community,studyRooms, start };
+module.exports = { server, integrations, community,studyRooms, start, routes };
