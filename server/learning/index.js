@@ -49,6 +49,30 @@ module.exports = function ({ route, authUser, sendJson, readBody, store, syncRev
     cache.set(uid, { hash, promise, expires: Date.now() + 60000 });
     try { return await promise; } catch (e) { cache.delete(uid); throw e; }
   }
+  /* 掌握概率是模型估计，不是实测分数。对外一律显式标明，并给出样本量口径，
+     避免前端把「1 次作答 → 82%」当成事实展示。
+     没有作答记录的知识点不会出现在 topics 里——缺数据就缺席，不补 0。 */
+  async function masteryView(uid) {
+    const raw = await mastery(uid);
+    const topics = {};
+    for (const [name, v] of Object.entries(raw.topics || {})) {
+      const n = Number(v.observations || 0);
+      topics[name] = {
+        ...v,
+        estimated: true,
+        sampleSize: n,
+        confidence: n >= 10 ? 'high' : n >= 3 ? 'medium' : 'low',
+        note: n < 3 ? '样本不足 3 次，仅供参考' : undefined
+      };
+    }
+    return {
+      ...raw,
+      estimated: true,
+      method: raw.engine || 'pyBKT',
+      note: '掌握概率为模型估计，不是实测分数；没有作答记录的知识点不会出现在 topics 中',
+      topics
+    };
+  }
   function topics(uid) {
     const mistakes = store.get('userData', uid, {}).payload?.mistakes || [];
     return topicNames.map(name => {
@@ -61,7 +85,7 @@ module.exports = function ({ route, authUser, sendJson, readBody, store, syncRev
   own('GET', 'twin', async uid => {
     const local = store.get('userData', uid, {}).payload || {}, learning = state(uid), integrated = syncReviews(uid);
     let bkt = null, modelError = null;
-    try { bkt = await mastery(uid); } catch(e) { modelError = e.status ? e.message : '掌握模型暂不可用'; }
+    try { bkt = await masteryView(uid); } catch(e) { modelError = e.status ? e.message : '掌握模型暂不可用'; }
     const cards = Object.values(integrated.cards || {}), daily = Object.values(store.get('studyDaily',uid,{}));
     const social=store.get('community','main',{friends:{},requests:[],posts:[],challenges:[]});
     return { generatedAt:new Date().toISOString(), topics:topics(uid), edges, mastery:bkt, modelError,
@@ -78,7 +102,7 @@ module.exports = function ({ route, authUser, sendJson, readBody, store, syncRev
         planned:(learning.plan?.scheduled || []).filter(t=>!t.done).length, completed:(learning.plan?.scheduled || []).filter(t=>t.done).length },
       plan:learning.plan ? { scheduled:learning.plan.scheduled, unscheduled:learning.plan.unscheduled, version:learning.plan.version } : null };
   });
-  own('GET', 'mastery', uid => mastery(uid));
+  own('GET', 'mastery', uid => masteryView(uid));
   own('GET', 'status', async () => ({ ...(await run({ action:'health' })), mathRuntime:'local Pyodide', whiteboard:'Excalidraw' }));
   function qid(value) { const id = String(value || ''); if (!questions.has(id)) fail('请选择题库中的题目'); return id; }
   own('GET', 'board', (uid, _, query) => {
