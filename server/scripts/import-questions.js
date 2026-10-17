@@ -30,14 +30,18 @@ try {
   process.exit(1);
 }
 
+const dir = batchDir();
+
 /* 题目池在模块加载时已经把批次目录里的题合并进来了。
    如果待校验的文件本身就在批次目录里，它自己的题号会和自己冲突（整批被误判为冲突），
-   所以按 batch 字段把「来自同一个文件」的题从冲突集合里排除。
-   不这么做，README 里那条「批次放在这个目录，用脚本校验」的流程永远跑不通。 */
-const selfBatch = path.basename(path.resolve(file));
+   所以把「来自同一个文件」的题从冲突集合里排除。不这么做，README 里那条
+   「批次放在这个目录，用脚本校验」的流程永远跑不通。
+   注意只在文件确实位于批次目录内时才排除：目录外的同名文件仍然要正常查冲突。 */
+const inBatchDir = path.resolve(path.dirname(path.resolve(file))) === path.resolve(dir);
+const selfBatch = inBatchDir ? path.basename(path.resolve(file)) : null;
 const existingIds = new Set();
 for (const [id, q] of questionsModule.questions) {
-  if (!q || q.batch !== selfBatch) existingIds.add(id);
+  if (!selfBatch || !q || q.batch !== selfBatch) existingIds.add(id);
 }
 const topics = new Set([...questionsModule.questions.values()].map((q) => q.topic));
 const result = validateBatch(batch, { existingIds, topics });
@@ -55,18 +59,19 @@ if (!result.ok) {
   process.exit(1);
 }
 
-const dir = batchDir();
 const safeName = String(batch.name || 'batch').replace(/[^\w\u4e00-\u9fa5-]/g, '_').slice(0, 40);
 const target = path.join(dir, new Date().toISOString().slice(0, 10) + '-' + safeName + '.json');
 
 if (dryRun) {
-  console.log('\n（dry-run）校验通过，将写入 ' + target);
+  console.log(inBatchDir
+    ? '\n（dry-run）校验通过。该批次已在批次目录内，服务启动时会自动加载，不会重复写入。'
+    : '\n（dry-run）校验通过，将写入 ' + target);
   process.exit(0);
 }
 
 /* 文件已经在批次目录里，说明它本来就被加载了；再写一份日期前缀的副本会让同一批题
    出现两次，后一个批次因题号冲突被整批跳过。直接告知即可，不要制造重复。 */
-if (path.resolve(path.dirname(path.resolve(file))) === path.resolve(dir)) {
+if (inBatchDir) {
   console.log('\n校验通过。该批次已在批次目录内（' + path.basename(file) + '），服务启动时会自动加载，无需重复写入。');
   console.log('回滚：node scripts/rollback-import.js ' + path.basename(file));
   process.exit(0);
