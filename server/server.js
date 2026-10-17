@@ -437,6 +437,7 @@ require('./learning')({ route, authUser, sendJson, readBody, store, syncReviews:
 require('./practice')({ route, authUser, sendJson, readBody, store });
 require('./campus')({ route, authUser, sendJson, readBody, store, studyRooms });
 const community = require('./community')({route,authUser,sendJson,readBody,store,syncReviews:integrations.syncReviews});
+require('./questions')({ route, authUser, sendJson, readBody });
 
 /* ===== 静态文件（伺服 wenguo 前端） ===== */
 const MIME = {
