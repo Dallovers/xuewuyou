@@ -79,3 +79,28 @@ test('Accounts, social activity, experiments, boards and uploaded source files s
   assert.equal((await req(a,'/api/data')).data.answers.length,5);
   assert.equal((await req(b,'/api/knowledge/text?id='+doc.document.id)).status,404);
 });
+test('断点续学会话在 PostgreSQL 下持久化、按用户隔离并保持版本冲突语义',{skip:!configured},async()=>{
+  const qids=[...questions.keys()].slice(0,3);
+  const created=await req(a,'/api/practice/session','POST',{clientRequestId:'pg-practice-0001',qids,topic:'函数与极限'});
+  assert.equal(created.status,200);assert.equal(created.replayed,false);
+  const s=created.session;
+  const saved=await req(a,'/api/practice/session','PUT',{id:s.id,expectedVersion:s.version,currentIndex:2,drafts:{[qids[0]]:{text:'PG草稿'}}});
+  assert.equal(saved.status,200);assert.equal(saved.session.currentIndex,2);
+  // 版本冲突在数据库模式下同样成立并且不覆盖进度
+  assert.equal((await req(a,'/api/practice/session','PUT',{id:s.id,expectedVersion:s.version,currentIndex:1})).status,409);
+  assert.equal((await req(a,'/api/practice/session?id='+s.id)).session.currentIndex,2);
+  // 跨用户不可读
+  assert.equal((await req(b,'/api/practice/session?id='+s.id)).status,404);
+  // 结束后不能被继续保存
+  const finished=await req(a,'/api/practice/session/finish','POST',{id:s.id,status:'finished'});
+  assert.equal(finished.session.status,'finished');
+  assert.equal((await req(a,'/api/practice/session','PUT',{id:s.id,expectedVersion:finished.session.version,currentIndex:0})).status,409);
+  // 重启后会话与草稿仍在（真写进了 xwy_state 的 JSONB payload）
+  await stopServer();await startServer();
+  const again=await req(a,'/api/practice/session?id='+s.id);
+  assert.equal(again.status,200);assert.equal(again.session.currentIndex,2);
+  assert.equal(again.session.drafts[qids[0]].text,'PG草稿');assert.equal(again.session.status,'finished');
+  // 幂等键跨重启有效
+  const replay=await req(a,'/api/practice/session','POST',{clientRequestId:'pg-practice-0001',qids});
+  assert.equal(replay.replayed,true);assert.equal(replay.session.id,s.id);
+});

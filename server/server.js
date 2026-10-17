@@ -434,6 +434,7 @@ route('GET', '/api/ai/config', (req, res) => {
 const integrations = require('./integrations')( { route, authUser, sendJson, readBody, store, getAiConfig, providers: AI_PROVIDERS } );
 const studyRooms = require('./study-rooms')({route,authUser,sendJson,readBody,store});
 require('./learning')({ route, authUser, sendJson, readBody, store, syncReviews:integrations.syncReviews,studyRooms });
+require('./practice')({ route, authUser, sendJson, readBody, store });
 const community = require('./community')({route,authUser,sendJson,readBody,store,syncReviews:integrations.syncReviews});
 
 /* ===== 静态文件（伺服 wenguo 前端） ===== */
