@@ -243,6 +243,10 @@ route('PUT', '/api/data', async (req, res) => {
 });
 
 /* ===== 自习室：每日统计 ===== */
+/* 客户端可上报的自习统计上限。个人自习计时天然在客户端，服务器只能设边界；
+ * 共同自习的计时是服务器权威的（study-rooms 用 runSince + now() 推算），不经过这里。 */
+const MAX_FOCUS_MINUTES_PER_DAY = 1440;   // 一天最多 24 小时
+const MAX_COMPLETED_PER_DAY = 500;
 route('GET', '/api/study/stats', (req, res) => {
   const user = authUser(req);
   if (!user) return sendError(res, 401, '未登录');
@@ -259,8 +263,14 @@ route('PUT', '/api/study/stats', async (req, res) => {
   if (['focusMinutes','completed'].some(key=>body[key]!==undefined&&!Number.isFinite(Number(body[key])))) return sendError(res,400,'自习统计须为有效数字');
   const all = store.get('studyDaily', user.id) || {};
   const cur = all[day] || { focusMinutes: 0, completed: 0 };
-  cur.focusMinutes = Math.max(cur.focusMinutes || 0, Math.max(0, Math.round(Number(body.focusMinutes != null ? body.focusMinutes : cur.focusMinutes))));
-  cur.completed = Math.max(cur.completed || 0, Math.max(0, Math.round(Number(body.completed != null ? body.completed : cur.completed))));
+  /* 单日上限：个人自习计时由客户端上报，服务器只能设边界。
+     没有上限时客户端可以写任意大的值，而且 Math.max 只升不降，一旦写进去就无法纠正。 */
+  const focus = Math.round(Number(body.focusMinutes != null ? body.focusMinutes : cur.focusMinutes));
+  const done = Math.round(Number(body.completed != null ? body.completed : cur.completed));
+  if (!Number.isFinite(focus) || focus < 0 || focus > MAX_FOCUS_MINUTES_PER_DAY) return sendError(res, 400, '单日专注时长应在 0–' + MAX_FOCUS_MINUTES_PER_DAY + ' 分钟之间');
+  if (!Number.isFinite(done) || done < 0 || done > MAX_COMPLETED_PER_DAY) return sendError(res, 400, '单日完成次数应在 0–' + MAX_COMPLETED_PER_DAY + ' 之间');
+  cur.focusMinutes = Math.max(cur.focusMinutes || 0, focus);
+  cur.completed = Math.max(cur.completed || 0, done);
   all[day] = cur;
   store.set('studyDaily', user.id, all);
   sendJson(res, 200, { ok: true, day, stats: cur });
