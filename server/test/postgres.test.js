@@ -104,3 +104,34 @@ test('断点续学会话在 PostgreSQL 下持久化、按用户隔离并保持�
   const replay=await req(a,'/api/practice/session','POST',{clientRequestId:'pg-practice-0001',qids});
   assert.equal(replay.replayed,true);assert.equal(replay.session.id,s.id);
 });
+test('管理员后台在 PostgreSQL 下可用：处罚生效、审计落库、重启后仍在',{skip:!configured},async()=>{
+  /* 这条测试的存在原因：adminAudit 一开始只登记进了文件存储的 FILES 表，
+   * 没登记进 store-postgres 的 names 白名单。本地全绿、CI 的 pg 任务也不报，
+   * 一部署到用 Neon 的线上就是「每次处罚 500」。所以必须有一条走真实 Postgres 的用例。 */
+  await store.run(()=>{const users=store.get('users');users[a.user.id].role='admin';store.set('users',users);});
+  assert.equal((await req(a,'/api/auth/me')).user.role,'admin');
+
+  /* overview / users / audit 都会读 adminAudit —— 集合没登记时这里直接 500 */
+  assert.equal((await req(a,'/api/admin/overview')).status,200);
+  const list=await req(a,'/api/admin/users');
+  assert.equal(list.status,200);
+  assert.ok(!JSON.stringify(list).includes('passHash'),'账号列表不能带出哈希');
+
+  /* 禁言生效：被禁言的人发留言要被挡 */
+  assert.equal((await req(a,'/api/admin/user-action','POST',{action:'mute',uid:b.user.id,minutes:10,reason:'集成测试'})).status,200);
+  assert.equal((await req(b,'/api/community/posts','POST',{text:'被禁言还能发吗'})).status,403);
+
+  /* 封号生效：封禁前签发的 token 立即失效 */
+  assert.equal((await req(a,'/api/admin/user-action','POST',{action:'ban',uid:b.user.id,reason:'集成测试封禁'})).status,200);
+  assert.equal((await req(b,'/api/auth/me')).status,401);
+  assert.equal((await req(a,'/api/admin/user-action','POST',{action:'unban',uid:b.user.id})).status,200);
+  assert.equal((await req(b,'/api/auth/me')).status,200);
+
+  /* 重启后审计与禁言状态仍在 —— 证明真的写进了 JSONB，而不是只在内存里 */
+  await stopServer();await startServer();
+  const audit=await req(a,'/api/admin/audit');
+  assert.equal(audit.status,200);
+  for(const action of ['mute','ban','unban'])assert.ok(audit.items.some(x=>x.action===action),'审计里应有 '+action+' 记录');
+  const bRow=(await req(a,'/api/admin/users')).items.find(u=>u.id===b.user.id);
+  assert.ok(bRow.mutedUntil>Date.now(),'禁言截止时间应持久化');
+});
