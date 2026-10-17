@@ -211,6 +211,43 @@ test('留言可以下架与恢复，作者自删的不能恢复', async () => {
   assert.equal(cannot.status, 409);
 });
 
+test('管理员登录：正确密码换 token，错密码与普通账号一律同码同文案', async () => {
+  const ok = await call('/api/admin/login', 'POST', { username: '后台管理员', password: 'test123456' });
+  assert.equal(ok.status, 200);
+  assert.ok(ok.body.token, '应换到 token');
+  assert.equal(ok.body.user.role, 'admin');
+  assert.ok(!/passHash|hash/i.test(JSON.stringify(ok.body)), '登录响应也不能带出哈希');
+
+  /* 换到的 token 直接能用 */
+  const overview = await call('/api/admin/overview', 'GET', undefined, ok.body.token);
+  assert.equal(overview.status, 200);
+
+  const wrongPass = await call('/api/admin/login', 'POST', { username: '后台管理员', password: 'nope-nope-nope' });
+  assert.equal(wrongPass.status, 401);
+
+  /* 密码正确但不是管理员：必须和「密码错」同样的状态码与文案，
+   * 否则这个接口就成了「谁是管理员」的探测器 */
+  const notAdmin = await call('/api/admin/login', 'POST', { username: '普通同学乙', password: 'test123456' });
+  assert.equal(notAdmin.status, 401);
+  assert.equal(notAdmin.body.error, wrongPass.body.error, '两种失败必须给出相同文案');
+  assert.equal(notAdmin.body.token, undefined, '非管理员不能拿到 token');
+
+  const ghost = await call('/api/admin/login', 'POST', { username: '根本不存在的人', password: 'whatever' });
+  assert.equal(ghost.status, 401);
+  assert.equal(ghost.body.error, wrongPass.body.error, '账号不存在也不能有区别');
+});
+
+test('管理员登录的失败限流：连续失败后短暂锁定', async () => {
+  const bad = { username: '限流测试目标', password: 'wrong' };
+  for (let i = 1; i <= 5; i++) {
+    const r = await call('/api/admin/login', 'POST', bad);
+    assert.equal(r.status, 401, '第 ' + i + ' 次应为 401，实际 ' + r.status);
+  }
+  const locked = await call('/api/admin/login', 'POST', bad);
+  assert.equal(locked.status, 429, '第 6 次应被限流');
+  assert.match(locked.body.error, /次数过多/);
+});
+
 test('ADMIN_USERNAMES 引导：只提升已存在的账号，且幂等', async () => {
   const { admin } = require('../server');
   const first = admin.promoteByUsername(['普通同学甲', '根本不存在的账号']);

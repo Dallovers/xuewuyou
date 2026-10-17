@@ -50,17 +50,30 @@
   .msg.err { background:#fdf3f3; color:var(--danger); }
   .msg.ok { background:#f2faf5; color:var(--ok); }
   pre { margin:0; font:12px/1.5 ui-monospace,Consolas,monospace; white-space:pre-wrap; word-break:break-all; }
-  #gate { max-width:520px; margin:80px auto; background:var(--card); border:1px solid var(--line);
-          border-radius:12px; padding:28px; text-align:center; }
-  #gate p { color:var(--sub); }
+  #gate { max-width:420px; margin:80px auto; background:var(--card); border:1px solid var(--line);
+          border-radius:12px; padding:28px; }
+  #gate h1 { font-size:17px; margin:0 0 6px; text-align:center; }
+  #gate p { color:var(--sub); font-size:13px; margin:0 0 18px; text-align:center; }
+  #gate label { display:block; font-size:12px; color:var(--sub); margin:0 0 4px; }
+  #gate input { width:100%; margin-bottom:12px; }
+  #gate button { width:100%; padding:9px; font-size:14px; }
+  #gate code { background:#f3f3f3; padding:1px 4px; border-radius:4px; font-size:12px; }
   .pager { display:flex; gap:8px; align-items:center; padding:10px 16px; border-top:1px solid var(--line); }
 </style>
 </head>
 <body>
 
-<div id="gate" hidden>
-  <h1 id="gateTitle">需要管理员权限</h1>
-  <p id="gateText"></p>
+<div id="gate">
+  <h1>管理员登录</h1>
+  <p>用管理员账号登录。账号需先由维护者用<br><code>node scripts/grant-admin.js 用户名</code> 授权。</p>
+  <form id="loginForm" autocomplete="on">
+    <label for="lgUser">管理员用户名</label>
+    <input type="text" id="lgUser" name="username" autocomplete="username" autocapitalize="off" spellcheck="false" placeholder="用户名">
+    <label for="lgPass">密码</label>
+    <input type="password" id="lgPass" name="password" autocomplete="current-password" placeholder="密码">
+    <button class="primary" id="lgSubmit" type="submit">登 录</button>
+  </form>
+  <div class="msg" id="lgMsg"></div>
 </div>
 
 <header id="bar" hidden>
@@ -68,6 +81,7 @@
   <span class="who" id="who"></span>
   <span class="spacer"></span>
   <button id="refresh">刷新</button>
+  <button id="logout">退出登录</button>
 </header>
 
 <main id="main" hidden>
@@ -127,7 +141,7 @@
 <script>
 (function () {
   'use strict';
-  var TOKEN_KEY = 'xwy_token';
+  var TOKEN_KEY = 'xwy_admin_token';
   var H = function () { var t = localStorage.getItem(TOKEN_KEY); return t ? { 'Authorization': 'Bearer ' + t } : {}; };
 
   var $ = function (id) { return document.getElementById(id); };
@@ -151,7 +165,12 @@
       body: body === undefined ? undefined : JSON.stringify(body)
     }).then(function (r) {
       return r.json().catch(function () { return { ok: false, error: 'HTTP ' + r.status }; })
-        .then(function (d) { d.__status = r.status; return d; });
+        .then(function (d) {
+          d.__status = r.status;
+          /* token 过期或被封号：直接退回登录页，别让人对着空表格点按钮 */
+          if (r.status === 401 && path.indexOf('/api/admin/login') !== 0) showLogin('登录已失效，请重新登录。');
+          return d;
+        });
     });
   }
 
@@ -161,12 +180,25 @@
     if (text) setTimeout(function () { if (node.textContent === text) { node.textContent = ''; node.className = 'msg'; } }, 4000);
   }
 
-  function gate(title, text) {
+  function showLogin(message) {
     $('gate').hidden = false;
-    $('gateTitle').textContent = title;
-    $('gateText').textContent = text;
     $('bar').hidden = true;
     $('main').hidden = true;
+    if (message) {
+      var m = $('lgMsg');
+      m.textContent = message;
+      m.className = 'msg show err';
+    }
+    var u = $('lgUser');
+    if (u && !u.value) u.focus();
+  }
+
+  function showConsole(user) {
+    $('gate').hidden = true;
+    $('bar').hidden = false;
+    $('main').hidden = false;
+    $('who').textContent = '当前：' + user.username + (user.nick && user.nick !== user.username ? '（' + user.nick + '）' : '');
+    refreshAll();
   }
 
   /* ---------- 总览 ---------- */
@@ -361,27 +393,53 @@
   $('pPrev').addEventListener('click', function () { postPage.offset = Math.max(0, postPage.offset - postPage.limit); loadPosts(); });
   $('pNext').addEventListener('click', function () { postPage.offset += postPage.limit; loadPosts(); });
 
-  if (!localStorage.getItem(TOKEN_KEY)) {
-    gate('请先登录', '这个页面复用主站登录状态。请先打开主站登录你的管理员账号，再回到这个页面。');
-    return;
-  }
-
-  api('GET', '/api/auth/me').then(function (d) {
-    if (!d.ok) {
-      gate('登录状态已失效', '请回主站重新登录（账号可能被封禁，或登录已过期）。');
-      return;
-    }
-    if (!d.user || d.user.role !== 'admin') {
-      gate('需要管理员权限', '当前账号「' + ((d.user && d.user.username) || '未知') + '」不是管理员。'
-        + '管理员身份由维护者用 node scripts/grant-admin.js <用户名> 指定。');
-      return;
-    }
-    $('gate').hidden = true;
-    $('bar').hidden = false;
-    $('main').hidden = false;
-    $('who').textContent = '当前：' + d.user.username + (d.user.nick ? '（' + d.user.nick + '）' : '');
-    refreshAll();
+  $('logout').addEventListener('click', function () {
+    localStorage.removeItem(TOKEN_KEY);
+    $('lgPass').value = '';
+    showLogin('已退出登录。');
   });
+
+  $('loginForm').addEventListener('submit', function (ev) {
+    ev.preventDefault();
+    var u = $('lgUser').value.trim();
+    var p = $('lgPass').value;
+    var m = $('lgMsg');
+    if (!u || !p) {
+      m.textContent = '请输入用户名和密码';
+      m.className = 'msg show err';
+      return;
+    }
+    var btn = $('lgSubmit');
+    btn.disabled = true;
+    btn.textContent = '登录中…';
+    api('POST', '/api/admin/login', { username: u, password: p }).then(function (d) {
+      btn.disabled = false;
+      btn.textContent = '登 录';
+      if (!d.ok) {
+        m.textContent = d.error || '登录失败';
+        m.className = 'msg show err';
+        $('lgPass').value = '';
+        return;
+      }
+      localStorage.setItem(TOKEN_KEY, d.token);
+      m.textContent = '';
+      m.className = 'msg';
+      $('lgPass').value = '';
+      showConsole(d.user);
+    });
+  });
+
+  /* 有 token 就先验一下还能不能用；过期或角色不对就退回登录页 */
+  (function boot() {
+    if (!localStorage.getItem(TOKEN_KEY)) { showLogin(); return; }
+    api('GET', '/api/auth/me').then(function (d) {
+      if (d.ok && d.user && d.user.role === 'admin') { showConsole(d.user); return; }
+      localStorage.removeItem(TOKEN_KEY);
+      showLogin(d.__status === 401
+        ? '登录已失效，请重新登录。'
+        : '「' + ((d.user && d.user.username) || '未知账号') + '」不是管理员。管理员身份由维护者用 grant-admin.js 指定。');
+    });
+  })();
 })();
 </script>
 </body>

@@ -12,12 +12,15 @@
  *   5. 封号立即生效：authUser 每次请求都回查 users，banned 直接当未登录处理。
  */
 const crypto = require('crypto');
+const auth = require('../lib/auth');
 const { ADMIN_ROLE, isAdmin, isMuted } = require('../lib/moderation');
 
 const AUDIT_LIMIT = 500;      // 审计日志最多留这么多条
 const PAGE_LIMIT = 50;
 const PAGE_MAX = 200;
 const MUTE_MAX_MINUTES = 60 * 24 * 30;   // 单次禁言上限 30 天
+const LOGIN_WINDOW = 10 * 60 * 1000;     // 登录失败计数窗口
+const LOGIN_MAX_FAILS = 5;               // 窗口内允许的失败次数
 
 module.exports = function createAdmin({ route, authUser, sendJson, readBody, store, cleanPresence }) {
   const fail = (status, message) => { throw Object.assign(new Error(message), { status }); };
@@ -91,6 +94,59 @@ module.exports = function createAdmin({ route, authUser, sendJson, readBody, sto
       }
     });
   }
+
+  /* ---------- 登录（后台自己的入口，不走 guard） ----------
+   * 为什么单独开一个而不是复用 /api/auth/login：
+   *   1. 只有管理员才配拿到 token，普通账号在这里被拒，不把「登录成功但进不去」的半成品状态留给前端；
+   *   2. 需要独立的失败限流——这是全站权限最高的入口，不能让人无成本地试密码。
+   * 失败计数只放在内存里：单进程够用，多进程部署时各自计数（已在文档里写明）。
+   */
+  const loginFails = new Map();
+
+  const clientIp = (req) => (req.socket && req.socket.remoteAddress) || 'unknown';
+
+  route('POST', '/api/admin/login', async (req, res) => {
+    try {
+      const body = JSON.parse(await readBody(req, 0.05) || '{}');
+      const username = String(body.username || '').trim();
+      const password = String(body.password || '');
+      const now = Date.now();
+      /* 缺参数是「请求不对」（400），不是「凭据不对」（401）。
+       * 分清楚这两件事，公开路由的检查才有意义：登录入口不该在没给凭据时就回 401。 */
+      if (!username || !password) {
+        return sendJson(res, 400, { ok: false, error: '请输入管理员账号和密码' });
+      }
+      const key = username.toLowerCase() + '|' + clientIp(req);
+      const rec = loginFails.get(key);
+      const active = rec && now - rec.firstAt < LOGIN_WINDOW;
+
+      if (active && rec.count >= LOGIN_MAX_FAILS) {
+        const waitMin = Math.ceil((LOGIN_WINDOW - (now - rec.firstAt)) / 60000);
+        return sendJson(res, 429, { ok: false, error: '尝试次数过多，请 ' + waitMin + ' 分钟后再试' });
+      }
+
+      const user = Object.values(usersTable()).find((u) => u.username === username);
+      const passOk = !!user && auth.verifyPassword(password, user.passHash);
+
+      /* 密码错、账号不存在、不是管理员、已被封禁 —— 一律同一个 401，
+       * 不告诉对方走到了哪一步，避免被拿来枚举账号或探测谁是管理员。 */
+      if (!passOk || !isAdmin(user) || user.banned) {
+        const next = active ? rec : { count: 0, firstAt: now };
+        next.count += 1;
+        loginFails.set(key, next);
+        await new Promise((r) => setTimeout(r, 200));   // 压一下批量爆破
+        return sendJson(res, 401, { ok: false, error: '账号或密码错误，或该账号没有管理员权限' });
+      }
+
+      loginFails.delete(key);
+      const token = auth.sign({ uid: user.id });
+      record(user, 'login', null, '管理员登录');
+      sendJson(res, 200, { ok: true, token, user: publicUser(user) });
+    } catch (e) {
+      const status = e instanceof SyntaxError ? 400 : 500;
+      sendJson(res, status, { ok: false, error: status === 400 ? '请求格式错误' : '登录失败：' + e.message });
+    }
+  });
 
   /* ---------- 总览 ---------- */
   own('GET', 'overview', (actor) => {

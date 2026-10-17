@@ -96,6 +96,11 @@ function expect(cond, message) {
       expect(admin.status === 401, '管理接口未登录却返回 ' + admin.status);
       const banned = await http('POST', '/api/admin/user-action', { action: 'ban', uid: 'x' });
       expect(banned.status === 401, '管理接口未登录却能调用：' + banned.status);
+      /* 管理员登录是公开路由，但错密码必须换不到 token。
+         用一次性用户名，避免连跑几次把限流计数堆到 429。 */
+      const badLogin = await http('POST', '/api/admin/login', { username: '__smoke_' + Date.now(), password: 'not-the-password' });
+      expect(badLogin.status === 401, '管理员登录错密码却返回 ' + badLogin.status);
+      expect(!badLogin.body || !badLogin.body.token, '错密码竟然拿到了 token');
     } finally { token = saved; }
     return 'campus/state、admin/* → 401';
   });
