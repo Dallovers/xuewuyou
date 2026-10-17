@@ -435,6 +435,7 @@ const integrations = require('./integrations')( { route, authUser, sendJson, rea
 const studyRooms = require('./study-rooms')({route,authUser,sendJson,readBody,store});
 require('./learning')({ route, authUser, sendJson, readBody, store, syncReviews:integrations.syncReviews,studyRooms });
 require('./practice')({ route, authUser, sendJson, readBody, store });
+require('./campus')({ route, authUser, sendJson, readBody, store, studyRooms });
 const community = require('./community')({route,authUser,sendJson,readBody,store,syncReviews:integrations.syncReviews});
 
 /* ===== 静态文件（伺服 wenguo 前端） ===== */

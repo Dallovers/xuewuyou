@@ -45,3 +45,51 @@ A 校验基本边界，C 用导航网格二次验证可站立位置；换版后�
 阶段 1 由 C 登记一台实际笔记本、一台实际中档手机、浏览器、网络和画质档位。建议目标：桌面接近 60 FPS、登记手机稳定至少 30 FPS；以持续走完整条路线的记录验收，不能只截静止帧。若不达标，减少阴影、像素比、模型/贴图和绘制次数，并记录降级表现。
 
 先给首个可操作灰盒设下载预算（建议压缩资源 10 MB 内），详细版在实测后定预算；首屏不预加载八栋全部高精度模型与所有题库。资源有缓存、加载进度与超时重试。测试 WebGL 不支持/上下文丢失/模型或导航加载失败；可切功能列表或已有 2D 地图继续学习。
+
+---
+
+## 已实现（2026-10-17，A 的服务端部分）
+
+代码 `server/campus/index.js`，测试 `server/test/campus.test.js`（8 项）。
+
+### `GET /api/campus/state`
+
+返回当前用户八地点的**确定计数**，不含模型估计：
+
+| 地点 id | 名称 | 指标 | 单位 |
+|---|---|---|---|
+| `bank` | 课程学院 | 已练章节数（按题库 topic 归并，同题重复作答不重复计） | 个已练章节 |
+| `wenku` | 知识图书馆 | 私有资料数 | 份私有资料 |
+| `lab` | 题目草稿屋 | 白板数 | 份题目草稿 |
+| `social` | 社交广场 | 学习搭子数 | 位学习搭子 |
+| `arena` | 好友竞技场 | 未完成且未过期的挑战数 | 项待完成挑战 |
+| `study` | 专注营地 | 当前在线共同专注人数 | 人正在共同专注 |
+| `mistakes` | 错题修复工坊 | 错题数 | 道待巩固 |
+| `report` | 成长中心 | 作答记录数 | 次作答记录 |
+
+响应：`{ ok, worldVersion, fetchedAt, locations: [{ id, label, metric, unit, value, hasData, estimated, updatedAt }] }`
+
+- `estimated` 恒为 `false`：本接口只返回可核对的计数。掌握概率是 pyBKT 的模型估计，**故意不混进来**，免得把估计当事实展示。
+- 没有数据时返回 `value: 0, hasData: false` 的空状态，而不是 404。
+- `worldVersion` 取当前用户的存档版本，未存档时 `null`。
+
+### `GET /api/world/progress`
+
+`{ ok, progress: null | { worldVersion, sceneId, position: {x,y,z}, heading, version, updatedAt } }`
+
+### `PUT /api/world/progress`
+
+请求体：`{ worldVersion, sceneId, position: {x,y,z}, heading?, expectedVersion? }`
+
+- 校验：`worldVersion` / `sceneId` 为 ≤40 字符字符串；`x/y/z` 与 `heading` 必须是**有限数字**；`|x|,|z| ≤ 10000`，`-1000 ≤ y ≤ 10000`；请求体 ≤ 4 KB。
+- `expectedVersion` 与当前版本不一致 → **409 `VERSION_CONFLICT`**，且不覆盖已有位置。
+- `worldVersion` 变化视为**新世界**：忽略 `expectedVersion`，版本重置为 1，响应带 `reset: true`。客户端应回安全出生点，学习记录不受影响。
+- 错误码：`UNAUTHORIZED` / `BAD_REQUEST` / `BODY_TOO_LARGE` / `VERSION_CONFLICT`。
+
+### 边界
+
+- 存档按 uid 隔离，接口**不返回他人数据**。
+- 位置**不参与**答题判定、积分与自习时长统计（有测试断言）。
+- 服务端只做基本边界校验；能否真正站立仍由 C 用导航网格二次验证。
+- `LOCATIONS` 的 id 必须与 `js/campus-registry.js` 的 `WG_CampusDistricts` 保持一致，改一处需同步另一处。
+- 前端节流保存、切场景保存、按账号+世界版本隔离缓存这些客户端行为由 C 实现，本接口只负责存取与冲突语义。
