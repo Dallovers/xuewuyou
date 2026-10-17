@@ -1431,6 +1431,13 @@ var WG_App = (function () {
     openLogin();
   }
 
+  /* 管理后台入口：只对管理员显示。藏起来只是别让普通用户看见，
+   * 真正的门在 /api/admin/* 的 guard() 上，前端显示与否不影响权限判定。 */
+  function showAdminEntry(isAdmin) {
+    var btn = $('loginAdmin');
+    if (btn) btn.style.display = isAdmin ? 'block' : 'none';
+  }
+
   /* ---------- 登录 / 注册 ---------- */
   function openLogin() {
     var mask = $('loginModalMask');
@@ -1447,6 +1454,14 @@ var WG_App = (function () {
       if ($('loginAuthed')) $('loginAuthed').style.display = 'block';
       if ($('loginTabLogin')) $('loginTabLogin').style.display = 'none';
       if ($('loginTabReg')) $('loginTabReg').style.display = 'none';
+      showAdminEntry(user.role === 'admin');
+      /* 本地缓存的 user 可能是升级前存的（没有 role 字段）：拉一次 /me 补上，
+       * 否则会出现「已经是管理员，但界面里没有管理后台入口」 */
+      if (user.role === undefined && typeof WG_API.me === 'function') {
+        WG_API.me().then(function (d) {
+          showAdminEntry(!!(d && d.user && d.user.role === 'admin'));
+        }).catch(function () { /* 离线或未登录，忽略 */ });
+      }
       return;
     }
     if ($('loginForm')) $('loginForm').style.display = 'grid';
@@ -1520,6 +1535,9 @@ var WG_App = (function () {
     $('loginChangeNick') && $('loginChangeNick').addEventListener('click', handleChangeNick);
     $('loginSyncNow') && $('loginSyncNow').addEventListener('click', handleSyncNow);
     $('loginLogout') && $('loginLogout').addEventListener('click', handleLogout);
+    $('loginAdmin') && $('loginAdmin').addEventListener('click', function () {
+      window.location.href = 'admin.html';
+    });
   }
 
   /* 已登录：修改昵称 */
