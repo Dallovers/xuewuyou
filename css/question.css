@@ -1,0 +1,367 @@
+/* ============ 学无忧 · 题面与解析排版（B 层） ============
+   只负责「读题」这件事：试卷纸卡片、题面字阶、选项、解析与公式块。
+   不覆盖业务样式，靠后加载 + 更具体的类名生效，不用 !important。
+   ============================================================ */
+
+/* ---- 整题容器：一张纸，左侧薄荷书脊 ---- */
+.bank-card {
+  position: relative;
+  max-width: 760px;
+  padding: 26px 30px 24px;
+  border: 1px solid var(--rule);
+  border-radius: var(--r-lg);
+  background: var(--bg2);
+  box-shadow: var(--sh-1);
+}
+.bank-card::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 22px;
+  bottom: 22px;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: linear-gradient(180deg, var(--acc), var(--acc2));
+  opacity: 0.75;
+}
+
+/* ---- 顶部信息条：科目/章节/难度/题型 + 题号/标记 ---- */
+.bank-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding-bottom: 14px;
+  margin-bottom: 20px;
+  border-bottom: 1px dashed var(--rule);
+}
+.bank-chips {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+.bank-head-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+}
+.bank-head .tag-bank {
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+.bank-head .tag-subject {
+  background: rgba(13, 130, 155, 0.1);
+  color: var(--cyan);
+  border-color: rgba(13, 130, 155, 0.34);
+}
+.bank-head .bank-pos {
+  font-size: 0.78rem;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+/* ---- 题干 ---- */
+.bank-q {
+  max-width: 68ch;
+  margin-bottom: 22px;
+  font-size: 1.0625rem;
+  line-height: 1.95;
+  letter-spacing: 0.004em;
+  color: var(--ink);
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+/* 行内公式跟着正文走，别比正文小一圈 */
+.bank-q .katex,
+.bank-opt-t .katex,
+.sol-p .katex {
+  font-size: 1.06em;
+}
+/* 独立公式：居中、可横向滚动，不折行破版 */
+.bank-q .katex-display {
+  margin: 0.9em 0;
+  padding: 2px 0 4px;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+.bank-q .katex-display::-webkit-scrollbar,
+.sol-fx::-webkit-scrollbar { height: 6px; }
+.bank-q .katex-display::-webkit-scrollbar-thumb,
+.sol-fx::-webkit-scrollbar-thumb { background: var(--rule-strong); border-radius: 3px; }
+
+/* ---- 选项 ---- */
+.bank-opts {
+  gap: 10px;
+  max-width: 760px;
+  /* 两列会把中文选项从词中间断开（「无界」被拆成两行），
+     数学选项还是整行更好读 */
+  grid-template-columns: 1fr;
+}
+.bank-opt {
+  align-items: center;
+  padding: 13px 16px;
+  min-height: 54px;
+  border-radius: var(--r);
+  border-color: var(--rule);
+  background: var(--bg2);
+  font-weight: 500;
+  line-height: 1.8;
+  box-shadow: 0 1px 0 rgba(16, 74, 68, 0.03);
+}
+.bank-opt:hover {
+  border-color: rgba(11, 125, 112, 0.42);
+  background: var(--bg2);
+  transform: translateY(-1px);
+  box-shadow: var(--sh-2);
+}
+.bank-opt:active { transform: translateY(0); }
+.bank-opt-k {
+  width: 28px;
+  height: 28px;
+  margin-top: 1px;
+  background: var(--bg3);
+  border: 1px solid var(--rule);
+  color: var(--ink-2);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+.bank-opt:hover .bank-opt-k {
+  background: rgba(11, 125, 112, 0.1);
+  border-color: rgba(11, 125, 112, 0.3);
+  color: var(--acc);
+}
+.bank-opt-t {
+  font-size: 1rem;
+  line-height: 1.8;
+}
+/* 结果态：徽标实心化，一眼看清对错 */
+.bank-opt.opt-right,
+.bank-opt.opt-right:hover {
+  border-color: rgba(14, 122, 74, 0.55);
+  background: rgba(14, 122, 74, 0.06);
+  box-shadow: none;
+  transform: none;
+}
+.bank-opt.opt-right .bank-opt-k,
+.bank-opt.opt-right:hover .bank-opt-k {
+  background: var(--ok);
+  border-color: var(--ok);
+  color: #fff;
+}
+.bank-opt.opt-wrong,
+.bank-opt.opt-wrong:hover {
+  border-color: rgba(198, 48, 40, 0.5);
+  background: rgba(198, 48, 40, 0.05);
+  box-shadow: none;
+  transform: none;
+}
+.bank-opt.opt-wrong .bank-opt-k,
+.bank-opt.opt-wrong:hover .bank-opt-k {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: #fff;
+}
+.bank-opt.opt-dim { opacity: 0.5; }
+.bank-opt.is-done { cursor: default; }
+.bank-opt.is-done:hover { transform: none; box-shadow: none; }
+
+/* ---- 填空作答 ---- */
+.bank-fill { gap: 10px; }
+.bank-fill-in {
+  min-height: 46px;
+  padding: 0.7rem 0.9rem;
+  border-radius: var(--r);
+  font-size: 0.96rem;
+}
+.bank-selfhint { font-size: 0.86rem; line-height: 1.75; }
+
+/* ---- 解析卡 ---- */
+.bank-sol {
+  margin-top: 16px;
+  padding: 20px 24px 18px;
+  border: 1px solid var(--rule);
+  border-left: 3px solid var(--acc);
+  border-radius: var(--r);
+  background: var(--bg2);
+  box-shadow: var(--sh-1);
+  font-size: 0.95rem;
+}
+/* gaoshu 注入的标题行：一眼认出这是解析，不是题干 */
+.sol-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  color: var(--acc);
+}
+.sol-title::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--acc);
+  box-shadow: 0 0 0 3px rgba(11, 125, 112, 0.12);
+}
+.sol-title small {
+  margin-left: auto;
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: var(--muted);
+}
+.sol-p {
+  margin: 0 0 12px;
+  font-size: 0.95rem;
+  line-height: 1.95;
+  color: var(--ink);
+}
+.sol-p:last-child { margin-bottom: 0; }
+.sol-head {
+  margin: 18px 0 8px;
+  padding-left: 10px;
+  border-left: 2px solid rgba(13, 130, 155, 0.42);
+  font-size: 0.84rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: var(--cyan);
+}
+.sol-head:first-child { margin-top: 0; }
+/* 公式块：交给 KaTeX 排版，不再是等宽伪公式 */
+.sol-fx {
+  margin: 10px 0 14px;
+  padding: 14px 16px;
+  border: 1px solid rgba(16, 74, 68, 0.08);
+  border-radius: 10px;
+  background: rgba(237, 245, 242, 0.72);
+  font-family: inherit;
+  font-size: 1rem;
+  line-height: 1.9;
+  text-align: center;
+  white-space: normal;
+  overflow-x: auto;
+}
+.sol-fx .katex { font-size: 1.06em; }
+.sol-fx .katex-display { margin: 0.15em 0; }
+.sol-fx:empty { display: none; }
+.sol-lead {
+  margin: 14px 0 2px;
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: var(--acc2);
+}
+/* 降级公式：加一条虚线下划线，提示这是简化写法 */
+.tex-fallback {
+  border-bottom: 1px dotted rgba(166, 104, 0, 0.55);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- 逐步展开 ---- */
+.sol-step { padding: 2px 0 12px; }
+.sol-step-no {
+  margin: 6px 0 8px;
+  padding: 2px 9px;
+  background: rgba(11, 125, 112, 0.08);
+  border: 1px solid rgba(11, 125, 112, 0.22);
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--acc);
+}
+.sol-step-bar { margin-top: 14px; }
+
+/* ---- 反馈条与掌握度：跟解析卡对齐 ---- */
+.bank-feedback { margin-top: 14px; }
+.bank-tip { font-size: 0.82rem; }
+
+/* ---- 答题页顶部：把 120px 的暗色海报收成一条工具条，
+        答题时注意力应该回到题目上 ---- */
+body[data-view="game"] .game-head {
+  min-height: 0;
+  padding: 10px 14px;
+  margin-bottom: 14px;
+  border: 1px solid var(--rule);
+  border-radius: var(--r);
+  background: rgba(255, 255, 255, 0.76);
+}
+body[data-view="game"] .game-head h2 {
+  font-family: var(--font);
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  color: var(--ink);
+}
+body[data-view="game"] .game-head .gh-sub {
+  font-size: 0.76rem;
+  color: var(--muted);
+}
+body[data-view="game"] .game-head .btn {
+  padding: 6px 10px;
+  border: 1px solid var(--rule);
+  background: transparent;
+  color: var(--ink-2);
+  font-weight: 500;
+}
+body[data-view="game"] .game-head .btn:hover {
+  border-color: var(--acc);
+  color: var(--acc);
+}
+
+/* ---- 手机：收窄留白，公式横向滚动 ---- */
+/* 平板及以下：竖向切题条会压住卡片边缘，统一改成底部横条 */
+@media (max-width: 900px) {
+  .exam-fab-nav {
+    top: auto;
+    bottom: 14px;
+    right: 50%;
+    transform: translateX(50%);
+    flex-direction: row;
+    padding: 5px 8px;
+    gap: 6px;
+  }
+  .exam-fab-nav .efab { width: 40px; height: 40px; }
+  .exam-fab-nav .efab-sm { width: 34px; height: 34px; }
+  .exam-fab-nav .efab-pos { padding: 0 4px; }
+  #view-game .exam-main { padding-bottom: 92px; }
+  #aiFab { bottom: 84px; width: 46px; height: 46px; font-size: 0.84rem; }
+  .exam-side-toggle {
+    bottom: 84px;
+    left: 14px;
+    width: 44px;
+    height: 44px;
+    min-height: 44px;
+    padding: 0;
+    font-size: 0;
+    justify-content: center;
+    border-radius: 50%;
+  }
+  .exam-side-toggle span { font-size: 1.05rem; }
+}
+
+@media (max-width: 600px) {
+  .bank-card {
+    padding: 18px 16px 18px;
+    border-radius: 14px;
+  }
+  .bank-card::before { top: 16px; bottom: 16px; }
+  .bank-head { margin-bottom: 16px; padding-bottom: 12px; }
+  .bank-q {
+    font-size: 1.02rem;
+    line-height: 1.9;
+    margin-bottom: 18px;
+  }
+  .bank-opt { padding: 12px 13px; }
+  .bank-opt-t { font-size: 0.96rem; }
+  .bank-sol { padding: 16px 15px; }
+  .sol-fx { padding: 12px 10px; }
+  .bank-head-right { width: 100%; justify-content: space-between; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bank-opt { transition: none; }
+  .bank-opt:hover { transform: none; }
+}
