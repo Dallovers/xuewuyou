@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<!--
+  world3d-demo.html —— C 的 3D 校园单文件演示
+  C01 灰盒 + C02 网格寻路/碰撞高差 + C03 控制相机 + C06 地图UI与性能
+  用法：放进仓库根目录（与 index.html 同级），访问 /world3d-demo.html。
+  不修改仓库任何现有文件；Three.js 走 CDN（离线可改本地 vendor 路径）。
+-->
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>学无忧 · 3D 校园灰盒（C01-C03 + C06）</title>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #bfe3f0; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; }
+  #app { position: fixed; inset: 0; }
+  #app canvas { display: block; touch-action: none; }
+  .hud { position: fixed; left: 14px; top: 14px; z-index: 10; background: rgba(20,30,40,.55); color:#fff;
+    padding: 10px 12px; border-radius: 10px; font-size: 13px; line-height: 1.6; pointer-events: none;
+    max-width: 270px; backdrop-filter: blur(4px); }
+  .hud b { color:#ffd479; }
+  .badge { position: fixed; right: 14px; top: 14px; z-index: 10; background: rgba(20,30,40,.55); color:#fff;
+    padding: 6px 10px; border-radius: 8px; font-size: 12px; pointer-events: none; }
+  #stats { position: fixed; right: 14px; top: 86px; z-index: 10; background: rgba(20,30,40,.55); color:#cfe8ff;
+    padding: 6px 9px; border-radius: 8px; font: 11px/1.5 ui-monospace, Menlo, Consolas, monospace; pointer-events: none; white-space: pre; }
+  #minimap { position: fixed; right: 14px; bottom: 14px; z-index: 10; width: 170px; height: 170px;
+    border-radius: 12px; background: rgba(10,20,30,.5); box-shadow: 0 2px 10px rgba(0,0,0,.25); }
+  #btn-reset { position: fixed; right: 14px; bottom: 194px; z-index: 11; height: 38px; padding: 0 12px;
+    border: none; border-radius: 10px; background: rgba(20,30,40,.62); color:#fff; font-size: 13px; cursor: pointer; }
+  #btn-reset:active { transform: scale(.97); }
+  #tip { position: fixed; z-index: 20; pointer-events: none; background: rgba(20,30,40,.86); color:#fff;
+    padding: 5px 9px; border-radius: 7px; font-size: 12px; display: none; white-space: nowrap; }
+  #joy { position: fixed; left: 22px; bottom: 26px; width: 104px; height: 104px; border-radius: 50%;
+    background: rgba(0,0,0,.22); z-index: 10; touch-action: none; display: none; }
+  #joy .knob { position: absolute; left:50%; top:50%; width:44px; height:44px; margin:-22px 0 0 -22px;
+    border-radius:50%; background: rgba(255,255,255,.88); box-shadow: 0 2px 8px rgba(0,0,0,.3); }
+  @media (pointer: coarse) { #joy { display:block; } .hud { max-width: 210px; font-size: 12px; } }
+  .loading { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; color:#33506a; font-size:15px; z-index:20; }
+  #err { position: fixed; inset: 0; z-index: 40; display: none; align-items: center; justify-content: center;
+    background: #eef5fa; color: #33475b; font-size: 15px; text-align: center; padding: 24px; }
+  .toast { position: fixed; left: 50%; bottom: 44px; transform: translateX(-50%); background: rgba(30,40,50,.85);
+    color:#fff; padding: 8px 14px; border-radius: 8px; font-size: 13px; z-index: 30; opacity: 0; transition: opacity .2s; pointer-events:none; }
+  .toast.show { opacity: 1; }
+  #labels { position: fixed; inset: 0; z-index: 9; pointer-events: none; overflow: hidden; }
+  #labels .lbl { position: absolute; transform: translate(-50%,-100%); pointer-events: auto; cursor: pointer;
+    background: rgba(20,30,40,.72); color:#fff; padding: 3px 8px; border-radius: 7px; font-size: 12px;
+    white-space: nowrap; border: 1px solid rgba(255,255,255,.28); user-select: none; }
+  #labels .lbl:hover { background: #2b7bd6; }
+  #routeInfo { position: fixed; left: 50%; bottom: 84px; transform: translateX(-50%); z-index: 12;
+    background: rgba(20,30,40,.7); color:#dff0ff; padding: 5px 12px; border-radius: 999px; font-size: 12px;
+    pointer-events:none; display:none; white-space:nowrap; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div class="hud">
+  <b>3D 校园 · C01–C03 + C06</b><br>
+  左键点地面：自动寻路 · 点建筑：前往<br>
+  移动：WASD / 方向键（取消寻路）<br>
+  视角：右键拖动 · 缩放：滚轮/双指<br>
+  <span style="opacity:.75">手机：左下摇杆 · 右下小地图</span>
+</div>
+<div class="badge">C01 灰盒 · C02 寻路 · C03 交互 · C06 UI</div>
+<div id="stats"></div>
+<canvas id="minimap" width="170" height="170"></canvas>
+<button id="btn-reset">回到角色</button>
+<div id="tip"></div>
+<div id="labels"></div>
+<div id="routeInfo"></div>
+<div id="joy"><div class="knob"></div></div>
+<div class="toast" id="toast"></div>
+<div class="loading" id="loading">正在加载 3D 场景…</div>
+<div id="err">当前浏览器不支持 WebGL，无法显示 3D 校园。<br>请更换浏览器或开启硬件加速。</div>
+
+<script type="module">
+import * as THREE from 'https://unpkg.com/three@0.160.0/build/three.module.js';
+
+const DISTRICTS = [
+  { id:'bank',     label:'课程学院',     color:0x649573 },
+  { id:'wenku',    label:'知识图书馆',   color:0xc59758 },
+  { id:'lab',      label:'题目草稿屋',   color:0x729ca0 },
+  { id:'social',   label:'社交广场',     color:0xb98a60 },
+  { id:'arena',    label:'好友竞技场',   color:0x9a9e67 },
+  { id:'study',    label:'专注营地',     color:0x72997e },
+  { id:'mistakes', label:'错题修复工坊', color:0xbc8b68 },
+  { id:'report',   label:'成长中心',     color:0x71958d }
+];
+// 小地图上的短名（2 字，塞得下）
+const SHORT = { bank:'学院', wenku:'图书', lab:'草稿', social:'社交', arena:'竞技', study:'自习', mistakes:'错题', report:'成长' };
+
+const app = document.getElementById('app');
+const loading = document.getElementById('loading');
+const toastEl = document.getElementById('toast');
+const errEl = document.getElementById('err');
+const labelsEl = document.getElementById('labels');
+let toastTimer = 0;
+function showToast(msg){ toastEl.textContent = msg; toastEl.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(()=>toastEl.classList.remove('show'), 1600); }
+
+// ── 渲染器（WebGL 失败 → 错误面板）──
+let renderer;
+try {
+  renderer = new THREE.WebGLRenderer({ antialias: true });
+} catch (e) {
+  loading.remove(); errEl.style.display = 'flex';
+  throw e;
+}
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+app.appendChild(renderer.domElement);
+renderer.domElement.addEventListener('webglcontextlost', (e)=>{ e.preventDefault(); errEl.style.display='flex'; }, false);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xbfe3f0);
+scene.fog = new THREE.Fog(0xbfe3f0, 60, 170);
+scene.add(new THREE.HemisphereLight(0xffffff, 0x445566, 1.0));
+const sun = new THREE.DirectionalLight(0xffffff, 0.9); sun.position.set(25,50,20); scene.add(sun);
+const camera = new THREE.PerspectiveCamera(50, window.innerWidth/window.innerHeight, 0.1, 600);
+
+// ── 地形 ──
+const island = new THREE.Mesh(new THREE.CylinderGeometry(38,42,3,56),
+  new THREE.MeshStandardMaterial({ color:0x8fcf9a, roughness:1 }));
+island.position.y = -1.5; scene.add(island);
+const sea = new THREE.Mesh(new THREE.PlaneGeometry(500,500),
+  new THREE.MeshStandardMaterial({ color:0x3b7fc4, transparent:true, opacity:0.85, roughness:0.4 }));
+sea.rotation.x = -Math.PI/2; sea.position.y = -3; scene.add(sea);
+
+const roadMat = new THREE.MeshStandardMaterial({ color:0xcbb994, roughness:1 });
+[[0,0.2,0,6,0.4,72],[0,0.2,0,72,0.4,6]].forEach(p=>{
+  const m = new THREE.Mesh(new THREE.BoxGeometry(p[3],p[4],p[5]), roadMat);
+  m.position.set(p[0],p[1],p[2]); scene.add(m);
+});
+
+const BRIDGE = { x:14, z:10, hx:5.5, hz:2.25, top:1.65 };
+const STEPV  = { x:-15, z:11, hx:4, hz:1.5, top:0.85 };
+const bridge = new THREE.Mesh(new THREE.BoxGeometry(BRIDGE.hx*2,0.7,BRIDGE.hz*2),
+  new THREE.MeshStandardMaterial({ color:0xb98a60 }));
+bridge.position.set(BRIDGE.x, BRIDGE.top-0.35, BRIDGE.z); scene.add(bridge);
+const stepM = new THREE.Mesh(new THREE.BoxGeometry(STEPV.hx*2,0.5,STEPV.hz*2), roadMat);
+stepM.position.set(STEPV.x, STEPV.top-0.25, STEPV.z); scene.add(stepM);
+
+// ── 八建筑 + 名称牌（收集到 buildings 供拾取）──
+function makeLabel(text){
+  const cv = document.createElement('canvas'); cv.width = 256; cv.height = 64;
+  const ctx = cv.getContext('2d');
+  ctx.fillStyle='rgba(10,20,30,.62)'; ctx.fillRect(0,0,256,64);
+  ctx.fillStyle='#fff'; ctx.font='bold 26px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText(text,128,32);
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map:new THREE.CanvasTexture(cv), depthTest:false }));
+  sp.scale.set(9,2.25,1); return sp;
+}
+const slots = [[0,0,27],[23,0,22],[-23,0,22],[27,0,-10],[-27,0,-10],[0,0,-27],[23,0,-24],[-23,0,-24]];
+const buildings = [];
+DISTRICTS.forEach((d,i)=>{
+  const s = slots[i]; if(!s) return;
+  const h = 8 + (i%3)*2.5;
+  const b = new THREE.Mesh(new THREE.BoxGeometry(8,h,8),
+    new THREE.MeshStandardMaterial({ color:d.color, roughness:0.9 }));
+  b.position.set(s[0], h/2, s[2]); b.userData = { id:d.id, label:d.label, baseColor:d.color, h }; scene.add(b);
+  buildings.push(b);
+  // HTML 浮动名牌：始终清晰、可点击前往
+  const el = document.createElement('div');
+  el.className = 'lbl'; el.textContent = d.label;
+  el.addEventListener('click', ev=>{ ev.stopPropagation(); gotoBuilding(b); });
+  labelsEl.appendChild(el); b.userData.el = el;
+});
+
+// ── 角色 + 落点环 ──
+const avatar = new THREE.Mesh(new THREE.BoxGeometry(1.6,3.2,1.6),
+  new THREE.MeshStandardMaterial({ color:0xff7043 }));
+avatar.position.set(0,1.6,0); scene.add(avatar);
+// 朝向标记（让转向可见）
+const nose = new THREE.Mesh(new THREE.BoxGeometry(0.5,0.5,0.35),
+  new THREE.MeshStandardMaterial({ color:0x2b3a4a }));
+nose.position.set(0, 0.2, 0.85); avatar.add(nose);
+const ring = new THREE.Mesh(new THREE.RingGeometry(0.9,1.2,32),
+  new THREE.MeshBasicMaterial({ color:0x2b7bd6, transparent:true, opacity:0.8, side:THREE.DoubleSide }));
+ring.rotation.x = -Math.PI/2; ring.position.y = 0.06; scene.add(ring);
+
+// 脚下圆形投影
+const shadow = new THREE.Mesh(new THREE.CircleGeometry(1.15, 24),
+  new THREE.MeshBasicMaterial({ color:0x000000, transparent:true, opacity:0.22, depthWrite:false }));
+shadow.rotation.x = -Math.PI/2; scene.add(shadow);
+
+// 目的地光柱 + 脉冲环
+const destGroup = new THREE.Group(); destGroup.visible = false; scene.add(destGroup);
+const destBeam = new THREE.Mesh(new THREE.CylinderGeometry(0.75,0.75,10,16,1,true),
+  new THREE.MeshBasicMaterial({ color:0x4aa3ff, transparent:true, opacity:0.26, side:THREE.DoubleSide, depthWrite:false }));
+destBeam.position.y = 5; destGroup.add(destBeam);
+const destRing = new THREE.Mesh(new THREE.RingGeometry(1.0,1.4,36),
+  new THREE.MeshBasicMaterial({ color:0x4aa3ff, transparent:true, opacity:0.9, side:THREE.DoubleSide, depthWrite:false }));
+destRing.rotation.x = -Math.PI/2; destRing.position.y = 0.06; destGroup.add(destRing);
+
+// 路径流动光点
+const FLOW_N = 8;
+const flowDots = [];
+const flowGeo = new THREE.SphereGeometry(0.17, 8, 8);
+const flowMat = new THREE.MeshBasicMaterial({ color:0x9fd0ff });
+for(let i=0;i<FLOW_N;i++){ const m = new THREE.Mesh(flowGeo, flowMat); m.visible = false; scene.add(m); flowDots.push({ mesh:m, t:i/FLOW_N }); }
+
+let routePoints = null, routeLen = 0, destLabel = '';
+const routeInfoEl = document.getElementById('routeInfo');
+let heading = 0;
+function faceDir(dx,dz){
+  if(dx*dx + dz*dz < 1e-5) return;
+  const target = Math.atan2(dx, dz);
+  let d = target - heading;
+  while(d > Math.PI) d -= Math.PI*2;
+  while(d < -Math.PI) d += Math.PI*2;
+  heading += d * 0.2;
+  avatar.rotation.y = heading;
+}
+function buildRoute(){
+  if(!path || !path.length){ routePoints = null; routeLen = 0; return; }
+  routePoints = [new THREE.Vector3(avatar.position.x, groundHeight(avatar.position.x,avatar.position.z)+0.6, avatar.position.z)]
+    .concat(path.map(c=>new THREE.Vector3(c.x, groundHeight(c.x,c.z)+0.6, c.z)));
+  routeLen = 0;
+  for(let i=0;i<routePoints.length-1;i++) routeLen += routePoints[i].distanceTo(routePoints[i+1]);
+}
+function sampleRoute(u){
+  if(!routePoints || routePoints.length < 2) return routePoints ? routePoints[0].clone() : new THREE.Vector3();
+  let d = u * routeLen;
+  for(let i=0;i<routePoints.length-1;i++){
+    const a = routePoints[i], b = routePoints[i+1], seg = a.distanceTo(b);
+    if(d <= seg) return new THREE.Vector3().lerpVectors(a, b, seg ? d/seg : 0);
+    d -= seg;
+  }
+  return routePoints[routePoints.length-1].clone();
+}
+
+// ── C02：可行走网格 + A* ──
+const CELL = 1.5, HALF = 40, GN = Math.ceil(HALF*2/CELL);
+const AV_R = 0.8;
+const walk = new Uint8Array(GN*GN);
+const obstacles = slots.map(s=>({ x:s[0], z:s[2], hx:4+AV_R+0.2, hz:4+AV_R+0.2 }));
+(function buildGrid(){
+  for(let iz=0; iz<GN; iz++) for(let ix=0; ix<GN; ix++){
+    const x = -HALF+(ix+0.5)*CELL, z = -HALF+(iz+0.5)*CELL;
+    let ok = Math.hypot(x,z) <= 37;
+    if(ok) for(let k=0;k<obstacles.length;k++){
+      const o = obstacles[k];
+      if(Math.abs(x-o.x) < o.hx && Math.abs(z-o.z) < o.hz){ ok = false; break; }
+    }
+    walk[iz*GN+ix] = ok ? 1 : 0;
+  }
+})();
+const cellOf = (x,z)=>({ ix: Math.max(0,Math.min(GN-1,Math.floor((x+HALF)/CELL))), iz: Math.max(0,Math.min(GN-1,Math.floor((z+HALF)/CELL))) });
+const centerOf = (ix,iz)=>({ x:-HALF+(ix+0.5)*CELL, z:-HALF+(iz+0.5)*CELL });
+const walkableAt = (ix,iz)=> ix>=0 && iz>=0 && ix<GN && iz<GN && walk[iz*GN+ix]===1;
+function nearestWalkable(ix,iz){
+  if(walkableAt(ix,iz)) return { ix, iz };
+  for(let r=1;r<14;r++) for(let dz=-r;dz<=r;dz++) for(let dx=-r;dx<=r;dx++){
+    if(Math.max(Math.abs(dx),Math.abs(dz)) !== r) continue;
+    if(walkableAt(ix+dx,iz+dz)) return { ix:ix+dx, iz:iz+dz };
+  }
+  return null;
+}
+function heuristic(ax,az,bx,bz){ const dx=Math.abs(ax-bx), dz=Math.abs(az-bz); return (dx+dz)+(Math.SQRT2-2)*Math.min(dx,dz); }
+function findPath(sx,sz,tx,tz){
+  const s0 = cellOf(sx,sz), s = nearestWalkable(s0.ix,s0.iz); if(!s) return null;
+  const g0 = cellOf(tx,tz), g = nearestWalkable(g0.ix,g0.iz); if(!g) return null;
+  const si = s.iz*GN+s.ix, gi = g.iz*GN+g.ix;
+  if(si === gi){ const c = centerOf(g.ix,g.iz); return [{x:c.x,z:c.z}]; }
+  const N = GN*GN;
+  const gScore = new Float32Array(N).fill(Infinity);
+  const fScore = new Float32Array(N).fill(Infinity);
+  const came = new Int32Array(N).fill(-1);
+  const open = new Uint8Array(N), closed = new Uint8Array(N);
+  gScore[si] = 0; fScore[si] = heuristic(s.ix,s.iz,g.ix,g.iz); open[si] = 1;
+  const list = [si];
+  while(list.length){
+    let bi = 0, bv = Infinity;
+    for(let i=0;i<list.length;i++){ const v = fScore[list[i]]; if(v < bv){ bv = v; bi = i; } }
+    const cur = list.splice(bi,1)[0];
+    if(cur === gi){
+      let out = [], c = cur;
+      while(c !== -1){ out.push(c); c = came[c]; }
+      out.reverse();
+      const pts = out.map(n=>{ const cc = centerOf(n%GN, Math.floor(n/GN)); return { x:cc.x, z:cc.z }; });
+      return smooth(pts);
+    }
+    closed[cur] = 1; open[cur] = 0;
+    const cx = cur%GN, cz = Math.floor(cur/GN);
+    for(let dz=-1;dz<=1;dz++) for(let dx=-1;dx<=1;dx++){
+      if(!dx && !dz) continue;
+      const nx = cx+dx, nz = cz+dz;
+      if(!walkableAt(nx,nz)) continue;
+      if(dx && dz && (!walkableAt(cx+dx,cz) || !walkableAt(cx,cz+dz))) continue;
+      const ni = nz*GN+nx;
+      if(closed[ni]) continue;
+      const step = (dx && dz) ? Math.SQRT2 : 1;
+      const ng = gScore[cur] + step;
+      if(ng < gScore[ni]){
+        came[ni] = cur; gScore[ni] = ng; fScore[ni] = ng + heuristic(nx,nz,g.ix,g.iz);
+        if(!open[ni]){ open[ni] = 1; list.push(ni); }
+      }
+    }
+  }
+  return null;
+}
+function clearLine(ax,az,bx,bz){
+  const steps = Math.ceil(Math.hypot(bx-ax,bz-az)/(CELL*0.5));
+  for(let i=1;i<steps;i++){
+    const t = i/steps, x = ax+(bx-ax)*t, z = az+(bz-az)*t;
+    const c = cellOf(x,z); if(!walkableAt(c.ix,c.iz)) return false;
+  }
+  return true;
+}
+function smooth(pts){
+  if(pts.length <= 2) return pts;
+  const out = [pts[0]]; let i = 0;
+  while(i < pts.length-1){
+    let j = pts.length-1;
+    while(j > i+1 && !clearLine(pts[i].x,pts[i].z,pts[j].x,pts[j].z)) j--;
+    out.push(pts[j]); i = j;
+  }
+  return out;
+}
+function groundHeight(x,z){
+  if(x>BRIDGE.x-BRIDGE.hx && x<BRIDGE.x+BRIDGE.hx && z>BRIDGE.z-BRIDGE.hz && z<BRIDGE.z+BRIDGE.hz) return BRIDGE.top;
+  if(x>STEPV.x-STEPV.hx && x<STEPV.x+STEPV.hx && z>STEPV.z-STEPV.hz && z<STEPV.z+STEPV.hz) return STEPV.top;
+  return 0;
+}
+
+// ── 相机环绕 ──
+const cam = { yaw: Math.PI, pitch: 0.95, dist: 50 };
+const UP = new THREE.Vector3(0,1,0);
+function updateCamera(){
+  const t = avatar.position, cp = Math.cos(cam.pitch), sp = Math.sin(cam.pitch);
+  camera.position.set(t.x + cam.dist*cp*Math.sin(cam.yaw), t.y + cam.dist*sp, t.z + cam.dist*cp*Math.cos(cam.yaw));
+  camera.lookAt(t.x, t.y, t.z);
+}
+
+// ── 键盘 ──
+const keys = {};
+window.addEventListener('keydown', e=>{
+  const tag = document.activeElement && document.activeElement.tagName;
+  if(tag === 'INPUT' || tag === 'TEXTAREA') return;
+  const k = (e.key||'').toLowerCase();
+  if(['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright'].includes(k)){ keys[k] = true; e.preventDefault(); }
+});
+window.addEventListener('keyup', e=>{ const k=(e.key||'').toLowerCase(); if(k in keys) keys[k]=false; });
+window.addEventListener('blur', ()=>{ for(const k in keys) keys[k]=false; joy.dx=joy.dy=0; joystickKnob.style.transform=''; });
+
+// ── 点击/悬停拾取 ──
+const groundPlane = new THREE.Plane(new THREE.Vector3(0,1,0), 0);
+const raycaster = new THREE.Raycaster();
+const tipEl = document.getElementById('tip');
+let path = null, pathLine = null, hovered = null;
+
+function clearPath(){
+  path = null; destLabel = '';
+  if(pathLine){ scene.remove(pathLine); pathLine.geometry.dispose(); pathLine.material.dispose(); pathLine = null; }
+  destGroup.visible = false;
+  flowDots.forEach(f=>{ f.mesh.visible = false; });
+  routePoints = null; routeLen = 0;
+  routeInfoEl.style.display = 'none';
+}
+function drawPath(){
+  if(pathLine){ scene.remove(pathLine); pathLine.geometry.dispose(); pathLine.material.dispose(); pathLine = null; }
+  if(!path || !path.length) return;
+  const pts = [new THREE.Vector3(avatar.position.x, avatar.position.y, avatar.position.z)]
+    .concat(path.map(c=>new THREE.Vector3(c.x, groundHeight(c.x,c.z)+1.7, c.z)));
+  pathLine = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),
+    new THREE.LineBasicMaterial({ color:0x2b7bd6, transparent:true, opacity:0.75 }));
+  scene.add(pathLine);
+  // 目的地光柱
+  const last = path[path.length-1];
+  destGroup.position.set(last.x, groundHeight(last.x,last.z), last.z);
+  destGroup.visible = true;
+  // 流动路径 + 剩余信息
+  buildRoute();
+  flowDots.forEach(f=>{ f.mesh.visible = true; });
+  routeInfoEl.style.display = 'block';
+}
+function setHover(b){
+  if(hovered === b) return;
+  if(hovered) hovered.material.emissive.setHex(0x000000);
+  hovered = b;
+  if(hovered) hovered.material.emissive.setHex(0x2a3340);
+}
+function gotoBuilding(b){
+  const dx = avatar.position.x - b.position.x, dz = avatar.position.z - b.position.z;
+  const m = Math.hypot(dx,dz) || 1;
+  const tx = b.position.x + dx/m*(4+1.6), tz = b.position.z + dz/m*(4+1.6);
+  const p = findPath(avatar.position.x, avatar.position.z, tx, tz);
+  if(!p || !p.length){ showToast('目的地不可达'); clearPath(); return; }
+  destLabel = b.userData.label;
+  path = p; drawPath(); showToast('前往：' + b.userData.label);
+}
+
+let drag = null, dragging = false;
+renderer.domElement.addEventListener('contextmenu', e=>e.preventDefault());
+renderer.domElement.addEventListener('pointerdown', e=>{
+  if(e.button === 2 || e.button === 1){ drag = { x:e.clientX, y:e.clientY, yaw:cam.yaw, pitch:cam.pitch }; dragging = true; }
+  else { drag = { x:e.clientX, y:e.clientY }; dragging = false; }
+});
+window.addEventListener('pointermove', e=>{
+  if(drag){
+    const dx = e.clientX-drag.x, dy = e.clientY-drag.y;
+    if(!dragging && (e.buttons === 2 || Math.abs(dx)+Math.abs(dy) > 6)) dragging = true;
+    if(dragging && drag.yaw !== undefined){
+      cam.yaw = drag.yaw - dx*0.005;
+      cam.pitch = Math.max(0.32, Math.min(1.35, drag.pitch - dy*0.005));
+      updateCamera();
+    }
+    return;
+  }
+  // 悬停建筑 → 名称提示（C06 地点名）
+  const r = renderer.domElement.getBoundingClientRect();
+  const ndc = new THREE.Vector2(((e.clientX-r.left)/r.width)*2-1, -(((e.clientY-r.top)/r.height)*2-1));
+  raycaster.setFromCamera(ndc, camera);
+  const hit = raycaster.intersectObjects(buildings, false)[0];
+  setHover(hit ? hit.object : null);
+  if(hit){
+    tipEl.style.display = 'block'; tipEl.style.left = (e.clientX+14)+'px'; tipEl.style.top = (e.clientY+14)+'px';
+    tipEl.textContent = hit.object.userData.label + ' · 点击前往';
+  } else tipEl.style.display = 'none';
+});
+window.addEventListener('pointerup', e=>{
+  if(drag && !dragging && e.button === 0){
+    const r = renderer.domElement.getBoundingClientRect();
+    const ndc = new THREE.Vector2(((e.clientX-r.left)/r.width)*2-1, -(((e.clientY-r.top)/r.height)*2-1));
+    raycaster.setFromCamera(ndc, camera);
+    const bh = raycaster.intersectObjects(buildings, false)[0];
+    if(bh){ gotoBuilding(bh.object); }
+    else {
+      const g = new THREE.Vector3();
+      if(raycaster.ray.intersectPlane(groundPlane, g)){
+        const p = findPath(avatar.position.x, avatar.position.z, g.x, g.z);
+        if(!p || !p.length){ showToast('目的地不可达'); clearPath(); }
+        else { destLabel = ''; path = p; drawPath(); }
+      }
+    }
+  }
+  drag = null; dragging = false;
+});
+renderer.domElement.addEventListener('wheel', e=>{
+  e.preventDefault();
+  cam.dist = Math.max(22, Math.min(85, cam.dist*(e.deltaY>0?1.1:0.9)));
+  updateCamera();
+}, { passive:false });
+
+// ── 手机摇杆 ──
+const joy = { dx:0, dy:0, id:null, cx:0, cy:0 };
+const joyEl = document.getElementById('joy');
+const joystickKnob = joyEl.querySelector('.knob');
+joyEl.addEventListener('pointerdown', e=>{
+  joy.id = e.pointerId; const r = joyEl.getBoundingClientRect();
+  joy.cx = r.left+r.width/2; joy.cy = r.top+r.height/2;
+  joyEl.setPointerCapture(e.pointerId); e.stopPropagation();
+});
+joyEl.addEventListener('pointermove', e=>{
+  if(e.pointerId !== joy.id) return;
+  let dx = e.clientX-joy.cx, dy = e.clientY-joy.cy;
+  const max = 36, m = Math.hypot(dx,dy);
+  if(m > max){ dx = dx/m*max; dy = dy/m*max; }
+  joystickKnob.style.transform = `translate(${dx}px,${dy}px)`;
+  joy.dx = dx/max; joy.dy = dy/max;
+});
+const joyEnd = e=>{ if(e.pointerId !== joy.id) return; joy.id = null; joy.dx=joy.dy=0; joystickKnob.style.transform=''; };
+joyEl.addEventListener('pointerup', joyEnd);
+joyEl.addEventListener('pointercancel', joyEnd);
+
+// ── 回到角色按钮（C06 触屏控件）──
+document.getElementById('btn-reset').addEventListener('click', ()=>{
+  cam.yaw = Math.PI; cam.pitch = 0.95; cam.dist = 50; updateCamera();
+  showToast('视角已复位');
+});
+
+// ── 小地图（C06）──
+const mm = document.getElementById('minimap');
+const mctx = mm.getContext('2d');
+const MMS = 170, dpr = Math.min(window.devicePixelRatio || 1, 2);
+mm.width = MMS*dpr; mm.height = MMS*dpr; mm.style.width = MMS+'px'; mm.style.height = MMS+'px';
+mctx.setTransform(dpr,0,0,dpr,0,0);
+const MMR = HALF;
+function mmX(x){ return (x+MMR)/(2*MMR)*MMS; }
+function mmZ(z){ return (z+MMR)/(2*MMR)*MMS; }
+function drawMinimap(){
+  mctx.clearRect(0,0,MMS,MMS);
+  mctx.fillStyle = 'rgba(8,18,28,.55)'; mctx.fillRect(0,0,MMS,MMS);
+  // 岛
+  mctx.beginPath(); mctx.arc(MMS/2, MMS/2, 37/(2*MMR)*MMS, 0, Math.PI*2);
+  mctx.fillStyle = '#8fcf9a'; mctx.fill();
+  // 建筑
+  buildings.forEach(b=>{
+    const hx = 4/(2*MMR)*MMS;
+    const x = mmX(b.position.x), y = mmZ(b.position.z);
+    mctx.fillStyle = '#' + b.userData.baseColor.toString(16).padStart(6,'0');
+    mctx.fillRect(x-hx, y-hx, hx*2, hx*2);
+    const short = SHORT[b.userData.id] || '';
+    mctx.font = '8px system-ui, sans-serif';
+    mctx.textAlign = 'center'; mctx.textBaseline = 'middle';
+    mctx.lineWidth = 2.4; mctx.strokeStyle = 'rgba(8,16,24,.9)'; mctx.strokeText(short, x, y);
+    mctx.fillStyle = '#fff'; mctx.fillText(short, x, y);
+  });
+  // 路径
+  if(path && path.length){
+    mctx.beginPath(); mctx.moveTo(mmX(avatar.position.x), mmZ(avatar.position.z));
+    path.forEach(c=>mctx.lineTo(mmX(c.x), mmZ(c.z)));
+    mctx.strokeStyle = '#4aa3ff'; mctx.lineWidth = 1.6; mctx.stroke();
+  }
+  // 角色
+  mctx.beginPath(); mctx.arc(mmX(avatar.position.x), mmZ(avatar.position.z), 3.2, 0, Math.PI*2);
+  mctx.fillStyle = '#ff7043'; mctx.fill();
+  mctx.strokeStyle = '#fff'; mctx.lineWidth = 1; mctx.stroke();
+}
+// 小地图点击建筑方块 → 自动寻路
+mm.style.cursor = 'pointer';
+mm.addEventListener('click', e=>{
+  const r = mm.getBoundingClientRect();
+  const x = (e.clientX - r.left) / r.width * MMS;
+  const y = (e.clientY - r.top) / r.height * MMS;
+  let best = null, bd = 20;
+  buildings.forEach(b=>{
+    const d = Math.hypot(mmX(b.position.x) - x, mmZ(b.position.z) - y);
+    if(d < bd){ bd = d; best = b; }
+  });
+  if(best) gotoBuilding(best);
+});
+
+// ── 性能统计（C06）──
+const statsEl = document.getElementById('stats');
+let fpsAcc = 0, fpsFrames = 0, fpsShown = 0, statAcc = 0;
+function updateStats(dt){
+  fpsAcc += dt; fpsFrames++;
+  if(fpsAcc >= 0.5){
+    fpsShown = Math.round(fpsFrames/fpsAcc); fpsAcc = 0; fpsFrames = 0;
+    const info = renderer.info.render;
+    statsEl.textContent = `FPS ${fpsShown}\ncalls ${info.calls}\ntris ${info.triangles}`;
+  }
+}
+
+// ── HTML 名牌跟随（C06 地点名）──
+const _lv = new THREE.Vector3();
+function updateLabels(){
+  const w = window.innerWidth, h = window.innerHeight;
+  buildings.forEach(b=>{
+    const el = b.userData.el; if(!el) return;
+    _lv.set(b.position.x, b.userData.h + 2.0, b.position.z).project(camera);
+    if(_lv.z > 1){ el.style.display = 'none'; return; }
+    el.style.display = 'block';
+    el.style.left = ((_lv.x*0.5+0.5)*w) + 'px';
+    el.style.top  = ((-_lv.y*0.5+0.5)*h) + 'px';
+  });
+}
+
+// ── 主循环 ──
+const clock = new THREE.Clock();
+function tick(){
+  requestAnimationFrame(tick);
+  const dt = Math.min(clock.getDelta(), 0.05);
+  const speed = 14;
+
+  let ix = 0, iz = 0;
+  if(keys['w'] || keys['arrowup']) iz -= 1;
+  if(keys['s'] || keys['arrowdown']) iz += 1;
+  if(keys['a'] || keys['arrowleft']) ix -= 1;
+  if(keys['d'] || keys['arrowright']) ix += 1;
+  ix += joy.dx; iz += joy.dy;
+  const mag = Math.hypot(ix,iz); if(mag > 1){ ix /= mag; iz /= mag; }
+  const moving = mag > 0.05;
+
+  if(moving){
+    clearPath();
+    const fwd = new THREE.Vector3().subVectors(avatar.position, camera.position); fwd.y=0; fwd.normalize();
+    const right = new THREE.Vector3().crossVectors(fwd, UP).normalize();
+    const mv = new THREE.Vector3().addScaledVector(fwd, -iz).addScaledVector(right, ix);
+    faceDir(mv.x, mv.z);
+    const nx = avatar.position.x + mv.x*speed*dt, nz = avatar.position.z + mv.z*speed*dt;
+    const c = cellOf(nx,nz);
+    if(walkableAt(c.ix,c.iz)){ avatar.position.x = nx; avatar.position.z = nz; }
+    else {
+      const cx = cellOf(nx, avatar.position.z), cz = cellOf(avatar.position.x, nz);
+      if(walkableAt(cx.ix,cx.iz)) avatar.position.x = nx;
+      else if(walkableAt(cz.ix,cz.iz)) avatar.position.z = nz;
+    }
+  } else if(path && path.length){
+    const t = path[0];
+    const d = new THREE.Vector3(t.x-avatar.position.x, 0, t.z-avatar.position.z);
+    const len = d.length();
+    faceDir(d.x, d.z);
+    if(len < 0.35) path.shift();
+    else avatar.position.addScaledVector(d.normalize(), Math.min(speed*dt, len));
+    if(!path.length){ const lbl = destLabel; clearPath(); showToast(lbl ? ('已到达 ' + lbl) : '已到达目的地'); }
+  }
+
+  const gy = groundHeight(avatar.position.x, avatar.position.z) + 1.6;
+  avatar.position.y += (gy - avatar.position.y) * Math.min(1, dt*10);
+
+  ring.position.set(avatar.position.x, groundHeight(avatar.position.x, avatar.position.z)+0.06, avatar.position.z);
+  shadow.position.set(avatar.position.x, groundHeight(avatar.position.x, avatar.position.z)+0.03, avatar.position.z);
+
+  // 目的地脉冲 + 流动点 + 剩余距离
+  const now = performance.now()/1000;
+  if(destGroup.visible){
+    const s = 1 + 0.22*Math.sin(now*5);
+    destRing.scale.set(s, s, 1);
+    destBeam.material.opacity = 0.16 + 0.12*(0.5+0.5*Math.sin(now*3));
+  }
+  if(path && path.length && routePoints){
+    flowDots.forEach(f=>{ f.t += dt*0.35; if(f.t > 1) f.t -= 1; f.mesh.position.copy(sampleRoute(f.t)); });
+    let rem = 0, px = avatar.position.x, pz = avatar.position.z;
+    for(const c of path){ rem += Math.hypot(c.x-px, c.z-pz); px = c.x; pz = c.z; }
+    routeInfoEl.textContent = `剩余约 ${Math.round(rem)} 米 · 约 ${Math.max(1, Math.round(rem/speed))} 秒`;
+  }
+  updateCamera();
+  renderer.render(scene, camera);
+  updateLabels();
+  drawMinimap();
+  updateStats(dt);
+}
+
+window.addEventListener('resize', ()=>{
+  camera.aspect = window.innerWidth/window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+updateCamera();
+loading.remove();
+tick();
+</script>
+</body>
+</html>
