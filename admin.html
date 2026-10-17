@@ -144,6 +144,19 @@
   var TOKEN_KEY = 'xwy_admin_token';
   var H = function () { var t = localStorage.getItem(TOKEN_KEY); return t ? { 'Authorization': 'Bearer ' + t } : {}; };
 
+  /* 接口根地址，按优先级：
+   *   1) ?api=https://后端域名      —— 在 GitHub Pages 这类纯静态托管上打开时必须用它
+   *   2) window.WG_DEPLOY.apiBase    —— 仓库里若有 js/deploy.js，就把配置放这里
+   *   3) 同源                        —— 直接用后端域名打开（后端自己伺服这个页面）
+   * 只取 origin：路径、查询串一律忽略，避免拼出奇怪的地址。 */
+  var API_BASE = (function () {
+    var raw = new URLSearchParams(location.search).get('api')
+      || (window.WG_DEPLOY && window.WG_DEPLOY.apiBase) || '';
+    if (!raw) return '';
+    try { return new URL(raw).origin; } catch (e) { return ''; }
+  })();
+  var STATIC_HOST = /\.github\.io$/.test(location.hostname) || /\.gitee\.io$/.test(location.hostname);
+
   var $ = function (id) { return document.getElementById(id); };
   var el = function (tag, text, cls) {
     var n = document.createElement(tag);
@@ -159,7 +172,7 @@
   };
 
   function api(method, path, body) {
-    return fetch(path, {
+    return fetch(API_BASE + path, {
       method: method,
       headers: Object.assign({ 'Content-Type': 'application/json' }, H()),
       body: body === undefined ? undefined : JSON.stringify(body)
@@ -197,7 +210,8 @@
     $('gate').hidden = true;
     $('bar').hidden = false;
     $('main').hidden = false;
-    $('who').textContent = '当前：' + user.username + (user.nick && user.nick !== user.username ? '（' + user.nick + '）' : '');
+    $('who').textContent = '当前：' + user.username + (user.nick && user.nick !== user.username ? '（' + user.nick + '）' : '')
+      + (API_BASE ? ' · 后端 ' + API_BASE : '');
     refreshAll();
   }
 
@@ -431,6 +445,17 @@
 
   /* 有 token 就先验一下还能不能用；过期或角色不对就退回登录页 */
   (function boot() {
+    /* 纯静态托管（GitHub Pages / Gitee Pages）上没有后端，同源请求必然打空。
+       这种情况直接说清楚怎么接后端，而不是让人对着「账号或密码错误」猜。 */
+    if (!API_BASE && STATIC_HOST) {
+      showLogin('这个地址只是纯静态托管，页面连不到后端。请改用后端的地址打开（例如 https://你的后端域名/admin.html），'
+        + '或者在当前地址后面加上 ?api=https://你的后端域名 。');
+      return;
+    }
+    if (!API_BASE && location.protocol === 'file:') {
+      showLogin('不要直接双击打开这个文件。请通过后端地址访问，或加 ?api=http://127.0.0.1:3000 。');
+      return;
+    }
     if (!localStorage.getItem(TOKEN_KEY)) { showLogin(); return; }
     api('GET', '/api/auth/me').then(function (d) {
       if (d.ok && d.user && d.user.role === 'admin') { showConsole(d.user); return; }

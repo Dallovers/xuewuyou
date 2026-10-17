@@ -7,6 +7,29 @@
 token 存在 `localStorage` 的 `xwy_admin_token`，与主站的 `xwy_token` 相互独立——
 在后台登录不会影响主站会话，退出主站也不会把后台踢下线。
 
+## 在不同地址上打开
+
+后台是一个静态页 + 一组接口，两者不同源时需要告诉页面后端在哪。
+
+| 打开方式 | 地址 | 说明 |
+|---|---|---|
+| 后端自己伺服（推荐） | `https://<后端域名>/admin.html` | 同源，什么都不用配 |
+| 本地 | `http://127.0.0.1:3000/admin.html` | 同上 |
+| GitHub Pages（纯静态） | `https://dallovers.github.io/xuewuyou/admin.html?api=https://xuewuyou-campus.onrender.com` | 必须带 `?api=`，否则页面不知道后端在哪 |
+
+`?api=` 只取域名部分（origin），后面的路径和查询串会被丢掉。也支持在仓库里放一个 `js/deploy.js`：
+
+```js
+window.WG_DEPLOY = { apiBase: 'https://xuewuyou-campus.onrender.com' };
+```
+
+页面会按 `?api=` → `WG_DEPLOY.apiBase` → 同源的顺序取值。在 Pages 上既没有 `?api=` 也没有
+`deploy.js` 时，页面会直接说明「连不到后端」，而不是假装登录失败。
+
+**前提**：那台后端必须已经部署了包含管理模块的版本。后端若是旧构建，
+`/api/admin/login` 会返回 404「接口不存在」——这不是账号问题，是版本问题。
+
+
 ## 怎么让第一个账号成为管理员
 
 后台不提供「第一个注册的人自动是管理员」——那样等于把后台送给第一个抢注的人。必须手动指定：
@@ -78,5 +101,19 @@ server/data/users.json        账号（含 role / banned / mutedUntil 等处罚�
 server/data/admin_audit.json  { log: [{at, actor, action, target, detail}, ...] }
 ```
 
-新增 store 集合时**必须**在 `server/lib/store.js` 的 `FILES` 里登记，
-否则 `path.join(DATA_DIR, undefined)` 会直接抛错——`adminAudit` 就是这样踩过一次。
+### ⚠ 新增存储集合要改两处
+
+存储层有两套实现，各自的集合白名单是**分开**的：
+
+| 存储 | 文件 | 要登记的位置 |
+|---|---|---|
+| 本地文件（默认） | `server/lib/store.js` | `FILES` 映射 |
+| PostgreSQL（设了 `DATABASE_URL`，线上就是这套） | `server/lib/store-postgres.js` | `names` 数组 |
+
+漏了文件版：`path.join(DATA_DIR, undefined)` 直接抛错。
+漏了 Postgres 版：`read()` 抛「未知数据表」，**请求整笔回滚**——表现是本地全绿、线上每次处罚 500。
+
+`adminAudit` 两处都漏过一次，所以 `test/postgres.test.js` 里有一条专门跑真实
+Postgres 的后台用例（`管理员后台在 PostgreSQL 下可用`），别删。CI 的 `verify` 任务会带
+`DATABASE_TEST_URL` 起一个 postgres:17 来跑它。
+
