@@ -37,42 +37,131 @@ var WG_API = (function () {
   }
   function onAuthChange(fn) { listeners.push(fn); }
 
-  async function req(method, path, body) {
-    if (staticOnly()) throw Object.assign(new Error('云端服务尚未连接，目前数据仅保存在本浏览器'),{status:503});
+  /* ===== 请求策略（A01） =====
+   * 后端在 Render 免费实例上，休眠后首次请求约需 30 秒唤醒（实测 31.07s；
+   * 唤醒后 0.2~0.5s）。因此：单次超时放宽到 60 秒覆盖冷启动，但第 3 秒就
+   * 给出"正在唤醒"的提示，不让用户无反馈地干等；失败一律有上限地退避重试，
+   * 4xx 一律不重试；冷启动超时 / 断网 / 鉴权失败分别给出不同错误码与文案。 */
+  /* 时序参数。测试可用 window.WG_API_TIMING 注入更短的取值，生产环境一律取默认值。 */
+  var T = (typeof window !== 'undefined' && window.WG_API_TIMING) || {};
+  var REQ_TIMEOUT_MS = T.reqTimeout || 60000;   // 单次请求上限，须覆盖冷启动
+  var WAKE_HINT_MS = T.wakeHint || 3000;        // 超过此时间未响应即提示"正在唤醒"
+  var MAX_RETRIES = T.maxRetries == null ? 3 : T.maxRetries;  // 最多重试次数（不含首次）
+  var RETRY_TOTAL_MS = T.retryTotal || 45000;   // 重试阶段的累计时长上限
+  var RETRY_BASE_MS = T.retryBase || 800;       // 退避基数：0.8s / 1.6s / 3.2s
+
+  /* 状态回调：waking（正在唤醒）/ ready（已恢复）/ retrying（退避重试中）/
+     unreachable（最终不可达，此时应由界面询问用户是否改用本地模式）。
+     返回值 true 表示该监听者已自行处理提示，不会再落到默认 toast。 */
+  var statusListeners = [];
+  function onStatus(fn) {
+    statusListeners.push(fn);
+    return function off() { var i = statusListeners.indexOf(fn); if (i >= 0) statusListeners.splice(i, 1); };
+  }
+  function notify(state, detail) {
+    var handled = false;
+    statusListeners.forEach(function (fn) { try { if (fn(state, detail) === true) handled = true; } catch (e) {} });
+    if (!handled && detail && typeof window !== 'undefined' && typeof window.toast === 'function') {
+      try { window.toast(detail, ''); } catch (e) {}
+    }
+  }
+  function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+
+  /* 归一化异常：区分"冷启动/请求超时"与"真正的网络不可达"，其余原样透传 */
+  function toError(e) {
+    if (e instanceof Error && e.status !== undefined) return e;
+    var err;
+    if (e && (e.name === 'TimeoutError' || e.name === 'AbortError')) {
+      err = new Error('后端响应超时：服务可能正在从休眠中唤醒，请稍后重试');
+      err.code = 'COLD_START_TIMEOUT';
+    } else {
+      err = new Error('网络连接失败：请检查网络，或确认后端服务已启动');
+      err.code = 'NET_UNREACHABLE';
+    }
+    err.status = 0;
+    return err;
+  }
+
+  /* 只重试"可能自己恢复"的失败：超时 / 断网 / 网关级错误。4xx 属确定性错误，重试无意义 */
+  function isRetriable(e) {
+    if (!e) return false;
+    if (e.code === 'STATIC_ONLY' || e.code === 'AUTH_FAILED' ||
+        e.code === 'SESSION_CHANGED' || e.code === 'BAD_REQUEST') return false;
+    if (typeof e.status !== 'number') return true;
+    return e.status === 0 || e.status === 502 || e.status === 503 || e.status === 504;
+  }
+
+  async function req(method, path, body, options) {
+    options = options || {};
+    if (staticOnly()) {
+      var se = new Error('云端服务尚未连接，目前数据仅保存在本浏览器');
+      se.status = 503; se.code = 'STATIC_ONLY';
+      throw se;
+    }
     var headers = { 'Content-Type': 'application/json' };
     var token = getToken();
     if (token) headers.Authorization = 'Bearer ' + token;
-    var opts = { method: method, headers: headers, signal:AbortSignal.timeout(90000) };
+    var opts = { method: method, headers: headers };
     if (body !== undefined) opts.body = JSON.stringify(body);
-    var res, data;
-    try {
-      res = await fetch(BASE + path, opts);
-    } catch (e) {
-      /* 网络层失败（断网/后端未启动/CORS）统一为 status 0 的连接错误 */
-      var ne = new Error('网络连接失败，请检查后端服务是否已启动');
-      ne.code = 'NET';
-      ne.status = 0;
-      throw ne;
+
+    var maxRetries = options.noRetry ? 0 : MAX_RETRIES;
+    var startedAt = Date.now();
+    var hinted = false;
+    var attempt = 0;
+
+    for (;;) {
+      attempt += 1;
+      var hintTimer = null;
+      if (!hinted) {
+        hintTimer = setTimeout(function () {
+          if (hinted) return;
+          hinted = true;
+          notify('waking', '后端正在唤醒，首次访问约需 30 秒，请稍候…');
+        }, WAKE_HINT_MS);
+      }
+      try {
+        opts.signal = (typeof AbortSignal !== 'undefined' && AbortSignal.timeout)
+          ? AbortSignal.timeout(REQ_TIMEOUT_MS) : undefined;
+        var res = await fetch(BASE + path, opts);
+        if (hintTimer) { clearTimeout(hintTimer); hintTimer = null; }
+        if (hinted) { hinted = false; notify('ready', null); }
+        var data;
+        try {
+          data = await res.json();
+        } catch (pe) {
+          var be = new Error('后端返回了无效响应，请检查服务地址或稍后重试');
+          be.status = 502; be.code = 'BAD_RESPONSE';
+          throw be;
+        }
+        if (!res.ok) {
+          var err = new Error(data.error || ('请求失败(' + res.status + ')'));
+          err.code = data.code || (res.status === 401 ? 'AUTH_FAILED' : ('HTTP_' + res.status));
+          err.status = res.status;
+          if (res.status === 401) logout(false); // token 失效自动登出
+          throw err;
+        }
+        return data;
+      } catch (e) {
+        if (hintTimer) { clearTimeout(hintTimer); hintTimer = null; }
+        var fe = toError(e);
+        if (attempt > maxRetries || !isRetriable(fe) || (Date.now() - startedAt) >= RETRY_TOTAL_MS) {
+          if (fe.code === 'COLD_START_TIMEOUT' || fe.code === 'NET_UNREACHABLE') notify('unreachable', null);
+          throw fe;
+        }
+        notify('retrying', null);
+        await sleep(Math.min(RETRY_BASE_MS * Math.pow(2, attempt - 1), 5000));
+      }
     }
-    data = await res.json().catch(function () { throw Object.assign(new Error('后端返回了无效响应，请检查服务地址或稍后重试'),{status:502}); });
-    if (!res.ok) {
-      var err = new Error(data.error || ('请求失败(' + res.status + ')'));
-      err.code = data.code || 'ERR';
-      err.status = res.status;
-      if (res.status === 401) logout(false); // token 失效自动登出
-      throw err;
-    }
-    return data;
   }
 
-  /* 判断是否为"后端不可达"（纯静态托管 / 后端未启动 / 网关错误）。
-     这类错误会被 auth 流程捕获并自动降级为本地账号；业务性 4xx 不降级。 */
+  /* 判断是否为"后端不可达"（纯静态托管 / 后端未启动 / 网关错误 / 冷启动超时）。
+     这类错误会被 auth 流程捕获。业务性 4xx 与鉴权错误不再归入此类：
+     403 是权限问题、404 可能是接口版本不匹配，把它们当成"后端挂了"会掩盖真实故障。 */
   function isBackendDown(e) {
     if (!e) return true;
-    if (!e.status) return true; // 0 / undefined：网络层失败
-    return e.status === 403 || e.status === 404 || e.status === 405 ||
-      e.status === 500 || e.status === 502 || e.status === 503 ||
-      /fetch|network|failed|not found|请求失败/i.test(e.message || '');
+    if (e.code === 'STATIC_ONLY') return true;
+    if (!e.status) return true; // 0 / undefined：网络层失败或冷启动超时
+    return e.status === 500 || e.status === 502 || e.status === 503 || e.status === 504;
   }
 
   /* ---- 认证 ---- */
@@ -224,6 +313,8 @@ var WG_API = (function () {
   return {
     getBase: function(){return BASE;},
     req: req,
+    onStatus: onStatus,
+    isBackendDown: isBackendDown,
     isLoggedIn: isLoggedIn,
     isCloudSession: isCloudSession,
     getToken: getToken,
