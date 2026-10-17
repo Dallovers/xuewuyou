@@ -90,3 +90,31 @@ A 在本文件记录最终字段、错误码和提交去重策略，负责服务
 - **题号失效**：读取时过滤失效题号，其余进度保留，并在响应中给出 `droppedQids` 与 `note`，不静默清空整组、也不自动标记完成。
 - **容量**：每人最多保留 20 个会话，超出时优先丢弃最旧的已结束会话。
 - **重复题号**：创建时按首次出现去重（同一题在同一会话里只能出现一次）。
+
+### 客户端模块（`js/practice-resume.js`）
+
+不含任何 DOM 操作，界面层直接调用：
+
+| 方法 | 说明 |
+|---|---|
+| `available()` | 是否可用；未登录或纯静态托管时为 `false`，其余方法一律 no-op |
+| `create({qids, topic, moduleId})` | 创建会话；`clientRequestId` 持久化在 localStorage，刷新/重试复用同一个键 |
+| `restore()` | 取最近更新的进行中会话，没有则 `null` |
+| `load(id)` | 读取指定会话 |
+| `current()` | 当前内存中的会话 |
+| `setIndex(i)` / `setDraft(qid, draft)` / `markSubmitted(qid)` | 记录本地增量，**不发请求、不写作答记录** |
+| `scheduleSave(patch)` | 节流保存（默认 1.2 秒） |
+| `save(patch)` / `flush()` | 立即保存；遇 409 自动重新拉取、合并草稿后重试一次 |
+| `finish(status)` | 先 flush 再结束会话；`'finished'` 或 `'abandoned'` |
+| `onChange(fn)` | 订阅 `created` / `restored` / `saved` / `conflict` / `finished` |
+| `clear()` | 清空本地状态；账号切换时由 `onAuthChange` 自动调用 |
+
+**建议的界面接入（B）**
+
+1. 进入练习前 `await WG_Practice.restore()`；若有会话且题序一致，从 `currentIndex` 继续，并把 `drafts` 回填到选项/输入框；
+2. 每次切题调 `setIndex(i)` + `scheduleSave()`；
+3. 作答成功后调 `markSubmitted(qid)` —— **只做标记，不要再额外调一次作答记录接口**，重复计分就是这样产生的；
+4. 练完调 `finish('finished')`，主动退出调 `finish('abandoned')`；
+5. 收到 `conflict` 事件时提示「进度已在其他窗口更新」，并以回调返回的会话为准。
+
+`index.html` 中加载本文件的 `<script>` 引用，按协作规约由 B 在新文件合入后添加。
