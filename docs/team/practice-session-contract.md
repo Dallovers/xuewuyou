@@ -117,4 +117,4 @@ A 在本文件记录最终字段、错误码和提交去重策略，负责服务
 4. 练完调 `finish('finished')`，主动退出调 `finish('abandoned')`；
 5. 收到 `conflict` 事件时提示「进度已在其他窗口更新」，并以回调返回的会话为准。
 
-`index.html` 中加载本文件的 `<script>` 引用，按协作规约由 B 在新文件合入后添加。
+`index.html` 中已在 `js/api.js` 之后加入 `js/practice-resume.js` 的 `<script defer>` 引用（该文件依赖 `WG_API`，必须排在其后）。B 接入时不需要再动加载顺序。
