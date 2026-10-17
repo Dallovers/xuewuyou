@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>学无忧 · 管理后台</title>
+<style>
+  :root { --ink:#1a1a1a; --sub:#6b6b6b; --line:#e3e3e3; --bg:#fafafa; --card:#fff;
+          --accent:#2f6fed; --danger:#d64545; --warn:#b8860b; --ok:#2f8a4d; }
+  * { box-sizing: border-box; }
+  body { margin:0; font:14px/1.6 -apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+         color:var(--ink); background:var(--bg); }
+  header { background:var(--card); border-bottom:1px solid var(--line); padding:14px 20px;
+           display:flex; align-items:center; gap:14px; position:sticky; top:0; z-index:5; }
+  header h1 { font-size:16px; margin:0; font-weight:600; }
+  header .who { color:var(--sub); font-size:13px; }
+  header .spacer { flex:1; }
+  main { padding:20px; max-width:1180px; margin:0 auto; }
+  .cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:12px; margin-bottom:20px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:14px; }
+  .card .n { font-size:24px; font-weight:600; line-height:1.2; }
+  .card .l { color:var(--sub); font-size:12px; }
+  section { background:var(--card); border:1px solid var(--line); border-radius:10px; margin-bottom:20px; overflow:hidden; }
+  section > h2 { font-size:14px; margin:0; padding:12px 16px; border-bottom:1px solid var(--line); font-weight:600; }
+  .toolbar { display:flex; gap:8px; padding:12px 16px; flex-wrap:wrap; align-items:center; }
+  input[type=text], select { font:inherit; padding:6px 10px; border:1px solid var(--line);
+    border-radius:8px; background:#fff; color:var(--ink); }
+  input[type=text] { min-width:180px; }
+  button { font:inherit; padding:5px 10px; border-radius:8px; border:1px solid var(--line);
+    background:#fff; color:var(--ink); cursor:pointer; }
+  button:hover { border-color:#c9c9c9; }
+  button.primary { background:var(--accent); border-color:var(--accent); color:#fff; }
+  button.danger { color:var(--danger); border-color:#f0cfcf; }
+  button.small { padding:3px 8px; font-size:12px; }
+  table { width:100%; border-collapse:collapse; }
+  th, td { text-align:left; padding:8px 12px; border-top:1px solid var(--line); vertical-align:top; font-size:13px; }
+  th { background:#f6f6f6; font-weight:600; color:var(--sub); font-size:12px; white-space:nowrap; }
+  td.actions { white-space:nowrap; }
+  td.actions button { margin-right:4px; }
+  .tag { display:inline-block; padding:1px 7px; border-radius:999px; font-size:11px; border:1px solid var(--line); color:var(--sub); }
+  .tag.ok { color:var(--ok); border-color:#c9e3d3; background:#f2faf5; }
+  .tag.bad { color:var(--danger); border-color:#f0cfcf; background:#fdf3f3; }
+  .tag.warn { color:var(--warn); border-color:#ecdcb8; background:#fdf9ee; }
+  .tag.admin { color:var(--accent); border-color:#cddcfb; background:#f2f6ff; }
+  .muted { color:var(--sub); }
+  .empty { padding:24px 16px; color:var(--sub); text-align:center; }
+  .msg { padding:8px 16px; font-size:13px; display:none; }
+  .msg.show { display:block; }
+  .msg.err { background:#fdf3f3; color:var(--danger); }
+  .msg.ok { background:#f2faf5; color:var(--ok); }
+  pre { margin:0; font:12px/1.5 ui-monospace,Consolas,monospace; white-space:pre-wrap; word-break:break-all; }
+  #gate { max-width:520px; margin:80px auto; background:var(--card); border:1px solid var(--line);
+          border-radius:12px; padding:28px; text-align:center; }
+  #gate p { color:var(--sub); }
+  .pager { display:flex; gap:8px; align-items:center; padding:10px 16px; border-top:1px solid var(--line); }
+</style>
+</head>
+<body>
+
+<div id="gate" hidden>
+  <h1 id="gateTitle">需要管理员权限</h1>
+  <p id="gateText"></p>
+</div>
+
+<header id="bar" hidden>
+  <h1>学无忧 · 管理后台</h1>
+  <span class="who" id="who"></span>
+  <span class="spacer"></span>
+  <button id="refresh">刷新</button>
+</header>
+
+<main id="main" hidden>
+  <div class="cards" id="cards"></div>
+
+  <section>
+    <h2>账号</h2>
+    <div class="toolbar">
+      <input type="text" id="uQuery" placeholder="按用户名 / 昵称搜">
+      <select id="uFilter">
+        <option value="all">全部</option>
+        <option value="banned">已封禁</option>
+        <option value="muted">已禁言</option>
+        <option value="admin">管理员</option>
+      </select>
+      <button class="primary" id="uSearch">查询</button>
+      <span class="muted" id="uCount"></span>
+    </div>
+    <div class="msg" id="uMsg"></div>
+    <table>
+      <thead>
+        <tr><th>用户名</th><th>昵称</th><th>注册时间</th><th>状态</th><th>留言</th><th>操作</th></tr>
+      </thead>
+      <tbody id="uBody"></tbody>
+    </table>
+    <div class="pager"><button class="small" id="uPrev">上一页</button><span class="muted" id="uPage"></span><button class="small" id="uNext">下一页</button></div>
+  </section>
+
+  <section>
+    <h2>留言</h2>
+    <div class="toolbar">
+      <input type="text" id="pQuery" placeholder="按内容 / 用户名搜">
+      <select id="pFilter">
+        <option value="all">全部</option>
+        <option value="removed">仅已下架</option>
+      </select>
+      <button class="primary" id="pSearch">查询</button>
+      <span class="muted" id="pCount"></span>
+    </div>
+    <div class="msg" id="pMsg"></div>
+    <table>
+      <thead><tr><th style="width:150px">作者</th><th>内容</th><th style="width:150px">时间</th><th style="width:110px">操作</th></tr></thead>
+      <tbody id="pBody"></tbody>
+    </table>
+    <div class="pager"><button class="small" id="pPrev">上一页</button><span class="muted" id="pPage"></span><button class="small" id="pNext">下一页</button></div>
+  </section>
+
+  <section>
+    <h2>操作审计（最近 100 条）</h2>
+    <table>
+      <thead><tr><th style="width:150px">时间</th><th style="width:120px">操作人</th><th style="width:110px">动作</th><th style="width:120px">对象</th><th>说明</th></tr></thead>
+      <tbody id="aBody"></tbody>
+    </table>
+  </section>
+</main>
+
+<script>
+(function () {
+  'use strict';
+  var TOKEN_KEY = 'xwy_token';
+  var H = function () { var t = localStorage.getItem(TOKEN_KEY); return t ? { 'Authorization': 'Bearer ' + t } : {}; };
+
+  var $ = function (id) { return document.getElementById(id); };
+  var el = function (tag, text, cls) {
+    var n = document.createElement(tag);
+    if (text != null) n.textContent = String(text);
+    if (cls) n.className = cls;
+    return n;
+  };
+  var when = function (ms) {
+    if (!ms) return '—';
+    var d = new Date(ms);
+    var p = function (n) { return n < 10 ? '0' + n : String(n); };
+    return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + ' ' + p(d.getHours()) + ':' + p(d.getMinutes());
+  };
+
+  function api(method, path, body) {
+    return fetch(path, {
+      method: method,
+      headers: Object.assign({ 'Content-Type': 'application/json' }, H()),
+      body: body === undefined ? undefined : JSON.stringify(body)
+    }).then(function (r) {
+      return r.json().catch(function () { return { ok: false, error: 'HTTP ' + r.status }; })
+        .then(function (d) { d.__status = r.status; return d; });
+    });
+  }
+
+  function say(node, text, kind) {
+    node.textContent = text || '';
+    node.className = 'msg' + (text ? ' show ' : ' ') + (kind || '');
+    if (text) setTimeout(function () { if (node.textContent === text) { node.textContent = ''; node.className = 'msg'; } }, 4000);
+  }
+
+  function gate(title, text) {
+    $('gate').hidden = false;
+    $('gateTitle').textContent = title;
+    $('gateText').textContent = text;
+    $('bar').hidden = true;
+    $('main').hidden = true;
+  }
+
+  /* ---------- 总览 ---------- */
+  function renderCards(o) {
+    var box = $('cards');
+    box.replaceChildren();
+    var items = [
+      [o.users.total, '注册账号'], [o.users.today, '今日新增'], [o.online, '在线（5 分钟）'],
+      [o.users.banned, '已封禁'], [o.users.muted, '已禁言'], [o.users.admins, '管理员'],
+      [o.posts.total, '留言总数'], [o.posts.removed, '已下架留言']
+    ];
+    items.forEach(function (it) {
+      var c = el('div', null, 'card');
+      c.appendChild(el('div', it[0], 'n'));
+      c.appendChild(el('div', it[1], 'l'));
+      box.appendChild(c);
+    });
+  }
+
+  function loadOverview() {
+    return api('GET', '/api/admin/overview').then(function (d) {
+      if (!d.ok) { say($('uMsg'), d.error, 'err'); return; }
+      renderCards(d);
+    });
+  }
+
+  /* ---------- 账号 ---------- */
+  var userPage = { offset: 0, limit: 50, total: 0 };
+
+  function userRow(u) {
+    var tr = el('tr');
+    tr.appendChild(el('td', u.username));
+    tr.appendChild(el('td', u.nick));
+    tr.appendChild(el('td', when(u.createdAt), 'muted'));
+
+    var st = el('td');
+    if (u.role === 'admin') st.appendChild(el('span', '管理员', 'tag admin'));
+    if (u.banned) st.appendChild(el('span', '已封禁', 'tag bad'));
+    if (u.muted) st.appendChild(el('span', '禁言至 ' + when(u.mutedUntil), 'tag warn'));
+    if (!u.role && !u.banned && !u.muted) st.appendChild(el('span', u.online ? '在线' : '正常', 'tag ' + (u.online ? 'ok' : '')));
+    else if (u.online) st.appendChild(el('span', '在线', 'tag ok'));
+    tr.appendChild(st);
+
+    tr.appendChild(el('td', u.postCount, 'muted'));
+
+    var td = el('td', null, 'actions');
+    var act = function (label, action, extra, cls) {
+      var b = el('button', label, 'small' + (cls ? ' ' + cls : ''));
+      b.addEventListener('click', function () {
+        var payload = Object.assign({ action: action, uid: u.id }, extra || {});
+        if (action === 'ban' || action === 'mute') {
+          var reason = window.prompt((action === 'ban' ? '封禁' : '禁言') + '「' + u.username + '」的原因（可留空）：', '');
+          if (reason === null) return;
+          payload.reason = reason;
+        }
+        api('POST', '/api/admin/user-action', payload).then(function (d) {
+          if (!d.ok) return say($('uMsg'), d.error, 'err');
+          say($('uMsg'), '已' + label.replace(/^\s+|\s+$/g, '') + '：' + u.username, 'ok');
+          loadUsers(); loadOverview(); loadAudit();
+        });
+      });
+      td.appendChild(b);
+    };
+
+    if (u.banned) act('解封', 'unban', null, '');
+    else act('封号', 'ban', null, 'danger');
+
+    if (u.muted) act('解除禁言', 'unmute');
+    else {
+      act('禁言 1 小时', 'mute', { minutes: 60 }, 'danger');
+      act('禁言 7 天', 'mute', { minutes: 60 * 24 * 7 }, 'danger');
+    }
+
+    if (u.role === 'admin') act('取消管理员', 'demote');
+    else act('设为管理员', 'promote');
+
+    tr.appendChild(td);
+    return tr;
+  }
+
+  function loadUsers() {
+    var q = $('uQuery').value.trim();
+    var f = $('uFilter').value;
+    var url = '/api/admin/users?limit=' + userPage.limit + '&offset=' + userPage.offset
+      + '&filter=' + encodeURIComponent(f) + '&q=' + encodeURIComponent(q);
+    return api('GET', url).then(function (d) {
+      var body = $('uBody');
+      body.replaceChildren();
+      if (!d.ok) { say($('uMsg'), d.error, 'err'); return; }
+      userPage.total = d.total;
+      if (!d.items.length) {
+        var tr = el('tr'), td = el('td', '没有符合条件的账号', 'empty');
+        td.colSpan = 6; tr.appendChild(td); body.appendChild(tr);
+      } else {
+        d.items.forEach(function (u) { body.appendChild(userRow(u)); });
+      }
+      $('uCount').textContent = '共 ' + d.total + ' 个';
+      $('uPage').textContent = '第 ' + (Math.floor(userPage.offset / userPage.limit) + 1) + ' / '
+        + Math.max(1, Math.ceil(d.total / userPage.limit)) + ' 页';
+    });
+  }
+
+  /* ---------- 留言 ---------- */
+  var postPage = { offset: 0, limit: 50 };
+
+  function loadPosts() {
+    var q = $('pQuery').value.trim();
+    var f = $('pFilter').value;
+    var url = '/api/admin/posts?limit=' + postPage.limit + '&offset=' + postPage.offset
+      + '&filter=' + encodeURIComponent(f) + '&q=' + encodeURIComponent(q);
+    return api('GET', url).then(function (d) {
+      var body = $('pBody');
+      body.replaceChildren();
+      if (!d.ok) { say($('pMsg'), d.error, 'err'); return; }
+      if (!d.items.length) {
+        var tr = el('tr'), td = el('td', '没有符合条件的留言', 'empty');
+        td.colSpan = 4; tr.appendChild(td); body.appendChild(tr);
+      }
+      d.items.forEach(function (p) {
+        var tr = el('tr');
+        var who = el('td');
+        who.appendChild(el('div', p.author.nick));
+        who.appendChild(el('div', p.author.username, 'muted'));
+        tr.appendChild(who);
+
+        var content = el('td');
+        content.appendChild(el('div', p.deleted ? '（已下架，正文已清空）' : p.text));
+        if (p.qid) content.appendChild(el('div', '题目 ' + p.qid, 'muted'));
+        tr.appendChild(content);
+        tr.appendChild(el('td', when(p.createdAt), 'muted'));
+
+        var td = el('td', null, 'actions');
+        var b = el('button', p.deleted ? '恢复' : '下架', 'small' + (p.deleted ? '' : ' danger'));
+        b.addEventListener('click', function () {
+          if (!p.deleted && !window.confirm('确认下架这条留言？')) return;
+          api('POST', '/api/admin/post-action', { action: p.deleted ? 'restore' : 'delete', id: p.id }).then(function (r) {
+            if (!r.ok) return say($('pMsg'), r.error, 'err');
+            say($('pMsg'), p.deleted ? '已恢复' : '已下架', 'ok');
+            loadPosts(); loadOverview(); loadAudit();
+          });
+        });
+        td.appendChild(b);
+        tr.appendChild(td);
+        body.appendChild(tr);
+      });
+      $('pCount').textContent = '共 ' + d.total + ' 条';
+      $('pPage').textContent = '第 ' + (Math.floor(postPage.offset / postPage.limit) + 1) + ' / '
+        + Math.max(1, Math.ceil(d.total / postPage.limit)) + ' 页';
+    });
+  }
+
+  /* ---------- 审计 ---------- */
+  var ACTIONS = {
+    ban: '封号', unban: '解封', mute: '禁言', unmute: '解除禁言',
+    promote: '设为管理员', demote: '取消管理员', 'post-delete': '下架留言', 'post-restore': '恢复留言'
+  };
+
+  function loadAudit() {
+    return api('GET', '/api/admin/audit?limit=100').then(function (d) {
+      var body = $('aBody');
+      body.replaceChildren();
+      if (!d.ok) return;
+      if (!d.items.length) {
+        var tr = el('tr'), td = el('td', '还没有任何管理操作', 'empty');
+        td.colSpan = 5; tr.appendChild(td); body.appendChild(tr);
+        return;
+      }
+      d.items.forEach(function (it) {
+        var tr = el('tr');
+        tr.appendChild(el('td', when(it.at), 'muted'));
+        tr.appendChild(el('td', it.actor ? it.actor.username : '—'));
+        tr.appendChild(el('td', ACTIONS[it.action] || it.action));
+        tr.appendChild(el('td', it.target ? it.target.username : '—', 'muted'));
+        tr.appendChild(el('td', it.detail || '', 'muted'));
+        body.appendChild(tr);
+      });
+    });
+  }
+
+  /* ---------- 启动 ---------- */
+  function refreshAll() {
+    loadUsers(); loadPosts(); loadAudit(); loadOverview();
+  }
+
+  $('refresh').addEventListener('click', refreshAll);
+  $('uSearch').addEventListener('click', function () { userPage.offset = 0; loadUsers(); });
+  $('uFilter').addEventListener('change', function () { userPage.offset = 0; loadUsers(); });
+  $('pSearch').addEventListener('click', function () { postPage.offset = 0; loadPosts(); });
+  $('pFilter').addEventListener('change', function () { postPage.offset = 0; loadPosts(); });
+  $('uPrev').addEventListener('click', function () { userPage.offset = Math.max(0, userPage.offset - userPage.limit); loadUsers(); });
+  $('uNext').addEventListener('click', function () { if (userPage.offset + userPage.limit < userPage.total) { userPage.offset += userPage.limit; loadUsers(); } });
+  $('pPrev').addEventListener('click', function () { postPage.offset = Math.max(0, postPage.offset - postPage.limit); loadPosts(); });
+  $('pNext').addEventListener('click', function () { postPage.offset += postPage.limit; loadPosts(); });
+
+  if (!localStorage.getItem(TOKEN_KEY)) {
+    gate('请先登录', '这个页面复用主站登录状态。请先打开主站登录你的管理员账号，再回到这个页面。');
+    return;
+  }
+
+  api('GET', '/api/auth/me').then(function (d) {
+    if (!d.ok) {
+      gate('登录状态已失效', '请回主站重新登录（账号可能被封禁，或登录已过期）。');
+      return;
+    }
+    if (!d.user || d.user.role !== 'admin') {
+      gate('需要管理员权限', '当前账号「' + ((d.user && d.user.username) || '未知') + '」不是管理员。'
+        + '管理员身份由维护者用 node scripts/grant-admin.js <用户名> 指定。');
+      return;
+    }
+    $('gate').hidden = true;
+    $('bar').hidden = false;
+    $('main').hidden = false;
+    $('who').textContent = '当前：' + d.user.username + (d.user.nick ? '（' + d.user.nick + '）' : '');
+    refreshAll();
+  });
+})();
+</script>
+</body>
+</html>

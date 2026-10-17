@@ -5,6 +5,7 @@
  *   data/study_daily.json  { "<uid>": { "2026-08-27": {focusMinutes, completed}, ... } }
  *   data/study_setup.json  { "<uid>": {payload, updatedAt} }
  *   data/ai_config.json    { provider, apiKey, base, model }
+ *   data/admin_audit.json  { log: [{at, actor, action, target, detail}, ...] }
  * 原子写：先写 tmp 再 rename，避免进程崩溃导致文件损坏。
  */
 'use strict';
@@ -23,7 +24,9 @@ const FILES = {
   presence: 'presence.json',
   integrations: 'integrations.json',
   learning: 'learning.json',
-  community: 'community.json'
+  community: 'community.json',
+  /* 管理员审计：每个集合都必须在这里登记，否则 read() 会 path.join(DATA_DIR, undefined) 抛错 */
+  adminAudit: 'admin_audit.json'
 };
 
 const cache = {};

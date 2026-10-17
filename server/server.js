@@ -13,6 +13,7 @@ const path = require('path');
 const crypto = require('crypto');
 const store = require('./lib/store');
 const auth = require('./lib/auth');
+const { isAdmin } = require('./lib/moderation');
 
 const PORT = process.env.PORT || 3000;
 const ROOT = path.join(__dirname, '..'); // wenguo 前端目录
@@ -81,7 +82,11 @@ function authUser(req) {
   const payload = auth.verify(getToken(req));
   if (!payload || !payload.uid) return null;
   const users = store.get('users') || {};
-  return users[payload.uid] || null;
+  const user = users[payload.uid];
+  /* 封号立即生效：JWT 是无状态的，签发后没法撤回，所以每次请求都回查账号状态。
+   * 返回 null 等价于「未登录」，所有受保护接口自然 401，不用逐个改。 */
+  if (!user || user.banned) return null;
+  return user;
 }
 
 function uid() {
@@ -188,7 +193,7 @@ route('POST', '/api/auth/register', async (req, res) => {
   users[id] = { id, username, passHash: auth.hashPassword(password), nick, createdAt: Date.now() };
   store.set('users', users);
   const token = auth.sign({ uid: id });
-  sendJson(res, 200, { ok: true, token, user: { id, username, nick } });
+  sendJson(res, 200, { ok: true, token, user: { id, username, nick: users[id].nick, role: isAdmin(users[id]) ? 'admin' : null } });
 });
 
 route('POST', '/api/auth/login', async (req, res) => {
@@ -200,14 +205,19 @@ route('POST', '/api/auth/login', async (req, res) => {
   if (!user || !auth.verifyPassword(password, user.passHash)) {
     return sendError(res, 401, '用户名或密码错误');
   }
+  /* 封禁在登录这一步就挡住，并说明原因——密码验证之后才判，避免用封禁状态探测账号是否存在 */
+  if (user.banned) {
+    return sendError(res, 403, '该账号已被封禁' + (user.banReason ? '：' + user.banReason : '，请联系站点维护者'));
+  }
   const token = auth.sign({ uid: user.id });
-  sendJson(res, 200, { ok: true, token, user: { id: user.id, username: user.username, nick: user.nick } });
+  /* 昵称自动修复（nickReset）在另一个 PR #16 里，这里只加角色字段，两个 PR 保持独立 */
+  sendJson(res, 200, { ok: true, token, user: { id: user.id, username: user.username, nick: user.nick, role: isAdmin(user) ? 'admin' : null } });
 });
 
 route('GET', '/api/auth/me', (req, res) => {
   const user = authUser(req);
   if (!user) return sendError(res, 401, '未登录');
-  sendJson(res, 200, { ok: true, user: { id: user.id, username: user.username, nick: user.nick } });
+  sendJson(res, 200, { ok: true, user: { id: user.id, username: user.username, nick: user.nick, role: isAdmin(user) ? 'admin' : null } });
 });
 
 route('PUT', '/api/auth/profile', async (req, res) => {
@@ -220,7 +230,7 @@ route('PUT', '/api/auth/profile', async (req, res) => {
     users[user.id] = user;
     store.set('users', users);
   }
-  sendJson(res, 200, { ok: true, user: { id: user.id, username: user.username, nick: user.nick } });
+  sendJson(res, 200, { ok: true, user: { id: user.id, username: user.username, nick: user.nick, role: isAdmin(user) ? 'admin' : null } });
 });
 
 /* ===== 学习数据整包（wenguo_v1） ===== */
@@ -449,6 +459,15 @@ require('./campus')({ route, authUser, sendJson, readBody, store, studyRooms });
 const community = require('./community')({route,authUser,sendJson,readBody,store,syncReviews:integrations.syncReviews});
 require('./questions')({ route, authUser, sendJson, readBody });
 
+/* 管理员后台最后挂载：它要用到 cleanPresence，也要保证 authUser 已带上封号判定 */
+const admin = require('./admin')({ route, authUser, sendJson, readBody, store, cleanPresence });
+/* 可选引导：ADMIN_USERNAMES="张三,李四" 时，启动就把这些已存在的账号提升为管理员。
+ * 幂等，且只对「启动时已存在的账号」生效——不会因为后来有人抢注同名账号就变成管理员。 */
+if (process.env.ADMIN_USERNAMES) {
+  const promoted = admin.promoteByUsername(process.env.ADMIN_USERNAMES.split(','));
+  if (promoted.length) console.log('  - 管理员引导:  已提升 ' + promoted.join(', '));
+}
+
 /* ===== 静态文件（伺服 wenguo 前端） ===== */
 const MIME = {
   '.html': 'text/html; charset=utf-8', '.js': 'application/javascript; charset=utf-8',
@@ -466,7 +485,11 @@ function serveStatic(req, res) {
   const filePath = path.normalize(path.join(ROOT, urlPath));
   const relative = path.relative(ROOT, filePath);
   const parts = relative.split(path.sep);
-  if (relative.startsWith('..') || path.isAbsolute(relative) || parts.some(p => p.startsWith('.')) || !['index.html', 'js', 'css', 'audio', 'data', 'vendor'].includes(parts[0])) return sendError(res, 403, '禁止访问');
+  /* 顶层白名单：只伺服这些入口。admin.html 显式列入——
+   * 页面本身是静态的（里面没有任何数据，数据全部走 /api/admin/* 鉴权），
+   * 但仍然不放进目录里扩散，避免以后有人把备份、日志之类的东西丢进来就被伺服出去。 */
+  const ALLOWED_ROOTS = ['index.html', 'admin.html', 'js', 'css', 'audio', 'data', 'vendor'];
+  if (relative.startsWith('..') || path.isAbsolute(relative) || parts.some(p => p.startsWith('.')) || !ALLOWED_ROOTS.includes(parts[0])) return sendError(res, 403, '禁止访问');
   fs.readFile(filePath, (err, buf) => {
     if (err) return sendError(res, 404, '文件不存在');
     const ext = path.extname(filePath).toLowerCase();
@@ -530,4 +553,4 @@ if (require.main === module) start().then(() => {
 
 
 if (require.main === module) process.on('SIGTERM', async () => { server.close(); studyRooms.close(); await integrations.close(); await community.close(); await store.close(); process.exit(0); });
-module.exports = { server, integrations, community,studyRooms, start, routes };
+module.exports = { server, integrations, community,studyRooms, admin, start, routes };
