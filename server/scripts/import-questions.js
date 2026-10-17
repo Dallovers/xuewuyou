@@ -11,7 +11,7 @@
 const fs = require('fs');
 const path = require('path');
 const { validateBatch, batchDir } = require('../integrations/question-imports');
-const { questions } = require('../integrations/questions');
+const questionsModule = require('../integrations/questions');
 
 const args = process.argv.slice(2);
 const dryRun = args.includes('--dry-run');
@@ -30,8 +30,16 @@ try {
   process.exit(1);
 }
 
-const existingIds = new Set(questions.keys());
-const topics = new Set([...questions.values()].map((q) => q.topic));
+/* 题目池在模块加载时已经把批次目录里的题合并进来了。
+   如果待校验的文件本身就在批次目录里，它自己的题号会和自己冲突（整批被误判为冲突），
+   所以按 batch 字段把「来自同一个文件」的题从冲突集合里排除。
+   不这么做，README 里那条「批次放在这个目录，用脚本校验」的流程永远跑不通。 */
+const selfBatch = path.basename(path.resolve(file));
+const existingIds = new Set();
+for (const [id, q] of questionsModule.questions) {
+  if (!q || q.batch !== selfBatch) existingIds.add(id);
+}
+const topics = new Set([...questionsModule.questions.values()].map((q) => q.topic));
 const result = validateBatch(batch, { existingIds, topics });
 
 console.log('批次：' + (batch.name || '(未命名)') + ' ｜ 题目 ' + result.count + ' 道');
@@ -53,6 +61,14 @@ const target = path.join(dir, new Date().toISOString().slice(0, 10) + '-' + safe
 
 if (dryRun) {
   console.log('\n（dry-run）校验通过，将写入 ' + target);
+  process.exit(0);
+}
+
+/* 文件已经在批次目录里，说明它本来就被加载了；再写一份日期前缀的副本会让同一批题
+   出现两次，后一个批次因题号冲突被整批跳过。直接告知即可，不要制造重复。 */
+if (path.resolve(path.dirname(path.resolve(file))) === path.resolve(dir)) {
+  console.log('\n校验通过。该批次已在批次目录内（' + path.basename(file) + '），服务启动时会自动加载，无需重复写入。');
+  console.log('回滚：node scripts/rollback-import.js ' + path.basename(file));
   process.exit(0);
 }
 
