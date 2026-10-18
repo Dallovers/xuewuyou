@@ -285,14 +285,26 @@
   }
   /* ===== 在线状态：进入自习室上报心跳，退出下线 ===== */
   let presenceTimer = null;
+  let presenceVisibleBound = false;
   function startPresence() {
     if (!window.WG_API || !WG_API.isLoggedIn()) return;
     sendPresence();
     if (presenceTimer) clearInterval(presenceTimer);
+    /* 原来 30 秒一轮，别人进来/离开要等半分钟才看得到，太钝。压到 10 秒。
+     * 两条取舍：
+     *   1) 标签页在后台时不拉名单——渲染了也没人看，白花流量；
+     *   2) 心跳照发。自习中切出去一会儿就掉线，比多几次请求烦人得多。 */
     presenceTimer = setInterval(function () {
       sendPresence();
-      fetchRealPeers();
-    }, 30000);
+      if (!document.hidden) fetchRealPeers();
+    }, 10000);
+    /* 切回标签页先补一次，别让刚回来的人盯着 10 秒前的名单。 */
+    if (!presenceVisibleBound) {
+      presenceVisibleBound = true;
+      document.addEventListener('visibilitychange', function () {
+        if (!document.hidden && presenceTimer) fetchRealPeers();
+      });
+    }
     fetchRealPeers();
   }
   function stopPresence() {
