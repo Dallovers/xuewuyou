@@ -78,8 +78,8 @@
   border: 1px solid transparent;
   border-radius: 10px;
   background: transparent;
-  /* 比其它一级项更实一档：它是这一组的名字，不该和"今日校园"看起来同级 */
-  color: var(--atlas-deep);
+  /* 颜色和其它一级项完全一致，只靠字重区分层级——不引入第二种绿 */
+  color: var(--ink-2);
   font: inherit;
   font-size: 14px;
   font-weight: 600;
@@ -89,10 +89,10 @@
 }
 .atlas-sidebar .topnav .atlas-nav-parent:hover { background: #edf2e8; }
 .atlas-sidebar .topnav .atlas-nav-parent:focus-visible { outline: 2px solid var(--atlas-mint); outline-offset: 2px; }
-/* 当前就在这一大类里：换成品牌绿，和"只是路过"的深色区分开 */
-.atlas-sidebar .topnav .atlas-nav-parent.section-current { color: var(--atlas-mint); font-weight: 700; }
+/* 当前就在这一大类里：不改颜色，只加粗一档 */
+.atlas-sidebar .topnav .atlas-nav-parent.section-current { font-weight: 700; }
 
-.atlas-nav-caret { font-size: 16px; line-height: 1; opacity: .8; transition: transform .22s ease; }
+.atlas-nav-caret { font-size: 16px; line-height: 1; opacity: .55; transition: transform .22s ease; }
 .atlas-nav-parent[aria-expanded="true"] .atlas-nav-caret { transform: rotate(90deg); }
 
 /* 折叠动画：max-height 从 0 推到固定上界。关着时同时把 visibility 置为 hidden，
