@@ -24,7 +24,47 @@ window.WG_Community=(function(){
   async function connect(){var session=epoch;if(!cloud())return;await library();if(session!==epoch||socket)return;
     socket=io((WG_API.getBase()||location.origin)+'/community',{auth:function(cb){cb({token:WG_API.getToken()});}});
     socket.on('connect',function(){$('communityConnection').textContent='实时通知已连接';});socket.on('disconnect',function(){$('communityConnection').textContent='连接中断，可手动刷新';});socket.on('connect_error',function(){$('communityConnection').textContent='通知暂不可用，可手动刷新';});
-    socket.on('community:changed',function(event){if(session!==epoch)return;$('communityNotice').hidden=false;$('communityNotice').firstElementChild.textContent=event.kind==='posts'?'有新的留言或回复，刷新后查看。':'搭子或挑战状态已更新，刷新后查看。';window.dispatchEvent(new CustomEvent('xwy:community-changed',{detail:event}));});
+    socket.on('community:changed',function(event){if(session!==epoch)return;liveQueue(event.kind==='posts'?'posts':'social');window.dispatchEvent(new CustomEvent('xwy:community-changed',{detail:event}));});
+    startLivePolling();
+  }
+  /* ---------- 实时刷新 ----------
+   * 原来收到 socket 事件只弹一句「刷新后查看」，得用户自己去点。现在直接把数据换掉。
+   * 但必须守住三条，否则体验比手动刷新还差：
+   *   1) 正在写留言 / 正在回复时不动列表——重绘会把草稿和光标一起吞掉；
+   *   2) 短时间内的多次变更合并成一次刷新，连发三条不至于重绘三次；
+   *   3) 页面在后台时不刷新，回到前台再补一次。 */
+  var liveTimer=null,liveKind=null,pollTimer=null;
+  function composing(){var c=$('postComposer');return !!(c&&c.open)||!!reply;}
+  function notice(text){var n=$('communityNotice');if(!n)return;n.hidden=false;n.firstElementChild.textContent=text;}
+  function liveQueue(kind){liveKind=(liveKind==='posts'||kind==='posts')?'posts':'social';if(liveTimer)return;liveTimer=setTimeout(liveRun,450);}
+  async function liveRun(){
+    liveTimer=null;var kind=liveKind;liveKind=null;
+    if(!WG_API.isCloudSession())return;
+    if(document.hidden)return;
+    /* 不在留言页时收到留言事件就不管它：切到那个 tab 本来就会重新 load 一次。 */
+    if(kind==='posts'&&tabName!=='posts')return;
+    if(kind==='posts'&&composing()){notice('有新的留言，写完这句就会显示。');return;}
+    var s=epoch,top=0;
+    try{top=document.scrollingElement?document.scrollingElement.scrollTop:0;}catch(e){}
+    try{
+      if(tabName==='posts')await loadPosts(s);
+      else if(tabName==='arena'){await loadChallenges(s);if(s===epoch&&challenge)await openChallenge(challenge.id,s);}
+      else await loadHome(s);
+    }catch(e){if(s===epoch)notice('自动更新失败，可以点右边刷新。');return;}
+    if(s!==epoch)return;
+    /* 读长文时别把视线拽走：已经在上面就直接跳回顶部看新内容，滚下去了就停在原处。 */
+    try{var root=document.scrollingElement;if(root&&top>120)root.scrollTop=top;}catch(e){}
+    $('communityNotice').hidden=true;
+  }
+  function startLivePolling(){
+    if(pollTimer)return;
+    /* 兜底：有些网络会掐掉 WebSocket，socket 连不上时这里 15 秒补一次。
+     * 连上了就一次都不轮询，不白耗流量。 */
+    pollTimer=setInterval(function(){
+      if(document.hidden||!WG_API.isCloudSession()||!home)return;
+      if(socket&&socket.connected)return;
+      liveQueue(tabName==='posts'?'posts':'social');
+    },15000);
   }
   function tab(name){tabName=name;document.querySelectorAll('[data-community-tab]').forEach(function(b){var on=b.dataset.communityTab===name;b.setAttribute('aria-selected',String(on));b.tabIndex=on?0:-1;$('community-'+b.dataset.communityTab).hidden=!on;});}
   function fillSelect(node,items,first){var old=node.value;node.replaceChildren();if(first){var o=el(node,'option',first);o.value='';}items.forEach(function(item){var o=el(node,'option',item.label);o.value=item.value;});if(items.some(function(i){return i.value===old;}))node.value=old;}
@@ -102,6 +142,8 @@ window.WG_Community=(function(){
     $('postWrite').onclick=function(){clearReply();composer(true,true);};$('postComposerClose').onclick=function(){composer(false,false);$('postWrite').focus();};$('postComposer').addEventListener('toggle',function(){$('postWrite').setAttribute('aria-expanded',String(this.open));});
     $('postForm').onsubmit=function(e){e.preventDefault();run(e.submitter,async function(s){if(!cloud())return;var parent=reply,requested=scope;await api('POST','posts',{qid:requested,text:$('postText').value,parent:parent});if(s===epoch){$('postText').value='';clearReply();composer(false,false);if(scope===requested){await loadPosts(s);if(parent){var note=Array.from($('postList').querySelectorAll('[data-post]')).find(function(n){return n.dataset.post===parent;});if(note){var thread=note.closest('.sticky-note').querySelector('.note-thread');if(thread)thread.open=true;}}}$('postWrite').focus();message('留言已发布。');}});};
     $('challengeCreateForm').onsubmit=function(e){e.preventDefault();run(e.submitter,async function(s){if(!cloud())return;var r=await api('POST','challenges',{to:$('challengeFriend').value,topic:$('challengeTopic').value});if(s===epoch){message('挑战已发送。');await loadChallenges(s);await openChallenge(r.challenge.id,s);}});};$('challengeRefresh').onclick=function(){run(this,async function(s){await loadChallenges(s);if(s===epoch&&challenge)await openChallenge(challenge.id,s);});};
+    /* 切回标签页时补一次刷新：后台里不刷新，回来要立刻看到最新的。 */
+    document.addEventListener('visibilitychange',function(){if(document.hidden)return;if(!home||!WG_API.isCloudSession())return;liveQueue(tabName==='posts'?'posts':'social');});
     WG_API.onAuthChange(function(){epoch++;loadSerial++;postSerial++;composer(false,false);home=null;scope=null;reply=null;challenge=null;profileDirty=false;clearInterval(countdown);if(socket){socket.disconnect();socket=null;}$('communityConnection').textContent='实时通知待连接';$('communityNotice').hidden=true;['buddyDirectory','buddyFriends','buddyRequests','postList','postQuestion','challengeList','challengeDetail'].forEach(function(id){$(id).replaceChildren();});$('buddyProfileForm').reset();$('postForm').reset();clearReply();$('postCount').textContent='登录后查看便签';message('');$('buddySearchText').value='';$('buddyFilter').value='';tab('friends');fillSelect($('challengeFriend'),[],'先添加学习搭子');});
   }
   document.addEventListener('DOMContentLoaded',init);
