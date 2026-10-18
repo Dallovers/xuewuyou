@@ -552,10 +552,21 @@ require('./questions')({ route, authUser, sendJson, readBody });
 /* 管理员后台最后挂载：它要用到 cleanPresence，也要保证 authUser 已带上封号判定 */
 const admin = require('./admin')({ route, authUser, sendJson, readBody, store, cleanPresence });
 /* 可选引导：ADMIN_USERNAMES="张三,李四" 时，启动就把这些已存在的账号提升为管理员。
- * 幂等，且只对「启动时已存在的账号」生效——不会因为后来有人抢注同名账号就变成管理员。 */
-if (process.env.ADMIN_USERNAMES) {
-  const promoted = admin.promoteByUsername(process.env.ADMIN_USERNAMES.split(','));
+ * 幂等，且只对「启动时已存在的账号」生效——不会因为后来有人抢注同名账号就变成管理员。
+ *
+ * 必须放在 start() 里跑，不能像最初那样写在模块顶层：
+ * 配了 DATABASE_URL 时存储层切到 store-postgres，它的每次读写都要求处在 store.run()
+ * 的事务里，否则抛「数据库操作必须在活动事务内执行」。模块顶层调用会让进程在
+ * require 阶段就退出——而这一步又恰恰只在「DATABASE_URL + ADMIN_USERNAMES 都配了」
+ * 的生产环境才触发，本地走 JSON 文件存储永远复现不出来。
+ * 后果极具迷惑性：进程起不来 → 健康检查不过 → Render 保留旧版本继续服务
+ * → 看起来就是「部署了但没生效」。 */
+async function bootstrapAdmins() {
+  if (!process.env.ADMIN_USERNAMES) return [];
+  let promoted = [];
+  await store.run(() => { promoted = admin.promoteByUsername(process.env.ADMIN_USERNAMES.split(',')); });
   if (promoted.length) console.log('  - 管理员引导:  已提升 ' + promoted.join(', '));
+  return promoted;
 }
 
 /* ===== 静态文件（伺服 wenguo 前端） ===== */
@@ -627,6 +638,9 @@ studyRooms.attach(community.attach(server));
 server.requestTimeout = 30000;
 async function start(port=PORT,host=process.env.HOST || '127.0.0.1') {
   await store.init();
+  /* 先做引导再监听：引导失败就不要假装启动成功，否则健康检查会通过，
+   * 平台把流量切到一个没管理员、状态不完整的实例上。 */
+  await bootstrapAdmins();
   if (store.database) await store.run(community.recover);
   await store.run(studyRooms.recover);
   await new Promise((resolve,reject) => {server.once('error',reject);server.listen(port,host,()=>{server.removeListener('error',reject);resolve();});});
