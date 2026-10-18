@@ -30,7 +30,7 @@ const MAX_BODY_BYTES = 4096;
 const LOCATIONS = [
   { id: 'bank', label: '课程学院', metric: 'topicsPracticed', unit: '个已练章节' },
   { id: 'wenku', label: '知识图书馆', metric: 'documents', unit: '份私有资料' },
-  { id: 'lab', label: '题目草稿屋', metric: 'boards', unit: '份题目草稿' },
+  { id: 'lab', label: '随机训练场', metric: 'boards', unit: '份题目草稿' },
   { id: 'social', label: '社交广场', metric: 'friends', unit: '位学习搭子' },
   { id: 'arena', label: '好友竞技场', metric: 'challenges', unit: '项待完成挑战' },
   { id: 'study', label: '专注营地', metric: 'studyingNow', unit: '人正在共同专注' },
