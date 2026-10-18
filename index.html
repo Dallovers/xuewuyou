@@ -177,7 +177,6 @@
 
   <!-- ===== 视图：题库 ===== -->
   <div id="view-bank" class="hidden">
-    <nav class="learning-section-nav" aria-label="课程与资料"><button type="button" data-section-nav="bank">课程地图</button><button type="button" data-section-nav="wenku">学习资料</button><button type="button" data-section-nav="ai">AI 助手</button></nav>
     <section id="courseAtlas" class="atlas-workspace" aria-labelledby="courseAtlasTitle"></section>
     <div class="page-title">
       <button class="btn ghost hidden" id="bankBack" style="font-size:0.8rem;">← 全部学科</button>
@@ -427,7 +426,6 @@
 
   <!-- ===== 视图：学习资料 ===== -->
   <div id="view-wenku" class="hidden">
-    <nav class="learning-section-nav" aria-label="课程与资料"><button type="button" data-section-nav="bank">课程地图</button><button type="button" data-section-nav="wenku">学习资料</button><button type="button" data-section-nav="ai">AI 助手</button></nav>
     <div class="page-title">
       <h1>学习资料</h1>
       <span class="en">Materials</span>
@@ -617,7 +615,6 @@
 
   <!-- ===== 视图：AI 助手（归入课程与资料，保留原有能力） ===== -->
   <div id="view-ai" class="hidden">
-    <nav class="learning-section-nav" aria-label="课程与资料"><button type="button" data-section-nav="bank">课程地图</button><button type="button" data-section-nav="wenku">学习资料</button><button type="button" data-section-nav="ai">AI 助手</button></nav>
     <div class="page-title"><h1>AI 助手</h1><span class="en">AI Tutor</span></div>
     <p class="page-intro">讲解题目、生成同类题，也可以按自己的作答记录制定备考计划。</p>
     <div class="ai-tools-grid">
@@ -642,7 +639,6 @@
 
   <!-- ===== 视图：学情报告 ===== -->
   <div id="view-report" class="hidden">
-    <nav class="learning-section-nav" aria-label="错题与复习"><button type="button" data-section-nav="mistakes">错题本</button><button type="button" data-section-nav="review">智能复习</button><button type="button" data-section-nav="report">学情报告</button><button type="button" data-section-nav="ai">AI 备考计划</button></nav>
     <div class="page-title">
       <h1>学情报告</h1>
       <span class="en">Learning Report</span>
@@ -653,7 +649,6 @@
 
   <!-- ===== 视图：错题本 ===== -->
   <div id="view-mistakes" class="hidden">
-    <nav class="learning-section-nav" aria-label="错题与复习"><button type="button" data-section-nav="mistakes">错题本</button><button type="button" data-section-nav="review">智能复习</button><button type="button" data-section-nav="report">学情报告</button><button type="button" data-section-nav="ai">AI 备考计划</button></nav>
     <div class="page-title">
       <h1>错题本 <span style="font-size:0.85rem;color:var(--muted);">共 <b id="mistakeCount" style="color:var(--danger);">0</b> 题待攻克</span></h1>
       <span class="en">Mistake Book</span>
@@ -704,7 +699,6 @@
 
 
   <section id="view-review" class="hidden integration-page" aria-labelledby="reviewTitle">
-    <nav class="learning-section-nav" aria-label="错题与复习"><button type="button" data-section-nav="mistakes">错题本</button><button type="button" data-section-nav="review">智能复习</button><button type="button" data-section-nav="report">学情报告</button><button type="button" data-section-nav="ai">AI 备考计划</button></nav>
     <div class="integration-heading"><div><h1 id="reviewTitle">智能复习</h1><p class="integration-muted">把错题变成每天能完成的复习安排。</p></div><div class="integration-actions"><button id="integrationExport" type="button" class="btn ghost">导出记录</button><button id="reviewRefresh" type="button" class="btn ghost">同步并刷新</button></div></div>
     <div class="integration-card integration-stats"><div><strong id="reviewDue">—</strong><span>到期题数</span></div><div><strong id="reviewTotal">—</strong><span>复习题数</span></div><div><strong id="reviewNext">—</strong><span>下一次复习</span></div></div>
     <p id="reviewMessage" class="integration-status" role="status" aria-live="polite"></p>
