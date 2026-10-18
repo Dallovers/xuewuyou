@@ -20,6 +20,7 @@ window.WG_Rooms = (function () {
     heartbeatAgain = false,
     lastEndRefresh = "",
     pollTimer = null,
+    pollTick = 0,
     inactiveTimer = null;
   var labels = {
       waiting: "等待成员准备",
@@ -707,9 +708,13 @@ window.WG_Rooms = (function () {
     if (!pollTimer)
       pollTimer = setInterval(function () {
         if (document.hidden) return;
-        if (visible || (current && current.phase !== "ended")) heartbeat();
+        /* 兜底轮询。socket 正常时房间和大厅都是推的（study:changed / study:lobby），
+         * 这里只在断线时才有活干，所以是「10 秒一跳、心跳隔跳」：
+         * 跳得更勤 = 断线恢复快；心跳仍然是 20 秒，它是写操作，没必要跟着加倍。 */
+        pollTick += 1;
+        if (pollTick % 2 === 0 && (visible || (current && current.phase !== "ended"))) heartbeat();
         if (visible && (!socket?.connected || !current)) queueRefresh();
-      }, 20000);
+      }, 10000);
   }
   function hidden() {
     visible = false;
