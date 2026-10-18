@@ -10,14 +10,16 @@
 <link rel="stylesheet" href="css/style.css?v=21">
 <link rel="stylesheet" href="css/integrations.css?v=1">
 <link rel="stylesheet" href="css/whiteboard.css?v=1">
-<link rel="stylesheet" href="css/atlas.css?v=2">
+<link rel="stylesheet" href="css/atlas.css?v=3">
 <link rel="stylesheet" href="css/community.css?v=2">
 <link rel="stylesheet" href="css/message-wall-art.css?v=1">
 <link rel="stylesheet" href="css/study-rooms.css?v=1">
 <link rel="stylesheet" href="css/campus-theme.css?v=1">
 <link rel="stylesheet" href="css/campus-adventure.css?v=1">
+<link rel="stylesheet" href="css/learning-sections.css?v=10">
 <link rel="stylesheet" href="css/atlas-polish.css?v=1">
 <link rel="stylesheet" href="vendor/katex/katex.min.css">
+<link rel="stylesheet" href="css/question.css?v=6">
 <script src="vendor/katex/katex.min.js" defer></script>
 <script src="vendor/katex/contrib/auto-render.min.js" defer></script>
   <!-- PDF.js 用于 AI 划词模式 -->
@@ -43,18 +45,19 @@
   <aside class="atlas-sidebar" id="atlasSidebar" aria-label="学习导航">
     <p class="atlas-nav-caption">我的校园</p>
     <nav class="topnav" id="topnav" aria-label="主导航">
-      <a href="#" data-nav="home" class="active" aria-current="page">校园地图</a>
-      <a href="#" data-nav="bank">课程地图</a>
+      <a href="#" data-nav="home" class="active" aria-current="page">今日校园</a>
+      <!-- 课程与资料：父项只负责展开/收起目录，具体跳转交给三个子项 -->
+      <div class="atlas-nav-group">
+        <button type="button" class="atlas-nav-parent" id="navCourseToggle" aria-expanded="true" aria-controls="subnavCourse">课程与资料<span class="atlas-nav-caret" aria-hidden="true">›</span></button>
+        <div class="atlas-subnav is-open" id="subnavCourse" aria-label="课程与资料">
+          <a href="#" data-nav="bank">课程地图</a>
+          <a href="#" data-nav="wenku">学习资料</a>
+          <a href="#" data-nav="ai">AI 助手</a>
+        </div>
+      </div>
+      <a href="#" data-nav="mistakes">错题与复习</a>
       <a href="#" data-nav="rooms">自习室<span id="roomsInviteBadge" class="rooms-nav-badge" hidden>0</span></a>
-      <a href="#" data-nav="wenku">学习资料</a>
-      <span class="atlas-nav-group">学习记录</span>
-      <a href="#" data-nav="mistakes">错题本</a>
-      <a href="#" data-nav="report">学情报告</a>
-      <a href="#" data-nav="review">智能复习</a>
-      <span class="atlas-nav-group">交流与探索</span>
-      <a href="#" data-nav="knowledge">课程问答</a>
-      <a href="#" data-nav="community">校园互动</a>
-      <a href="#" data-nav="ai">AI 助手</a>
+      <a href="#" data-nav="community">同伴</a>
     </nav>
     <div class="atlas-sidebar-note"><span class="atlas-pulse-dot" aria-hidden="true"></span><strong>每次练习，留下足迹</strong><p>地图状态随真实学习记录更新。</p></div>
   </aside>
@@ -83,13 +86,12 @@
         <button type="button" class="btn primary" id="obTabReg" style="flex:1;">注册</button>
         <button type="button" class="btn ghost" id="obTabLogin" style="flex:1;">登录</button>
       </div>
-      <!-- 账号区：注册填用户名/密码/昵称，登录只填用户名/密码 -->
+      <!-- 账号区：只填用户名和密码；显示名直接用用户名，不再单独填昵称 -->
       <div id="obAccount" style="display:grid;gap:0.72rem;margin-bottom:0.9rem;">
         <label class="onboard-account-label" for="obUsername">用户名</label>
         <input id="obUsername" type="text" placeholder="用户名（2-20 位字母/数字/中文）" autocomplete="username" style="width:100%;background:var(--bg2);border:1px solid var(--rule);border-radius:10px;padding:0.6rem 0.9rem;color:var(--ink);font-size:0.9rem;outline:none;box-sizing:border-box;">
         <label class="onboard-account-label" for="obPassword">密码</label>
         <input id="obPassword" type="password" placeholder="密码（至少 6 位）" autocomplete="new-password" style="width:100%;background:var(--bg2);border:1px solid var(--rule);border-radius:10px;padding:0.6rem 0.9rem;color:var(--ink);font-size:0.9rem;outline:none;box-sizing:border-box;">
-        <input id="obNick" aria-label="昵称（可选）" type="text" placeholder="昵称（可选，留空用用户名）" style="width:100%;background:var(--bg2);border:1px solid var(--rule);border-radius:10px;padding:0.6rem 0.9rem;color:var(--ink);font-size:0.9rem;outline:none;box-sizing:border-box;">
       </div>
       <details id="obPreferences" class="onboard-preferences" open>
       <summary>我的学习情况</summary>
@@ -153,63 +155,22 @@
 
   <!-- ===== 视图：首页 ===== -->
   <div id="view-home" class="hidden">
-    <section id="campusAtlas" class="atlas-workspace" aria-labelledby="campusTitle"></section>
-    <!-- Hero 区：左侧主张 + 右侧个人数据面板 -->
-    <section class="hero">
-      <div class="hero-main">
-        <div class="hero-badge">🎯 大学生备考通关平台</div>
-        <h1 class="hero-title">学习<span style="color:var(--cyan);">无忧</span>，考试<span style="color:var(--gold);">不愁</span></h1>
-        <p class="hero-sub">真题级考点题库，覆盖数学（高数/线代/概率）、四六级核心词汇与雅思阅读写作备考，配错题复盘与学情报告。</p>
-        <ul class="hero-chips">
-          <li class="hero-chip">📐 分知识点组卷</li>
-          <li class="hero-chip">✏️ 选择 / 填空 / 步骤</li>
-          <li class="hero-chip">🗂️ 答题卡回看</li>
-          <li class="hero-chip">📕 错题集攻克率</li>
-          <li class="hero-chip">📈 学情报告</li>
-          <li class="hero-chip">🤖 AI 答疑</li>
-        </ul>
-        <div class="hero-actions">
-          <button class="btn primary" id="heroRandom">🎲 随机组卷</button>
-          <button class="btn" id="heroStudy" style="background:linear-gradient(135deg,rgba(245,158,11,0.18),rgba(13,148,136,0.16));border-color:rgba(166,104,0,0.38);color:#8a5600;">☕ 进入自习室</button>
-          <button class="btn" id="heroBank">📚 进入题库</button>
-          <button class="btn ghost" id="heroMistake">📕 错题重刷</button>
-        </div>
+    <details class="feature-directory" id="featureDirectory">
+      <summary>全部功能入口<span>查看课程地图、学情报告、AI 助手等功能</span></summary>
+      <div class="feature-directory-grid">
+        <section><h2>课程与资料</h2><button type="button" data-nav="bank">课程地图</button><button type="button" data-nav="wenku">学习资料</button><button type="button" data-nav="ai">AI 助手</button><button type="button" data-nav="random">随机组卷</button></section>
+        <section><h2>错题与复习</h2><button type="button" data-nav="mistakes">错题本</button><button type="button" data-nav="review">智能复习</button><button type="button" data-nav="report">学情报告</button><button type="button" data-nav="ai">AI 备考计划</button></section>
+        <section><h2>自习室</h2><button type="button" data-nav="rooms">多人自习</button><button type="button" data-nav="study">个人自习</button></section>
+        <section><h2>同伴 / 校园互动</h2><button type="button" data-nav="community" data-community-entry="friends">学习搭子</button><button type="button" data-nav="community" data-community-entry="posts">留言板</button><button type="button" data-nav="community" data-community-entry="arena">好友竞技场</button></section>
       </div>
-      <aside class="hero-panel" aria-label="我的学习数据">
-        <div class="hero-panel-head">我的数据</div>
-        <div class="hero-stats">
-          <div class="hs-item"><b id="hsTotal">…</b><span>题库题目</span></div>
-          <div class="hs-item"><b id="hsDone">0</b><span>已做题目</span></div>
-          <div class="hs-item"><b id="hsAcc">—</b><span>正确率</span></div>
-          <div class="hs-item"><b id="hsErr" style="color:var(--danger);">0</b><span>错题数</span></div>
-        </div>
-      </aside>
-    </section>
-
-    <!-- 题库板块 -->
-    <div class="sec-head">
-      <div class="sec-title"><h2>核心题库</h2><span class="sec-sub">三大科目大入口 · 点击进入后按子板块细分练习</span></div>
-      <button class="sec-more" data-nav="bank">全部模块 →</button>
-    </div>
-    <div class="subject-portal-grid" id="homeBankGrid"></div>
-
-    <!-- 学习资料板块 -->
-    <div class="sec-head">
-      <div class="sec-title"><h2>学习资料</h2><span class="sec-sub">考研真题 · 教材习题 · 雅思备考 · 专题心得</span></div>
-      <button class="sec-more" data-nav="wenku">资料库 →</button>
-    </div>
-    <div class="wenku-entry-grid" id="homeWenkuGrid"></div>
-
-    <!-- 敬请期待板块 -->
-    <div class="sec-head">
-      <div class="sec-title"><h2>更多板块</h2><span class="sec-sub">正在筹备中的科目</span></div>
-      <span class="sec-flag">Coming Soon</span>
-    </div>
-    <div class="coming-grid" id="homeComingGrid"></div>
+      <p>题目白板仍在练习与挑战复盘的每道题旁；拍照搜题和自由提问可通过右下角 AI 助手打开。</p>
+    </details>
+    <section id="campusAtlas" class="atlas-workspace" aria-labelledby="campusTitle"></section>
   </div>
 
   <!-- ===== 视图：题库 ===== -->
   <div id="view-bank" class="hidden">
+    <nav class="learning-section-nav" aria-label="课程与资料"><button type="button" data-section-nav="bank">课程地图</button><button type="button" data-section-nav="wenku">学习资料</button><button type="button" data-section-nav="ai">AI 助手</button></nav>
     <section id="courseAtlas" class="atlas-workspace" aria-labelledby="courseAtlasTitle"></section>
     <div class="page-title">
       <button class="btn ghost hidden" id="bankBack" style="font-size:0.8rem;">← 全部学科</button>
@@ -263,7 +224,8 @@
 
   <!-- ===== 视图：自习室 ===== -->
   <section id="view-rooms" class="hidden integration-page rooms-page" aria-labelledby="roomsTitle">
-    <div class="rooms-hero"><div><span class="rooms-eyebrow">多人自习室</span><h1 id="roomsTitle">一起坐下来，专注一会儿</h1><p class="rooms-muted">约上学习搭子，定下本轮目标，让每一分钟都有真实的陪伴。</p><span id="roomsConnection" class="room-badge">登录后连接实时自习室</span></div><div class="rooms-actions"><button id="roomsRefresh" class="btn ghost" type="button">刷新房间</button><button id="roomsPersonal" class="btn ghost" type="button">个人自习</button></div></div>
+    <nav class="learning-section-nav" aria-label="自习方式"><button type="button" data-section-nav="rooms">多人自习</button><button type="button" data-section-nav="study">个人自习</button></nav>
+    <div class="rooms-hero"><div><span class="rooms-eyebrow">多人自习室</span><h1 id="roomsTitle">一起坐下来，专注一会儿</h1><p class="rooms-muted">约上学习搭子，定下本轮目标，让每一分钟都有真实的陪伴。</p><span id="roomsConnection" class="room-badge">登录后连接实时自习室</span></div><div class="rooms-actions"><button id="roomsRefresh" class="btn ghost" type="button">刷新房间</button></div></div>
     <p id="roomsMessage" class="rooms-message" role="status" aria-live="polite"></p>
     <div class="rooms-summary"><div><strong id="roomsOnline">—</strong><span>正在共同专注</span></div><div><strong id="roomsCount">—</strong><span>可见自习房间</span></div><div><strong id="roomsHistoryCount">—</strong><span>最近自习记录</span></div></div>
     <section id="roomCurrent" class="rooms-card room-current" aria-label="当前自习房间" hidden></section>
@@ -273,6 +235,7 @@
   </section>
 
   <div id="view-study" class="hidden">
+    <nav class="learning-section-nav" aria-label="自习方式"><button type="button" data-section-nav="rooms">多人自习</button><button type="button" data-section-nav="study">个人自习</button></nav>
     <div class="study-room-layout">
       <!-- 顶部状态栏：自习主题、全屏按钮、离开按钮 -->
       <div class="sr-topbar">
@@ -457,10 +420,10 @@
 
   <!-- ===== 视图：学习资料 ===== -->
   <div id="view-wenku" class="hidden">
+    <nav class="learning-section-nav" aria-label="课程与资料"><button type="button" data-section-nav="bank">课程地图</button><button type="button" data-section-nav="wenku">学习资料</button><button type="button" data-section-nav="ai">AI 助手</button></nav>
     <div class="page-title">
       <h1>学习资料</h1>
       <span class="en">Materials</span>
-      <div class="page-heading-actions"><button class="btn primary" type="button" data-integration-nav="knowledge">上传课程资料并提问</button></div>
     </div>
     <p class="page-intro">找到需要的讲义与练习，把资料读懂，再把知识用起来。</p>
     <div class="wenku-intro" id="wenkuIntro"></div>
@@ -645,36 +608,34 @@
     <div class="exam-side-mask" id="examSideMask" hidden></div>
   </div>
 
-  <!-- ===== 视图：AI 助手 ===== -->
+  <!-- ===== 视图：AI 助手（归入课程与资料，保留原有能力） ===== -->
   <div id="view-ai" class="hidden">
-    <div class="page-title">
-      <h1>AI 助手</h1>
-      <span class="en">AI Tutor</span>
+    <nav class="learning-section-nav" aria-label="课程与资料"><button type="button" data-section-nav="bank">课程地图</button><button type="button" data-section-nav="wenku">学习资料</button><button type="button" data-section-nav="ai">AI 助手</button></nav>
+    <div class="page-title"><h1>AI 助手</h1><span class="en">AI Tutor</span></div>
+    <p class="page-intro">讲解题目、生成同类题，也可以按自己的作答记录制定备考计划。</p>
+    <div class="ai-tools-grid">
+      <section class="card ai-tool-card"><h2>讲题与同类出题</h2>
+        <label for="aiToolQuestion">要讲解的题目</label><textarea id="aiToolQuestion" rows="3" placeholder="输入你需要讲解的题目"></textarea>
+        <div class="ai-tool-fields"><div><label for="aiToolAnswer">我的答案（可选）</label><input id="aiToolAnswer" type="text"></div><div><label for="aiToolCorrect">参考答案（可选）</label><input id="aiToolCorrect" type="text"></div></div>
+        <button type="button" class="btn" id="aiExplainDemo">讲一道题</button>
+        <label for="aiToolTopic">出题知识点</label><input id="aiToolTopic" type="text" placeholder="例如：极限运算、英语从句">
+        <button type="button" class="btn" id="aiGenDemo">出 3 道同类题</button>
+      </section>
+      <section class="card ai-tool-card"><h2>备考计划</h2>
+        <label for="aiPlanDays">距离考试的天数</label><input id="aiPlanDays" type="number" min="1" max="365" value="30" required>
+        <label for="aiPlanTopics">希望加强的知识点（可选）</label><input id="aiPlanTopics" type="text" placeholder="例如：极限、导数、线性代数">
+        <button type="button" class="btn" id="aiPlanDemo">生成备考计划</button>
+        <button type="button" class="btn primary" id="aiMyPlan">根据我的错题生成计划</button>
+        <p class="page-intro">个性化计划根据当前账号的真实错题与作答记录生成。</p>
+        <div class="ai-tool-links"><button type="button" class="btn ghost" data-nav="report">查看学情报告</button><button type="button" class="btn ghost" id="aiToolsChat">自由提问 / 拍照搜题</button></div>
+      </section>
     </div>
-    <div class="card" style="margin-bottom:1rem;">
-      <div style="font-size:0.85rem;color:var(--muted);line-height:1.8;margin-bottom:0.6rem;">
-        围绕题目和学习记录提问，获得讲解与复习建议。AI 服务可用时，回答会显示在下方。
-      </div>
-      <div style="display:flex;gap:0.6rem;flex-wrap:wrap;align-items:center;">
-        <span style="font-size:0.85rem;color:var(--ink);display:inline-flex;align-items:center;gap:0.4rem;">
-          可以先选择一道题，或根据自己的错题记录提出问题。
-        </span>
-      </div>
-      <div id="aiKeyStatus" style="font-size:0.78rem;color:var(--muted);margin-top:0.5rem;"></div>
-    </div>
-    <div class="card">
-      <div style="display:flex;gap:0.6rem;margin-bottom:0.8rem;flex-wrap:wrap;">
-        <button class="btn" id="aiExplainDemo" style="font-size:0.82rem;">讲一道题</button>
-        <button class="btn" id="aiGenDemo" style="font-size:0.82rem;">出 3 道同类题</button>
-        <button class="btn" id="aiPlanDemo" style="font-size:0.82rem;">生成备考计划</button>
-        <button class="btn primary" id="aiMyPlan" style="font-size:0.82rem;">根据我的错题生成计划</button>
-      </div>
-      <div id="aiChat" style="font-size:0.88rem;color:var(--muted);line-height:1.9;white-space:pre-wrap;min-height:4rem;max-height:420px;overflow-y:auto;"></div>
-    </div>
+    <div class="card ai-tool-result" id="aiChat" role="status" aria-live="polite" aria-atomic="true">选择上方功能，回答会显示在这里。</div>
   </div>
 
   <!-- ===== 视图：学情报告 ===== -->
   <div id="view-report" class="hidden">
+    <nav class="learning-section-nav" aria-label="错题与复习"><button type="button" data-section-nav="mistakes">错题本</button><button type="button" data-section-nav="review">智能复习</button><button type="button" data-section-nav="report">学情报告</button><button type="button" data-section-nav="ai">AI 备考计划</button></nav>
     <div class="page-title">
       <h1>学情报告</h1>
       <span class="en">Learning Report</span>
@@ -685,10 +646,10 @@
 
   <!-- ===== 视图：错题本 ===== -->
   <div id="view-mistakes" class="hidden">
+    <nav class="learning-section-nav" aria-label="错题与复习"><button type="button" data-section-nav="mistakes">错题本</button><button type="button" data-section-nav="review">智能复习</button><button type="button" data-section-nav="report">学情报告</button><button type="button" data-section-nav="ai">AI 备考计划</button></nav>
     <div class="page-title">
       <h1>错题本 <span style="font-size:0.85rem;color:var(--muted);">共 <b id="mistakeCount" style="color:var(--danger);">0</b> 题待攻克</span></h1>
       <span class="en">Mistake Book</span>
-      <div class="page-heading-actions"><button class="btn primary" type="button" data-integration-nav="review">按复习计划重做错题</button></div>
     </div>
     <p class="page-intro">把暂时没懂的题留下来，下一次再认真解开。</p>
 
@@ -736,6 +697,7 @@
 
 
   <section id="view-review" class="hidden integration-page" aria-labelledby="reviewTitle">
+    <nav class="learning-section-nav" aria-label="错题与复习"><button type="button" data-section-nav="mistakes">错题本</button><button type="button" data-section-nav="review">智能复习</button><button type="button" data-section-nav="report">学情报告</button><button type="button" data-section-nav="ai">AI 备考计划</button></nav>
     <div class="integration-heading"><div><h1 id="reviewTitle">智能复习</h1><p class="integration-muted">把错题变成每天能完成的复习安排。</p></div><div class="integration-actions"><button id="integrationExport" type="button" class="btn ghost">导出记录</button><button id="reviewRefresh" type="button" class="btn ghost">同步并刷新</button></div></div>
     <div class="integration-card integration-stats"><div><strong id="reviewDue">—</strong><span>到期题数</span></div><div><strong id="reviewTotal">—</strong><span>复习题数</span></div><div><strong id="reviewNext">—</strong><span>下一次复习</span></div></div>
     <p id="reviewMessage" class="integration-status" role="status" aria-live="polite"></p>
@@ -748,13 +710,6 @@
       <div class="integration-actions"><button id="reviewReveal" class="btn ghost" type="button" hidden>查看解析并自评</button><button id="reviewSubmit" class="btn primary" type="button">提交并安排复习</button><button id="reviewNextButton" class="btn primary" type="button" hidden>下一题</button></div>
     </article>
   </section>
-  <section id="view-knowledge" class="hidden integration-page" aria-labelledby="knowledgeTitle">
-    <div class="integration-heading"><div><h1 id="knowledgeTitle">课程资料问答</h1><p class="integration-muted">上传自己的讲义、笔记和实验说明，让回答有据可查。</p></div><button id="knowledgeRefresh" class="btn ghost" type="button">刷新资料状态</button></div>
-    <p id="knowledgeService" class="integration-muted"></p><p id="knowledgeMessage" class="integration-status" role="status" aria-live="polite"></p>
-    <div class="integration-layout"><div class="integration-card"><h2>我的课程资料</h2><label for="knowledgeFile">选择文件</label><input id="knowledgeFile" type="file" accept=".txt,.md,.pdf,.docx,.pptx,.png,.jpg,.jpeg" aria-describedby="knowledgeFileHelp"><p id="knowledgeFileHelp" class="integration-muted">单份不超过 8 MB。TXT / MD 可直接解析；PDF、Office 和图片需配置解析服务。</p><button id="knowledgeUpload" class="btn primary" type="button">上传资料</button><div id="knowledgeDocuments"></div></div>
-    <div class="integration-card"><h2>从资料里找答案</h2><label for="knowledgeQuestion">你想问什么？</label><textarea id="knowledgeQuestion" maxlength="2000" placeholder="例如：实验报告需要包含哪些内容？" aria-describedby="knowledgeScope"></textarea><p id="knowledgeScope" class="integration-muted">勾选左侧资料可限定范围；不勾选则使用你的全部可用资料。</p><button id="knowledgeAsk" class="btn primary" type="button" disabled>检索并回答</button><div id="knowledgeAnswer" hidden><h3>回答与依据</h3><p id="knowledgeAnswerText" class="integration-prose"></p><div id="knowledgeCitations"></div></div></div></div>
-    <dialog id="knowledgeTextDialog" class="integration-dialog" aria-labelledby="knowledgeTextTitle"><h2 id="knowledgeTextTitle"></h2><button id="knowledgeTextClose" class="btn ghost" type="button">关闭</button><pre id="knowledgeText"></pre></dialog>
-  </section>
 
   <section id="view-community" class="hidden integration-page community-page" aria-labelledby="communityTitle">
     <div class="community-hero"><div><span class="atlas-kicker">校园互动</span><h1 id="communityTitle">一起学习，也一起探索</h1><p>找到学习搭子，讨论同一道题，发起一次五题挑战。</p></div><span id="communityConnection" class="community-status">实时通知待连接</span></div>
@@ -763,7 +718,7 @@
       <button id="community-tab-posts" data-community-tab="posts" role="tab" aria-controls="community-posts" aria-selected="false" tabindex="-1">留言板</button>
       <button id="community-tab-arena" data-community-tab="arena" role="tab" aria-controls="community-arena" aria-selected="false" tabindex="-1">好友竞技场</button>
     </div>
-    <div class="community-notice" id="communityNotice" hidden><span>有新的校园互动，刷新后查看。</span><button id="communityRefresh" class="btn ghost">刷新互动</button></div>
+    <div class="community-notice" id="communityNotice" hidden><span>有新的校园互动，正在为你更新…</span><button id="communityRefresh" class="btn ghost">刷新互动</button></div>
     <p id="communityMessage" class="community-message" role="status" aria-live="polite"></p>
     <div id="community-friends" role="tabpanel" aria-labelledby="community-tab-friends">
       <div class="community-columns"><div>
@@ -869,7 +824,7 @@
   <div class="ai-head">
     <b>AI 助手</b>
     <span style="font-size:0.68rem;color:var(--muted);">拍照搜题 · 讲题 · 出题</span>
-    <button id="aiSideCfg" aria-label="AI 配置" style="background:none;border:none;color:var(--muted);font-size:0.8rem;cursor:pointer;margin-left:auto;">⚙ 配置</button>
+    <button id="aiSideCfg" aria-label="打开 AI 讲题、出题与备考计划" style="background:none;border:none;color:var(--muted);font-size:0.8rem;cursor:pointer;margin-left:auto;">讲题 / 计划</button>
     <button id="aiSideClose" aria-label="关闭 AI 助手" style="background:none;border:none;color:var(--muted);font-size:1.1rem;cursor:pointer;">×</button>
   </div>
   <div id="aiMsgs" role="log" aria-live="polite" aria-label="对话记录"></div>
@@ -1005,7 +960,6 @@
     <div style="display:grid;gap:0.75rem;" id="loginForm">
       <input id="loginUsername" type="text" placeholder="用户名（2-20 位字母/数字/中文）" style="width:100%;background:var(--bg2);border:1px solid var(--rule);border-radius:10px;padding:0.6rem 0.9rem;color:var(--ink);font-size:0.9rem;outline:none;box-sizing:border-box;">
       <input id="loginPassword" type="password" placeholder="密码（至少 6 位）" style="width:100%;background:var(--bg2);border:1px solid var(--rule);border-radius:10px;padding:0.6rem 0.9rem;color:var(--ink);font-size:0.9rem;outline:none;box-sizing:border-box;">
-      <input id="loginNick" type="text" placeholder="昵称（可选，留空用用户名）" style="display:none;width:100%;background:var(--bg2);border:1px solid var(--rule);border-radius:10px;padding:0.6rem 0.9rem;color:var(--ink);font-size:0.9rem;outline:none;box-sizing:border-box;">
       <div id="loginMsg" style="font-size:0.82rem;color:var(--danger);min-height:1.1rem;line-height:1.4;"></div>
       <button class="btn primary" id="loginSubmit" type="button">登 录</button>
       <div style="font-size:0.78rem;color:var(--muted);line-height:1.7;">
@@ -1017,10 +971,26 @@
     <div id="loginAuthed" style="display:none;text-align:center;padding:0.5rem 0;">
       <div style="font-size:1.05rem;font-weight:700;margin-bottom:0.3rem;">已登录：<b id="loginAuthedNick"></b></div>
       <div style="font-size:0.8rem;color:var(--muted);margin-bottom:1.1rem;">用户名：<span id="loginAuthedUser"></span></div>
-      <div style="display:grid;gap:0.6rem;">
+      <div style="display:grid;gap:0.6rem;" id="loginAuthedActions">
         <button class="btn" id="loginChangeNick" type="button">✏️ 修改昵称</button>
+        <button class="btn" id="loginChangePwd" type="button">🔑 修改密码</button>
         <button class="btn" id="loginSyncNow" type="button">🔄 立即同步数据</button>
+        <button class="btn" id="loginAdmin" type="button" style="display:none;">🛠️ 管理后台</button>
         <button class="btn ghost" id="loginLogout" type="button" style="color:var(--danger);">退出登录</button>
+      </div>
+      <!-- 改密码表单：密码泄露时要能自救，否则只能求人。改完服务端会作废其它设备上的登录。 -->
+      <div id="loginPwdForm" style="display:none;">
+        <div style="display:grid;gap:0.55rem;margin-top:0.8rem;">
+          <input id="pwdOld" type="password" autocomplete="current-password" placeholder="当前密码" style="width:100%;background:var(--bg2);border:1px solid var(--rule);border-radius:10px;padding:0.6rem 0.9rem;color:var(--ink);font-size:0.9rem;outline:none;box-sizing:border-box;">
+          <input id="pwdNew" type="password" autocomplete="new-password" placeholder="新密码（至少 6 位）" style="width:100%;background:var(--bg2);border:1px solid var(--rule);border-radius:10px;padding:0.6rem 0.9rem;color:var(--ink);font-size:0.9rem;outline:none;box-sizing:border-box;">
+          <input id="pwdNew2" type="password" autocomplete="new-password" placeholder="再输一次新密码" style="width:100%;background:var(--bg2);border:1px solid var(--rule);border-radius:10px;padding:0.6rem 0.9rem;color:var(--ink);font-size:0.9rem;outline:none;box-sizing:border-box;">
+          <div id="pwdMsg" style="font-size:0.82rem;color:var(--danger);min-height:1.1rem;line-height:1.4;"></div>
+          <div style="display:flex;gap:0.5rem;">
+            <button class="btn primary" id="pwdSubmit" type="button" style="flex:1;">确认修改</button>
+            <button class="btn ghost" id="pwdCancel" type="button" style="flex:1;">取消</button>
+          </div>
+          <div style="font-size:0.75rem;color:var(--muted);line-height:1.6;">改完密码后，其它设备上的登录会自动失效，需要用新密码重新登录。</div>
+        </div>
       </div>
     </div>
   </div>
@@ -1047,7 +1017,7 @@
 
 <script src="js/deploy-config.js?v=2" defer></script>
 <script src="js/runtime.js?v=1" defer></script>
-<script src="js/api.js?v=5" defer></script>
+<script src="js/api.js?v=7" defer></script>
 <script src="js/practice-resume.js?v=1" defer></script>
 <script src="js/data.js?v=8" defer></script>
 <script src="js/ai.js?v=9" defer></script>
@@ -1060,18 +1030,19 @@
 <script src="js/qenhance.js?v=1" defer></script>
 <script src="js/scratch.js?v=2" defer></script>
 <script src="js/gaoshu.js?v=wall-16" defer></script>
-<script src="js/study.js?v=8" defer></script>
+<script src="js/mathview.js?v=4" defer></script>
+<script src="js/study.js?v=9" defer></script>
 <!-- 重型数据延迟加载器：gaoshu_bank / english_words / ielts_words / wenku / wenku_cat
      首屏渲染后后台加载，避免 4.3MB 同步阻塞登录界面 -->
 <script src="js/loader.js?v=1" defer></script>
-<script src="js/app.js?v=44" defer></script>
-<script src="js/integrations.js?v=wall-2" defer></script>
+<script src="js/app.js?v=51" defer></script>
+<script src="js/integrations.js?v=wall-3" defer></script>
 <script src="js/whiteboard.js?v=1" defer></script>
-<script src="js/community.js?v=3" defer></script>
-<script src="js/study-rooms.js?v=1" defer></script>
-<script src="js/campus-registry.js?v=3" defer></script>
+<script src="js/community.js?v=4" defer></script>
+<script src="js/study-rooms.js?v=2" defer></script>
+<script src="js/campus-registry.js?v=5" defer></script>
 <script src="js/atlas-assets.js?v=3" defer></script>
-<script src="js/atlas.js?v=7" defer></script>
+<script src="js/atlas.js?v=8" defer></script>
 <script src="js/ux.js?v=1" defer></script>
 <script src="js/campus-interactions.js?v=1" defer></script>
 </body>

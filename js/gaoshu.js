@@ -784,7 +784,11 @@ var WG_Gaoshu = (function () {
    * 源文每个公式前后各一个换行、连接词各占一行，中位行长只有 3 字符，
    * 读起来非常碎。这里改成语义分块渲染。 */
   function solBlocks(solution) {
-    var plain = latexToText(solution || '');
+    /* 走 WG_Math 时，公式先换成占位符，reflow 只处理中文分段；
+     * 占位符本身不含中文，会被 isFormulaLine 认成公式行，正好保持独立成块。 */
+    var plain = (typeof WG_Math !== 'undefined' && WG_Math.plain)
+      ? WG_Math.plain(solution || '')
+      : latexToText(solution || '');
     if (!plain) return [];
     if (typeof WG_QE === 'undefined' || !WG_QE.reflow) {
       return [{ kind: 'text', text: plain }];
@@ -792,29 +796,51 @@ var WG_Gaoshu = (function () {
     return WG_QE.reflow(plain);
   }
 
+  /* 一段原始 LaTeX → HTML。WG_Math 缺失时退回旧的纯文本转换。 */
+  function renderRich(raw) {
+    if (typeof WG_Math !== 'undefined' && WG_Math && WG_Math.toHtml) {
+      return WG_Math.toHtml(raw);
+    }
+    return esc(latexToText(raw));
+  }
+
+  /* 已经 esc 过的文本再把公式占位符展开成 KaTeX HTML */
+  function richText(s) {
+    var html = esc(s);
+    if (typeof WG_Math !== 'undefined' && WG_Math && WG_Math.expand) {
+      html = WG_Math.expand(html);
+    }
+    return html;
+  }
+
   function blockHtml(b) {
     if (b.kind === 'head') {
       return '<div class="sol-head">' + esc(b.text) + '</div>';
     }
     if (b.kind === 'formula') {
-      return (b.lead ? '<span class="sol-lead">' + esc(b.lead) + '</span>' : '') +
-        '<div class="sol-fx">' + esc(b.text) + '</div>';
+      return (b.lead ? '<span class="sol-lead">' + richText(b.lead) + '</span>' : '') +
+        '<div class="sol-fx">' + richText(b.text) + '</div>';
     }
-    return '<p class="sol-p">' + esc(b.text) + '</p>';
+    return '<p class="sol-p">' + richText(b.text) + '</p>';
   }
 
   function solHtml(solution) {
     var blocks = solBlocks(solution);
-    if (!blocks.length) return '<div class="bank-sol"><p class="sol-p">该题暂无解析</p></div>';
-    return '<div class="bank-sol">' + blocks.map(blockHtml).join('') + '</div>';
+    if (!blocks.length) {
+      return '<div class="bank-sol"><div class="sol-title">解析</div><p class="sol-p">该题暂无解析</p></div>';
+    }
+    return '<div class="bank-sol"><div class="sol-title">解析</div>' + blocks.map(blockHtml).join('') + '</div>';
   }
 
   /* 逐步展开：先只给第一步，点「下一步」逐段揭示 */
   function solStepHtml(solution) {
     var blocks = solBlocks(solution);
-    if (!blocks.length) return '<div class="bank-sol"><p class="sol-p">该题暂无解析</p></div>';
+    if (!blocks.length) {
+      return '<div class="bank-sol"><div class="sol-title">解析</div><p class="sol-p">该题暂无解析</p></div>';
+    }
     var steps = (typeof WG_QE !== 'undefined' && WG_QE.toSteps) ? WG_QE.toSteps(blocks) : [blocks];
-    var html = '<div class="bank-sol" id="bankSolSteps">';
+    var html = '<div class="bank-sol" id="bankSolSteps">' +
+      '<div class="sol-title">解析<small>共 ' + steps.length + ' 步</small></div>';
     steps.forEach(function (grp, si) {
       html += '<div class="sol-step' + (si === 0 ? '' : ' hidden') + '" data-step="' + si + '">' +
         '<span class="sol-step-no">第 ' + (si + 1) + ' 步</span>' +
@@ -871,14 +897,18 @@ var WG_Gaoshu = (function () {
     var subjectName = p.subject || '';
     var diffName = p.difficulty || '';
     var typeName = p.type || '题目';
+    var chips = '';
+    if (subjectName) chips += '<span class="tag-bank tag-subject">' + esc(subjectName) + '</span>';
+    chips += '<span class="tag-bank">' + esc(topicName) + '</span>';
+    if (diffName) chips += '<span class="tag-bank dim">' + esc(diffName) + '</span>';
+    if (typeName) chips += '<span class="tag-bank dim">' + esc(typeName) + '</span>';
     var header =
-      '<div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;margin-bottom:0.8rem;">' +
-      (subjectName ? '<span class="tag-bank" style="background:rgba(13,130,155,.1);color:var(--cyan);border-color:rgba(13,130,155,.34);">' + subjectName + '</span>' : '') +
-      '<span class="tag-bank">' + topicName + '</span>' +
-      (diffName ? '<span class="tag-bank dim">' + diffName + '</span>' : '') +
-      (typeName ? '<span class="tag-bank dim">' + typeName + '</span>' : '') +
+      '<div class="bank-head">' +
+      '<div class="bank-chips">' + chips + '</div>' +
+      '<div class="bank-head-right">' +
       '<span class="bank-pos">第 ' + (idx + 1) + ' / ' + queue.length + ' 题</span>' +
       '<button class="bank-mark" id="bankMark" type="button" aria-pressed="false" title="标记这道题，方便回头再看">☆ 标记</button>' +
+      '</div>' +
       '</div>';
     /* 增强：把埋在题面里的选项、解析里的答案解出来，决定作答形态 */
     if (typeof WG_QE !== 'undefined' && WG_QE.enhance) WG_QE.enhance(p);
@@ -893,8 +923,7 @@ var WG_Gaoshu = (function () {
 
     /* 选项被解出来时，题干要用去掉选项后的版本 */
     var rawStem = p.stem || (qe.opts && qe.stem) || p.content || '';
-    var stem = latexToText(rawStem);
-    var qBody = '<div class="bank-q">' + esc(stem) + '</div>';
+    var qBody = '<div class="bank-q">' + renderRich(rawStem) + '</div>';
 
     var content = '';
     var letters = ['A', 'B', 'C', 'D'];
@@ -902,7 +931,7 @@ var WG_Gaoshu = (function () {
       var optBtns = opts.map(function (o, i) {
         return '<button class="btn bank-opt" data-i="' + i + '">' +
           '<b class="bank-opt-k">' + letters[i] + '</b>' +
-          '<span class="bank-opt-t">' + esc(latexToText(o)) + '</span></button>';
+          '<span class="bank-opt-t">' + renderRich(o) + '</span></button>';
       }).join('');
       content = '<div class="bank-opts">' + optBtns + '</div>';
     } else if (kind === 'fill') {
@@ -926,7 +955,7 @@ var WG_Gaoshu = (function () {
     content += '<div id="bankFeedback" class="bank-feedback"></div>';
     content += '<div id="bankGrasp" class="bank-grasp hidden"></div>';
 
-    area.innerHTML = header + qBody + content;
+    area.innerHTML = '<article class="bank-card">' + header + qBody + content + '</article>';
     if (window.WG_Whiteboard) WG_Whiteboard.attachQuestion(area, { qid:String(p.id), question:p.stem || p.content, topic:topicName });
     area.classList.remove('hidden');
     paintCard();
@@ -1053,7 +1082,7 @@ var WG_Gaoshu = (function () {
   /* 解析区：step 类型逐步展开，其余一次性展示 */
   function appendSolution(fb, p, stepwise) {
     if (!p.solution) {
-      fb.innerHTML += '<div class="bank-sol"><p class="sol-p">该题暂无解析</p></div>';
+      fb.innerHTML += '<div class="bank-sol"><div class="sol-title">解析</div><p class="sol-p">该题暂无解析</p></div>';
       return;
     }
     fb.innerHTML += stepwise ? solStepHtml(p.solution) : solHtml(p.solution);

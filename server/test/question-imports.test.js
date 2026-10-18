@@ -32,7 +32,7 @@ fs.writeFileSync(path.join(importDir, '01-test-batch.json'), JSON.stringify(VALI
 
 let server, integrations, base, questions, importedCount, importProblems, token;
 
-const { validateBatch, loadImports } = require('../integrations/question-imports');
+const { validateBatch, loadImports, DEFAULT_DIR } = require('../integrations/question-imports');
 
 function batchOf(questions) {
   return { name: 'x', questions };
@@ -181,5 +181,23 @@ test('删掉批次文件即完成回滚，题目从题目池消失', () => {
     assert.equal(afterRollback.problems.length, 0, '目录为空不是错误');
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+/* ---------- 仓库内真实批次的健康度 ---------- */
+
+/* 这套测试把 QUESTION_IMPORT_DIR 指到了临时目录，所以上面的用例只覆盖「校验逻辑」，
+   覆盖不到 content/question-imports/ 里真正要发布出去的那几个批次。
+   少了这一条，一个写坏的批次可以一路合进主干而测试全绿——服务照常启动，
+   只是那批题悄悄不见了，正好是 README 说的「不要靠服务还能跑来判断导入成功」。 */
+test('仓库内 content/question-imports 的每个批次都必须合法', () => {
+  const topics = new Set([...questions.values()].map((q) => q.topic));
+  const out = loadImports({ dir: DEFAULT_DIR, existingIds: new Set(questions.keys()), topics });
+  assert.deepEqual(out.problems, [], '仓库内不应有不合法的导入批次');
+  assert.ok(out.questions.length > 0, '仓库内应至少有一个批次（否则说明批次目录被清空了）');
+  for (const q of out.questions) {
+    assert.ok(!questions.has(q.id), '批次题号不应与题库冲突：' + q.id);
+    assert.ok(topics.has(q.topic), '批次章节必须是已有章节：' + q.topic);
+    assert.ok(q.question && q.question.trim(), '题干不能为空：' + q.id);
   }
 });

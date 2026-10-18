@@ -6,6 +6,7 @@ const SUBJECTS = ['高等数学','线性代数','概率论','英语','雅思'];
 const objective = [...questions.values()].filter(q => !q.selfAssessed);
 const topicOptions = [...new Set(objective.map(q => q.topic))].map(topic => ({topic,subject:objective.find(q=>q.topic===topic).subject,count:objective.filter(q=>q.topic===topic).length})).filter(t=>t.count>=5);
 const fail = (message,status=400) => {throw Object.assign(new Error(message),{status});};
+const { muteRemainingMs, formatDuration } = require('../lib/moderation');
 const clone = value => JSON.parse(JSON.stringify(value));
 module.exports = function({route,authUser,sendJson,readBody,store,syncReviews}) {
   let io, namespace;
@@ -89,7 +90,14 @@ module.exports = function({route,authUser,sendJson,readBody,store,syncReviews}) 
     delete s.friends[key(user.id,target)];save(s);notify([user.id,target],'friends');return {};
   });
   function scope(value){if(!value)return null;const q=questions.get(String(value));if(!q)fail('题目不存在',404);return q.id;}
-  function publicPost(s,p,user){return {...p,author:{id:p.author,nick:profile(s,p.author).nick},canDelete:p.author===user.id};}
+  /* 对外表示：整条 post 展开后必须剔除管理侧的内部字段。
+   * moderatedText 是管理员下架时留的原文备份——它只是给「恢复」和事后核对用的，
+   * 一旦跟着列表发给所有人，「下架」就等于没下架（前端不渲染，但 JSON 里明文都在）。
+   * deletedBy/deletedAt 同理：后者无害，前者会暴露管理员的账号 id。 */
+  function publicPost(s,p,user){
+    const {moderatedText,deletedBy,deletedAt,...view}=p;
+    return {...view,author:{id:p.author,nick:profile(s,p.author).nick},canDelete:p.author===user.id};
+  }
   own('GET','posts',(user,query)=>{
     const s=state(),qid=scope(query.get('qid')),mode=query.get('mode');
     const items=s.posts.filter(p=>qid?p.qid===qid:mode==='all'||!p.qid).slice(-100);
@@ -97,6 +105,10 @@ module.exports = function({route,authUser,sendJson,readBody,store,syncReviews}) 
     return {posts:items.map(p=>publicPost(s,p,user)),question:q?{id:q.id,topic:q.topic,question:q.question}:null};
   });
   own('POST','posts',(user,_,body)=>{
+    /* 禁言：管理员在后台下的处罚，这里是最主要的生效点。
+     * 只挡「发言」这一类写操作——被禁言的人仍然能看题、看留言、记学习数据。 */
+    const muted = muteRemainingMs(user);
+    if(muted>0)fail('你已被禁言，'+formatDuration(muted)+' 后才能发留言'+(user.muteReason?'（原因：'+user.muteReason+'）':''),403);
     limited(user.id,'posts',20);const s=state(),qid=scope(body.qid),content=text(body.text,3000,true);
     if(s.posts.length>=5000)fail('留言区已达到当前容量，请联系网站维护者');
     let parent=null;if(body.parent){parent=s.posts.find(p=>p.id===body.parent);if(!parent||parent.deleted||parent.qid!==qid)fail('回复目标不存在或不属于当前讨论',404);}

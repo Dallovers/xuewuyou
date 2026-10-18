@@ -194,26 +194,61 @@ var WG_App = (function () {
   var els = {};
 
   function $ (id) { return document.getElementById(id); }
+  function primarySection(name) {
+    if (name === 'home') return 'home';
+    if (['bank', 'module', 'game', 'wenku', 'ai'].indexOf(name) >= 0) return 'bank';
+    if (name === 'mistakes' || name === 'review' || name === 'report') return 'mistakes';
+    if (name === 'rooms' || name === 'study') return 'rooms';
+    if (name === 'community') return 'community';
+    return null;
+  }
+  /* 「课程与资料」二级目录的展开状态只记在按钮的 aria-expanded 上，
+   * CSS 也按它来画箭头，两边不会各说一套。 */
+  function setCourseNavOpen(open) {
+    var toggle = $('navCourseToggle'), nav = $('subnavCourse');
+    if (!toggle || !nav) return;
+    toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+    nav.classList.toggle('is-open', open);
+  }
+  var lastPrimarySection = null;
   function showView(name) {
-    document.body.classList.toggle('integration-view', name === 'review' || name === 'knowledge' || name === 'community' || name === 'rooms');
+    document.body.classList.toggle('integration-view', name === 'review' || name === 'community' || name === 'rooms');
     if (state.view === 'rooms' && name !== 'rooms' && window.WG_Rooms) WG_Rooms.onViewHidden();
     /* 离开自习室视图时通知 StudyRoom 暂停计时（如去刷题、切到其他页面） */
     if (state.view === 'study' && name !== 'study' &&
         window.StudyRoom && typeof window.StudyRoom.onViewHidden === 'function') {
       window.StudyRoom.onViewHidden();
     }
-    ['home', 'bank', 'module', 'study', 'wenku', 'game', 'report', 'mistakes', 'review', 'knowledge', 'community', 'rooms', 'ai', 'onboard'].forEach(function (v) {
+    ['home', 'bank', 'module', 'study', 'wenku', 'game', 'report', 'mistakes', 'review', 'community', 'rooms', 'ai', 'onboard'].forEach(function (v) {
       var el = $('view-' + v);
       if (el) el.classList.toggle('hidden', v !== name);
     });
-    /* 导航高亮 */
-    if (['home', 'bank', 'study', 'wenku', 'report', 'mistakes', 'review', 'knowledge', 'community', 'rooms', 'ai'].indexOf(name) >= 0) {
-      var links = document.querySelectorAll('#topnav a');
-      links.forEach(function (a) {
-        a.classList.toggle('active', a.getAttribute('data-nav') === name);
-        if (a.getAttribute('data-nav') === name) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
-      });
+    /* 一级导航表示学习任务，页内导航表示该任务的具体视图。 */
+    var section = primarySection(name);
+    document.querySelectorAll('#topnav a').forEach(function (a) {
+      var active = a.getAttribute('data-nav') === section;
+      a.classList.toggle('active', active);
+      if (active) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
+    });
+    document.querySelectorAll('.learning-section-nav button').forEach(function (b) {
+      var active = b.getAttribute('data-section-nav') === name;
+      b.classList.toggle('active', active);
+      if (active) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
+    });
+    /* 侧边栏二级目录：子项跟着当前视图高亮，父项标出「就在这一大类里」。
+     * 只有「从别的大类走进来」时才自动展开——在这一大类内部来回切换时不抢用户手动收起的状态。 */
+    document.querySelectorAll('#topnav .atlas-subnav a').forEach(function (a) {
+      var active = a.getAttribute('data-nav') === name;
+      a.classList.toggle('active', active);
+      if (active) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
+    });
+    var courseToggle = $('navCourseToggle');
+    if (courseToggle) {
+      var inCourse = section === 'bank';
+      courseToggle.classList.toggle('section-current', inCourse);
+      if (inCourse && lastPrimarySection !== 'bank') setCourseNavOpen(true);
     }
+    lastPrimarySection = section;
     state.view = name;
     document.body.dataset.view = name;
     window.dispatchEvent(new CustomEvent('xwy:view-changed', {detail:{view:name,module:state.currentModule || null,continent:bankFilter || null}}));
@@ -556,24 +591,6 @@ var WG_App = (function () {
     if (box) box.innerHTML = html;
   }
 
-  /* ---------- 首页 ---------- */
-  /* 题库总数（数据就绪后刷新顶部统计） */
-  function totalBankCount() {
-    var n = 0;
-    if (typeof GAOSHU_BANK !== 'undefined') {
-      Object.keys(GAOSHU_BANK).forEach(function (tk) {
-        var td = GAOSHU_BANK[tk];
-        if (td && td.problems) n += td.problems.length;
-      });
-    }
-    if (typeof ENGLISH_CET4_BANK !== 'undefined') n += ENGLISH_CET4_BANK.length;
-    if (typeof ENGLISH_CET6_BANK !== 'undefined') n += ENGLISH_CET6_BANK.length;
-    if (typeof IELTS_SYNONYM_BANK !== 'undefined') n += IELTS_SYNONYM_BANK.length;
-    if (typeof IELTS_VOCAB_BANK !== 'undefined') n += IELTS_VOCAB_BANK.length;
-    if (typeof IELTS_WRITING_BANK !== 'undefined') n += IELTS_WRITING_BANK.length;
-    return n;
-  }
-
   /* 进入需要题库数据的视图前先等数据就绪（重型数据仍在后台加载时兜底） */
   function gateData(fn) {
     if (!window.WG_Heavy || WG_Heavy.isReady()) { fn(); return; }
@@ -581,77 +598,8 @@ var WG_App = (function () {
     WG_Heavy.ready().then(fn);
   }
 
-  /* 首页学习资料板块：按归类后的 4 个大类出入口 */
-  function renderHomeWenku() {
-    var wkGrid = $('homeWenkuGrid');
-    if (!wkGrid || typeof WG_WenkuCat === 'undefined') return;
-    wkGrid.innerHTML = WG_WenkuCat.CATS.map(function (c) {
-      var n = WG_WenkuCat.countOf(c.id);
-      var f = WG_WenkuCat.facetsOf(c.id);
-      /* 副标题优先报学科分布，没有学科维度就报可直接打开的份数 */
-      var sub = f.subjects.slice(0, 3).map(function (s) { return s.key; }).join(' · ');
-      return '<a class="wk-entry wk-entry-cat" data-wenku="' + c.id + '" href="javascript:void(0)" ' +
-        'style="--wk-color:' + c.color + ';">' +
-        '<div class="wk-ic">' + c.icon + '</div>' +
-        '<div class="wk-t">' + escHtml(c.name) + '</div>' +
-        '<div class="wk-c">' + n.total + ' 份' +
-        (n.local ? ' · 可直接看 ' + n.local + ' 份' : '') +
-        (sub ? '<br><span class="wk-sub">' + escHtml(sub) + '</span>' : '') +
-        '</div>' +
-        '</a>';
-    }).join('');
-  }
-
-  /* 首页敬请期待板块 */
-  function renderHomeComing() {
-    var comingGrid = $('homeComingGrid');
-    if (!comingGrid) return;
-    var comingItems = [
-      { id: 'computer', name: '计算机考级', icon: '💻', tag: 'NCRE', desc: '二级Office · C语言 · Python · 数据结构', color: '#367981' },
-      { id: 'final', name: '专业课速通', icon: '⚡', tag: 'MAJOR', desc: '期末速通 · 考研专业课 · 考前突击', color: '#8a6914' }
-    ];
-    comingGrid.innerHTML = comingItems.map(function (x) {
-      return '<div class="coming-card" style="--card-color:' + x.color + ';">' +
-        '<div class="coming-ic">' + x.icon + '</div>' +
-        '<div class="coming-name">' + x.name + '</div>' +
-        '<div class="coming-tag">' + x.tag + '</div>' +
-        '<div class="coming-desc">' + x.desc + '</div>' +
-        '<div class="coming-badge">敬请期待</div>' +
-        '</div>';
-    }).join('');
-  }
-
   function renderHome() {
-    var data = WG_Data.get();
     refreshNickUI();
-
-    /* Hero 统计 */
-    var a = WG_Data.analyze();
-    var doneAll = a.total.c + a.total.w;
-    $('hsDone').textContent = a.answers;
-    $('hsAcc').textContent = doneAll ? Math.round(a.total.c / doneAll * 100) + '%' : '—';
-    $('hsErr').textContent = a.mistakes;
-
-    /* 题库 / 资料板块依赖重型数据（gaoshu_bank / wenku），
-       未就绪先渲染占位，后台加载完成后自动补全 */
-    if (window.WG_Heavy && !WG_Heavy.isReady()) {
-      var pg = $('homeBankGrid'), wg = $('homeWenkuGrid');
-      if (pg && !pg.innerHTML) pg.innerHTML = WG_Heavy.placeholder('题库数据加载中…');
-      if (wg && !wg.innerHTML) wg.innerHTML = WG_Heavy.placeholder('资料数据加载中…');
-      if ($('hsTotal')) $('hsTotal').textContent = '…';
-      WG_Heavy.ready().then(function () {
-        if (state.view === 'home') renderHome();
-      });
-      renderHomeComing();
-      showView('home');
-      return;
-    }
-
-    /* 数据就绪：刷新题库总数 + 各板块 */
-    if ($('hsTotal')) $('hsTotal').textContent = totalBankCount();
-    renderSubjectPortal('homeBankGrid');
-    renderHomeWenku();
-    renderHomeComing();
     showView('home');
   }
 
@@ -976,23 +924,73 @@ var WG_App = (function () {
     }
   }
 
-  /* ---------- AI 对话（输出到 AI 助手页） ---------- */
-  async function aiRun(label, fn) {
+  /* 合并入口保留原 AI 讲题、出题与两种备考计划，使用用户输入和真实记录。 */
+  async function aiToolRun(label, fn) {
     var out = $('aiChat');
-    if (!out) return;
+    if (out.getAttribute('aria-busy') === 'true') return;
+    var buttons = document.querySelectorAll('#aiExplainDemo, #aiGenDemo, #aiPlanDemo, #aiMyPlan');
+    buttons.forEach(function (b) { b.disabled = true; });
+    out.setAttribute('aria-busy', 'true');
     out.textContent = label + '…（AI 思考中）';
     try {
-      var text = await fn();
-      out.textContent = text;
+      out.textContent = await fn();
     } catch (e) {
-      out.textContent = '⚠ ' + WG_AI.errText(e);
+      out.textContent = WG_AI.errText(e);
+    } finally {
+      out.removeAttribute('aria-busy');
+      buttons.forEach(function (b) { b.disabled = false; });
     }
   }
-  function aiChatAppend(tag, text) {
-    var el = $('aiChat');
-    if (!el) return;
-    el.textContent = el.textContent ? el.textContent + '\n\n【' + tag + '】\n' + text : '【' + tag + '】\n' + text;
-    el.scrollTop = el.scrollHeight;
+
+  function aiToolInput(id, message) {
+    var input = $(id), value = input.value.trim();
+    if (!value) {
+      $('aiChat').textContent = message;
+      input.focus();
+    }
+    return value;
+  }
+
+  function aiPlanDays() {
+    var input = $('aiPlanDays');
+    if (!input.reportValidity()) return null;
+    return Number(input.value);
+  }
+
+  function bindAiTools() {
+    $('aiExplainDemo').addEventListener('click', function () {
+      var question = aiToolInput('aiToolQuestion', '请先输入要讲解的题目。');
+      if (!question) return;
+      var answer = $('aiToolAnswer').value.trim() || '未作答';
+      var correct = $('aiToolCorrect').value.trim() || '未提供，请先独立求解并说明依据';
+      aiToolRun('AI 讲题中', function () { return WG_AI.explainQuestion(question, answer, correct); });
+    });
+    $('aiGenDemo').addEventListener('click', function () {
+      var topic = aiToolInput('aiToolTopic', '请先输入要练习的知识点。');
+      if (topic) aiToolRun('AI 出题中', function () { return WG_AI.generateQuestions(topic, 3); });
+    });
+    $('aiPlanDemo').addEventListener('click', function () {
+      var days = aiPlanDays(), topics = $('aiPlanTopics').value.trim();
+      if (days) aiToolRun('计划生成中', function () { return WG_AI.makePlan(days, topics); });
+    });
+    $('aiMyPlan').addEventListener('click', function () {
+      var days = aiPlanDays();
+      if (!days) return;
+      var d = WG_Data.get(), byTopic = Object.create(null);
+      d.mistakes.forEach(function (m) { var topic = m.topic || '综合'; byTopic[topic] = (byTopic[topic] || 0) + 1; });
+      var weak = Object.keys(byTopic).sort(function (a, b) { return byTopic[b] - byTopic[a]; });
+      if (!weak.length) {
+        $('aiChat').textContent = '当前没有待攻克的错题。可以先完成课程练习，或填写知识点后点击“生成备考计划”。';
+        return;
+      }
+      var topics = weak.map(function (topic) { return topic + '（' + byTopic[topic] + ' 道待攻克错题）'; }).join('、');
+      aiToolRun('根据我的错题生成计划', function () {
+        return WG_AI.makePlan(days, topics).then(function (text) {
+          return '基于当前账号的 ' + d.mistakes.length + ' 道待攻克错题、' + d.answers.length + ' 次作答记录\n' + topics + '\n\n' + text;
+        });
+      });
+    });
+    $('aiToolsChat').addEventListener('click', aiSideOpen);
   }
 
   function renderStats(s) {
@@ -1431,6 +1429,13 @@ var WG_App = (function () {
     openLogin();
   }
 
+  /* 管理后台入口：只对管理员显示。藏起来只是别让普通用户看见，
+   * 真正的门在 /api/admin/* 的 guard() 上，前端显示与否不影响权限判定。 */
+  function showAdminEntry(isAdmin) {
+    var btn = $('loginAdmin');
+    if (btn) btn.style.display = isAdmin ? 'block' : 'none';
+  }
+
   /* ---------- 登录 / 注册 ---------- */
   function openLogin() {
     var mask = $('loginModalMask');
@@ -1447,6 +1452,14 @@ var WG_App = (function () {
       if ($('loginAuthed')) $('loginAuthed').style.display = 'block';
       if ($('loginTabLogin')) $('loginTabLogin').style.display = 'none';
       if ($('loginTabReg')) $('loginTabReg').style.display = 'none';
+      showAdminEntry(user.role === 'admin');
+      /* 本地缓存的 user 可能是升级前存的（没有 role 字段）：拉一次 /me 补上，
+       * 否则会出现「已经是管理员，但界面里没有管理后台入口」 */
+      if (user.role === undefined && typeof WG_API.me === 'function') {
+        WG_API.me().then(function (d) {
+          showAdminEntry(!!(d && d.user && d.user.role === 'admin'));
+        }).catch(function () { /* 离线或未登录，忽略 */ });
+      }
       return;
     }
     if ($('loginForm')) $('loginForm').style.display = 'grid';
@@ -1468,7 +1481,6 @@ var WG_App = (function () {
     var tL = $('loginTabLogin'), tR = $('loginTabReg');
     if (tL) { tL.classList.toggle('primary', mode === 'login'); tL.classList.toggle('ghost', mode !== 'login'); }
     if (tR) { tR.classList.toggle('primary', mode === 'reg'); tR.classList.toggle('ghost', mode !== 'reg'); }
-    if ($('loginNick')) $('loginNick').style.display = mode === 'reg' ? 'block' : 'none';
     if ($('loginSubmit')) $('loginSubmit').textContent = mode === 'reg' ? '注 册' : '登 录';
     if ($('loginMsg')) $('loginMsg').textContent = '';
   }
@@ -1478,13 +1490,13 @@ var WG_App = (function () {
     msg.textContent = '';
     var u = $('loginUsername') ? $('loginUsername').value.trim() : '';
     var p = $('loginPassword') ? $('loginPassword').value : '';
-    var n = $('loginNick') ? $('loginNick').value.trim() : '';
     if (!u || !p) { msg.textContent = '请输入用户名和密码'; return; }
     try {
+      var d;
       if (loginMode === 'reg') {
-        await WG_API.register(u, p, n);
+        d = await WG_API.register(u, p);
       } else {
-        await WG_API.login(u, p);
+        d = await WG_API.login(u, p);
       }
       /* 登录成功：拉取云端数据，与本地合并后写回本地和云端 */
       var merged = await WG_API.pullMerge(WG_Data.get());
@@ -1493,6 +1505,10 @@ var WG_App = (function () {
       refreshNickUI();
       var user = WG_API.getUser() || {};
       toast('欢迎回来，' + (user.nick || u), 'ok');
+      /* 服务端修掉了「昵称存成密码」的脏数据，提醒用户自己再改一次 */
+      if (d && d.nickReset) {
+        setTimeout(function () { toast('昵称原本与密码相同，已改为用户名，请到「账号与昵称」里改掉', 'ok'); }, 1600);
+      }
       renderHome();
     } catch (e) {
       msg.textContent = e.message || '操作失败，请稍后再试';
@@ -1510,8 +1526,58 @@ var WG_App = (function () {
       if (e.key === 'Enter') handleLoginSubmit();
     });
     $('loginChangeNick') && $('loginChangeNick').addEventListener('click', handleChangeNick);
+    $('loginChangePwd') && $('loginChangePwd').addEventListener('click', showPwdForm);
+    $('pwdCancel') && $('pwdCancel').addEventListener('click', hidePwdForm);
+    $('pwdSubmit') && $('pwdSubmit').addEventListener('click', handleChangePwd);
     $('loginSyncNow') && $('loginSyncNow').addEventListener('click', handleSyncNow);
     $('loginLogout') && $('loginLogout').addEventListener('click', handleLogout);
+    $('loginAdmin') && $('loginAdmin').addEventListener('click', function () {
+      window.location.href = 'admin.html';
+    });
+  }
+
+  /* 已登录：修改密码
+   * 之前这条路根本不存在——密码泄露了只能求管理员，而管理员也没有重置手段。
+   * 现在收在账号中心里，改完服务端会作废其它设备上的登录。 */
+  function showPwdForm() {
+    var actions = $('loginAuthedActions'), form = $('loginPwdForm');
+    if (!actions || !form) return;
+    actions.style.display = 'none';
+    form.style.display = 'block';
+    $('pwdMsg').textContent = '';
+    $('pwdOld').value = ''; $('pwdNew').value = ''; $('pwdNew2').value = '';
+    $('pwdOld').focus();
+  }
+  function hidePwdForm() {
+    var actions = $('loginAuthedActions'), form = $('loginPwdForm');
+    if (!actions || !form) return;
+    form.style.display = 'none';
+    actions.style.display = 'grid';
+    $('pwdOld').value = ''; $('pwdNew').value = ''; $('pwdNew2').value = '';
+    $('pwdMsg').textContent = '';
+  }
+  function handleChangePwd() {
+    var msg = $('pwdMsg'), btn = $('pwdSubmit');
+    var oldV = $('pwdOld').value, next = $('pwdNew').value, again = $('pwdNew2').value;
+    msg.textContent = '';
+    /* 客户端先挡一遍明显错误，省一次往返；服务端那边会再验一次，不能只信这里。 */
+    if (!oldV) { msg.textContent = '请输入当前密码'; return; }
+    if (next.length < 6) { msg.textContent = '新密码至少 6 位'; return; }
+    if (next !== again) { msg.textContent = '两次输入的新密码不一致'; return; }
+    if (next === oldV) { msg.textContent = '新密码不能和当前密码相同'; return; }
+    btn.disabled = true;
+    WG_API.changePassword(oldV, next).then(function () {
+      hidePwdForm();
+      toast('密码已修改，其它设备需要重新登录', 'ok');
+    }).catch(function (e) {
+      var text = (e && e.message) || '修改失败，请重试';
+      /* 前端会先于后端上线（Pages 自动发布，后端要等人部署）。
+       * 这段空窗期里接口还不存在，得说人话，别让人以为是密码输错了。 */
+      if (text.indexOf('接口不存在') > -1) text = '服务端还没更新，暂时不能修改密码，稍后再试。';
+      msg.textContent = text;
+    }).then(function () {
+      btn.disabled = false;
+    });
   }
 
   /* 已登录：修改昵称 */
@@ -1570,7 +1636,16 @@ var WG_App = (function () {
       closeLogin();
       refreshNickUI();
       toast('已退出登录，本机数据已保留', 'ok');
-      goHome();
+      /* 退出登录本身只是清一个 token，慢的是回到首页时**重建 3D 校园**
+       * （draw() 要预加载背景和建筑贴图，秒级）。
+       *   1) 已经在首页：场景没变，没必要拆了重搭，只刷新一下状态面板；
+       *   2) 在别的页：把切换推迟一帧，先让弹窗关闭和提示绘制出来，
+       *      否则用户点完像卡住。 */
+      if (state.view === 'home') {
+        if (window.WG_Atlas && typeof WG_Atlas.refresh === 'function') WG_Atlas.refresh();
+      } else {
+        setTimeout(goHome, 0);
+      }
       return;
     }
     if (!logged && !hasProfile) { toast('当前还没有学习档案'); return; }
@@ -1741,6 +1816,13 @@ var WG_App = (function () {
     var topnav = $('topnav');
     if (topnav) {
       topnav.addEventListener('click', function (e) {
+        /* 二级目录父项：只展开/收起，不换页 */
+        var parent = e.target.closest ? e.target.closest('.atlas-nav-parent') : null;
+        if (parent) {
+          e.preventDefault();
+          setCourseNavOpen(parent.getAttribute('aria-expanded') !== 'true');
+          return;
+        }
         var a = e.target.closest ? e.target.closest('a[data-nav]') : null;
         if (!a) return;
         e.preventDefault();
@@ -1748,39 +1830,22 @@ var WG_App = (function () {
         navTo(a.getAttribute('data-nav'));
       });
     }
-    /* 板块标题右侧的「全部模块 →」「资料库 →」：它们带 data-nav，
-       但顶部导航那个委托只认 #topnav 里的 a，按钮接不上，得单独兜。 */
     document.addEventListener('click', function (e) {
-      var b = e.target.closest ? e.target.closest('.sec-more[data-nav]') : null;
+      var tab = e.target.closest ? e.target.closest('.learning-section-nav [data-section-nav]') : null;
+      if (!tab) return;
+      e.preventDefault();
+      navTo(tab.getAttribute('data-section-nav'));
+    });
+    /* 功能目录与页内快捷入口复用路由；校园互动入口可指定具体标签页。 */
+    document.addEventListener('click', function (e) {
+      var b = e.target.closest ? e.target.closest('button[data-nav]') : null;
       if (!b) return;
       e.preventDefault();
       closeModal();
-      navTo(b.getAttribute('data-nav'));
+      var tab = b.getAttribute('data-community-entry');
+      if (tab && window.WG_Community) WG_Community.open(tab);
+      else navTo(b.getAttribute('data-nav'));
     });
-
-    /* 首页快捷入口 */
-    $('heroRandom') && $('heroRandom').addEventListener('click', function () { gateData(enterRandom); });
-    $('heroStudy') && $('heroStudy').addEventListener('click', function () { closeModal(); openStudySetup(); });
-    $('heroBank') && $('heroBank').addEventListener('click', function () { closeModal(); gateData(function () { renderBank(); }); });
-    $('heroMistake') && $('heroMistake').addEventListener('click', function () { closeModal(); gateData(function () { renderMistakes(); }); });
-
-    /* 首页学科大入口：点卡片进该学科的细分题库页 */
-    var portal = $('homeBankGrid');
-    if (portal) {
-      portal.addEventListener('click', function (e) {
-        var card = e.target.closest ? e.target.closest('.sp-card') : null;
-        if (!card) return;
-        closeModal();
-        renderBank(card.getAttribute('data-continent'));
-      });
-      portal.addEventListener('keydown', function (e) {
-        if (e.key !== 'Enter' && e.key !== ' ' && e.key !== 'Spacebar') return;
-        var card = e.target.closest ? e.target.closest('.sp-card') : null;
-        if (!card) return;
-        e.preventDefault();
-        card.click();
-      });
-    }
 
     /* 题库页：从单学科回到全科 */
     var bankBack = $('bankBack');
@@ -1788,8 +1853,8 @@ var WG_App = (function () {
       bankBack.addEventListener('click', function () { closeModal(); renderBank(); });
     }
 
-    /* 首页/题库模块卡片：进入模块详情（有子模块时） */
-    ['homeBankGrid', 'bankGrid'].forEach(function (gridId) {
+    /* 题库模块卡片：进入模块详情（有子模块时） */
+    ['bankGrid'].forEach(function (gridId) {
       var g = $(gridId);
       if (g) {
         g.addEventListener('click', function (e) {
@@ -1861,14 +1926,6 @@ var WG_App = (function () {
       });
     }
     if ($('modBack')) $('modBack').addEventListener('click', function () { closeModal(); renderBank(bankFilter); });
-    /* 首页资料入口 */
-    var wkGrid = $('homeWenkuGrid');
-    if (wkGrid) {
-      wkGrid.addEventListener('click', function (e) {
-        var en = e.target.closest ? e.target.closest('[data-wenku]') : null;
-        if (en) { closeModal(); renderWenku(en.getAttribute('data-wenku')); }
-      });
-    }
     /* 资料页 tab + 搜索 */
     var wt = $('wenkuTabs');
     if (wt) {
@@ -1970,14 +2027,8 @@ var WG_App = (function () {
     });
     /* AI 侧边栏配置入口 */
     if ($('aiBtn')) $('aiBtn').addEventListener('click', function () { aiSideOpen(); });
-    $('aiSideCfg').addEventListener('click', function () { aiSideClose(); closeModal(); showView('ai'); });
-    var aiStatus = $('aiKeyStatus');
-    if (aiStatus) {
-      aiStatus.textContent = window.WG_API
-        ? 'AI 由智谱 GLM-4-Flash 驱动，在线直连调用。'
-        : 'AI 服务初始化中…';
-    }
-
+    $('aiSideCfg').addEventListener('click', function () { aiSideClose(); closeModal(); navTo('ai'); });
+    bindAiTools();
     /* 开发者模式：仅保留解锁标记清理 */
     if ($('devBtn')) $('devBtn').addEventListener('click', function () { $('devPanel').classList.toggle('hidden'); });
     if ($('devUnlock')) $('devUnlock').addEventListener('click', function () {
@@ -1991,45 +2042,6 @@ var WG_App = (function () {
       toast('已标记全部模块练习过', 'ok');
       goHome();
     });
-    $('aiExplainDemo').addEventListener('click', function () {
-      var q = 'lim(x→0) sin(3x)/x = ?';
-      aiChatAppend('演示：讲题', '题目：' + q);
-      aiRun('AI 讲题中', function () { return WG_AI.explainQuestion(q, '2', '3'); })
-        .then(function () { /* 内容已写入 */ });
-    });
-    $('aiGenDemo').addEventListener('click', function () {
-      aiRun('AI 出题中', function () {
-        return WG_AI.generateQuestions('极限运算', 3).then(function (t) { aiChatAppend('演示：出题', t); return t; });
-      });
-    });
-    $('aiPlanDemo').addEventListener('click', function () {
-      aiRun('计划生成中', function () {
-        return WG_AI.makePlan(47, '极限、导数').then(function (t) { aiChatAppend('演示：备考计划', t); return t; });
-      });
-    });
-    /* 根据我的错题生成个性化计划 */
-    $('aiMyPlan').addEventListener('click', function () {
-      var d = WG_Data.get();
-      var ans = d.answers || [];
-      var byTopic = {};
-      ans.forEach(function (a) {
-        if (!byTopic[a.topic]) byTopic[a.topic] = { c: 0, w: 0 };
-        byTopic[a.topic][a.correct ? 'c' : 'w']++;
-      });
-      var weak = [];
-      Object.keys(byTopic).forEach(function (t) {
-        var v = byTopic[t], total = v.c + v.w;
-        if (total >= 2 && v.w / total > 0.25) weak.push(t + '(错' + Math.round(v.w / total * 100) + '%)');
-      });
-      var weakStr = weak.length ? weak.join('、') : '暂无明显薄弱点（多做几关我来帮你找）';
-      aiRun('AI 生成中', function () {
-        return WG_AI.makePlan(30, weakStr).then(function (t) {
-          aiChatAppend('个性化学习计划 · 基于你的 ' + ans.length + ' 道做题记录（薄弱：' + weakStr + '）', t);
-          return t;
-        });
-      });
-    });
-
     $('mRetry').addEventListener('click', function () {
       closeModal();
       /* 有登记就按登记的方式重开，没登记才退回按 id 找关卡 */
@@ -2119,7 +2131,6 @@ var WG_App = (function () {
   function showOnboard() {
     var p = WG_Data.get().profile;
     if (p) {
-      if ($('obNick')) $('obNick').value = (p.nick && p.nick !== '同学') ? p.nick : '';
       if ($('obGrade')) $('obGrade').value = p.grade || '大二';
       if ($('obTarget')) $('obTarget').value = p.target || '期末考试';
       if ($('obDate')) $('obDate').value = p.examDate || '';
@@ -2144,7 +2155,6 @@ var WG_App = (function () {
     var tR = $('obTabReg'), tL = $('obTabLogin');
     if (tR) { tR.classList.toggle('primary', mode === 'reg'); tR.classList.toggle('ghost', mode !== 'reg'); }
     if (tL) { tL.classList.toggle('primary', mode === 'login'); tL.classList.toggle('ghost', mode !== 'login'); }
-    if ($('obNick')) $('obNick').style.display = mode === 'reg' ? 'block' : 'none';
     if ($('obPreferences')) $('obPreferences').open = mode === 'reg';
     if ($('obPassword')) $('obPassword').setAttribute('autocomplete', mode === 'reg' ? 'new-password' : 'current-password');
     if ($('obSubmit')) $('obSubmit').textContent = mode === 'reg' ? '注册并生成我的学习计划' : '登录并继续';
@@ -2207,10 +2217,12 @@ var WG_App = (function () {
     st.textContent = '';
     var username = ($('obUsername') ? $('obUsername').value : '').trim();
     var password = $('obPassword') ? $('obPassword').value : '';
-    var nick = ($('obNick') ? $('obNick').value : '').trim();
+    /* 不再单独填昵称：显示名直接用用户名。
+     * 注意不要把 username 当 nickname 传上去——服务端有「昵称不能等于密码」的闸，
+     * 用户名恰好等于密码时会误伤。留空即由服务端回落到用户名。 */
     var weak = Array.from(document.querySelectorAll('#obWeak input:checked')).map(function (i) { return i.value; });
     var profile = {
-      nick: nick || username || WG_Data.get().nick || '同学',
+      nick: username || WG_Data.get().nick || '同学',
       grade: $('obGrade').value, target: $('obTarget').value,
       examDate: $('obDate').value, weak: weak, hours: $('obHours').value
     };
@@ -2224,7 +2236,7 @@ var WG_App = (function () {
       try {
         if (obMode === 'reg') {
           st.textContent = '正在注册…';
-          await WG_API.register(username, password, nick);
+          await WG_API.register(username, password);
         } else {
           st.textContent = '正在登录…';
           await WG_API.login(username, password);
@@ -2881,6 +2893,7 @@ var WG_App = (function () {
     stopGames();
     if (name === 'home') renderHome();
     else if (name === 'bank') gateData(function () { renderBank(); });
+    else if (name === 'random') gateData(enterRandom);
     else if (name === 'study') {
       /* 若自习室仍在进行中，直接切回并按需恢复计时；否则弹出入场设置 */
       if (window.StudyRoom && typeof window.StudyRoom.isActive === 'function' && window.StudyRoom.isActive()) {
@@ -2893,7 +2906,7 @@ var WG_App = (function () {
     else if (name === 'wenku') gateData(function () { renderWenku(); });
     else if (name === 'mistakes') gateData(function () { renderMistakes(); });
     else if (name === 'report') renderReport();
-    else if (name === 'review' || name === 'knowledge') { showView(name); window.WG_Integrations && WG_Integrations.open(name); }
+    else if (name === 'review') { showView(name); window.WG_Integrations && WG_Integrations.open(name); }
     else if (name === 'rooms') { showView(name); window.WG_Rooms && WG_Rooms.open(); }
     else if (name === 'community') { showView(name); window.WG_Community && WG_Community.load(); }
     else if (name === 'ai') showView('ai');

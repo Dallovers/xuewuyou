@@ -25,7 +25,12 @@ test('real pyBKT posterior matches Bayesian update and missing probe does not ad
 });
 test('map uses bundled bank; mastery rejects self-assessed and duplicate FSRS mirror records',async()=>{
   assert.equal((await req('map','GET',undefined,'')).status,401);
-  const map=await req('map');assert.equal(map.topics.length,25);assert.equal(map.topics.reduce((n,t)=>n+t.total,0),1785);
+  const map=await req('map');assert.equal(map.topics.length,25);
+  /* 总数跟题库模块对齐，而不是写死数字：导入批次会把题目加进池子，
+     写死会让每次合法导入都变成测试红灯。另留一条下界，防止题库被改小。 */
+  const {questions:bank}=require('../integrations/questions');
+  assert.equal(map.topics.reduce((n,t)=>n+t.total,0),bank.size);
+  assert.ok(bank.size>=1785,'题库不应少于最初的 1785 道');
   await putAnswers([{qid:'7036',topic:'forged topic',correct:true,timeMs:Date.now()},{qid:'7036',correct:true,type:'FSRS复习',timeMs:Date.now()+1},{qid:'unknown',correct:true,timeMs:Date.now()+2}]);
   const m=await req('mastery');assert.equal(m.engine,'pyBKT');assert.equal(m.count,1);assert.equal(m.topics['函数与极限'].observations,1);
   assert.equal((await req('mastery','GET',undefined,other)).count,0);
