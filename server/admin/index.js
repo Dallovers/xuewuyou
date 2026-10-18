@@ -290,16 +290,55 @@ module.exports = function createAdmin({ route, authUser, sendJson, readBody, sto
     return { changed: changed.length, usernames: changed.slice(0, 50) };
   });
 
-  /* ---------- 下架公开的 AI 回答 ----------
-   * 内容一旦公开，就必须留一条撤下来的路。这里只做删除（不留副本）。 */
+  /* ---------- 公开的 AI 回答 ----------
+   * 内容一旦公开，就必须同时有「看得见」和「撤得下来」两条路——
+   * 只有删除接口而没有列表，等于出事时还得手动敲 curl 找 id。 */
+
+  /* 列表。只给后台用，字段比公开接口多（作者账号、完整回答），所以不能复用 /api/ai/notes。 */
+  own('GET', 'ai-notes', (actor, query) => {
+    const q = (query.get('q') || '').trim();
+    const limit = Math.min(PAGE_MAX, Math.max(1, Number(query.get('limit')) || PAGE_LIMIT));
+    const offset = Math.max(0, Number(query.get('offset')) || 0);
+    const all = usersTable();
+    let list = Object.values(store.get('aiNotes') || {})
+      .sort((a, b) => (Number(b.createdAt) || 0) - (Number(a.createdAt) || 0));
+    if (q) {
+      list = list.filter((n) => String(n.question || '').includes(q) || String(n.answer || '').includes(q));
+    }
+    return {
+      total: list.length,
+      items: list.slice(offset, offset + limit).map((n) => {
+        /* 作者可能已被删号，这时候别让整行渲染不出来 */
+        const u = all[n.uid] || {};
+        return {
+          id: n.id,
+          kind: n.kind,
+          question: n.question || '',
+          answer: n.answer || '',
+          createdAt: n.createdAt || null,
+          author: {
+            id: n.uid || null,
+            username: u.username || '（账号已不存在）',
+            nick: u.nick || u.username || '（账号已不存在）'
+          }
+        };
+      })
+    };
+  });
+
+  /* 下架。只做删除（不留副本）——留副本等于把撤下来的内容换个地方存着。 */
   own('POST', 'ai-note-action', (actor, _query, body) => {
     const id = String(body.id || ''), action = String(body.action || '');
     if (action !== 'delete') fail(400, '未知操作：' + action);
     const all = store.get('aiNotes') || {};
     if (!all[id]) fail(404, '找不到这条公开回答');
+    const note = all[id];
+    const author = usersTable()[note.uid] || null;
     delete all[id];
     store.set('aiNotes', all);
-    record(actor, 'ai-note-delete', null, '下架公开 AI 回答');
+    /* 审计里只记 id、类型和作者，不记问题与回答正文：正文是被撤掉的东西，
+     * 抄进审计日志等于换个地方继续留着。 */
+    record(actor, 'ai-note-delete', author, '下架公开 AI 回答（' + note.kind + '，id ' + id.slice(0, 8) + '）');
     return { ok: true };
   });
 

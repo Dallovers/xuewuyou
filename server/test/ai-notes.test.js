@@ -115,3 +115,39 @@ test('管理员可以把它下架，审计留痕', async () => {
   const audit = await call('/api/admin/audit', 'GET', undefined, adminToken);
   assert.ok(audit.body.items.some((x) => x.action === 'ai-note-delete'), '审计里要留痕');
 });
+
+/* 只有删除接口而没有列表，等于出事时还得手动翻存储找 id。
+ * 后台列表比公开接口多给作者账号和完整正文，所以权限必须更严：不是管理员一律不给。 */
+test('后台能列出公开回答：匿名 401、普通用户 403、管理员能按内容搜到并看到作者', async () => {
+  const marker = '检索标记' + Date.now();
+  const saved = await call('/api/ai/notes', 'POST', { kind: 'explain', question: marker, answer: '回答正文' }, tokenA);
+  assert.equal(saved.status, 200, JSON.stringify(saved.body));
+
+  assert.equal((await call('/api/admin/ai-notes', 'GET')).status, 401, '匿名不给看');
+  assert.equal((await call('/api/admin/ai-notes', 'GET', undefined, tokenB)).status, 403, '普通用户不给看');
+
+  const list = await call('/api/admin/ai-notes?q=' + encodeURIComponent(marker), 'GET', undefined, adminToken);
+  assert.equal(list.status, 200, JSON.stringify(list.body));
+  assert.equal(list.body.total, 1, '按内容应该只筛到这一条');
+
+  const item = list.body.items[0];
+  assert.equal(item.id, saved.body.note.id);
+  assert.equal(item.kind, 'explain');
+  assert.equal(item.answer, '回答正文', '后台看得到完整正文');
+  assert.equal(item.author.username, '讲题甲', '后台要能看出是谁发的');
+});
+
+/* 撤下来的内容不能换个地方继续留着：审计里只记 id、类型和作者，不抄正文。 */
+test('下架后审计只留 id 与类型，不抄被撤的正文', async () => {
+  const saved = await call('/api/ai/notes', 'POST', {
+    kind: 'explain', question: '这个问题不该进审计', answer: '这段回答也不该进审计'
+  }, tokenA);
+  const del = await call('/api/admin/ai-note-action', 'POST', { id: saved.body.note.id, action: 'delete' }, adminToken);
+  assert.equal(del.status, 200, JSON.stringify(del.body));
+
+  const audit = await call('/api/admin/audit?limit=20', 'GET', undefined, adminToken);
+  const row = audit.body.items.find((x) => x.action === 'ai-note-delete');
+  assert.ok(row, '要有这条审计');
+  assert.ok(!/这个问题|这段回答/.test(row.detail || ''), '审计细节里不能出现被撤的内容：' + row.detail);
+  assert.equal(row.target && row.target.username, '讲题甲', '审计要记下是谁发的');
+});

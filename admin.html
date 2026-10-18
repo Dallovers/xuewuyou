@@ -59,6 +59,9 @@
   #gate button { width:100%; padding:9px; font-size:14px; }
   #gate code { background:#f3f3f3; padding:1px 4px; border-radius:4px; font-size:12px; }
   .pager { display:flex; gap:8px; align-items:center; padding:10px 16px; border-top:1px solid var(--line); }
+  details summary { cursor:pointer; color:var(--accent); font-size:12px; margin-top:2px; }
+  details[open] summary { margin-bottom:4px; }
+  .answer { color:var(--sub); white-space:pre-wrap; }
 </style>
 </head>
 <body>
@@ -128,6 +131,21 @@
       <tbody id="pBody"></tbody>
     </table>
     <div class="pager"><button class="small" id="pPrev">上一页</button><span class="muted" id="pPage"></span><button class="small" id="pNext">下一页</button></div>
+  </section>
+
+  <section>
+    <h2>公开 AI 回答</h2>
+    <div class="toolbar">
+      <input type="text" id="nQuery" placeholder="按问题 / 回答内容搜">
+      <button class="primary" id="nSearch">查询</button>
+      <span class="muted" id="nCount"></span>
+    </div>
+    <div class="msg" id="nMsg"></div>
+    <table>
+      <thead><tr><th style="width:150px">作者</th><th style="width:90px">类型</th><th>问题与回答</th><th style="width:140px">时间</th><th style="width:80px">操作</th></tr></thead>
+      <tbody id="nBody"></tbody>
+    </table>
+    <div class="pager"><button class="small" id="nPrev">上一页</button><span class="muted" id="nPage"></span><button class="small" id="nNext">下一页</button></div>
   </section>
 
   <section>
@@ -379,12 +397,77 @@
     });
   }
 
+  /* ---------- 公开 AI 回答 ---------- */
+  var notePage = { offset: 0, limit: 50, total: 0 };
+  var NOTE_KINDS = { explain: 'AI 讲题', gen: 'AI 出题', plan: '备考计划' };
+
+  function loadNotes() {
+    var q = $('nQuery').value.trim();
+    var url = '/api/admin/ai-notes?limit=' + notePage.limit + '&offset=' + notePage.offset
+      + '&q=' + encodeURIComponent(q);
+    return api('GET', url).then(function (d) {
+      var body = $('nBody');
+      body.replaceChildren();
+      if (!d.ok) { say($('nMsg'), d.error, 'err'); return; }
+      notePage.total = d.total;
+      if (!d.items.length) {
+        var tr = el('tr'), td = el('td', q ? '没有包含「' + q + '」的回答' : '还没有人公开过 AI 回答', 'empty');
+        td.colSpan = 5; tr.appendChild(td); body.appendChild(tr);
+      }
+      d.items.forEach(function (n) {
+        var tr = el('tr');
+
+        var who = el('td');
+        who.appendChild(el('div', n.author.nick));
+        /* 显示名已经统一成用户名了，两行一样的字只是噪音 */
+        if (n.author.username !== n.author.nick) who.appendChild(el('div', n.author.username, 'muted'));
+        tr.appendChild(who);
+
+        tr.appendChild(el('td', NOTE_KINDS[n.kind] || n.kind));
+
+        /* 正文一律走 textContent：这是学生自己生成再公开的内容，不能当成 HTML 塞进来 */
+        var content = el('td');
+        content.appendChild(el('div', n.question));
+        var det = el('details');
+        det.appendChild(el('summary', '展开回答'));
+        det.appendChild(el('div', n.answer, 'answer'));
+        content.appendChild(det);
+        tr.appendChild(content);
+
+        tr.appendChild(el('td', when(n.createdAt), 'muted'));
+
+        var td2 = el('td', null, 'actions');
+        var b = el('button', '下架', 'small danger');
+        b.addEventListener('click', function () {
+          if (!window.confirm('确认下架这条公开回答？\n\n学生的「大家问过的」里会立刻消失，内容不留副本，不能恢复。')) return;
+          api('POST', '/api/admin/ai-note-action', { action: 'delete', id: n.id }).then(function (r) {
+            if (!r.ok) return say($('nMsg'), r.error, 'err');
+            say($('nMsg'), '已下架', 'ok');
+            /* 删掉最后一条时往前翻一页，否则会停在空页上 */
+            if (notePage.offset > 0 && notePage.offset >= notePage.total - 1) {
+              notePage.offset = Math.max(0, notePage.offset - notePage.limit);
+            }
+            loadNotes(); loadOverview(); loadAudit();
+          });
+        });
+        td2.appendChild(b);
+        tr.appendChild(td2);
+
+        body.appendChild(tr);
+      });
+      $('nCount').textContent = '共 ' + d.total + ' 条';
+      $('nPage').textContent = '第 ' + (Math.floor(notePage.offset / notePage.limit) + 1) + ' / '
+        + Math.max(1, Math.ceil(d.total / notePage.limit)) + ' 页';
+    });
+  }
+
   /* ---------- 审计 ---------- */
   var ACTIONS = {
     ban: '封号', unban: '解封', mute: '禁言', unmute: '解除禁言',
     promote: '设为管理员', demote: '取消管理员', 'reset-password': '重置密码',
     'unify-nicks': '统一显示名',
-    'post-delete': '下架留言', 'post-restore': '恢复留言'
+    'post-delete': '下架留言', 'post-restore': '恢复留言',
+    'ai-note-delete': '下架 AI 回答'
   };
 
   function loadAudit() {
@@ -411,7 +494,7 @@
 
   /* ---------- 启动 ---------- */
   function refreshAll() {
-    loadUsers(); loadPosts(); loadAudit(); loadOverview();
+    loadUsers(); loadPosts(); loadNotes(); loadAudit(); loadOverview();
   }
 
   $('refresh').addEventListener('click', refreshAll);
@@ -427,10 +510,16 @@
   $('uFilter').addEventListener('change', function () { userPage.offset = 0; loadUsers(); });
   $('pSearch').addEventListener('click', function () { postPage.offset = 0; loadPosts(); });
   $('pFilter').addEventListener('change', function () { postPage.offset = 0; loadPosts(); });
+  $('nSearch').addEventListener('click', function () { notePage.offset = 0; loadNotes(); });
+  $('nQuery').addEventListener('keydown', function (ev) {
+    if (ev.key === 'Enter') { ev.preventDefault(); notePage.offset = 0; loadNotes(); }
+  });
   $('uPrev').addEventListener('click', function () { userPage.offset = Math.max(0, userPage.offset - userPage.limit); loadUsers(); });
   $('uNext').addEventListener('click', function () { if (userPage.offset + userPage.limit < userPage.total) { userPage.offset += userPage.limit; loadUsers(); } });
   $('pPrev').addEventListener('click', function () { postPage.offset = Math.max(0, postPage.offset - postPage.limit); loadPosts(); });
   $('pNext').addEventListener('click', function () { postPage.offset += postPage.limit; loadPosts(); });
+  $('nPrev').addEventListener('click', function () { notePage.offset = Math.max(0, notePage.offset - notePage.limit); loadNotes(); });
+  $('nNext').addEventListener('click', function () { if (notePage.offset + notePage.limit < notePage.total) { notePage.offset += notePage.limit; loadNotes(); } });
 
   $('logout').addEventListener('click', function () {
     localStorage.removeItem(TOKEN_KEY);
