@@ -61,3 +61,37 @@
 @media (max-width: 520px) {
   .learning-section-nav button { flex: 1 1 auto; }
 }
+
+/* ===== 侧边栏二级目录：课程与资料 ===== */
+.atlas-nav-group { display: flex; flex-direction: column; gap: 2px; }
+.atlas-nav-parent { position: relative; }
+.atlas-nav-caret { margin-left: auto; font-size: 16px; line-height: 1; opacity: .5; transform: rotate(90deg); }
+/* 父项只作“当前大类”的指示，选中态交给子项，避免出现两个高亮块 */
+.atlas-sidebar .topnav .atlas-nav-parent.active {
+  background: transparent;
+  border-color: transparent;
+  color: var(--atlas-deep);
+  font-weight: 700;
+}
+.atlas-sidebar .topnav .atlas-subnav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 2px 0 6px 14px;
+  padding-left: 10px;
+  border-left: 1px solid var(--atlas-stroke);
+}
+.atlas-sidebar .topnav .atlas-subnav a {
+  min-height: 40px;
+  padding: 9px 10px;
+  border-radius: 8px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.atlas-sidebar .topnav .atlas-subnav a:hover { background: #edf2e8; color: var(--atlas-deep); }
+.atlas-sidebar .topnav .atlas-subnav a.active {
+  background: #e4efe3;
+  border-color: #d6e4d5;
+  color: var(--atlas-deep);
+  font-weight: 700;
+}
