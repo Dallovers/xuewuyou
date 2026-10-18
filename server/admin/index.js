@@ -14,6 +14,7 @@
 const crypto = require('crypto');
 const auth = require('../lib/auth');
 const { ADMIN_ROLE, isAdmin, isMuted } = require('../lib/moderation');
+const { clientKey } = require('../lib/rate-limit');
 
 const AUDIT_LIMIT = 500;      // 审计日志最多留这么多条
 const PAGE_LIMIT = 50;
@@ -103,7 +104,9 @@ module.exports = function createAdmin({ route, authUser, sendJson, readBody, sto
    */
   const loginFails = new Map();
 
-  const clientIp = (req) => (req.socket && req.socket.remoteAddress) || 'unknown';
+  /* 与登录接口共用同一套取 IP 的逻辑：线上前面有反向代理，
+   * 直接读 socket 拿到的是代理地址，所有人会挤进同一个计数桶。 */
+  const clientIp = (req) => clientKey(req);
 
   route('POST', '/api/admin/login', async (req, res) => {
     try {

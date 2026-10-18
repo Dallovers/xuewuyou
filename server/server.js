@@ -14,6 +14,16 @@ const crypto = require('crypto');
 const store = require('./lib/store');
 const auth = require('./lib/auth');
 const { isAdmin } = require('./lib/moderation');
+const { createLimiter, clientKey, waitText } = require('./lib/rate-limit');
+
+/* 登录失败与注册的频率上限。数值走环境变量，方便线上按情况调，
+ * 也方便测试用很小的数去验机制本身。 */
+const AUTH_WINDOW_MS = Number(process.env.AUTH_WINDOW_MS) || 10 * 60 * 1000;
+const LOGIN_MAX_FAILS = Number(process.env.AUTH_LOGIN_MAX_FAILS) || 5;
+const REGISTER_WINDOW_MS = Number(process.env.AUTH_REGISTER_WINDOW_MS) || 60 * 60 * 1000;
+const REGISTER_MAX = Number(process.env.AUTH_REGISTER_MAX) || 60;
+const loginFails = createLimiter({ windowMs: AUTH_WINDOW_MS, max: LOGIN_MAX_FAILS });
+const registerHits = createLimiter({ windowMs: REGISTER_WINDOW_MS, max: REGISTER_MAX });
 
 const PORT = process.env.PORT || 3000;
 const ROOT = path.join(__dirname, '..'); // wenguo 前端目录
@@ -178,6 +188,13 @@ route('GET', '/api/health', async (req, res) => sendJson(res, 200, { ok: true })
 /* ===== 认证 ===== */
 route('POST', '/api/auth/register', async (req, res) => {
   const body = JSON.parse(await readBody(req, 1) || '{}');
+  /* 刷号防护：按来源计数。别把上限设太小——校园网常常整栋楼共用一个出口 IP，
+   * 一个班同时注册是正常现象，不是攻击。 */
+  const client = clientKey(req);
+  const registerWait = registerHits.blocked(client);
+  if (registerWait > 0) {
+    return sendError(res, 429, '注册过于频繁，请 ' + waitText(registerWait) + '后再试');
+  }
   const username = String(body.username || '').trim();
   const password = String(body.password || '');
   const rawNick = String(body.nick || '').trim();
@@ -198,6 +215,7 @@ route('POST', '/api/auth/register', async (req, res) => {
   const id = uid();
   users[id] = { id, username, passHash: auth.hashPassword(password), nick: nick || username, createdAt: Date.now() };
   store.set('users', users);
+  registerHits.fail(client);
   const token = auth.sign({ uid: id });
   sendJson(res, 200, { ok: true, token, user: { id, username, nick: users[id].nick, role: isAdmin(users[id]) ? 'admin' : null } });
 });
@@ -206,11 +224,22 @@ route('POST', '/api/auth/login', async (req, res) => {
   const body = JSON.parse(await readBody(req, 1) || '{}');
   const username = String(body.username || '').trim();
   const password = String(body.password || '');
+  /* 爆破防护：按「账号 + 来源」计数，连续失败到上限就锁一个窗口。
+   * key 里一定要带账号名——线上走反向代理时所有请求看起来都来自同一个 IP，
+   * 只按 IP 计数，一个人试错就能把全校锁死。 */
+  const attemptKey = username.toLowerCase() + '|' + clientKey(req);
+  const loginWait = loginFails.blocked(attemptKey);
+  if (loginWait > 0) {
+    return sendError(res, 429, '密码错误次数过多，请 ' + waitText(loginWait) + '后再试');
+  }
   const users = store.get('users') || {};
   const user = Object.values(users).find((u) => u.username === username);
   if (!user || !auth.verifyPassword(password, user.passHash)) {
+    loginFails.fail(attemptKey);
     return sendError(res, 401, '用户名或密码错误');
   }
+  /* 输对了就把失败记录清掉，不让人背着之前的错误继续被算账。 */
+  loginFails.clear(attemptKey);
   /* 封禁在登录这一步就挡住，并说明原因——密码验证之后才判，避免用封禁状态探测账号是否存在 */
   if (user.banned) {
     return sendError(res, 403, '该账号已被封禁' + (user.banReason ? '：' + user.banReason : '，请联系站点维护者'));
