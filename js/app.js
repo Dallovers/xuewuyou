@@ -1636,7 +1636,16 @@ var WG_App = (function () {
       closeLogin();
       refreshNickUI();
       toast('已退出登录，本机数据已保留', 'ok');
-      goHome();
+      /* 退出登录本身只是清一个 token，慢的是回到首页时**重建 3D 校园**
+       * （draw() 要预加载背景和建筑贴图，秒级）。
+       *   1) 已经在首页：场景没变，没必要拆了重搭，只刷新一下状态面板；
+       *   2) 在别的页：把切换推迟一帧，先让弹窗关闭和提示绘制出来，
+       *      否则用户点完像卡住。 */
+      if (state.view === 'home') {
+        if (window.WG_Atlas && typeof WG_Atlas.refresh === 'function') WG_Atlas.refresh();
+      } else {
+        setTimeout(goHome, 0);
+      }
       return;
     }
     if (!logged && !hasProfile) { toast('当前还没有学习档案'); return; }
