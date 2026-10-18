@@ -63,12 +63,12 @@
 }
 
 /* ===== 侧边栏二级目录：课程与资料 ===== */
+/* 注意：侧边栏是**深色**的（campus-theme.css 给 .atlas-sidebar 上了深绿底、
+   .topnav a 用 #e0e7dc 浅字）。之前按浅色主题写 --ink-2，在这套主题下几乎看不见。
+   下面所有配色都对齐 campus-theme 的取值：普通项浅字、hover #34553f、选中 #eee6d0 米色块。 */
 .atlas-nav-group { display: flex; flex-direction: column; gap: 2px; }
 
-/* 父项是按钮而不是链接：它的职责只有展开/收起，跳转交给三个子项，
-   这样「点父项」不会既换页又改目录状态。
-   配色/字号/字重全部对齐「今日校园」那条链接（transparent / --ink-2 / 14px / 500），
-   只保留右侧箭头和左对齐的展开行为。 */
+/* 父项是按钮而不是链接：只负责展开/收起，跳转交给子项 */
 .atlas-sidebar .topnav .atlas-nav-parent {
   display: flex;
   align-items: center;
@@ -80,19 +80,27 @@
   border: 1px solid transparent;
   border-radius: 10px;
   background: transparent;
-  color: var(--ink-2);
+  color: #e0e7dc;
   font: inherit;
   font-size: 14px;
   font-weight: 500;
   line-height: 1.3;
   text-align: left;
   cursor: pointer;
+  transition: background-color .18s, color .18s;
 }
-.atlas-sidebar .topnav .atlas-nav-parent:hover { background: #edf2e8; color: var(--ink-2); }
-.atlas-sidebar .topnav .atlas-nav-parent:focus-visible { outline: 2px solid var(--atlas-mint); outline-offset: 2px; }
-/* 父项不再抢高亮：当前在哪一页由下面的子项显示（.section-current 留给以后需要时再上色） */
+.atlas-sidebar .topnav .atlas-nav-parent:hover { background: #34553f; color: #fffefa; }
+.atlas-sidebar .topnav .atlas-nav-parent:focus-visible { outline: 3px solid #eed795; outline-offset: 3px; }
+/* 当前就在这一大类里：用主题里的米色选中块，和 .active 一模一样的观感 */
+.atlas-sidebar .topnav .atlas-nav-parent.section-current {
+  background: #eee6d0;
+  border-color: #eee6d0;
+  color: #244232;
+  font-weight: 700;
+}
+.atlas-sidebar .topnav .atlas-nav-parent.section-current:hover { background: #f5edda; color: #244232; }
 
-.atlas-nav-caret { font-size: 16px; line-height: 1; opacity: .6; transition: transform .22s ease; }
+.atlas-nav-caret { font-size: 16px; line-height: 1; opacity: .75; transition: transform .22s ease; }
 .atlas-nav-parent[aria-expanded="true"] .atlas-nav-caret { transform: rotate(90deg); }
 
 /* 折叠动画：max-height 从 0 推到固定上界。关着时同时把 visibility 置为 hidden，
@@ -103,7 +111,7 @@
   gap: 2px;
   margin: 0 0 0 14px;
   padding-left: 10px;
-  border-left: 1px solid var(--atlas-stroke);
+  border-left: 1px solid #486451;
   overflow: hidden;
   max-height: 0;
   opacity: 0;
@@ -118,14 +126,16 @@
   transform: none;
   transition: max-height .26s ease, opacity .2s ease, transform .2s ease, visibility 0s;
 }
-.atlas-sidebar .topnav .atlas-subnav a { min-height: 40px; padding: 9px 10px; border-radius: 8px; font-size: 13px; color: var(--muted); }
-.atlas-sidebar .topnav .atlas-subnav a:hover { background: #edf2e8; color: var(--atlas-deep); }
+/* 子项比父项淡一档，但仍然要在深底上看得清 */
+.atlas-sidebar .topnav .atlas-subnav a { min-height: 40px; padding: 9px 10px; border-radius: 8px; font-size: 13px; color: #cfdbcd; }
+.atlas-sidebar .topnav .atlas-subnav a:hover { background: #34553f; color: #fffefa; }
 .atlas-sidebar .topnav .atlas-subnav a.active {
-  background: #e4efe3;
-  border-color: #d6e4d5;
-  color: var(--atlas-deep);
+  background: #eee6d0;
+  border-color: #eee6d0;
+  color: #244232;
   font-weight: 700;
 }
+.atlas-sidebar .topnav .atlas-subnav a.active:hover { background: #f5edda; color: #244232; }
 
 @media (prefers-reduced-motion: reduce) {
   .atlas-sidebar .topnav .atlas-subnav,
