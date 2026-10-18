@@ -286,19 +286,23 @@
   /* ===== 在线状态：进入自习室上报心跳，退出下线 ===== */
   let presenceTimer = null;
   let presenceVisibleBound = false;
+  let presenceTick = 0;
   function startPresence() {
     if (!window.WG_API || !WG_API.isLoggedIn()) return;
     sendPresence();
     if (presenceTimer) clearInterval(presenceTimer);
-    /* 原来 30 秒一轮，别人进来/离开要等半分钟才看得到，太钝。压到 10 秒。
-     * 两条取舍：
-     *   1) 标签页在后台时不拉名单——渲染了也没人看，白花流量；
-     *   2) 心跳照发。自习中切出去一会儿就掉线，比多几次请求烦人得多。 */
+    presenceTick = 0;
+    /* 读和写要分开算账：
+     *   心跳是**写**（整张 presence 表重写一次）。服务端的在线判定窗口是 5 分钟，
+     *   20 秒一次就够，10 秒一次只是把写入量翻三倍，换不来任何可感知的差别。
+     *   名单是**读**，只有真的停在自习室页面时才需要 10 秒一次；
+     *   切到别的页面/后台标签页时没人看得到，没必要继续问。 */
     presenceTimer = setInterval(function () {
-      sendPresence();
-      if (!document.hidden) fetchRealPeers();
+      presenceTick += 1;
+      if (presenceTick % 2 === 0) sendPresence();
+      if (!document.hidden && document.body.dataset.view === 'study') fetchRealPeers();
     }, 10000);
-    /* 切回标签页先补一次，别让刚回来的人盯着 10 秒前的名单。 */
+    /* 切回标签页先补一次，别让刚回来的人盯着 20 秒前的名单。 */
     if (!presenceVisibleBound) {
       presenceVisibleBound = true;
       document.addEventListener('visibilitychange', function () {

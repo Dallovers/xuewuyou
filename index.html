@@ -2,6 +2,9 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
+<!-- 提前完成到后端域名的 DNS / TCP / TLS 握手：首次 API 请求原本要为此多花 500-700ms -->
+<link rel="preconnect" href="https://xuewuyou-campus.onrender.com" crossorigin>
+<link rel="dns-prefetch" href="https://xuewuyou-campus.onrender.com">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="description" content="学无忧 · 大学生备考通关平台：高等数学、线性代数、概率论真题级题库，错题复盘与 AI 讲题。">
 <meta name="theme-color" content="#234333">
@@ -1032,7 +1035,7 @@
 <script src="js/scratch.js?v=2" defer></script>
 <script src="js/gaoshu.js?v=wall-16" defer></script>
 <script src="js/mathview.js?v=4" defer></script>
-<script src="js/study.js?v=9" defer></script>
+<script src="js/study.js?v=10" defer></script>
 <!-- 重型数据延迟加载器：gaoshu_bank / english_words / ielts_words / wenku / wenku_cat
      首屏渲染后后台加载，避免 4.3MB 同步阻塞登录界面 -->
 <script src="js/loader.js?v=1" defer></script>
