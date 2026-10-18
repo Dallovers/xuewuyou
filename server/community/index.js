@@ -90,7 +90,14 @@ module.exports = function({route,authUser,sendJson,readBody,store,syncReviews}) 
     delete s.friends[key(user.id,target)];save(s);notify([user.id,target],'friends');return {};
   });
   function scope(value){if(!value)return null;const q=questions.get(String(value));if(!q)fail('题目不存在',404);return q.id;}
-  function publicPost(s,p,user){return {...p,author:{id:p.author,nick:profile(s,p.author).nick},canDelete:p.author===user.id};}
+  /* 对外表示：整条 post 展开后必须剔除管理侧的内部字段。
+   * moderatedText 是管理员下架时留的原文备份——它只是给「恢复」和事后核对用的，
+   * 一旦跟着列表发给所有人，「下架」就等于没下架（前端不渲染，但 JSON 里明文都在）。
+   * deletedBy/deletedAt 同理：后者无害，前者会暴露管理员的账号 id。 */
+  function publicPost(s,p,user){
+    const {moderatedText,deletedBy,deletedAt,...view}=p;
+    return {...view,author:{id:p.author,nick:profile(s,p.author).nick},canDelete:p.author===user.id};
+  }
   own('GET','posts',(user,query)=>{
     const s=state(),qid=scope(query.get('qid')),mode=query.get('mode');
     const items=s.posts.filter(p=>qid?p.qid===qid:mode==='all'||!p.qid).slice(-100);

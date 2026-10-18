@@ -201,6 +201,16 @@ test('留言可以下架与恢复，作者自删的不能恢复', async () => {
   const list = await call('/api/admin/posts?filter=removed', 'GET', undefined, adminToken);
   assert.ok(list.body.items.some((p) => p.id === pid), '下架后应能在列表里查到');
 
+  /* 回归：下架后原文不能跟着公开列表发出去。
+   * moderatedText 是给「恢复」留的备份，publicPost 之前整条展开把它一起下发了 ——
+   * 前端不渲染，但任何人打开网络面板都能看到原文，等于没删干净。 */
+  const publicList = await call('/api/community/posts', 'GET', undefined, userToken);
+  assert.equal(publicList.status, 200);
+  assert.ok(!JSON.stringify(publicList.body).includes('这条会被管理员下架'),
+    '下架后原文不应出现在公开留言列表里');
+  assert.ok(!/moderatedText/.test(JSON.stringify(publicList.body)),
+    '公开列表不应带出 moderatedText 这类管理侧字段');
+
   const restore = await call('/api/admin/post-action', 'POST', { action: 'restore', id: pid }, adminToken);
   assert.equal(restore.status, 200);
   assert.equal(restore.body.post.text, '这条会被管理员下架', '恢复应还原原文');
