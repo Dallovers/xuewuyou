@@ -284,3 +284,35 @@ test('每次处罚都写审计：谁、对谁、做了什么', async () => {
   assert.equal(item.target.username, '普通同学甲', '要记清被处理的是谁');
   assert.ok(item.at > 0);
 });
+
+test('统一显示名：只改与用户名不同的账号，可重复执行，并留审计', async () => {
+  /* 造一个有自定义昵称的账号 */
+  const a = await register('统一测试甲');
+  const renamed = await call('/api/auth/profile', 'PUT', { nick: '自定义昵称甲' }, a.token);
+  assert.equal(renamed.body.user.nick, '自定义昵称甲', '先把昵称改成和用户名不同');
+
+  const first = await call('/api/admin/unify-nicks', 'POST', {}, adminToken);
+  assert.equal(first.status, 200, JSON.stringify(first.body));
+  assert.ok(first.body.changed >= 1, '应至少改掉一个');
+
+  const me = await call('/api/auth/me', 'GET', undefined, a.token);
+  assert.equal(me.body.user.nick, '统一测试甲', '显示名应等于用户名');
+
+  /* 再执行一次：没有可改的，不该反复写库 */
+  const again = await call('/api/admin/unify-nicks', 'POST', {}, adminToken);
+  assert.equal(again.body.changed, 0, '幂等：第二次应为 0');
+
+  const audit = await call('/api/admin/audit', 'GET', undefined, adminToken);
+  assert.ok(audit.body.items.some((x) => x.action === 'unify-nicks'), '审计里要留痕');
+});
+
+test('统一显示名要有管理员权限', async () => {
+  /* 注意：userToken 那个账号在后面的 ADMIN_USERNAMES 用例里已经被提成管理员了，
+     所以这里必须现注册一个普通账号来验权限，不能复用。 */
+  const fresh = await register('无权测试丙');
+  const denied = await call('/api/admin/unify-nicks', 'POST', {}, fresh.token);
+  assert.equal(denied.status, 403, '普通用户不能触发批量改名');
+
+  const anonymous = await call('/api/admin/unify-nicks', 'POST', {});
+  assert.equal(anonymous.status, 401, '未登录更不能');
+});

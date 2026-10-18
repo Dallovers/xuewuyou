@@ -274,6 +274,22 @@ module.exports = function createAdmin({ route, authUser, sendJson, readBody, sto
     return { user: publicUser(target) };
   });
 
+  /* ---------- 批量把显示名统一成用户名 ----------
+   * 「显示名直接用用户名」是产品规则，但存量账号是历史数据：
+   * 这件事必须由管理员显式点一次，不能藏在登录路径里偷偷改——
+   * 登录时顺手重命名会误伤正常用户（有专门的用例守着这条）。
+   * 动的是公开显示名（留言板、学习搭子、自习室都会跟着变），所以留审计。 */
+  own('POST', 'unify-nicks', (actor) => {
+    const all = usersTable();
+    const changed = [];
+    Object.values(all).forEach((u) => {
+      if (u.nick !== u.username) { u.nick = u.username; changed.push(u.username); }
+    });
+    if (changed.length) saveUsers(all);
+    record(actor, 'unify-nicks', null, changed.length ? '统一 ' + changed.length + ' 个账号的显示名' : '无需变更');
+    return { changed: changed.length, usernames: changed.slice(0, 50) };
+  });
+
   /* ---------- 留言列表 ---------- */
   own('GET', 'posts', (actor, query) => {
     const q = (query.get('q') || '').trim();

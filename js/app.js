@@ -1529,7 +1529,6 @@ var WG_App = (function () {
     $('loginPassword') && $('loginPassword').addEventListener('keydown', function (e) {
       if (e.key === 'Enter') handleLoginSubmit();
     });
-    $('loginChangeNick') && $('loginChangeNick').addEventListener('click', handleChangeNick);
     $('loginChangePwd') && $('loginChangePwd').addEventListener('click', showPwdForm);
     $('pwdCancel') && $('pwdCancel').addEventListener('click', hidePwdForm);
     $('pwdSubmit') && $('pwdSubmit').addEventListener('click', handleChangePwd);
@@ -1581,23 +1580,6 @@ var WG_App = (function () {
       msg.textContent = text;
     }).then(function () {
       btn.disabled = false;
-    });
-  }
-
-  /* 已登录：修改昵称 */
-  function handleChangeNick() {
-    var cur = WG_Data.get().nick || '同学';
-    var v = prompt('修改昵称：', cur);
-    if (!v || !v.trim()) return;
-    WG_Data.setNick(v.trim());
-    refreshNickUI();
-    var btn = $('loginChangeNick');
-    if (btn) btn.textContent = '✏️ ' + v.trim() + ' ✓';
-    WG_API.updateNick(v.trim()).then(function () {
-      refreshNickUI();
-      toast('昵称已更新', 'ok');
-    }).catch(function () {
-      toast('昵称已保存到本机，云端同步失败');
     });
   }
 

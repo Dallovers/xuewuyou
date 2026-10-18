@@ -262,6 +262,9 @@ route('POST', '/api/auth/login', async (req, res) => {
    * 命中就改回用户名，并告诉前端提示用户自己去改。只在完全相等时触发。 */
   let nick = user.nick;
   let nickReset = false;
+  /* 存量脏数据：早期没有拦「昵称=密码」，被密码管理器自动填过一次的账号，
+   * 密码已经明文存在 nick 里并公开显示。登录时手上正好有明文密码可用来判定，
+   * 命中就改回用户名，并告诉前端提示用户自己去改。只在完全相等时触发。 */
   if (nick && nick === password) {
     nick = user.username;
     nickReset = true;
@@ -270,6 +273,11 @@ route('POST', '/api/auth/login', async (req, res) => {
     all[user.id] = user;
     store.set('users', all);
   }
+  /* 注意：这里**不**顺手把昵称改成用户名。
+   * 「正常登录不能被误伤」是一条既有约定（test/auth-nick.test.js 有专门的用例），
+   * 把存量昵称统一成用户名属于批量数据变更，交给管理员在后台显式触发，
+   * 不要藏在登录路径里偷偷发生。 */
+
   sendJson(res, 200, { ok: true, token, user: { id: user.id, username: user.username, nick, role: isAdmin(user) ? 'admin' : null }, nickReset });
 });
 

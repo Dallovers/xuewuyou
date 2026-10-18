@@ -98,6 +98,7 @@
         <option value="admin">管理员</option>
       </select>
       <button class="primary" id="uSearch">查询</button>
+      <button id="uUnifyNicks" title="把所有人的显示名改成各自的用户名">统一显示名为用户名</button>
       <span class="muted" id="uCount"></span>
     </div>
     <div class="msg" id="uMsg"></div>
@@ -382,6 +383,7 @@
   var ACTIONS = {
     ban: '封号', unban: '解封', mute: '禁言', unmute: '解除禁言',
     promote: '设为管理员', demote: '取消管理员', 'reset-password': '重置密码',
+    'unify-nicks': '统一显示名',
     'post-delete': '下架留言', 'post-restore': '恢复留言'
   };
 
@@ -414,6 +416,14 @@
 
   $('refresh').addEventListener('click', refreshAll);
   $('uSearch').addEventListener('click', function () { userPage.offset = 0; loadUsers(); });
+  $('uUnifyNicks').addEventListener('click', function () {
+    if (!confirm('把所有账号的显示名改成各自的用户名？\n\n留言板、学习搭子、自习室里显示的名字都会跟着变，改完不能撤销。')) return;
+    api('POST', '/api/admin/unify-nicks').then(function (d) {
+      if (!d.ok) return say($('uMsg'), d.error, 'err');
+      say($('uMsg'), d.changed ? ('已统一 ' + d.changed + ' 个账号的显示名') : '所有账号的显示名已经是用户名', 'ok');
+      loadUsers(); loadOverview(); loadAudit();
+    });
+  });
   $('uFilter').addEventListener('change', function () { userPage.offset = 0; loadUsers(); });
   $('pSearch').addEventListener('click', function () { postPage.offset = 0; loadPosts(); });
   $('pFilter').addEventListener('change', function () { postPage.offset = 0; loadPosts(); });
