@@ -211,5 +211,51 @@ module.exports = function register({ route, authUser, sendJson, readBody, store,
       sendJson(res, 200, { ok: true, answer, citations, generated: true });
     } catch { sendJson(res, 200, { ok: true, answer: 'AI 服务暂时不可用，已保留检索到的资料依据。', citations, generated: false }); }
   }, 10);
+
+  /* ---------- 公开的 AI 产出：讲题 / 出题 / 备考计划 ----------
+   * 只收这三类「通用工具」的结果。自由提问和「按我的错题生成计划」不在其中——
+   * 后两者带个人内容（提问原文、错题清单），公开等于替用户做决定。
+   * 有上限、有截断：宁可少存，也不要让一个集合无限长大。 */
+  const AI_NOTE_KINDS = new Set(['explain', 'gen', 'plan']);
+  const AI_NOTES_MAX = 200;
+  /* 写入额度可配：测试要连写 200+ 条验证淘汰，生产保持 30/分钟 */
+  const AI_NOTE_WRITE_PER_MIN = Number(process.env.AI_NOTE_WRITE_PER_MIN) || 30;
+  const aiNotes = () => store.get('aiNotes') || {};
+  const clipText = (value, max) => String(value == null ? '' : value).slice(0, max);
+  const publicNote = (n, users) => ({
+    id: n.id, kind: n.kind, question: n.question, answer: n.answer, createdAt: n.createdAt,
+    nick: (users && users[n.uid] && users[n.uid].nick) || '同学'
+  });
+
+  ownRoute('POST', '/api/ai/notes', async (req, res, uid) => {
+    const b = await body(req);
+    const kind = String(b.kind || '');
+    if (!AI_NOTE_KINDS.has(kind)) fail(400, '这个类型不公开');
+    const question = clipText(b.question, 2000).trim();
+    const answer = clipText(b.answer, 8000).trim();
+    if (!question || !answer) fail(400, '问题与回答都不能为空');
+    const all = aiNotes();
+    const noteId = crypto.randomUUID();
+    all[noteId] = { id: noteId, uid, kind, question, answer, createdAt: Date.now() };
+    /* 只留最近 200 条 */
+    Object.keys(all)
+      .sort((x, y) => all[y].createdAt - all[x].createdAt)
+      .slice(AI_NOTES_MAX)
+      .forEach((k) => delete all[k]);
+    store.set('aiNotes', all);
+    sendJson(res, 200, { ok: true, note: publicNote(all[noteId], store.get('users') || {}) });
+  }, AI_NOTE_WRITE_PER_MIN);
+
+  ownRoute('GET', '/api/ai/notes', (req, res) => {
+    const raw = Number(new URL(req.url, 'http://localhost').searchParams.get('limit'));
+    const limit = Math.min(50, Math.max(1, Number.isFinite(raw) && raw > 0 ? Math.floor(raw) : 20));
+    const users = store.get('users') || {};
+    const notes = Object.values(aiNotes())
+      .sort((a, b) => b.createdAt - a.createdAt)
+      .slice(0, limit)
+      .map((n) => publicNote(n, users));
+    sendJson(res, 200, { ok: true, notes });
+  });
+
   return { syncReviews, close: () => Promise.allSettled([...queues.values()]) };
 };

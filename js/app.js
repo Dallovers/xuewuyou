@@ -929,7 +929,7 @@ var WG_App = (function () {
   }
 
   /* 合并入口保留原 AI 讲题、出题与两种备考计划，使用用户输入和真实记录。 */
-  async function aiToolRun(label, fn) {
+  async function aiToolRun(label, fn, publish) {
     var out = $('aiChat');
     if (out.getAttribute('aria-busy') === 'true') return;
     var buttons = document.querySelectorAll('#aiExplainDemo, #aiGenDemo, #aiPlanDemo, #aiMyPlan');
@@ -937,12 +937,71 @@ var WG_App = (function () {
     out.setAttribute('aria-busy', 'true');
     out.textContent = label + '…（AI 思考中）';
     try {
-      out.textContent = await fn();
+      var answer = await fn();
+      out.textContent = answer;
+      /* 只有三类「通用工具」的产出会被公开到「大家问过的」。
+       * 「根据我的错题生成计划」不会走到这里——它带着个人错题清单，
+       * 公开等于把别人的学习短板挂出来。 */
+      if (publish) publishAiNote(publish.kind, publish.question, answer);
     } catch (e) {
       out.textContent = WG_AI.errText(e);
     } finally {
       out.removeAttribute('aria-busy');
       buttons.forEach(function (b) { b.disabled = false; });
+    }
+  }
+
+  /* ---------- 大家问过的（公开的 AI 产出） ---------- */
+  var AI_NOTE_KINDS = { explain: '讲题', gen: '出题', plan: '备考计划' };
+  function publishAiNote(kind, question, answer) {
+    if (!window.WG_API || !WG_API.isCloudSession || !WG_API.isCloudSession()) return;
+    if (!kind || !question || !answer) return;
+    WG_API.req('POST', '/api/ai/notes', { kind: kind, question: question, answer: answer })
+      .then(function () { if (document.body.dataset.view === 'ai') loadAiNotes(); })
+      .catch(function () { /* 存不上不影响当前这次回答 */ });
+  }
+  async function loadAiNotes() {
+    var box = $('aiNotesList');
+    if (!box) return;
+    if (!window.WG_API || !WG_API.isCloudSession || !WG_API.isCloudSession()) {
+      box.textContent = '登录云端账号后，可以看到大家公开的 AI 讲解。';
+      return;
+    }
+    try {
+      var d = await WG_API.req('GET', '/api/ai/notes?limit=20');
+      box.replaceChildren();
+      if (!d.notes || !d.notes.length) {
+        box.textContent = '还没有公开的 AI 讲解。用上面的工具生成一次，就会出现在这里。';
+        return;
+      }
+      d.notes.forEach(function (n) {
+        var item = document.createElement('article');
+        item.className = 'ai-note';
+        var head = document.createElement('div');
+        head.className = 'ai-note-head';
+        var who = document.createElement('strong');
+        who.textContent = n.nick || '同学';
+        var tag = document.createElement('span');
+        tag.className = 'ai-note-tag';
+        tag.textContent = AI_NOTE_KINDS[n.kind] || 'AI';
+        var time = document.createElement('time');
+        time.textContent = date(new Date(n.createdAt).toISOString());
+        head.append(who, tag, time);
+        var q = document.createElement('p');
+        q.className = 'ai-note-q';
+        q.textContent = n.question;
+        var detail = document.createElement('details');
+        detail.className = 'ai-note-a';
+        var summary = document.createElement('summary');
+        summary.textContent = '展开回答';
+        var body = document.createElement('div');
+        body.textContent = n.answer;
+        detail.append(summary, body);
+        item.append(head, q, detail);
+        box.appendChild(item);
+      });
+    } catch (e) {
+      box.textContent = '暂时读不到公开讲解：' + (e.message || '请稍后再试');
     }
   }
 
@@ -962,20 +1021,24 @@ var WG_App = (function () {
   }
 
   function bindAiTools() {
+    $('aiNotesRefresh') && $('aiNotesRefresh').addEventListener('click', function () { loadAiNotes(); });
     $('aiExplainDemo').addEventListener('click', function () {
       var question = aiToolInput('aiToolQuestion', '请先输入要讲解的题目。');
       if (!question) return;
       var answer = $('aiToolAnswer').value.trim() || '未作答';
       var correct = $('aiToolCorrect').value.trim() || '未提供，请先独立求解并说明依据';
-      aiToolRun('AI 讲题中', function () { return WG_AI.explainQuestion(question, answer, correct); });
+      aiToolRun('AI 讲题中', function () { return WG_AI.explainQuestion(question, answer, correct); },
+        { kind: 'explain', question: question });
     });
     $('aiGenDemo').addEventListener('click', function () {
       var topic = aiToolInput('aiToolTopic', '请先输入要练习的知识点。');
-      if (topic) aiToolRun('AI 出题中', function () { return WG_AI.generateQuestions(topic, 3); });
+      if (topic) aiToolRun('AI 出题中', function () { return WG_AI.generateQuestions(topic, 3); },
+        { kind: 'gen', question: '出 3 道「' + topic + '」的同类题' });
     });
     $('aiPlanDemo').addEventListener('click', function () {
       var days = aiPlanDays(), topics = $('aiPlanTopics').value.trim();
-      if (days) aiToolRun('计划生成中', function () { return WG_AI.makePlan(days, topics); });
+      if (days) aiToolRun('计划生成中', function () { return WG_AI.makePlan(days, topics); },
+        { kind: 'plan', question: '距离考试 ' + days + ' 天的备考计划' + (topics ? '（重点：' + topics + '）' : '') });
     });
     $('aiMyPlan').addEventListener('click', function () {
       var days = aiPlanDays();
@@ -2895,7 +2958,7 @@ var WG_App = (function () {
     else if (name === 'review') { showView(name); window.WG_Integrations && WG_Integrations.open(name); }
     else if (name === 'rooms') { showView(name); window.WG_Rooms && WG_Rooms.open(); }
     else if (name === 'community') { showView(name); window.WG_Community && WG_Community.load(); }
-    else if (name === 'ai') showView('ai');
+    else if (name === 'ai') { showView('ai'); loadAiNotes(); }
   }
 
   /* 随机组卷：从高数题库随机抽题 */

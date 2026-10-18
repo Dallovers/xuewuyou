@@ -26,7 +26,9 @@ const FILES = {
   learning: 'learning.json',
   community: 'community.json',
   /* 管理员审计：每个集合都必须在这里登记，否则 read() 会 path.join(DATA_DIR, undefined) 抛错 */
-  adminAudit: 'admin_audit.json'
+  adminAudit: 'admin_audit.json',
+  /* 公开的 AI 产出（讲题 / 出题 / 备考计划），有上限，见 integrations/index.js */
+  aiNotes: 'ai_notes.json'
 };
 
 const cache = {};

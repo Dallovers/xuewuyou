@@ -290,6 +290,19 @@ module.exports = function createAdmin({ route, authUser, sendJson, readBody, sto
     return { changed: changed.length, usernames: changed.slice(0, 50) };
   });
 
+  /* ---------- 下架公开的 AI 回答 ----------
+   * 内容一旦公开，就必须留一条撤下来的路。这里只做删除（不留副本）。 */
+  own('POST', 'ai-note-action', (actor, _query, body) => {
+    const id = String(body.id || ''), action = String(body.action || '');
+    if (action !== 'delete') fail(400, '未知操作：' + action);
+    const all = store.get('aiNotes') || {};
+    if (!all[id]) fail(404, '找不到这条公开回答');
+    delete all[id];
+    store.set('aiNotes', all);
+    record(actor, 'ai-note-delete', null, '下架公开 AI 回答');
+    return { ok: true };
+  });
+
   /* ---------- 留言列表 ---------- */
   own('GET', 'posts', (actor, query) => {
     const q = (query.get('q') || '').trim();

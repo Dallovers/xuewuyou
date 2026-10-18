@@ -144,3 +144,33 @@
   .atlas-sidebar .topnav .atlas-subnav,
   .atlas-nav-caret { transition: none; }
 }
+
+/* ===== AI 页：大家问过的（公开产出） ===== */
+.ai-notes { margin-top: 1.2rem; }
+.ai-notes-head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+.ai-notes-head h2 { margin: 0; font-size: 1.05rem; }
+.ai-notes-list { display: grid; gap: .75rem; margin-top: .6rem; }
+.ai-note { border: 1px solid #c8cbb5; border-radius: 12px; padding: .8rem .9rem; background: #fffefa; }
+.ai-note-head { display: flex; align-items: center; gap: .5rem; font-size: .82rem; flex-wrap: wrap; }
+.ai-note-head strong { color: #234333; }
+.ai-note-head time { margin-left: auto; color: #7a8b82; font-size: .76rem; }
+.ai-note-tag {
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: #e4efe3;
+  color: #22453a;
+  font-size: .74rem;
+  font-weight: 700;
+}
+.ai-note-q { margin: .5rem 0 .35rem; font-weight: 700; line-height: 1.6; overflow-wrap: anywhere; }
+.ai-note-a summary { cursor: pointer; color: #287b61; font-size: .84rem; }
+.ai-note-a > div {
+  margin-top: .5rem;
+  max-height: 22rem;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  line-height: 1.8;
+  font-size: .9rem;
+  color: #234333;
+}

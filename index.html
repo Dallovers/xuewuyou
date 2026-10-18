@@ -19,7 +19,7 @@
 <link rel="stylesheet" href="css/study-rooms.css?v=1">
 <link rel="stylesheet" href="css/campus-theme.css?v=1">
 <link rel="stylesheet" href="css/campus-adventure.css?v=1">
-<link rel="stylesheet" href="css/learning-sections.css?v=11">
+<link rel="stylesheet" href="css/learning-sections.css?v=12">
 <link rel="stylesheet" href="vendor/katex/katex.min.css">
 <link rel="stylesheet" href="css/question.css?v=6">
 <link rel="stylesheet" href="css/ui-polish.css?v=4">
@@ -639,6 +639,15 @@
       </section>
     </div>
     <div class="card ai-tool-result" id="aiChat" role="status" aria-live="polite" aria-atomic="true">选择上方功能，回答会显示在这里。</div>
+    <!-- 公开的 AI 产出：只收上面三类通用工具的结果，不收自由提问 -->
+    <section class="card ai-notes" aria-labelledby="aiNotesTitle">
+      <div class="ai-notes-head">
+        <h2 id="aiNotesTitle">大家问过的</h2>
+        <button type="button" class="btn ghost" id="aiNotesRefresh">刷新</button>
+      </div>
+      <p class="page-intro">这里只放「讲题 / 出题 / 备考计划」三类通用结果；自由提问和按错题生成的计划不会公开。</p>
+      <div id="aiNotesList" class="ai-notes-list">登录云端账号后，可以看到大家公开的 AI 讲解。</div>
+    </section>
   </div>
 
   <!-- ===== 视图：学情报告 ===== -->
@@ -1039,7 +1048,7 @@
 <!-- 重型数据延迟加载器：gaoshu_bank / english_words / ielts_words / wenku / wenku_cat
      首屏渲染后后台加载，避免 4.3MB 同步阻塞登录界面 -->
 <script src="js/loader.js?v=1" defer></script>
-<script src="js/app.js?v=53" defer></script>
+<script src="js/app.js?v=54" defer></script>
 <script src="js/integrations.js?v=wall-3" defer></script>
 <script src="js/whiteboard.js?v=1" defer></script>
 <script src="js/community.js?v=4" defer></script>

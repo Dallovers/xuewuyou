@@ -10,7 +10,7 @@ const path = require('node:path');
  * init() 会按这个列表往 xwy_state 里补齐空行，所以新增集合不用改 SQL 迁移。
  * adminAudit 就是漏登记过一次的教训——文件存储那边对应的是 FILES 表，
  * 两处都要改，只改一处本地能跑、线上直接 500。 */
-const names = ['users','userData','studyDaily','studySetup','aiConfig','presence','integrations','learning','community','adminAudit'];
+const names = ['users','userData','studyDaily','studySetup','aiConfig','presence','integrations','learning','community','adminAudit','aiNotes'];
 const context = new AsyncLocalStorage();
 const url = new URL(process.env.DATABASE_URL);
 const local = ['localhost','127.0.0.1','::1','[::1]'].includes(url.hostname);
