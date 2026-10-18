@@ -195,9 +195,9 @@ var WG_App = (function () {
 
   function $ (id) { return document.getElementById(id); }
   function primarySection(name) {
-    if (name === 'home' || name === 'report') return 'home';
-    if (['bank', 'module', 'game', 'wenku', 'knowledge'].indexOf(name) >= 0) return 'bank';
-    if (name === 'mistakes' || name === 'review') return 'mistakes';
+    if (name === 'home') return 'home';
+    if (['bank', 'module', 'game', 'wenku', 'knowledge', 'ai'].indexOf(name) >= 0) return 'bank';
+    if (name === 'mistakes' || name === 'review' || name === 'report') return 'mistakes';
     if (name === 'rooms' || name === 'study') return 'rooms';
     if (name === 'community') return 'community';
     return null;
@@ -210,7 +210,7 @@ var WG_App = (function () {
         window.StudyRoom && typeof window.StudyRoom.onViewHidden === 'function') {
       window.StudyRoom.onViewHidden();
     }
-    ['home', 'bank', 'module', 'study', 'wenku', 'game', 'report', 'mistakes', 'review', 'knowledge', 'community', 'rooms', 'onboard'].forEach(function (v) {
+    ['home', 'bank', 'module', 'study', 'wenku', 'game', 'report', 'mistakes', 'review', 'knowledge', 'community', 'rooms', 'ai', 'onboard'].forEach(function (v) {
       var el = $('view-' + v);
       if (el) el.classList.toggle('hidden', v !== name);
     });
@@ -899,6 +899,75 @@ var WG_App = (function () {
     } else {
       WG_Quiz.start(level, common);
     }
+  }
+
+  /* 合并入口保留原 AI 讲题、出题与两种备考计划，使用用户输入和真实记录。 */
+  async function aiToolRun(label, fn) {
+    var out = $('aiChat');
+    if (out.getAttribute('aria-busy') === 'true') return;
+    var buttons = document.querySelectorAll('#aiExplainDemo, #aiGenDemo, #aiPlanDemo, #aiMyPlan');
+    buttons.forEach(function (b) { b.disabled = true; });
+    out.setAttribute('aria-busy', 'true');
+    out.textContent = label + '…（AI 思考中）';
+    try {
+      out.textContent = await fn();
+    } catch (e) {
+      out.textContent = WG_AI.errText(e);
+    } finally {
+      out.removeAttribute('aria-busy');
+      buttons.forEach(function (b) { b.disabled = false; });
+    }
+  }
+
+  function aiToolInput(id, message) {
+    var input = $(id), value = input.value.trim();
+    if (!value) {
+      $('aiChat').textContent = message;
+      input.focus();
+    }
+    return value;
+  }
+
+  function aiPlanDays() {
+    var input = $('aiPlanDays');
+    if (!input.reportValidity()) return null;
+    return Number(input.value);
+  }
+
+  function bindAiTools() {
+    $('aiExplainDemo').addEventListener('click', function () {
+      var question = aiToolInput('aiToolQuestion', '请先输入要讲解的题目。');
+      if (!question) return;
+      var answer = $('aiToolAnswer').value.trim() || '未作答';
+      var correct = $('aiToolCorrect').value.trim() || '未提供，请先独立求解并说明依据';
+      aiToolRun('AI 讲题中', function () { return WG_AI.explainQuestion(question, answer, correct); });
+    });
+    $('aiGenDemo').addEventListener('click', function () {
+      var topic = aiToolInput('aiToolTopic', '请先输入要练习的知识点。');
+      if (topic) aiToolRun('AI 出题中', function () { return WG_AI.generateQuestions(topic, 3); });
+    });
+    $('aiPlanDemo').addEventListener('click', function () {
+      var days = aiPlanDays(), topics = $('aiPlanTopics').value.trim();
+      if (days) aiToolRun('计划生成中', function () { return WG_AI.makePlan(days, topics); });
+    });
+    $('aiMyPlan').addEventListener('click', function () {
+      var days = aiPlanDays();
+      if (!days) return;
+      var d = WG_Data.get(), byTopic = Object.create(null);
+      d.mistakes.forEach(function (m) { var topic = m.topic || '综合'; byTopic[topic] = (byTopic[topic] || 0) + 1; });
+      var weak = Object.keys(byTopic).sort(function (a, b) { return byTopic[b] - byTopic[a]; });
+      if (!weak.length) {
+        $('aiChat').textContent = '当前没有待攻克的错题。可以先完成课程练习，或填写知识点后点击“生成备考计划”。';
+        return;
+      }
+      var topics = weak.map(function (topic) { return topic + '（' + byTopic[topic] + ' 道待攻克错题）'; }).join('、');
+      aiToolRun('根据我的错题生成计划', function () {
+        return WG_AI.makePlan(days, topics).then(function (text) {
+          return '基于当前账号的 ' + d.mistakes.length + ' 道待攻克错题、' + d.answers.length + ' 次作答记录\n' + topics + '\n\n' + text;
+        });
+      });
+    });
+    $('aiToolsChat').addEventListener('click', aiSideOpen);
   }
 
   function renderStats(s) {
@@ -1733,14 +1802,15 @@ var WG_App = (function () {
       e.preventDefault();
       navTo(tab.getAttribute('data-section-nav'));
     });
-    /* 板块标题右侧的「全部模块 →」「资料库 →」：它们带 data-nav，
-       但顶部导航那个委托只认 #topnav 里的 a，按钮接不上，得单独兜。 */
+    /* 功能目录与页内快捷入口复用路由；校园互动入口可指定具体标签页。 */
     document.addEventListener('click', function (e) {
-      var b = e.target.closest ? e.target.closest('.sec-more[data-nav]') : null;
+      var b = e.target.closest ? e.target.closest('button[data-nav]') : null;
       if (!b) return;
       e.preventDefault();
       closeModal();
-      navTo(b.getAttribute('data-nav'));
+      var tab = b.getAttribute('data-community-entry');
+      if (tab && window.WG_Community) WG_Community.open(tab);
+      else navTo(b.getAttribute('data-nav'));
     });
 
     /* 题库页：从单学科回到全科 */
@@ -1923,7 +1993,8 @@ var WG_App = (function () {
     });
     /* AI 侧边栏配置入口 */
     if ($('aiBtn')) $('aiBtn').addEventListener('click', function () { aiSideOpen(); });
-    $('aiSideCfg').addEventListener('click', function () { aiSideClose(); closeModal(); navTo('knowledge'); });
+    $('aiSideCfg').addEventListener('click', function () { aiSideClose(); closeModal(); navTo('ai'); });
+    bindAiTools();
     /* 开发者模式：仅保留解锁标记清理 */
     if ($('devBtn')) $('devBtn').addEventListener('click', function () { $('devPanel').classList.toggle('hidden'); });
     if ($('devUnlock')) $('devUnlock').addEventListener('click', function () {
@@ -2806,7 +2877,7 @@ var WG_App = (function () {
     else if (name === 'review' || name === 'knowledge') { showView(name); window.WG_Integrations && WG_Integrations.open(name); }
     else if (name === 'rooms') { showView(name); window.WG_Rooms && WG_Rooms.open(); }
     else if (name === 'community') { showView(name); window.WG_Community && WG_Community.load(); }
-    else if (name === 'ai') navTo('knowledge');
+    else if (name === 'ai') showView('ai');
   }
 
   /* 随机组卷：从高数题库随机抽题 */
