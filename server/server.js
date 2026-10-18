@@ -20,9 +20,14 @@ const { createLimiter, clientKey, waitText } = require('./lib/rate-limit');
  * 也方便测试用很小的数去验机制本身。 */
 const AUTH_WINDOW_MS = Number(process.env.AUTH_WINDOW_MS) || 10 * 60 * 1000;
 const LOGIN_MAX_FAILS = Number(process.env.AUTH_LOGIN_MAX_FAILS) || 5;
+/* 账号维度的兜底上限，不看来源。原因：来源这一维再怎么修都可能被绕过，
+ * 只要攻击者手里有几个 IP，就能把「每来源 5 次」摊成任意多次。
+ * 这条把同一账号的总尝试次数按住，代价是它不看 IP，所以阈值必须比主闸门宽得多。 */
+const LOGIN_NAME_MAX = Number(process.env.AUTH_LOGIN_NAME_MAX) || 60;
 const REGISTER_WINDOW_MS = Number(process.env.AUTH_REGISTER_WINDOW_MS) || 60 * 60 * 1000;
 const REGISTER_MAX = Number(process.env.AUTH_REGISTER_MAX) || 60;
 const loginFails = createLimiter({ windowMs: AUTH_WINDOW_MS, max: LOGIN_MAX_FAILS });
+const loginNameFails = createLimiter({ windowMs: AUTH_WINDOW_MS, max: LOGIN_NAME_MAX });
 const registerHits = createLimiter({ windowMs: REGISTER_WINDOW_MS, max: REGISTER_MAX });
 
 const PORT = process.env.PORT || 3000;
@@ -232,7 +237,8 @@ route('POST', '/api/auth/login', async (req, res) => {
    * key 里一定要带账号名——线上走反向代理时所有请求看起来都来自同一个 IP，
    * 只按 IP 计数，一个人试错就能把全校锁死。 */
   const attemptKey = username.toLowerCase() + '|' + clientKey(req);
-  const loginWait = loginFails.blocked(attemptKey);
+  const nameKey = 'name:' + username.toLowerCase();
+  const loginWait = Math.max(loginFails.blocked(attemptKey), loginNameFails.blocked(nameKey));
   if (loginWait > 0) {
     return sendError(res, 429, '密码错误次数过多，请 ' + waitText(loginWait) + '后再试');
   }
@@ -240,10 +246,12 @@ route('POST', '/api/auth/login', async (req, res) => {
   const user = Object.values(users).find((u) => u.username === username);
   if (!user || !auth.verifyPassword(password, user.passHash)) {
     loginFails.fail(attemptKey);
+    loginNameFails.fail(nameKey);
     return sendError(res, 401, '用户名或密码错误');
   }
   /* 输对了就把失败记录清掉，不让人背着之前的错误继续被算账。 */
   loginFails.clear(attemptKey);
+  loginNameFails.clear(nameKey);
   /* 封禁在登录这一步就挡住，并说明原因——密码验证之后才判，避免用封禁状态探测账号是否存在 */
   if (user.banned) {
     return sendError(res, 403, '该账号已被封禁' + (user.banReason ? '：' + user.banReason : '，请联系站点维护者'));
