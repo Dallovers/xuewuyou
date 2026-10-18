@@ -90,6 +90,9 @@
   transition: background-color .18s, color .18s;
 }
 .atlas-sidebar .topnav .atlas-nav-parent:hover { background: #34553f; color: #fffefa; }
+/* 跟着 ui-polish.css 的语言走：导航项 hover 轻微右移，父项也一起动，别只有子项会动 */
+.atlas-sidebar .topnav .atlas-nav-parent:hover { transform: translateX(2px); }
+.atlas-sidebar .topnav .atlas-nav-parent.section-current:hover { transform: none; }
 .atlas-sidebar .topnav .atlas-nav-parent:focus-visible { outline: 3px solid #eed795; outline-offset: 3px; }
 /* 当前就在这一大类里：用主题里的米色选中块，和 .active 一模一样的观感 */
 .atlas-sidebar .topnav .atlas-nav-parent.section-current {
