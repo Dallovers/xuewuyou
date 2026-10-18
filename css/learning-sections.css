@@ -66,7 +66,9 @@
 .atlas-nav-group { display: flex; flex-direction: column; gap: 2px; }
 
 /* 父项是按钮而不是链接：它的职责只有展开/收起，跳转交给三个子项，
-   这样「点父项」不会既换页又改目录状态。 */
+   这样「点父项」不会既换页又改目录状态。
+   配色/字号/字重全部对齐「今日校园」那条链接（transparent / --ink-2 / 14px / 500），
+   只保留右侧箭头和左对齐的展开行为。 */
 .atlas-sidebar .topnav .atlas-nav-parent {
   display: flex;
   align-items: center;
@@ -77,23 +79,20 @@
   padding: 12px 14px;
   border: 1px solid transparent;
   border-radius: 10px;
-  /* 白字必须有底才看得见：米色背景上是纯白，等于隐形。
-     用深墨绿做底，和页内选中态（深底白字）是同一套语言。 */
-  background: var(--atlas-deep);
-  color: #fffefa;
+  background: transparent;
+  color: var(--ink-2);
   font: inherit;
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 500;
   line-height: 1.3;
   text-align: left;
   cursor: pointer;
 }
-.atlas-sidebar .topnav .atlas-nav-parent:hover { background: #1f5147; color: #fffefa; }
+.atlas-sidebar .topnav .atlas-nav-parent:hover { background: #edf2e8; color: var(--ink-2); }
 .atlas-sidebar .topnav .atlas-nav-parent:focus-visible { outline: 2px solid var(--atlas-mint); outline-offset: 2px; }
-/* 当前就在这一大类里：底色再亮一档，白字不变 */
-.atlas-sidebar .topnav .atlas-nav-parent.section-current { background: var(--atlas-mint); }
+/* 父项不再抢高亮：当前在哪一页由下面的子项显示（.section-current 留给以后需要时再上色） */
 
-.atlas-nav-caret { font-size: 16px; line-height: 1; opacity: .85; transition: transform .22s ease; }
+.atlas-nav-caret { font-size: 16px; line-height: 1; opacity: .6; transition: transform .22s ease; }
 .atlas-nav-parent[aria-expanded="true"] .atlas-nav-caret { transform: rotate(90deg); }
 
 /* 折叠动画：max-height 从 0 推到固定上界。关着时同时把 visibility 置为 hidden，
