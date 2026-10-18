@@ -16,7 +16,7 @@
 <link rel="stylesheet" href="css/study-rooms.css?v=1">
 <link rel="stylesheet" href="css/campus-theme.css?v=1">
 <link rel="stylesheet" href="css/campus-adventure.css?v=1">
-<link rel="stylesheet" href="css/learning-sections.css?v=3">
+<link rel="stylesheet" href="css/learning-sections.css?v=4">
 <link rel="stylesheet" href="vendor/katex/katex.min.css">
 <link rel="stylesheet" href="css/question.css?v=6">
 <script src="vendor/katex/katex.min.js" defer></script>
@@ -45,10 +45,10 @@
     <p class="atlas-nav-caption">我的校园</p>
     <nav class="topnav" id="topnav" aria-label="主导航">
       <a href="#" data-nav="home" class="active" aria-current="page">今日校园</a>
-      <!-- 课程与资料：三个功能收进二级目录，父项只负责回默认子页 -->
+      <!-- 课程与资料：父项只负责展开/收起目录，具体跳转交给三个子项 -->
       <div class="atlas-nav-group">
-        <a href="#" data-nav="bank" class="atlas-nav-parent">课程与资料<span class="atlas-nav-caret" aria-hidden="true">›</span></a>
-        <div class="atlas-subnav" aria-label="课程与资料">
+        <button type="button" class="atlas-nav-parent" id="navCourseToggle" aria-expanded="true" aria-controls="subnavCourse">课程与资料<span class="atlas-nav-caret" aria-hidden="true">›</span></button>
+        <div class="atlas-subnav is-open" id="subnavCourse" aria-label="课程与资料">
           <a href="#" data-nav="bank">课程地图</a>
           <a href="#" data-nav="wenku">学习资料</a>
           <a href="#" data-nav="ai">AI 助手</a>
@@ -1036,7 +1036,7 @@
 <!-- 重型数据延迟加载器：gaoshu_bank / english_words / ielts_words / wenku / wenku_cat
      首屏渲染后后台加载，避免 4.3MB 同步阻塞登录界面 -->
 <script src="js/loader.js?v=1" defer></script>
-<script src="js/app.js?v=48" defer></script>
+<script src="js/app.js?v=49" defer></script>
 <script src="js/integrations.js?v=wall-3" defer></script>
 <script src="js/whiteboard.js?v=1" defer></script>
 <script src="js/community.js?v=4" defer></script>

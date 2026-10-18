@@ -64,34 +64,69 @@
 
 /* ===== 侧边栏二级目录：课程与资料 ===== */
 .atlas-nav-group { display: flex; flex-direction: column; gap: 2px; }
-.atlas-nav-parent { position: relative; }
-.atlas-nav-caret { margin-left: auto; font-size: 16px; line-height: 1; opacity: .5; transform: rotate(90deg); }
-/* 父项只作“当前大类”的指示，选中态交给子项，避免出现两个高亮块 */
-.atlas-sidebar .topnav .atlas-nav-parent.active {
+
+/* 父项是按钮而不是链接：它的职责只有展开/收起，跳转交给三个子项，
+   这样「点父项」不会既换页又改目录状态。 */
+.atlas-sidebar .topnav .atlas-nav-parent {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  min-height: 46px;
+  padding: 12px 14px;
+  border: 1px solid transparent;
+  border-radius: 10px;
   background: transparent;
-  border-color: transparent;
-  color: var(--atlas-deep);
-  font-weight: 700;
+  color: var(--ink-2);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.3;
+  text-align: left;
+  cursor: pointer;
 }
+.atlas-sidebar .topnav .atlas-nav-parent:hover { background: #edf2e8; }
+.atlas-sidebar .topnav .atlas-nav-parent:focus-visible { outline: 2px solid var(--atlas-mint); outline-offset: 2px; }
+/* 当前就在这一大类里：用标题式着色，不跟子项抢那个选中色块 */
+.atlas-sidebar .topnav .atlas-nav-parent.section-current { color: var(--atlas-deep); font-weight: 700; }
+
+.atlas-nav-caret { font-size: 16px; line-height: 1; opacity: .55; transition: transform .22s ease; }
+.atlas-nav-parent[aria-expanded="true"] .atlas-nav-caret { transform: rotate(90deg); }
+
+/* 折叠动画：max-height 从 0 推到固定上界。关着时同时把 visibility 置为 hidden，
+   否则 Tab 键还能走进看不见的链接。 */
 .atlas-sidebar .topnav .atlas-subnav {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  margin: 2px 0 6px 14px;
+  margin: 0 0 0 14px;
   padding-left: 10px;
   border-left: 1px solid var(--atlas-stroke);
+  overflow: hidden;
+  max-height: 0;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-4px);
+  transition: max-height .26s ease, opacity .2s ease, transform .2s ease, visibility 0s linear .26s;
 }
-.atlas-sidebar .topnav .atlas-subnav a {
-  min-height: 40px;
-  padding: 9px 10px;
-  border-radius: 8px;
-  font-size: 13px;
-  color: var(--muted);
+.atlas-sidebar .topnav .atlas-subnav.is-open {
+  max-height: 240px;
+  opacity: 1;
+  visibility: visible;
+  transform: none;
+  transition: max-height .26s ease, opacity .2s ease, transform .2s ease, visibility 0s;
 }
+.atlas-sidebar .topnav .atlas-subnav a { min-height: 40px; padding: 9px 10px; border-radius: 8px; font-size: 13px; color: var(--muted); }
 .atlas-sidebar .topnav .atlas-subnav a:hover { background: #edf2e8; color: var(--atlas-deep); }
 .atlas-sidebar .topnav .atlas-subnav a.active {
   background: #e4efe3;
   border-color: #d6e4d5;
   color: var(--atlas-deep);
   font-weight: 700;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .atlas-sidebar .topnav .atlas-subnav,
+  .atlas-nav-caret { transition: none; }
 }

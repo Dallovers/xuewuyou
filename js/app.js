@@ -202,6 +202,15 @@ var WG_App = (function () {
     if (name === 'community') return 'community';
     return null;
   }
+  /* 「课程与资料」二级目录的展开状态只记在按钮的 aria-expanded 上，
+   * CSS 也按它来画箭头，两边不会各说一套。 */
+  function setCourseNavOpen(open) {
+    var toggle = $('navCourseToggle'), nav = $('subnavCourse');
+    if (!toggle || !nav) return;
+    toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+    nav.classList.toggle('is-open', open);
+  }
+  var lastPrimarySection = null;
   function showView(name) {
     document.body.classList.toggle('integration-view', name === 'review' || name === 'community' || name === 'rooms');
     if (state.view === 'rooms' && name !== 'rooms' && window.WG_Rooms) WG_Rooms.onViewHidden();
@@ -226,13 +235,20 @@ var WG_App = (function () {
       b.classList.toggle('active', active);
       if (active) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
     });
-    /* 侧边栏二级目录：按当前视图高亮子项。父项由上面的 primarySection 负责，
-     * 所以这里只管子项，避免把「课程与资料」和「课程地图」同时点亮成两个块。 */
+    /* 侧边栏二级目录：子项跟着当前视图高亮，父项标出「就在这一大类里」。
+     * 只有「从别的大类走进来」时才自动展开——在这一大类内部来回切换时不抢用户手动收起的状态。 */
     document.querySelectorAll('#topnav .atlas-subnav a').forEach(function (a) {
       var active = a.getAttribute('data-nav') === name;
       a.classList.toggle('active', active);
       if (active) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
     });
+    var courseToggle = $('navCourseToggle');
+    if (courseToggle) {
+      var inCourse = section === 'bank';
+      courseToggle.classList.toggle('section-current', inCourse);
+      if (inCourse && lastPrimarySection !== 'bank') setCourseNavOpen(true);
+    }
+    lastPrimarySection = section;
     state.view = name;
     document.body.dataset.view = name;
     window.dispatchEvent(new CustomEvent('xwy:view-changed', {detail:{view:name,module:state.currentModule || null,continent:bankFilter || null}}));
@@ -1796,6 +1812,13 @@ var WG_App = (function () {
     var topnav = $('topnav');
     if (topnav) {
       topnav.addEventListener('click', function (e) {
+        /* 二级目录父项：只展开/收起，不换页 */
+        var parent = e.target.closest ? e.target.closest('.atlas-nav-parent') : null;
+        if (parent) {
+          e.preventDefault();
+          setCourseNavOpen(parent.getAttribute('aria-expanded') !== 'true');
+          return;
+        }
         var a = e.target.closest ? e.target.closest('a[data-nav]') : null;
         if (!a) return;
         e.preventDefault();
