@@ -11,16 +11,34 @@
  *   反过来，攻击者伪造 X-Forwarded-For 只能让自己的额度变多，伤不到别人。
  */
 
-/* 客户端 IP：优先取代理链里的原始地址，取不到再退回 socket。
- * 取第一段（最原始的那个）；伪造它只会让「攻击者自己」换到新桶，
- * 代价是限流对他失效——但绝不会误伤其他用户。 */
+/* 是不是内网/回环地址——用来判断"我前面到底有没有代理"。 */
+function isPrivateAddress(addr) {
+  if (!addr) return false;
+  const a = String(addr).replace(/^::ffff:/i, '');
+  if (a === '::1' || a === 'localhost') return true;
+  if (a.startsWith('127.') || a.startsWith('10.') || a.startsWith('192.168.')) return true;
+  const m = /^172\.(\d{1,3})\./.exec(a);
+  if (m && Number(m[1]) >= 16 && Number(m[1]) <= 31) return true;
+  return false;
+}
+
+/* 客户端 IP：只有「前面确实有代理」时才采信 X-Forwarded-For。
+ *
+ * 为什么要这个前置判断：直连时对端就是客户端自己，这个头随便写，
+ * 采信它等于把限流的 key 交给攻击者，他每请求换一个值就永远触发不了阈值。
+ * 只有当对端是内网/回环（说明请求是代理转发进来的），或显式 TRUST_PROXY=1，才读。
+ *
+ * 取值用**最右一跳**：最左边那一段是客户端自己可写的，代理会把自己的观察追加在后面。
+ * 线上（Render）是单层代理，最右一段就是真实客户端地址。 */
 function clientKey(req) {
+  const peer = (req && req.socket && req.socket.remoteAddress) || 'unknown';
   const xff = req && req.headers && req.headers['x-forwarded-for'];
-  if (typeof xff === 'string' && xff) {
-    const first = xff.split(',')[0].trim();
-    if (first) return first;
+  const trusted = process.env.TRUST_PROXY === '1' || isPrivateAddress(peer);
+  if (trusted && typeof xff === 'string' && xff) {
+    const hops = xff.split(',').map((s) => s.trim()).filter(Boolean);
+    if (hops.length) return hops[hops.length - 1];
   }
-  return (req && req.socket && req.socket.remoteAddress) || 'unknown';
+  return peer;
 }
 
 /* 固定窗口计数器。窗口从「第一次失败」开始算，不是滑动窗口——
