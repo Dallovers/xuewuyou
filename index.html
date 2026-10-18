@@ -85,13 +85,12 @@
         <button type="button" class="btn primary" id="obTabReg" style="flex:1;">注册</button>
         <button type="button" class="btn ghost" id="obTabLogin" style="flex:1;">登录</button>
       </div>
-      <!-- 账号区：注册填用户名/密码/昵称，登录只填用户名/密码 -->
+      <!-- 账号区：只填用户名和密码；显示名直接用用户名，不再单独填昵称 -->
       <div id="obAccount" style="display:grid;gap:0.72rem;margin-bottom:0.9rem;">
         <label class="onboard-account-label" for="obUsername">用户名</label>
         <input id="obUsername" type="text" placeholder="用户名（2-20 位字母/数字/中文）" autocomplete="username" style="width:100%;background:var(--bg2);border:1px solid var(--rule);border-radius:10px;padding:0.6rem 0.9rem;color:var(--ink);font-size:0.9rem;outline:none;box-sizing:border-box;">
         <label class="onboard-account-label" for="obPassword">密码</label>
         <input id="obPassword" type="password" placeholder="密码（至少 6 位）" autocomplete="new-password" style="width:100%;background:var(--bg2);border:1px solid var(--rule);border-radius:10px;padding:0.6rem 0.9rem;color:var(--ink);font-size:0.9rem;outline:none;box-sizing:border-box;">
-        <input id="obNick" name="nickname" autocomplete="nickname" autocapitalize="off" spellcheck="false" aria-label="昵称（可选）" type="text" placeholder="昵称（可选，留空用用户名）" style="width:100%;background:var(--bg2);border:1px solid var(--rule);border-radius:10px;padding:0.6rem 0.9rem;color:var(--ink);font-size:0.9rem;outline:none;box-sizing:border-box;">
       </div>
       <details id="obPreferences" class="onboard-preferences" open>
       <summary>我的学习情况</summary>
@@ -960,7 +959,6 @@
     <div style="display:grid;gap:0.75rem;" id="loginForm">
       <input id="loginUsername" type="text" placeholder="用户名（2-20 位字母/数字/中文）" style="width:100%;background:var(--bg2);border:1px solid var(--rule);border-radius:10px;padding:0.6rem 0.9rem;color:var(--ink);font-size:0.9rem;outline:none;box-sizing:border-box;">
       <input id="loginPassword" type="password" placeholder="密码（至少 6 位）" style="width:100%;background:var(--bg2);border:1px solid var(--rule);border-radius:10px;padding:0.6rem 0.9rem;color:var(--ink);font-size:0.9rem;outline:none;box-sizing:border-box;">
-      <input id="loginNick" name="nickname" autocomplete="nickname" autocapitalize="off" spellcheck="false" type="text" placeholder="昵称（可选，留空用用户名）" style="display:none;width:100%;background:var(--bg2);border:1px solid var(--rule);border-radius:10px;padding:0.6rem 0.9rem;color:var(--ink);font-size:0.9rem;outline:none;box-sizing:border-box;">
       <div id="loginMsg" style="font-size:0.82rem;color:var(--danger);min-height:1.1rem;line-height:1.4;"></div>
       <button class="btn primary" id="loginSubmit" type="button">登 录</button>
       <div style="font-size:0.78rem;color:var(--muted);line-height:1.7;">
@@ -1036,7 +1034,7 @@
 <!-- 重型数据延迟加载器：gaoshu_bank / english_words / ielts_words / wenku / wenku_cat
      首屏渲染后后台加载，避免 4.3MB 同步阻塞登录界面 -->
 <script src="js/loader.js?v=1" defer></script>
-<script src="js/app.js?v=49" defer></script>
+<script src="js/app.js?v=50" defer></script>
 <script src="js/integrations.js?v=wall-3" defer></script>
 <script src="js/whiteboard.js?v=1" defer></script>
 <script src="js/community.js?v=4" defer></script>

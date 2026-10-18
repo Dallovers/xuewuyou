@@ -1481,7 +1481,6 @@ var WG_App = (function () {
     var tL = $('loginTabLogin'), tR = $('loginTabReg');
     if (tL) { tL.classList.toggle('primary', mode === 'login'); tL.classList.toggle('ghost', mode !== 'login'); }
     if (tR) { tR.classList.toggle('primary', mode === 'reg'); tR.classList.toggle('ghost', mode !== 'reg'); }
-    if ($('loginNick')) $('loginNick').style.display = mode === 'reg' ? 'block' : 'none';
     if ($('loginSubmit')) $('loginSubmit').textContent = mode === 'reg' ? '注 册' : '登 录';
     if ($('loginMsg')) $('loginMsg').textContent = '';
   }
@@ -1491,15 +1490,11 @@ var WG_App = (function () {
     msg.textContent = '';
     var u = $('loginUsername') ? $('loginUsername').value.trim() : '';
     var p = $('loginPassword') ? $('loginPassword').value : '';
-    var n = $('loginNick') ? $('loginNick').value.trim() : '';
-    /* 密码管理器会把密码自动填进紧挨密码框的文本框，昵称框首当其冲。
-     * 昵称是公开显示的，绝不能等于密码——发现相等就当没填，让服务端回落到用户名。 */
-    if (n && n === p) n = '';
     if (!u || !p) { msg.textContent = '请输入用户名和密码'; return; }
     try {
       var d;
       if (loginMode === 'reg') {
-        d = await WG_API.register(u, p, n);
+        d = await WG_API.register(u, p);
       } else {
         d = await WG_API.login(u, p);
       }
@@ -2127,7 +2122,6 @@ var WG_App = (function () {
   function showOnboard() {
     var p = WG_Data.get().profile;
     if (p) {
-      if ($('obNick')) $('obNick').value = (p.nick && p.nick !== '同学') ? p.nick : '';
       if ($('obGrade')) $('obGrade').value = p.grade || '大二';
       if ($('obTarget')) $('obTarget').value = p.target || '期末考试';
       if ($('obDate')) $('obDate').value = p.examDate || '';
@@ -2152,7 +2146,6 @@ var WG_App = (function () {
     var tR = $('obTabReg'), tL = $('obTabLogin');
     if (tR) { tR.classList.toggle('primary', mode === 'reg'); tR.classList.toggle('ghost', mode !== 'reg'); }
     if (tL) { tL.classList.toggle('primary', mode === 'login'); tL.classList.toggle('ghost', mode !== 'login'); }
-    if ($('obNick')) $('obNick').style.display = mode === 'reg' ? 'block' : 'none';
     if ($('obPreferences')) $('obPreferences').open = mode === 'reg';
     if ($('obPassword')) $('obPassword').setAttribute('autocomplete', mode === 'reg' ? 'new-password' : 'current-password');
     if ($('obSubmit')) $('obSubmit').textContent = mode === 'reg' ? '注册并生成我的学习计划' : '登录并继续';
@@ -2215,12 +2208,12 @@ var WG_App = (function () {
     st.textContent = '';
     var username = ($('obUsername') ? $('obUsername').value : '').trim();
     var password = $('obPassword') ? $('obPassword').value : '';
-    var nick = ($('obNick') ? $('obNick').value : '').trim();
-    /* 同上：昵称框可能被密码管理器填成密码，昵称是公开的，宁可回落到用户名 */
-    if (nick && nick === password) nick = '';
+    /* 不再单独填昵称：显示名直接用用户名。
+     * 注意不要把 username 当 nickname 传上去——服务端有「昵称不能等于密码」的闸，
+     * 用户名恰好等于密码时会误伤。留空即由服务端回落到用户名。 */
     var weak = Array.from(document.querySelectorAll('#obWeak input:checked')).map(function (i) { return i.value; });
     var profile = {
-      nick: nick || username || WG_Data.get().nick || '同学',
+      nick: username || WG_Data.get().nick || '同学',
       grade: $('obGrade').value, target: $('obTarget').value,
       examDate: $('obDate').value, weak: weak, hours: $('obHours').value
     };
@@ -2234,7 +2227,7 @@ var WG_App = (function () {
       try {
         if (obMode === 'reg') {
           st.textContent = '正在注册…';
-          await WG_API.register(username, password, nick);
+          await WG_API.register(username, password);
         } else {
           st.textContent = '正在登录…';
           await WG_API.login(username, password);
