@@ -138,6 +138,9 @@
   </section>
 </main>
 
+<!-- 与主站共用同一份后端地址配置；缺了它，从 GitHub Pages 打开的后台不知道该请求哪台服务器。
+     这行不能加 defer——下面的内联脚本要同步读到 window.WG_DEPLOY。 -->
+<script src="js/deploy-config.js?v=2"></script>
 <script>
 (function () {
   'use strict';
@@ -145,13 +148,16 @@
   var H = function () { var t = localStorage.getItem(TOKEN_KEY); return t ? { 'Authorization': 'Bearer ' + t } : {}; };
 
   /* 接口根地址，按优先级：
-   *   1) ?api=https://后端域名      —— 在 GitHub Pages 这类纯静态托管上打开时必须用它
-   *   2) window.WG_DEPLOY.apiBase    —— 仓库里若有 js/deploy.js，就把配置放这里
+   *   1) ?api=https://后端域名       —— 临时指定，优先级最高
+   *   2) window.WG_DEPLOY.apiBase    —— js/deploy-config.js（主站也用同一份配置）
    *   3) 同源                        —— 直接用后端域名打开（后端自己伺服这个页面）
-   * 只取 origin：路径、查询串一律忽略，避免拼出奇怪的地址。 */
+   * 只取 origin：路径、查询串一律忽略，避免拼出奇怪的地址。
+   *
+   * 本机调试时必须跳过第 2 条，否则 localhost 打开的后台会打到线上后端去。 */
+  var IS_LOCAL = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname) || location.protocol === 'file:';
   var API_BASE = (function () {
     var raw = new URLSearchParams(location.search).get('api')
-      || (window.WG_DEPLOY && window.WG_DEPLOY.apiBase) || '';
+      || (!IS_LOCAL && window.WG_DEPLOY && window.WG_DEPLOY.apiBase) || '';
     if (!raw) return '';
     try { return new URL(raw).origin; } catch (e) { return ''; }
   })();
