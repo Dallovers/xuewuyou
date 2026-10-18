@@ -789,9 +789,6 @@ window.WG_Rooms = (function () {
     $("roomsRefresh").onclick = function () {
       action(this, refresh);
     };
-    $("roomsPersonal").onclick = function () {
-      StudyAppBridge.navTo("study");
-    };
     $("roomsFindBuddy").onclick = function () {
       WG_Community.open("friends");
     };
