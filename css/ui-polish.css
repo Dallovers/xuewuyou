@@ -1,0 +1,337 @@
+/* ============ 学无忧 · 全站视觉与交互统一（B 层） ============
+   目标不是换一套皮肤，而是把各页各自为政的高度、卡片、控件、
+   反馈动效收敛成一套规则。只写样式，不改任何业务脚本。
+   加载位置：所有业务样式之后。
+   ============================================================ */
+
+/* ---------- 1. 页头：二级页统一压到 158px ---------- */
+/* 原来每个二级页都是 240px 深色大图，加上标签栏后首屏几乎看不到内容。
+   首页（校园地图）和模块页另有主视觉，不在这里动。 */
+#view-mistakes > .page-title,
+#view-report > .page-title,
+#view-ai > .page-title,
+#view-review > .integration-heading,
+#view-knowledge > .integration-heading,
+#view-wenku > .page-title {
+  min-height: 158px;
+  padding: 22px 28px;
+  margin-bottom: 14px;
+  border-radius: 18px;
+}
+#view-mistakes > .page-title h1,
+#view-report > .page-title h1,
+#view-ai > .page-title h1,
+#view-review > .integration-heading h1,
+#view-knowledge > .integration-heading h1,
+#view-wenku > .page-title h1 {
+  font-size: clamp(26px, 2.3vw, 36px);
+  line-height: 1.35;
+}
+#view-mistakes > .page-title .en,
+#view-report > .page-title .en,
+#view-ai > .page-title .en,
+#view-review > .integration-heading .en,
+#view-knowledge > .integration-heading .en {
+  font-size: 0.72rem;
+  letter-spacing: 0.18em;
+  opacity: 0.78;
+}
+
+/* 页头下面那句说明，单独飘着显得散，给它一条引导线 */
+.page-intro {
+  position: relative;
+  max-width: 70ch;
+  padding-left: 12px;
+  margin: 4px 0 16px;
+  font-size: 0.84rem;
+  line-height: 1.75;
+  color: var(--ink-2);
+}
+.page-intro::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.35em;
+  bottom: 0.35em;
+  width: 2px;
+  border-radius: 2px;
+  background: linear-gradient(180deg, var(--acc), transparent);
+  opacity: 0.55;
+}
+
+/* ---------- 2. 统计卡：四张白卡，数字优先 ---------- */
+.md-stats-strip,
+.atlas-stats {
+  gap: 12px;
+}
+.md-stat-item,
+.atlas-stat {
+  border: 1px solid var(--rule);
+  border-radius: 14px;
+  background: var(--bg2);
+  box-shadow: 0 1px 2px rgba(16, 74, 68, 0.05);
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+}
+.md-stat-item:hover,
+.atlas-stat:hover {
+  border-color: rgba(11, 125, 112, 0.28);
+  box-shadow: 0 6px 18px -12px rgba(16, 74, 68, 0.55);
+}
+.md-stat-item .val,
+.atlas-stat b {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+.md-stat-item .lbl {
+  letter-spacing: 0.02em;
+}
+
+
+/* 错题本把统计、诊断、按钮都装进一个带边框的大盒子，里面再套四张卡，
+   两层边框显得很吵。盒子退成透明容器，让卡片自己立住。 */
+.mistake-dashboard {
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  padding: 0;
+}
+
+/* ---------- 3. 空状态：从「一块白板」变成有边界的面 ---------- */
+.empty-state {
+  padding: 52px 24px;
+  border: 1px dashed var(--rule-strong);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.62);
+}
+.empty-state .es-t {
+  font-size: 0.98rem;
+  font-weight: 600;
+  color: var(--ink);
+}
+.empty-state .es-d {
+  max-width: 42ch;
+  margin: 6px auto 0;
+  font-size: 0.82rem;
+  line-height: 1.7;
+  color: var(--muted);
+}
+
+/* ---------- 4. 筛选条与标签：统一高度与按压反馈 ---------- */
+.mfb-chip {
+  min-height: 32px;
+  padding: 0 13px;
+  border-radius: var(--r-full);
+  font-size: 0.79rem;
+  font-weight: 500;
+  transition: background 0.16s ease, border-color 0.16s ease, color 0.16s ease,
+    transform 0.12s ease;
+}
+.mfb-chip:hover {
+  border-color: rgba(11, 125, 112, 0.42);
+  background: rgba(11, 125, 112, 0.06);
+}
+.mfb-chip:active { transform: scale(0.97); }
+.mfb-chip.active {
+  background: var(--acc);
+  border-color: var(--acc);
+  color: #fff;
+}
+.mfb-search {
+  min-height: 34px;
+  border-radius: 10px;
+  transition: border-color 0.16s ease, box-shadow 0.16s ease;
+}
+.mfb-search:focus {
+  border-color: var(--acc);
+  box-shadow: 0 0 0 3px rgba(11, 125, 112, 0.12);
+  outline: none;
+}
+
+/* AI 诊断条：原来是一条平白的长条，加一层很浅的渐变让层次清楚 */
+.md-tip {
+  border-radius: 14px;
+  background: linear-gradient(100deg, rgba(11, 125, 112, 0.07), rgba(91, 75, 214, 0.05) 70%, transparent);
+  border: 1px solid rgba(11, 125, 112, 0.14);
+}
+
+/* ---------- 4b. 页面内标签栏：全站统一成同一种白条 ---------- */
+/* 学习资料/错题本用的是 .learning-section-nav，社区另写了一套下划线式，
+   同一层级的切换控件不该有两种长相，这里把社区那套并过来。 */
+.community-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0 0 14px;
+  padding: 6px;
+  border: 1px solid var(--rule);
+  border-bottom: 1px solid var(--rule);
+  border-radius: 14px;
+  background: var(--bg2);
+}
+.community-tabs button {
+  min-height: 40px;
+  padding: 0 16px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--ink-2);
+  font-family: inherit;
+  font-size: 0.86rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.16s ease, color 0.16s ease, border-color 0.16s ease;
+}
+.community-tabs button:hover {
+  background: rgba(11, 125, 112, 0.07);
+  color: var(--acc);
+}
+.community-tabs button[aria-selected="true"] {
+  background: #234333;
+  border-color: #234333;
+  color: #fff1cb;
+  box-shadow: 0 4px 10px rgba(29, 64, 37, 0.11);
+}
+
+/* 社区与自习室的主视觉跟二级页对齐，别一处 240 一处 158 */
+#view-community .community-hero,
+#view-rooms .rooms-hero {
+  min-height: 190px;
+  padding: 24px 28px;
+  border-radius: 18px;
+  margin-bottom: 14px;
+}
+#view-community .community-hero h1,
+#view-rooms .rooms-hero h1 {
+  font-size: clamp(28px, 2.8vw, 40px);
+  line-height: 1.3;
+}
+
+/* ---------- 5. 按钮与链接：统一按压、焦点、禁用 ---------- */.btn {
+  transition: transform 0.12s ease, box-shadow 0.18s ease, background 0.18s ease,
+    border-color 0.18s ease, color 0.18s ease;
+}
+.btn:active:not(:disabled) { transform: translateY(1px) scale(0.99); }
+.btn:disabled { opacity: 0.55; cursor: not-allowed; }
+.btn:focus-visible,
+a:focus-visible,
+button:focus-visible {
+  outline: 2px solid var(--cyan);
+  outline-offset: 2px;
+}
+
+/* 侧栏：hover 给一点点位移，active 有明确落点 */
+.atlas-sidebar .topnav a {
+  transition: background 0.16s ease, color 0.16s ease, transform 0.16s ease,
+    border-color 0.16s ease;
+}
+.atlas-sidebar .topnav a:hover { transform: translateX(2px); }
+.atlas-sidebar .topnav a.active { transform: none; }
+
+/* ---------- 6. 页面切换：轻微上浮，别让人以为闪了一下 ---------- */
+@keyframes viewIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+#view-home:not(.hidden),
+#view-bank:not(.hidden),
+#view-module:not(.hidden),
+#view-mistakes:not(.hidden),
+#view-report:not(.hidden),
+#view-review:not(.hidden),
+#view-knowledge:not(.hidden),
+#view-wenku:not(.hidden),
+#view-community:not(.hidden),
+#view-ai:not(.hidden) {
+  animation: viewIn 0.28s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+/* ---------- 7. 细节：选中色、滚动条、表格 ---------- */
+::selection { background: rgba(11, 125, 112, 0.18); color: var(--ink); }
+* { scrollbar-width: thin; scrollbar-color: rgba(16, 74, 68, 0.28) transparent; }
+*::-webkit-scrollbar { width: 8px; height: 8px; }
+*::-webkit-scrollbar-thumb {
+  background: rgba(16, 74, 68, 0.22);
+  border-radius: 4px;
+}
+*::-webkit-scrollbar-thumb:hover { background: rgba(16, 74, 68, 0.34); }
+*::-webkit-scrollbar-track { background: transparent; }
+
+/* 表格类内容（资料、排行榜）统一行高与分隔线 */
+.md-tip + div table,
+.wk-table { border-collapse: collapse; }
+.wk-table th {
+  font-size: 0.76rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+
+/* ---------- 8. 窄屏收口 ---------- */
+@media (max-width: 900px) {
+  /* 手机端四个标签硬换行会剩一个孤零零的「AI 备考计划」，
+     改成一行横向滚动，符合移动端习惯。 */
+  .learning-section-nav,
+  .community-tabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  .learning-section-nav::-webkit-scrollbar,
+  .community-tabs::-webkit-scrollbar { display: none; }
+  .learning-section-nav button,
+  .community-tabs button { flex: 0 0 auto; white-space: nowrap; }
+
+  #view-mistakes > .page-title,
+  #view-report > .page-title,
+  #view-ai > .page-title,
+  #view-review > .integration-heading,
+  #view-knowledge > .integration-heading,
+  #view-wenku > .page-title {
+    min-height: 0;
+    padding: 18px 20px;
+    margin-bottom: 12px;
+  }
+  .md-stats-strip,
+  .atlas-stats { gap: 8px; }
+  .empty-state { padding: 40px 18px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #view-home:not(.hidden),
+  #view-bank:not(.hidden),
+  #view-module:not(.hidden),
+  #view-mistakes:not(.hidden),
+  #view-report:not(.hidden),
+  #view-review:not(.hidden),
+  #view-knowledge:not(.hidden),
+  #view-wenku:not(.hidden),
+  #view-community:not(.hidden),
+  #view-ai:not(.hidden) { animation: none; }
+  .btn, .mfb-chip, .md-stat-item, .atlas-stat { transition: none; }
+}
+
+/* ---------- 9. 首页八个地点卡：轻一点的上浮与选中环 ---------- */
+.atlas-node-list { gap: 12px; }
+.atlas-node-card {
+  border-radius: 14px;
+  padding: 14px 16px;
+  min-height: 88px;
+  transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease,
+    background 0.16s ease;
+}
+.atlas-node-card strong { font-size: 0.86rem; letter-spacing: 0.01em; }
+.atlas-node-card small { font-size: 0.72rem; }
+.atlas-node-card:hover {
+  transform: translateY(-2px);
+  background: #fff;
+  border-color: rgba(11, 125, 112, 0.3);
+  box-shadow: 0 10px 22px -16px rgba(16, 74, 68, 0.6);
+}
+.atlas-node-card[aria-pressed="true"] {
+  background: #f5faf2;
+  border-color: var(--acc);
+  box-shadow: 0 0 0 2px rgba(11, 125, 112, 0.12);
+}
