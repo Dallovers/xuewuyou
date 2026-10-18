@@ -209,6 +209,13 @@ var WG_API = (function () {
     setSession(getToken(), d.user);
     return d;
   }
+  /* 改密码。服务端会换发一张新 token——改密后旧 token 全部作废，
+   * 不换的话用户改完密码自己就被踢下线了。 */
+  async function changePassword(oldPassword, newPassword) {
+    var d = await req('PUT', '/api/auth/password', { oldPassword: oldPassword, newPassword: newPassword });
+    setSession(d.token, d.user);
+    return d;
+  }
   /* 拉一次当前账号，顺便刷新本地缓存的 user（role 会在服务端升级后变化，
    * 本地不刷新就会出现「已经是管理员但界面上没有后台入口」） */
   async function me() {
@@ -331,6 +338,7 @@ var WG_API = (function () {
     login: login,
     logout: logout,
     updateNick: updateNick,
+    changePassword: changePassword,
     me: me,
     getData: getData,
     putData: putData,

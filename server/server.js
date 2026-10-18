@@ -96,6 +96,10 @@ function authUser(req) {
   /* 封号立即生效：JWT 是无状态的，签发后没法撤回，所以每次请求都回查账号状态。
    * 返回 null 等价于「未登录」，所有受保护接口自然 401，不用逐个改。 */
   if (!user || user.banned) return null;
+  /* 改过密码之后，之前签发的 token 一律作废。JWT 是无状态的，撤回不了，
+   * 只能拿签发时间和改密时间比：早于 pwdAt 的都算旧会话。
+   * 没有这一条，密码泄露的人改完密码，攻击者那台设备还能继续用满 7 天。 */
+  if (user.pwdAt && (payload.iat || 0) < user.pwdAt) return null;
   return user;
 }
 
@@ -287,6 +291,36 @@ route('PUT', '/api/auth/profile', async (req, res) => {
     }
   }
   sendJson(res, 200, { ok: true, user: { id: user.id, username: user.username, nick: user.nick, role: isAdmin(user) ? 'admin' : null } });
+});
+
+/* 改密码：必须验证当前密码，改完换发新 token。
+ * 换 token 不是礼貌，是安全要求：pwdAt 一更新，旧 token 立刻失效，
+ * 所以本机必须拿到一张新的，否则用户改完密码自己就被踢下线了。 */
+route('PUT', '/api/auth/password', async (req, res) => {
+  const user = authUser(req);
+  if (!user) return sendError(res, 401, '未登录');
+  const body = JSON.parse(await readBody(req, 1) || '{}');
+  const oldPassword = String(body.oldPassword || '');
+  const newPassword = String(body.newPassword || '');
+  if (!oldPassword || !newPassword) return sendError(res, 400, '请填写当前密码和新密码');
+  if (!auth.verifyPassword(oldPassword, user.passHash)) return sendError(res, 401, '当前密码不正确');
+  if (newPassword.length < 6) return sendError(res, 400, '新密码至少 6 位');
+  if (newPassword === oldPassword) return sendError(res, 400, '新密码不能和当前密码相同');
+  /* 昵称是公开渲染的，新密码要是跟昵称一样，等于又把它贴到公屏上了。 */
+  if (user.nick && newPassword === user.nick) return sendError(res, 400, '新密码不能和昵称相同');
+
+  const users = store.get('users') || {};
+  user.passHash = auth.hashPassword(newPassword);
+  user.pwdAt = Date.now();
+  users[user.id] = user;
+  store.set('users', users);
+
+  const token = auth.sign({ uid: user.id });
+  sendJson(res, 200, {
+    ok: true,
+    token,
+    user: { id: user.id, username: user.username, nick: user.nick, role: isAdmin(user) ? 'admin' : null }
+  });
 });
 
 /* ===== 学习数据整包（wenguo_v1） ===== */

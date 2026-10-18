@@ -209,7 +209,7 @@ module.exports = function createAdmin({ route, authUser, sendJson, readBody, sto
     const all = usersTable();
     const target = all[String(body.uid || '')];
     if (!target) fail(404, '账号不存在');
-    if (target.id === actor.id && (action === 'ban' || action === 'mute' || action === 'demote')) {
+    if (target.id === actor.id && (action === 'ban' || action === 'mute' || action === 'demote' || action === 'reset-password')) {
       fail(400, '不能对自己执行这个操作');
     }
     if ((action === 'ban' || action === 'mute') && target.role === ADMIN_ROLE) {
@@ -255,6 +255,16 @@ module.exports = function createAdmin({ route, authUser, sendJson, readBody, sto
       const admins = Object.values(all).filter((u) => u.role === ADMIN_ROLE);
       if (admins.length <= 1) fail(400, '至少要保留一个管理员，不能全部取消');
       delete target.role;
+    } else if (action === 'reset-password') {
+      /* 用户忘记密码时的兜底。密码由管理员直接指定，不生成随机串——
+       * 随机串要额外想办法交给用户，反而更容易被截图乱传。
+       * 审计里只记「重置过」，绝不记密码本身。 */
+      const next = String(body.password || '');
+      if (next.length < 6) fail(400, '新密码至少 6 位');
+      if (target.nick && next === target.nick) fail(400, '新密码不能和昵称相同');
+      target.passHash = auth.hashPassword(next);
+      target.pwdAt = Date.now();   // 让这名用户手上的旧 token 立刻失效
+      detail = '重置为管理员指定的新密码';
     } else {
       fail(400, '未知操作：' + action);
     }

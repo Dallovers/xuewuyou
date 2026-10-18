@@ -1017,11 +1017,26 @@
     <div id="loginAuthed" style="display:none;text-align:center;padding:0.5rem 0;">
       <div style="font-size:1.05rem;font-weight:700;margin-bottom:0.3rem;">已登录：<b id="loginAuthedNick"></b></div>
       <div style="font-size:0.8rem;color:var(--muted);margin-bottom:1.1rem;">用户名：<span id="loginAuthedUser"></span></div>
-      <div style="display:grid;gap:0.6rem;">
+      <div style="display:grid;gap:0.6rem;" id="loginAuthedActions">
         <button class="btn" id="loginChangeNick" type="button">✏️ 修改昵称</button>
+        <button class="btn" id="loginChangePwd" type="button">🔑 修改密码</button>
         <button class="btn" id="loginSyncNow" type="button">🔄 立即同步数据</button>
         <button class="btn" id="loginAdmin" type="button" style="display:none;">🛠️ 管理后台</button>
         <button class="btn ghost" id="loginLogout" type="button" style="color:var(--danger);">退出登录</button>
+      </div>
+      <!-- 改密码表单：密码泄露时要能自救，否则只能求人。改完服务端会作废其它设备上的登录。 -->
+      <div id="loginPwdForm" style="display:none;">
+        <div style="display:grid;gap:0.55rem;margin-top:0.8rem;">
+          <input id="pwdOld" type="password" autocomplete="current-password" placeholder="当前密码" style="width:100%;background:var(--bg2);border:1px solid var(--rule);border-radius:10px;padding:0.6rem 0.9rem;color:var(--ink);font-size:0.9rem;outline:none;box-sizing:border-box;">
+          <input id="pwdNew" type="password" autocomplete="new-password" placeholder="新密码（至少 6 位）" style="width:100%;background:var(--bg2);border:1px solid var(--rule);border-radius:10px;padding:0.6rem 0.9rem;color:var(--ink);font-size:0.9rem;outline:none;box-sizing:border-box;">
+          <input id="pwdNew2" type="password" autocomplete="new-password" placeholder="再输一次新密码" style="width:100%;background:var(--bg2);border:1px solid var(--rule);border-radius:10px;padding:0.6rem 0.9rem;color:var(--ink);font-size:0.9rem;outline:none;box-sizing:border-box;">
+          <div id="pwdMsg" style="font-size:0.82rem;color:var(--danger);min-height:1.1rem;line-height:1.4;"></div>
+          <div style="display:flex;gap:0.5rem;">
+            <button class="btn primary" id="pwdSubmit" type="button" style="flex:1;">确认修改</button>
+            <button class="btn ghost" id="pwdCancel" type="button" style="flex:1;">取消</button>
+          </div>
+          <div style="font-size:0.75rem;color:var(--muted);line-height:1.6;">改完密码后，其它设备上的登录会自动失效，需要用新密码重新登录。</div>
+        </div>
       </div>
     </div>
   </div>
@@ -1048,7 +1063,7 @@
 
 <script src="js/deploy-config.js?v=2" defer></script>
 <script src="js/runtime.js?v=1" defer></script>
-<script src="js/api.js?v=6" defer></script>
+<script src="js/api.js?v=7" defer></script>
 <script src="js/practice-resume.js?v=1" defer></script>
 <script src="js/data.js?v=8" defer></script>
 <script src="js/ai.js?v=9" defer></script>
@@ -1066,7 +1081,7 @@
 <!-- 重型数据延迟加载器：gaoshu_bank / english_words / ielts_words / wenku / wenku_cat
      首屏渲染后后台加载，避免 4.3MB 同步阻塞登录界面 -->
 <script src="js/loader.js?v=1" defer></script>
-<script src="js/app.js?v=45" defer></script>
+<script src="js/app.js?v=46" defer></script>
 <script src="js/integrations.js?v=wall-2" defer></script>
 <script src="js/whiteboard.js?v=1" defer></script>
 <script src="js/community.js?v=4" defer></script>

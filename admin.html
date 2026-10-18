@@ -268,6 +268,13 @@
           if (reason === null) return;
           payload.reason = reason;
         }
+        /* 用户忘记密码时的兜底。密码由你直接指定，不生成随机串——
+         * 随机串还得想办法交到用户手上，反而更容易被截图乱传。 */
+        if (action === 'reset-password') {
+          var pwd = window.prompt('把「' + u.username + '」的密码重置为（至少 6 位）：', '');
+          if (pwd === null) return;
+          payload.password = pwd;
+        }
         api('POST', '/api/admin/user-action', payload).then(function (d) {
           if (!d.ok) return say($('uMsg'), d.error, 'err');
           say($('uMsg'), '已' + label.replace(/^\s+|\s+$/g, '') + '：' + u.username, 'ok');
@@ -288,6 +295,7 @@
 
     if (u.role === 'admin') act('取消管理员', 'demote');
     else act('设为管理员', 'promote');
+    act('重置密码', 'reset-password');
 
     tr.appendChild(td);
     return tr;
@@ -367,7 +375,8 @@
   /* ---------- 审计 ---------- */
   var ACTIONS = {
     ban: '封号', unban: '解封', mute: '禁言', unmute: '解除禁言',
-    promote: '设为管理员', demote: '取消管理员', 'post-delete': '下架留言', 'post-restore': '恢复留言'
+    promote: '设为管理员', demote: '取消管理员', 'reset-password': '重置密码',
+    'post-delete': '下架留言', 'post-restore': '恢复留言'
   };
 
   function loadAudit() {

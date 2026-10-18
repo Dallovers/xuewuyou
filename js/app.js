@@ -1533,10 +1533,57 @@ var WG_App = (function () {
       if (e.key === 'Enter') handleLoginSubmit();
     });
     $('loginChangeNick') && $('loginChangeNick').addEventListener('click', handleChangeNick);
+    $('loginChangePwd') && $('loginChangePwd').addEventListener('click', showPwdForm);
+    $('pwdCancel') && $('pwdCancel').addEventListener('click', hidePwdForm);
+    $('pwdSubmit') && $('pwdSubmit').addEventListener('click', handleChangePwd);
     $('loginSyncNow') && $('loginSyncNow').addEventListener('click', handleSyncNow);
     $('loginLogout') && $('loginLogout').addEventListener('click', handleLogout);
     $('loginAdmin') && $('loginAdmin').addEventListener('click', function () {
       window.location.href = 'admin.html';
+    });
+  }
+
+  /* 已登录：修改密码
+   * 之前这条路根本不存在——密码泄露了只能求管理员，而管理员也没有重置手段。
+   * 现在收在账号中心里，改完服务端会作废其它设备上的登录。 */
+  function showPwdForm() {
+    var actions = $('loginAuthedActions'), form = $('loginPwdForm');
+    if (!actions || !form) return;
+    actions.style.display = 'none';
+    form.style.display = 'block';
+    $('pwdMsg').textContent = '';
+    $('pwdOld').value = ''; $('pwdNew').value = ''; $('pwdNew2').value = '';
+    $('pwdOld').focus();
+  }
+  function hidePwdForm() {
+    var actions = $('loginAuthedActions'), form = $('loginPwdForm');
+    if (!actions || !form) return;
+    form.style.display = 'none';
+    actions.style.display = 'grid';
+    $('pwdOld').value = ''; $('pwdNew').value = ''; $('pwdNew2').value = '';
+    $('pwdMsg').textContent = '';
+  }
+  function handleChangePwd() {
+    var msg = $('pwdMsg'), btn = $('pwdSubmit');
+    var oldV = $('pwdOld').value, next = $('pwdNew').value, again = $('pwdNew2').value;
+    msg.textContent = '';
+    /* 客户端先挡一遍明显错误，省一次往返；服务端那边会再验一次，不能只信这里。 */
+    if (!oldV) { msg.textContent = '请输入当前密码'; return; }
+    if (next.length < 6) { msg.textContent = '新密码至少 6 位'; return; }
+    if (next !== again) { msg.textContent = '两次输入的新密码不一致'; return; }
+    if (next === oldV) { msg.textContent = '新密码不能和当前密码相同'; return; }
+    btn.disabled = true;
+    WG_API.changePassword(oldV, next).then(function () {
+      hidePwdForm();
+      toast('密码已修改，其它设备需要重新登录', 'ok');
+    }).catch(function (e) {
+      var text = (e && e.message) || '修改失败，请重试';
+      /* 前端会先于后端上线（Pages 自动发布，后端要等人部署）。
+       * 这段空窗期里接口还不存在，得说人话，别让人以为是密码输错了。 */
+      if (text.indexOf('接口不存在') > -1) text = '服务端还没更新，暂时不能修改密码，稍后再试。';
+      msg.textContent = text;
+    }).then(function () {
+      btn.disabled = false;
     });
   }
 
