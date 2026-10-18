@@ -45,8 +45,8 @@
     <p class="atlas-nav-caption">我的校园</p>
     <nav class="topnav" id="topnav" aria-label="主导航">
       <a href="#" data-nav="home" class="active" aria-current="page">今日校园</a>
-      <!-- 课程与资料：父项只负责展开/收起目录，具体跳转交给三个子项 -->
-      <div class="atlas-nav-group">
+      <!-- 课程与资料：父项只负责展开/收起目录，具体跳转交给子项 -->
+      <div class="atlas-nav-group" data-section="bank">
         <button type="button" class="atlas-nav-parent" id="navCourseToggle" aria-expanded="true" aria-controls="subnavCourse">课程与资料<span class="atlas-nav-caret" aria-hidden="true">›</span></button>
         <div class="atlas-subnav is-open" id="subnavCourse" aria-label="课程与资料">
           <a href="#" data-nav="bank">课程地图</a>
@@ -54,7 +54,15 @@
           <a href="#" data-nav="ai">AI 助手</a>
         </div>
       </div>
-      <a href="#" data-nav="mistakes">错题与复习</a>
+      <!-- 错题与复习：同一个二级目录结构 -->
+      <div class="atlas-nav-group" data-section="mistakes">
+        <button type="button" class="atlas-nav-parent" id="navReviewToggle" aria-expanded="true" aria-controls="subnavReview">错题与复习<span class="atlas-nav-caret" aria-hidden="true">›</span></button>
+        <div class="atlas-subnav is-open" id="subnavReview" aria-label="错题与复习">
+          <a href="#" data-nav="mistakes">错题本</a>
+          <a href="#" data-nav="review">智能复习</a>
+          <a href="#" data-nav="report">学情报告</a>
+        </div>
+      </div>
       <a href="#" data-nav="rooms">自习室<span id="roomsInviteBadge" class="rooms-nav-badge" hidden>0</span></a>
       <a href="#" data-nav="community">同伴</a>
     </nav>
@@ -1034,7 +1042,7 @@
 <!-- 重型数据延迟加载器：gaoshu_bank / english_words / ielts_words / wenku / wenku_cat
      首屏渲染后后台加载，避免 4.3MB 同步阻塞登录界面 -->
 <script src="js/loader.js?v=1" defer></script>
-<script src="js/app.js?v=51" defer></script>
+<script src="js/app.js?v=52" defer></script>
 <script src="js/integrations.js?v=wall-3" defer></script>
 <script src="js/whiteboard.js?v=1" defer></script>
 <script src="js/community.js?v=4" defer></script>

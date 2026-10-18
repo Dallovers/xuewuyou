@@ -202,11 +202,12 @@ var WG_App = (function () {
     if (name === 'community') return 'community';
     return null;
   }
-  /* 「课程与资料」二级目录的展开状态只记在按钮的 aria-expanded 上，
+  /* 侧边栏二级目录的展开状态只记在按钮的 aria-expanded 上，
    * CSS 也按它来画箭头，两边不会各说一套。 */
-  function setCourseNavOpen(open) {
-    var toggle = $('navCourseToggle'), nav = $('subnavCourse');
-    if (!toggle || !nav) return;
+  function setSubnavOpen(toggle, open) {
+    if (!toggle) return;
+    var nav = $(toggle.getAttribute('aria-controls'));
+    if (!nav) return;
     toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
     nav.classList.toggle('is-open', open);
   }
@@ -235,19 +236,22 @@ var WG_App = (function () {
       b.classList.toggle('active', active);
       if (active) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
     });
-    /* 侧边栏二级目录：子项跟着当前视图高亮，父项标出「就在这一大类里」。
-     * 只有「从别的大类走进来」时才自动展开——在这一大类内部来回切换时不抢用户手动收起的状态。 */
-    document.querySelectorAll('#topnav .atlas-subnav a').forEach(function (a) {
-      var active = a.getAttribute('data-nav') === name;
-      a.classList.toggle('active', active);
-      if (active) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
+    /* 侧边栏二级目录（课程与资料 / 错题与复习）：子项跟着当前视图高亮，
+     * 父项标出「就在这一大类里」。只有「从别的大类走进来」时才自动展开，
+     * 在这一大类内部来回切换不抢用户手动收起的状态。 */
+    document.querySelectorAll('#topnav .atlas-nav-group').forEach(function (group) {
+      var toggle = group.querySelector('.atlas-nav-parent');
+      if (!toggle) return;
+      var key = group.getAttribute('data-section');
+      var inSection = !!key && key === section;
+      toggle.classList.toggle('section-current', inSection);
+      if (inSection && lastPrimarySection !== key) setSubnavOpen(toggle, true);
+      group.querySelectorAll('.atlas-subnav a').forEach(function (a) {
+        var active = a.getAttribute('data-nav') === name;
+        a.classList.toggle('active', active);
+        if (active) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
+      });
     });
-    var courseToggle = $('navCourseToggle');
-    if (courseToggle) {
-      var inCourse = section === 'bank';
-      courseToggle.classList.toggle('section-current', inCourse);
-      if (inCourse && lastPrimarySection !== 'bank') setCourseNavOpen(true);
-    }
     lastPrimarySection = section;
     state.view = name;
     document.body.dataset.view = name;
@@ -1820,7 +1824,7 @@ var WG_App = (function () {
         var parent = e.target.closest ? e.target.closest('.atlas-nav-parent') : null;
         if (parent) {
           e.preventDefault();
-          setCourseNavOpen(parent.getAttribute('aria-expanded') !== 'true');
+          setSubnavOpen(parent, parent.getAttribute('aria-expanded') !== 'true');
           return;
         }
         var a = e.target.closest ? e.target.closest('a[data-nav]') : null;
