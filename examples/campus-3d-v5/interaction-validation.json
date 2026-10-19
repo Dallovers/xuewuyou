@@ -1,0 +1,363 @@
+{
+  "checks": [
+    {
+      "name": "model has separate roof glazing furniture and interior",
+      "passed": true,
+      "data": {
+        "triangles": 332446,
+        "meshes": 97,
+        "materials": [
+          "Honed interior stone",
+          "Chair steel",
+          "Natural oak",
+          "Acoustic ceiling",
+          "Warm mineral plaster",
+          "Pale limestone",
+          "Cut limestone trim",
+          "Dark bronze frames",
+          "Clear architectural glass",
+          "Physical wayfinding sign",
+          "Warm linear luminaire",
+          "Grey masonry",
+          "Blue grey standing seam zinc",
+          "Classroom dimmable luminaire",
+          "Woven roller blind fabric",
+          "Equipment power indicator",
+          "Physical projection screen",
+          "Projector illuminated lens",
+          "Physical wayfinding sign.001",
+          "Physical wayfinding sign.002",
+          "Physical wayfinding sign.003",
+          "Physical wayfinding sign.004",
+          "Physical wayfinding sign.005",
+          "Physical wayfinding sign.006",
+          "Teaching board",
+          "Grey green upholstery",
+          "Muted book cover",
+          "Paper",
+          "Chalk writing on physical teaching board",
+          "Graphite teaching equipment"
+        ],
+        "categories": [
+          "Floors and foundations",
+          "South teaching facade",
+          "East west and north facades",
+          "Independent roof and drainage",
+          "Accessible ground floor lobby and classroom",
+          "Lobby and classroom furniture",
+          "Upper storey visible interior structure",
+          "Classroom lightmapped stone floor",
+          "Classroom equipment and chalk teaching surface",
+          "Classroom operable blinds lighting and projection",
+          "Cycles baked classroom and lobby"
+        ],
+        "dimensions": {
+          "width": 60,
+          "depth": 26,
+          "floor": 0.6,
+          "storey": 3.8,
+          "levels": 4,
+          "front": 4,
+          "back": -12,
+          "wingFront": 14,
+          "roofEave": 16.05,
+          "roofRidge": 17.35,
+          "ramp": {
+            "highX": 11.15,
+            "lowX": 21.95,
+            "minZ": 8.4,
+            "maxZ": 10.25,
+            "top": 0.6,
+            "bottom": 0.03
+          }
+        }
+      }
+    },
+    {
+      "name": "window is a real opening through the front wall",
+      "passed": true,
+      "data": {
+        "window": [
+          {
+            "distance": 13.889999866485596,
+            "name": "Mesh_60_1",
+            "point": [
+              18.3,
+              2.7,
+              -5.889999866485596
+            ]
+          },
+          {
+            "distance": 19.762499809265137,
+            "name": "East west and north facades / Warm mineral plaster",
+            "point": [
+              18.3,
+              2.7,
+              -11.762499809265137
+            ]
+          },
+          {
+            "distance": 19.77999973297119,
+            "name": "East west and north facades / Cut limestone trim",
+            "point": [
+              18.3,
+              2.7,
+              -11.779999732971191
+            ]
+          },
+          {
+            "distance": 19.8100004196167,
+            "name": "East west and north facades / Grey masonry",
+            "point": [
+              18.3,
+              2.7,
+              -11.8100004196167
+            ]
+          },
+          {
+            "distance": 19.980620958364256,
+            "name": "East west and north facades / Dark bronze frames",
+            "point": [
+              18.3,
+              2.7,
+              -11.980620958364256
+            ]
+          }
+        ],
+        "core": [
+          {
+            "distance": 3.5900001525878906,
+            "name": "South teaching facade / Pale limestone",
+            "point": [
+              14.8,
+              2.7,
+              4.409999847412109
+            ]
+          },
+          {
+            "distance": 3.809999942779541,
+            "name": "South teaching facade / Grey masonry",
+            "point": [
+              14.8,
+              2.7,
+              4.190000057220459
+            ]
+          },
+          {
+            "distance": 4.192500114440918,
+            "name": "South teaching facade / Warm mineral plaster",
+            "point": [
+              14.8,
+              2.7,
+              3.807499885559082
+            ]
+          },
+          {
+            "distance": 13.889999866485596,
+            "name": "Mesh_60_1",
+            "point": [
+              14.8,
+              2.7,
+              -5.889999866485596
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "closed entrance blocks walking",
+      "passed": true,
+      "data": [
+        0,
+        0,
+        4.399679999923731
+      ]
+    },
+    {
+      "name": "E opens sliding entrance",
+      "passed": true
+    },
+    {
+      "name": "walk continuously from courtyard into lobby",
+      "passed": true,
+      "data": [
+        0,
+        0,
+        -1.5583999999999771
+      ]
+    },
+    {
+      "name": "closed classroom door blocks walking",
+      "passed": true,
+      "data": [
+        8.62751999988556,
+        0,
+        -1.5583999999999771
+      ]
+    },
+    {
+      "name": "walk through classroom door in same scene",
+      "passed": true,
+      "data": {
+        "ready": true,
+        "lighting": {
+          "loaded": true,
+          "receiverMeshes": 72,
+          "uvChannel": 1,
+          "maps": 3,
+          "atlas": [
+            2048,
+            2048
+          ],
+          "gain": 1
+        },
+        "equipment": {
+          "blinds": 0,
+          "blindsTarget": 0,
+          "lights": 1,
+          "lightsTarget": 1,
+          "projector": 0,
+          "projectorTarget": 0,
+          "screenVisible": false
+        },
+        "mode": "walk",
+        "view": "exterior",
+        "pos": [
+          10.21183999996185,
+          0,
+          -1.5583999999999771
+        ],
+        "camera": [
+          10.21183999996185,
+          2.249999999999999,
+          -1.5583999999999771
+        ],
+        "floor": 0.6,
+        "quality": "auto",
+        "location": "classroom",
+        "yaw": 0,
+        "seated": null,
+        "nearest": "seat",
+        "doors": [
+          {
+            "id": "entry",
+            "open": 1,
+            "target": 1,
+            "blocked": false
+          },
+          {
+            "id": "classroom",
+            "open": 0.9951316489857703,
+            "target": 1,
+            "blocked": false
+          }
+        ],
+        "fountain": true,
+        "visibleJets": 3,
+        "modal": false,
+        "clay": false,
+        "answers": 0,
+        "notes": "",
+        "visits": [
+          "courtyard",
+          "lobby",
+          "classroom"
+        ],
+        "frames": 833,
+        "renderer": {
+          "frame": 7533,
+          "calls": 197,
+          "triangles": 1031607,
+          "points": 0,
+          "lines": 0
+        }
+      }
+    },
+    {
+      "name": "E selects an actual classroom seat",
+      "passed": true
+    },
+    {
+      "name": "wrong answer gives explanation",
+      "passed": true
+    },
+    {
+      "name": "practice score reflects answers",
+      "passed": true
+    },
+    {
+      "name": "note saves locally",
+      "passed": true
+    },
+    {
+      "name": "Escape closes panel",
+      "passed": true
+    },
+    {
+      "name": "Escape stands up",
+      "passed": true
+    },
+    {
+      "name": "modal pauses movement",
+      "passed": true
+    },
+    {
+      "name": "indoor floor route exists",
+      "passed": true
+    },
+    {
+      "name": "courtyard route exists",
+      "passed": true
+    },
+    {
+      "name": "fountain switches actual visible water geometry",
+      "passed": true
+    },
+    {
+      "name": "fountain can restart",
+      "passed": true
+    },
+    {
+      "name": "clay mode enabled",
+      "passed": true
+    },
+    {
+      "name": "materials restore after clay inspection",
+      "passed": true
+    },
+    {
+      "name": "editable GLB exported",
+      "passed": true
+    },
+    {
+      "name": "GLB preserves architectural categories and PBR materials",
+      "passed": true,
+      "data": {
+        "nodes": 157,
+        "materials": 37,
+        "images": 19,
+        "extensions": [
+          "KHR_materials_emissive_strength"
+        ]
+      }
+    },
+    {
+      "name": "notes and exercise records survive reload",
+      "passed": true
+    },
+    {
+      "name": "mobile toolbar fits viewport",
+      "passed": true
+    },
+    {
+      "name": "no browser errors",
+      "passed": true,
+      "data": []
+    }
+  ],
+  "errors": [],
+  "warnings": [
+    "THREE.GLTFExporter: Merged metalnessMap and roughnessMap textures."
+  ],
+  "checked_utc": "2026-10-19T13:03:44.139Z"
+}

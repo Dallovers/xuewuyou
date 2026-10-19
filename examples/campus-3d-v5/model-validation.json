@@ -1,0 +1,27 @@
+{
+  "format": "glTF 2.0 binary",
+  "sha256": "0079abacce1f639f19f90fb374010807df93e21b59b2c2bd9e5a73d06b5de3d9",
+  "bytes": 47095432,
+  "triangles": 332444,
+  "position_entries": 899038,
+  "nodes": 157,
+  "meshes": 96,
+  "materials": 37,
+  "embedded_images": 19,
+  "all_images_embedded": true,
+  "finite_positions_and_normals": true,
+  "all_meshes_have_normals": true,
+  "movable_door_nodes": 2,
+  "dynamic_nodes_total": 9,
+  "entrance_exported_closed": true,
+  "entry_leaf_x": [
+    -0.775,
+    0.775
+  ],
+  "top_level_categories": "CourseAcademy_EditableArchitecture",
+  "source": "Parametric reconstruction from three reference elevations, not a modification of the v1 AI mesh",
+  "reference_images_projected_on_facade": false,
+  "design_units": "metres",
+  "browser_checks_passed": 25,
+  "browser_check_total": 25
+}

@@ -1,0 +1,20 @@
+{
+  "passed": true,
+  "source": "GitHub publication staging copy",
+  "testPort": 4197,
+  "testScripts": [
+    {
+      "file": "tests/navigation.mjs",
+      "exitCode": 0
+    },
+    {
+      "file": "tests/interactions.cjs",
+      "exitCode": 0
+    },
+    {
+      "file": "tests/classroom.cjs",
+      "exitCode": 0
+    }
+  ],
+  "checkedAt": "2026-10-19T13:04:02.896Z"
+}

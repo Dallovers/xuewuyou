@@ -1,0 +1,398 @@
+[
+  {
+    "path": ".gitattributes",
+    "bytes": 218,
+    "sha256": "2fefce5261f59b86c357bb8b884e3b9de8ac5711841157d6312a51e81273f4d6",
+    "normalization": "none"
+  },
+  {
+    "path": ".gitignore",
+    "bytes": 74,
+    "sha256": "76d7a0481c63e7bd634e482b1b16c7e314e3c8299f3b517f1f392503fe426b83",
+    "normalization": "none"
+  },
+  {
+    "path": "Classroom_Lighting_v5.blend",
+    "bytes": 41408278,
+    "sha256": "bac16aab15e3b82877c7874b21add4e9f285be2f09400c0508b98df74c13839a",
+    "normalization": "none"
+  },
+  {
+    "path": "README.md",
+    "bytes": 6603,
+    "sha256": "448d4fce5cf9328ce83665477315b9da88144c0c43d4e1ab5f865ffbf1dfccfa",
+    "normalization": "lf"
+  },
+  {
+    "path": "app.bundle.js",
+    "bytes": 4790915,
+    "sha256": "6cc380111caef36c65b7f880c3dcf1dec71325866c33ef238ac7aeb6a41f054a",
+    "normalization": "lf"
+  },
+  {
+    "path": "assets/brick-color.jpg",
+    "bytes": 722173,
+    "sha256": "e20bb6a284e612c4b3fd67e501fb1578705de3559872434e98be832c42671b85",
+    "normalization": "none"
+  },
+  {
+    "path": "assets/brick-normal.jpg",
+    "bytes": 1068884,
+    "sha256": "d35e7be27c840ba20d68d10276a5954190ec5a3b2d8c8fd6672a6f7c6386e1df",
+    "normalization": "none"
+  },
+  {
+    "path": "assets/brick-roughness.jpg",
+    "bytes": 477096,
+    "sha256": "6d36270393e4c90ffad99939a192f2f783b3b819ccc5a58c24f19c05c3b0e51d",
+    "normalization": "none"
+  },
+  {
+    "path": "assets/classroom-baked.glb",
+    "bytes": 8478408,
+    "sha256": "08ae581e9b664d5e0c32a4a544d7dd33a76d994f6979a6c2331de9283fd298bb",
+    "normalization": "none"
+  },
+  {
+    "path": "assets/lightmaps/day-closed.hdr",
+    "bytes": 8144249,
+    "sha256": "ade8ffcafe6b5db713a322b0701bf16970539409dedb8281fbc535656352ef47",
+    "normalization": "none"
+  },
+  {
+    "path": "assets/lightmaps/day-open.hdr",
+    "bytes": 8780627,
+    "sha256": "039d65cca9cfc3decdfd6d9910660c0102ea23eb1f1e8969d29621a557f4b0f7",
+    "normalization": "none"
+  },
+  {
+    "path": "assets/lightmaps/led.hdr",
+    "bytes": 8253573,
+    "sha256": "ef11169b6dbb9d52aeb8327cf3717ad2cd3e506f98d44c7524daa1cf4a368bae",
+    "normalization": "none"
+  },
+  {
+    "path": "assets/sky.hdr",
+    "bytes": 1435119,
+    "sha256": "fd94c84997b8a3c353b62c2125a9b44e19509956986a126e472684432a02d798",
+    "normalization": "none"
+  },
+  {
+    "path": "assets/sources.json",
+    "bytes": 2093,
+    "sha256": "4f0bb613cd1d49edd22ff15c30b066c5d1137aacb83e874ceb34473da256c872",
+    "normalization": "lf"
+  },
+  {
+    "path": "assets/stone-color.jpg",
+    "bytes": 776097,
+    "sha256": "6db84a6d87dc50508b9d134d6fbd2b7e876b8081a5f43a118a249ca18de73af5",
+    "normalization": "none"
+  },
+  {
+    "path": "assets/stone-normal.jpg",
+    "bytes": 192757,
+    "sha256": "fcda391b57a816d646ae15544688be53790478da5cd48dbe514b3c6901415e61",
+    "normalization": "none"
+  },
+  {
+    "path": "assets/stone-roughness.jpg",
+    "bytes": 318550,
+    "sha256": "c7f026a611b7859903c61ec7fd4574944157223e9e7796413dd6e2a66eaeac7a",
+    "normalization": "none"
+  },
+  {
+    "path": "assets/wood-color.jpg",
+    "bytes": 595257,
+    "sha256": "8fdec14fd3c06de907693c9c3241037dc93327ad907296371a2f74a0becd8187",
+    "normalization": "none"
+  },
+  {
+    "path": "assets/wood-normal.jpg",
+    "bytes": 623607,
+    "sha256": "9e8dd65e443d92107caa4cd30403d78946a8b8c5a6029e6446c7368865b1d1c0",
+    "normalization": "none"
+  },
+  {
+    "path": "assets/wood-roughness.jpg",
+    "bytes": 520649,
+    "sha256": "a8670e80f203bd031ac3c80f0f606383be51a0ee108e016fa19cad6b9bd373e7",
+    "normalization": "none"
+  },
+  {
+    "path": "bake_lighting.py",
+    "bytes": 9845,
+    "sha256": "8510c720c3caf0a7cdc3a6f25577a0df69c3efb1fbb9271cb483df1f4e538a92",
+    "normalization": "lf"
+  },
+  {
+    "path": "build.mjs",
+    "bytes": 395,
+    "sha256": "9c1452560f6df3855dbb3a2c7113f377b4741b9e18bb27d2a8ffa2fd9d732e54",
+    "normalization": "lf"
+  },
+  {
+    "path": "classroom-validation.json",
+    "bytes": 2579,
+    "sha256": "229e2aac53470451e724a95bc934f0767ca3b90e42d9fb4e9cffd12c939ae490",
+    "normalization": "lf"
+  },
+  {
+    "path": "course_academy_v5.glb",
+    "bytes": 47095432,
+    "sha256": "0079abacce1f639f19f90fb374010807df93e21b59b2c2bd9e5a73d06b5de3d9",
+    "normalization": "none"
+  },
+  {
+    "path": "index.html",
+    "bytes": 2446,
+    "sha256": "e977a7f50dfe26b04fb0016eaad60bef5649b8156552ec00ee63956e7817bab4",
+    "normalization": "lf"
+  },
+  {
+    "path": "inputs/academy-bake-source.glb",
+    "bytes": 43714828,
+    "sha256": "8f49d5df808a9e5d9cd6c103650fd46d085a85f64e71eedc42ad7bb835709915",
+    "normalization": "none"
+  },
+  {
+    "path": "interaction-validation.json",
+    "bytes": 8768,
+    "sha256": "0056cdfee2f8b4cb7aed8ac7ba025787fbff84ef505a3b3345801368168050df",
+    "normalization": "lf"
+  },
+  {
+    "path": "licenses/EZ-TREE.txt",
+    "bytes": 1073,
+    "sha256": "20e4afadfb10c67952b3d73cd2982d21d165ab4ae82b0dd9e4d6f2166ee349b6",
+    "normalization": "lf"
+  },
+  {
+    "path": "licenses/THREE.txt",
+    "bytes": 1081,
+    "sha256": "4c40a1ef62450b857c3b2aaf294936304cd552d965fbcd9d32d4c5bcf4ba4454",
+    "normalization": "lf"
+  },
+  {
+    "path": "lighting-bake-report.json",
+    "bytes": 1376,
+    "sha256": "5e4dd690995a60ea10330beb23a93a1f94d97b27f4b3ec40d9b351012a493e48",
+    "normalization": "lf"
+  },
+  {
+    "path": "lighting-validation.json",
+    "bytes": 787,
+    "sha256": "bcacf7892a4a55f83147709c02dea1e7b35479d3e5eef61f54965987cc8e13f2",
+    "normalization": "lf"
+  },
+  {
+    "path": "mobile-validation.json",
+    "bytes": 353,
+    "sha256": "df3641b3833312208205bd33bec3e6df09acd2c9c28ace0f9d2d9f983815ea57",
+    "normalization": "lf"
+  },
+  {
+    "path": "model-validation.json",
+    "bytes": 845,
+    "sha256": "4d538fce7ee995d0cf0cce1dc4e413cd5ad4312f462e4ec034d636c9d46ce72f",
+    "normalization": "lf"
+  },
+  {
+    "path": "navigation.worker.js",
+    "bytes": 3265,
+    "sha256": "123746c48d21804425ddae14e4dea2afe73e97d4b096da0efd5346a96c7b5488",
+    "normalization": "lf"
+  },
+  {
+    "path": "package-lock.json",
+    "bytes": 16892,
+    "sha256": "41fa673c2b7b663cea4f8406be960cbccf9a5459d720d448559ec19be0f6c6e7",
+    "normalization": "lf"
+  },
+  {
+    "path": "package.json",
+    "bytes": 578,
+    "sha256": "239041f5e3728881091e562f77b48c9f11fd76c20b40a55e221156df23ae9e9f",
+    "normalization": "lf"
+  },
+  {
+    "path": "performance-validation.json",
+    "bytes": 3002,
+    "sha256": "8b3277d6a01b3f5273fd3d9260ae2e6fc596eb1d55002e3b6a30544a3f985c39",
+    "normalization": "lf"
+  },
+  {
+    "path": "preview-classroom.png",
+    "bytes": 811060,
+    "sha256": "343f456765a5fb48eced1eb033422145ae16aaaf3b9f110c95d01b0900ab022a",
+    "normalization": "none"
+  },
+  {
+    "path": "preview-mobile.png",
+    "bytes": 174914,
+    "sha256": "d41de05a1e5496524a288b9312123caf82e3e864780a8978d311e53af16de998",
+    "normalization": "none"
+  },
+  {
+    "path": "preview-projection.png",
+    "bytes": 710019,
+    "sha256": "69326bde464663528d9d8af96daef5fab9e14eb201b597a847f862488c1fd504",
+    "normalization": "none"
+  },
+  {
+    "path": "publication-validation.json",
+    "bytes": 367,
+    "sha256": "1f10793d974ee57fe3c5eb522a93caf500664e96ff36431aed082ef9bfcb1cd3",
+    "normalization": "lf"
+  },
+  {
+    "path": "render-daylight.png",
+    "bytes": 754587,
+    "sha256": "1762e6053bd12e3a7604c20f641dcf8be04aac99279422da913cbcb6f85d501b",
+    "normalization": "none"
+  },
+  {
+    "path": "render-projection.png",
+    "bytes": 712601,
+    "sha256": "733791497794824e7a830d5d64ab4d1bb417f80b713442d685c63fb154de8144",
+    "normalization": "none"
+  },
+  {
+    "path": "render-teaching.png",
+    "bytes": 813175,
+    "sha256": "f015eabf636f888b1ae8e894aa280271c1cd4e9f73fdcb1c00401f47109a3f6b",
+    "normalization": "none"
+  },
+  {
+    "path": "render-validation.json",
+    "bytes": 2019,
+    "sha256": "8d1576e82d0108a0079b60a49889f68ed731dba21dffa9518ec0bbe0ae761a22",
+    "normalization": "lf"
+  },
+  {
+    "path": "server.mjs",
+    "bytes": 1808,
+    "sha256": "651ff09243ea3e30a7d41e98c75e6b805d9e34ac0a5cae101c60a7fbce513e8c",
+    "normalization": "lf"
+  },
+  {
+    "path": "src/app.js",
+    "bytes": 24449,
+    "sha256": "0166fbff74cddd2ac1ec25f0f2cdff9e62a04d94d37505cbe8fba23a439b1f2d",
+    "normalization": "lf"
+  },
+  {
+    "path": "src/architecture.js",
+    "bytes": 34901,
+    "sha256": "b806cb14a2dad9285c11db4e5dcacfe3c6dcfef62858b83d7dab972a5a7d653f",
+    "normalization": "lf"
+  },
+  {
+    "path": "src/baked-lighting.js",
+    "bytes": 3087,
+    "sha256": "e17ce06be5c56465f3836759998c3b7f107383d00f4477ef39f706fab028dc43",
+    "normalization": "lf"
+  },
+  {
+    "path": "src/classroom.js",
+    "bytes": 4964,
+    "sha256": "0f25d7cb0e0714806828e8e17bb11e84fde63bd92e06fda0e037d89a3a2a8594",
+    "normalization": "lf"
+  },
+  {
+    "path": "src/navigation-core.js",
+    "bytes": 3494,
+    "sha256": "facd0da3c822fc8a6206a957bae6f87bbcdbd333effb7db07abbffb7b7a1952a",
+    "normalization": "lf"
+  },
+  {
+    "path": "src/navigation.js",
+    "bytes": 521,
+    "sha256": "0473fc39d1cc34510b893caa2f02991b5e90c5f187d5186ba69e775527e17ef4",
+    "normalization": "lf"
+  },
+  {
+    "path": "src/navigation.worker.js",
+    "bytes": 367,
+    "sha256": "6a556753579928f1b313fb24308a23d3ec1f77ad8228400ecf8339915abe4248",
+    "normalization": "lf"
+  },
+  {
+    "path": "src/path-client.js",
+    "bytes": 782,
+    "sha256": "b303bc0f58e30e54da95046fe8ce101c98649b18fe95965ca68c9decc7f35d77",
+    "normalization": "lf"
+  },
+  {
+    "path": "src/rendering.js",
+    "bytes": 3643,
+    "sha256": "7a0929788bf44c680420b58316174e172473fdbbda5511e925c235193ce62487",
+    "normalization": "lf"
+  },
+  {
+    "path": "src/terrain.js",
+    "bytes": 620,
+    "sha256": "0efeafe919e973216c3994a2aa2687ad6c27e3ff269a317c860e9248c99203a6",
+    "normalization": "lf"
+  },
+  {
+    "path": "start.ps1",
+    "bytes": 935,
+    "sha256": "69733695b4161c044ee1714c2f2d27983c131e0c1aded5d71b8db5e5124471f1",
+    "normalization": "lf"
+  },
+  {
+    "path": "stop.ps1",
+    "bytes": 430,
+    "sha256": "460e50b0087aa946e0e68769a2919f29a1e76e3d8191deade49f5ba253576509",
+    "normalization": "lf"
+  },
+  {
+    "path": "style.css",
+    "bytes": 6661,
+    "sha256": "2affd8409abef55104f65a897f0d3d1fbfae4a6fb43308dffed1caf7bd4dea77",
+    "normalization": "lf"
+  },
+  {
+    "path": "tests/README.md",
+    "bytes": 547,
+    "sha256": "fd46c4b186fdf51909f037bdfd89a660742a5527d255a1ee8dcc671bf737edfe",
+    "normalization": "lf"
+  },
+  {
+    "path": "tests/classroom.cjs",
+    "bytes": 5447,
+    "sha256": "23dbc395e8b8d530a3a9cdc746849db6552ddc648a5520bcc5c00c7a8e2a4898",
+    "normalization": "lf"
+  },
+  {
+    "path": "tests/interactions.cjs",
+    "bytes": 7497,
+    "sha256": "76620ab9727e67e950932afdfcc24b4f5d64f13e2b64aba42ee81b8cc4b5e5bb",
+    "normalization": "lf"
+  },
+  {
+    "path": "tests/navigation.mjs",
+    "bytes": 1503,
+    "sha256": "205cab83dfe0fe2a6e8d1a98b04838dd782a819140d3d4dee9315305ed0500a4",
+    "normalization": "lf"
+  },
+  {
+    "path": "tests/profile.cjs",
+    "bytes": 2486,
+    "sha256": "019e31321f89a88aa7345c135cf04f103377506906a573be4c318b9f6dda74a7",
+    "normalization": "lf"
+  },
+  {
+    "path": "停止课程学院.cmd",
+    "bytes": 82,
+    "sha256": "6e5186a326d96dac5c0db95116c87e4d6f470489d95d554dcd4c254ba47b873a",
+    "normalization": "lf"
+  },
+  {
+    "path": "启动课程学院.cmd",
+    "bytes": 105,
+    "sha256": "61731ea5854c95d352629b8e4d8c92b98eb9a25ebe9b15f97a13c612df62c705",
+    "normalization": "lf"
+  }
+]

@@ -1,0 +1,39 @@
+{
+  "uv1_entries_checked": 53882,
+  "all_uv1_finite_and_in_atlas": true,
+  "blender_external_images": [],
+  "maps": [
+    {
+      "name": "day-open",
+      "resolution": [
+        2048,
+        2048
+      ],
+      "mean_linear": 0.03200772777199745,
+      "max_linear": 2.125,
+      "packed": true
+    },
+    {
+      "name": "day-closed",
+      "resolution": [
+        2048,
+        2048
+      ],
+      "mean_linear": 0.023221850395202637,
+      "max_linear": 1.96875,
+      "packed": true
+    },
+    {
+      "name": "led",
+      "resolution": [
+        2048,
+        2048
+      ],
+      "mean_linear": 0.06207115575671196,
+      "max_linear": 1.75,
+      "packed": true
+    }
+  ],
+  "source_and_outputs_hash_match": true,
+  "blender": "4.5.3 LTS"
+}

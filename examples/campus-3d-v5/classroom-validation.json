@@ -1,0 +1,125 @@
+{
+  "checks": [
+    {
+      "name": "three 2048px Cycles maps loaded on UV1",
+      "passed": true,
+      "data": {
+        "loaded": true,
+        "receiverMeshes": 72,
+        "uvChannel": 1,
+        "maps": 3,
+        "atlas": [
+          2048,
+          2048
+        ],
+        "gain": 1
+      }
+    },
+    {
+      "name": "daylight preset opens blinds and turns off fixtures",
+      "passed": true
+    },
+    {
+      "name": "projection preset closes actual blinds and lowers screen",
+      "passed": true,
+      "data": {
+        "blinds": 1,
+        "blindsTarget": 1,
+        "lights": 0.18,
+        "lightsTarget": 0.18,
+        "projector": 1,
+        "projectorTarget": 1,
+        "screenVisible": true
+      }
+    },
+    {
+      "name": "teaching preset restores room",
+      "passed": true
+    },
+    {
+      "name": "wall switch has proximity interaction",
+      "passed": true
+    },
+    {
+      "name": "E operates actual room illumination",
+      "passed": true
+    },
+    {
+      "name": "window blind has proximity interaction",
+      "passed": true
+    },
+    {
+      "name": "E lowers the linked roller blinds",
+      "passed": true
+    },
+    {
+      "name": "blind movement refreshes cached shadows",
+      "passed": true
+    },
+    {
+      "name": "settled blinds stop shadow rendering",
+      "passed": true
+    },
+    {
+      "name": "lectern has projection interaction",
+      "passed": true
+    },
+    {
+      "name": "E activates projection from lectern",
+      "passed": true
+    },
+    {
+      "name": "seat remains available",
+      "passed": true
+    },
+    {
+      "name": "seat selection starts a camera transition",
+      "passed": true,
+      "data": {
+        "before": [
+          10.4,
+          2.25,
+          -1.45
+        ],
+        "instant": [
+          10.490577252706434,
+          2.1848975996172504,
+          -1.4500000000000002
+        ],
+        "target": [
+          11.04,
+          0,
+          -1.4500000000000002
+        ]
+      }
+    },
+    {
+      "name": "seated camera settles at eye height",
+      "passed": true,
+      "data": [
+        11.04,
+        1.790077198634481,
+        -1.4500000000000002
+      ]
+    },
+    {
+      "name": "equipment remains usable while seated",
+      "passed": true
+    },
+    {
+      "name": "standing still works",
+      "passed": true
+    },
+    {
+      "name": "mobile toolbar fits with equipment controls",
+      "passed": true
+    },
+    {
+      "name": "no browser errors",
+      "passed": true,
+      "data": []
+    }
+  ],
+  "errors": [],
+  "date": "2026-10-19T13:04:02.612Z"
+}
