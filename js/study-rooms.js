@@ -360,10 +360,13 @@ window.WG_Rooms = (function () {
         r.subject + " · " + r.durationMinutes + " 分钟 · 房主 " + r.hostNick,
         "rooms-muted",
       );
+      // 「已加入」= 未离开的成员数（服务端 count）；「近期在线」= 其中心跳仍在有效期内的人数
+      // （服务端 online，阈值沿用服务端 TTL 45 s）。两者必须分开显示：
+      // join 成功那一刻客户端还没发心跳，online 会是 0，合并写就会被读成「没进房」。
       el(
         row,
         "p",
-        labels[r.phase] + " · " + r.online + " 人在线 / " + r.count + " 人加入",
+        labels[r.phase] + " · 已加入 " + r.count + " 人 · 近期在线 " + r.online + " 人",
       );
       if (r.goal) el(row, "p", r.goal, "room-goal");
       var b = btn(
