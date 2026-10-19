@@ -66,13 +66,34 @@ var WG_Math = (function () {
   /* 以 \n 开头的真 LaTeX 命令（白名单）。除此之外的 \n 都是抓取时的换行转义。 */
   var N_COMMAND = /^(?:nabla|natural|nearrow|newline|nleftarrow|nrightarrow|nsubseteq|nsupseteq|nparallel|nexists|ngeq|nleq|notin|nwarrow|ngtr|nless|neq|neg|ne|ni|nu)/;
 
+  /* 数某个字符出现了几次，跳过被反斜杠转义的（\{ 不算，\\{ 也不算）。
+   * 这里本来可以用正则后行断言 (?<!\\) 一行写完，但那是 ES2018 的语法：
+   * 老一点的 iOS Safari（16.4 以前）会在**解析阶段**就抛 SyntaxError，
+   * 整个文件一行都不执行——不是个别公式渲染失败，是所有公式一起挂。
+   * 手写循环没有这个门槛，代价可以忽略。 */
+  function countUnescaped(s, ch) {
+    var n = 0;
+    for (var i = 0; i < s.length; i++) {
+      if (s[i] === ch && (i === 0 || s[i - 1] !== '\\')) n++;
+    }
+    return n;
+  }
+
   function unescapeNewlines(s) {
-    /* (?<!\\) 很关键：\\n 其实是「换行符 + n」（表格的行分隔），
-       不能把第二个反斜杠也当成转义起点，否则 \\ 会被拆成「\ + 换行」。 */
-    return s.replace(/(?<!\\)\\n/g, function (m, offset, whole) {
-      /* 要把被匹配掉的 n 补回去再判断：\ne 的剩余部分是 e{A}，直接测会漏掉 */
-      return N_COMMAND.test('n' + whole.slice(offset + 2)) ? m : '\n';
-    });
+    /* 只处理「前面不是反斜杠」的 \n：\\n 其实是「换行符 + n」（表格的行分隔），
+       不能把第二个反斜杠也当成转义起点，否则 \\ 会被拆成「\ + 换行」。
+       逐字符扫描而不是正则后行断言，原因见 countUnescaped 上面那段。 */
+    var out = '';
+    for (var i = 0; i < s.length; i++) {
+      if (s[i] === '\\' && s[i + 1] === 'n' && (i === 0 || s[i - 1] !== '\\')) {
+        /* 要把被匹配掉的 n 补回去再判断：\ne 的剩余部分是 e{A}，直接测会漏掉 */
+        out += N_COMMAND.test('n' + s.slice(i + 2)) ? '\\n' : '\n';
+        i++;
+        continue;
+      }
+      out += s[i];
+    }
+    return out;
   }
 
   /* 矩阵 / 分段 / aligned 里，源数据常常只用换行分行、没有写 \\。
@@ -212,8 +233,8 @@ var WG_Math = (function () {
     });
     /* 另一类相反的错误：集合里多了一个右括号，\right 找不到对应的 \left */
     s = s.replace(/\\left\\\{([\s\S]*?)\\right\\\}/g, function (m, inner) {
-      var opens = (inner.match(/(?<!\\)\{/g) || []).length;
-      var closes = (inner.match(/(?<!\\)\}/g) || []).length;
+      var opens = countUnescaped(inner, '{');
+      var closes = countUnescaped(inner, '}');
       if (closes === opens + 1) {
         var idx = inner.lastIndexOf('}');
         if (idx >= 0) inner = inner.slice(0, idx) + inner.slice(idx + 1);
@@ -385,7 +406,16 @@ var WG_Math = (function () {
 
   function setFallback(fn) { fallback = typeof fn === 'function' ? fn : null; }
 
-  function resetStats() { stats = { math: 0, katex: 0, degraded: 0, noKatex: 0 }; }
+  /* 计数器的键必须和 renderTex 里 ++ 的那几个一一对上。
+   * 之前加了 repaired 却只加在 stats 初值上，这里和下面的 stats() 都没跟上，
+   * 结果这个数既读不到、reset 之后也不归零。 */
+  var STAT_KEYS = ['math', 'katex', 'repaired', 'degraded', 'noKatex'];
+
+  function resetStats() {
+    var fresh = {};
+    STAT_KEYS.forEach(function (k) { fresh[k] = 0; });
+    stats = fresh;
+  }
 
   return {
     sanitize: sanitize,
@@ -394,7 +424,11 @@ var WG_Math = (function () {
     toHtml: toHtml,
     mount: mount,
     setFallback: setFallback,
-    stats: function () { return { math: stats.math, katex: stats.katex, degraded: stats.degraded, noKatex: stats.noKatex }; },
+    stats: function () {
+      var out = {};
+      STAT_KEYS.forEach(function (k) { out[k] = stats[k]; });
+      return out;
+    },
     resetStats: resetStats,
     hasMath: function (raw) { MATH_RE.lastIndex = 0; return MATH_RE.test(String(raw || '')); }
   };
