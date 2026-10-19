@@ -26,7 +26,7 @@ var WG_Math = (function () {
   var TOK_CLOSE = '\uE001';
   var store = [];
   var fallback = null;
-  var stats = { math: 0, katex: 0, degraded: 0, noKatex: 0 };
+  var stats = { math: 0, katex: 0, repaired: 0, degraded: 0, noKatex: 0 };
 
   /* ---------- 1. 抓取残留清理 ---------- */
 
@@ -67,7 +67,9 @@ var WG_Math = (function () {
   var N_COMMAND = /^(?:nabla|natural|nearrow|newline|nleftarrow|nrightarrow|nsubseteq|nsupseteq|nparallel|nexists|ngeq|nleq|notin|nwarrow|ngtr|nless|neq|neg|ne|ni|nu)/;
 
   function unescapeNewlines(s) {
-    return s.replace(/\\n/g, function (m, offset, whole) {
+    /* (?<!\\) 很关键：\\n 其实是「换行符 + n」（表格的行分隔），
+       不能把第二个反斜杠也当成转义起点，否则 \\ 会被拆成「\ + 换行」。 */
+    return s.replace(/(?<!\\)\\n/g, function (m, offset, whole) {
       /* 要把被匹配掉的 n 补回去再判断：\ne 的剩余部分是 e{A}，直接测会漏掉 */
       return N_COMMAND.test('n' + whole.slice(offset + 2)) ? m : '\n';
     });
@@ -101,6 +103,25 @@ var WG_Math = (function () {
     });
   }
 
+  /* 定界符配不平的题（多一个 \) 或 \]）：把落单的去掉。
+     否则后半个公式会和前一段中文拼在一起，渲染出来就是乱码。 */
+  function balanceDelimiters(s) {
+    var out = '';
+    var inline = 0;
+    var display = 0;
+    for (var i = 0; i < s.length; i++) {
+      var two = s.substr(i, 2);
+      if (two === '\\(') { inline++; out += two; i++; continue; }
+      if (two === '\\)') { if (inline > 0) { inline--; out += two; } i++; continue; }
+      if (two === '\\[') { display++; out += two; i++; continue; }
+      if (two === '\\]') { if (display > 0) { display--; out += two; } i++; continue; }
+      out += s[i];
+    }
+    while (inline > 0) { out += '\\)'; inline--; }
+    while (display > 0) { out += '\\]'; display--; }
+    return out;
+  }
+
   function sanitize(raw) {
     var s = String(raw == null ? '' : raw);
     s = s.replace(/\r\n?/g, '\n');
@@ -108,6 +129,7 @@ var WG_Math = (function () {
     s = s.replace(RSC_TAIL, '');
     /* 题库里两万余处用字面的「反斜杠 + n」表示换行，公式内外都有 */
     s = unescapeNewlines(s);
+    s = balanceDelimiters(s);
     s = fixEnvRows(s);
     s = decodeEntities(s);
     s = s.replace(/<br\s*\/?>/gi, '\n');
@@ -139,6 +161,9 @@ var WG_Math = (function () {
 
   function cleanText(s) {
     return s
+      /* 图片引用先整段吃掉，不然清完命令只剩一截路径，看着就是乱码 */
+      .replace(/\\includegraphics(\[[^\]]*\])?\{[^}]*\}/g, '（配图）')
+      .replace(/\\item(?![a-zA-Z])/g, '·')
       .replace(/\\([a-zA-Z]+)/g, function (m, name) {
         return Object.prototype.hasOwnProperty.call(SYMBOLS, name) ? SYMBOLS[name] : '';
       })
@@ -164,6 +189,50 @@ var WG_Math = (function () {
     return s;
   }
 
+  /* 题库里有几类写坏的公式，能修就修，修不好才降级：
+   *   \symbf / \ds      —— KaTeX 不认识的简写或新版命令
+   *   \left\{\nx}_{n}   —— 集合漏了一个左大括号，导致 \right 找不到配对
+   *   \hline 裸用        —— 有表格线却没有 array 环境
+   *   \( \) 嵌套         —— 数学模式里又套了一层行内定界符
+   */
+  function repairTex(tex) {
+    var s = tex;
+    s = s
+      .replace(/\\symbfit(?![a-zA-Z])/g, '\\boldsymbol')
+      .replace(/\\symbf(?![a-zA-Z])/g, '\\mathbf')
+      .replace(/\\symit(?![a-zA-Z])/g, '\\mathit')
+      .replace(/\\symrm(?![a-zA-Z])/g, '\\mathrm')
+      .replace(/\\symsf(?![a-zA-Z])/g, '\\mathsf')
+      .replace(/\\ds(?![a-zA-Z])/g, '\\displaystyle')
+      .replace(/\\ts(?![a-zA-Z])/g, '\\textstyle');
+    s = s.replace(/\\\(|\\\)/g, ' ');
+    /* 用回调拼字符串，避免 replace 的 $1/$2 和花括号混在一起看不清 */
+    s = s.replace(/\\left\\\{(\s*)([^{}\\]+?)\}/g, function (m, ws, body) {
+      return '\\left\\{' + ws + '{' + body + '}';
+    });
+    /* 另一类相反的错误：集合里多了一个右括号，\right 找不到对应的 \left */
+    s = s.replace(/\\left\\\{([\s\S]*?)\\right\\\}/g, function (m, inner) {
+      var opens = (inner.match(/(?<!\\)\{/g) || []).length;
+      var closes = (inner.match(/(?<!\\)\}/g) || []).length;
+      if (closes === opens + 1) {
+        var idx = inner.lastIndexOf('}');
+        if (idx >= 0) inner = inner.slice(0, idx) + inner.slice(idx + 1);
+      }
+      return '\\left\\{' + inner + '\\right\\}';
+    });
+    /* 题库里混进来的图片引用：仓库没有这批图，显示路径只会像乱码，改成文字提示 */
+    s = s.replace(/\\includegraphics(\[[^\]]*\])?\{[^}]*\}/g, '\\text{（配图）}');
+    /* enumerate 残留 */
+    s = s.replace(/\\item(?![a-zA-Z])/g, '\\bullet');
+    if (s.indexOf('\\hline') >= 0 && s.indexOf('\\begin{') < 0) {
+      var lines = s.split('\n').map(function (x) { return x.trim(); }).filter(Boolean);
+      if (lines.length > 1) {
+        s = '\\begin{array}{c}\n' + lines.join(' \\\\\n') + '\n\\end{array}';
+      }
+    }
+    return s;
+  }
+
   function renderTex(tex, display) {
     stats.math++;
     tex = normalizeMath(tex);
@@ -173,17 +242,27 @@ var WG_Math = (function () {
       stats.noKatex++;
       return degrade(tex);
     }
+    var opts = {
+      displayMode: !!display,
+      throwOnError: true,
+      strict: 'ignore',
+      trust: false,
+      output: 'htmlAndMathml'
+    };
     try {
-      var html = katex.renderToString(tex, {
-        displayMode: !!display,
-        throwOnError: true,
-        strict: 'ignore',
-        trust: false,
-        output: 'htmlAndMathml'
-      });
+      var html = katex.renderToString(tex, opts);
       stats.katex++;
       return html;
     } catch (e) {
+      var fixed = repairTex(tex);
+      if (fixed !== tex) {
+        try {
+          html = katex.renderToString(fixed, opts);
+          stats.repaired++;
+          stats.katex++;
+          return html;
+        } catch (e2) { /* 落到降级 */ }
+      }
       stats.degraded++;
       return degrade(tex);
     }
@@ -195,6 +274,8 @@ var WG_Math = (function () {
       try { text = fallback(tex) || ''; } catch (e) { text = ''; }
     }
     if (!text) text = tex;
+    /* 降级后也不要把 \( \) \[ \] 露给用户看 */
+    text = text.replace(/\\[()\[\]]/g, ' ').replace(/\s{2,}/g, ' ');
     return '<span class="tex-fallback">' + esc(text) + '</span>';
   }
 
