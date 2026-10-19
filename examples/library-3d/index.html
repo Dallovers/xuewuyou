@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="zh-CN">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>知识图书馆 · 学无忧</title><link rel="stylesheet" href="library.css"></head>
+<body>
+<canvas id="world" tabindex="0" aria-label="图书馆三维空间，WASD 移动，拖动转向，E 操作"></canvas>
+<header class="topbar"><a class="back" href="../../index.html#wenku">返回主站</a><div class="identity"><h1>知识图书馆</h1><span id="location">图书馆前庭</span></div><button id="catalog">查找资料</button><button id="walk" class="primary">进入漫游</button></header>
+<aside class="guide"><p>把需要的知识，读进自己的世界。</p><nav aria-label="场景视角"><button data-view="exterior" aria-pressed="true">建筑外观</button><button data-view="hall" aria-pressed="false">馆藏书架</button><button data-view="reading" aria-pressed="false">窗边阅览</button></nav><small id="help">拖动旋转 · 滚轮缩放 · 进入漫游后可操作书架和座位</small></aside>
+<div id="crosshair" hidden aria-hidden="true">+</div>
+<button id="interact" hidden></button>
+<footer class="bottom"><div><span class="status-dot"></span><span id="seat-status">开放阅览</span><button id="stand" hidden>站起</button></div><label>画质 <select id="quality"><option value="auto">自适应</option><option value="fluid">流畅</option><option value="high">细节</option></select></label><button id="export">导出模型</button></footer>
+<div id="touch" hidden aria-label="移动与转向"><button data-key="KeyJ" aria-label="向左转">左转</button><button data-key="KeyW" aria-label="向前走">前进</button><button data-key="KeyL" aria-label="向右转">右转</button><button data-key="KeyA" aria-label="向左走">左移</button><button data-key="KeyS" aria-label="向后走">后退</button><button data-key="KeyD" aria-label="向右走">右移</button></div>
+<p id="toast" role="status" hidden></p><div id="loading"><h2>正在打开图书馆</h2><p>加载建筑、木材与自然采光…</p></div>
+<dialog id="library-dialog" aria-labelledby="catalog-title">
+ <div class="dialog-head"><div><h2 id="catalog-title">馆藏目录</h2><p>书架分类来自现有学习资料库</p></div><button id="close-catalog" aria-label="关闭资料目录">关闭</button></div>
+ <nav id="categories" aria-label="资料分类"></nav>
+ <section id="public-catalog"><div class="search-row"><label>搜索资料<input id="search" type="search" placeholder="资料名称、院校、年份" autocomplete="off"></label><label>学科<select id="subject"><option value="">全部学科</option></select></label><label class="check"><input id="local-only" type="checkbox">仅本地文件</label></div><p id="result-status" role="status"></p><div id="results"></div><div class="pagination"><button id="prev">上一页</button><span id="page-number"></span><button id="next">下一页</button></div></section>
+ <section id="private-catalog" hidden><p id="cloud-status" role="status"></p><p id="service-status"></p><div class="upload-row"><label>上传到我的资料<input type="file" id="upload" accept=".txt,.md,.pdf,.docx,.pptx,.png,.jpg,.jpeg"></label><button id="refresh-private">刷新处理状态</button></div><p>文件不超过 8 MB。TXT / Markdown 可直接处理；其他格式取决于文档解析服务。</p><div id="private-results"></div></section>
+</dialog>
+<dialog id="reader-dialog" aria-labelledby="reader-title"><div class="dialog-head"><h2 id="reader-title">资料阅读</h2><button id="close-reader">返回目录</button></div><p id="reader-status" role="status"></p><div id="reader-tools" hidden><button id="pdf-prev">上一页</button><span id="pdf-page"></span><button id="pdf-next">下一页</button><label id="zoom-label">缩放 <select id="pdf-zoom"><option value="1">适合宽度</option><option value="1.5">150%</option><option value="2">200%</option></select></label><a id="download" target="_blank" rel="noopener">打开原文件</a></div><div id="reader-content"><canvas id="pdf-canvas" aria-label="PDF 页面"></canvas><pre id="document-text" hidden></pre></div></dialog>
+<script src="../../js/deploy-config.js"></script><script src="../../js/runtime.js"></script><script src="../../js/api.js"></script><script src="../../js/wenku.js"></script><script src="../../js/wenku_cat.js"></script><script src="vendor/pdfjs/pdf.min.js"></script><script type="module" src="app.bundle.js"></script>
+</body></html>

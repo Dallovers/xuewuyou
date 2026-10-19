@@ -1,0 +1,12 @@
+// Sustained real frame sampling while walking and turning, independent of simulation dt.
+const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
+const fs=require('node:fs');
+const path=require('node:path');
+async function sample(page,width,height,seconds){
+ await page.setViewportSize({width,height});await page.goto((process.env.LIBRARY_URL||'http://127.0.0.1:4196')+'/examples/library-3d/?view=hall');await page.waitForFunction(()=>window.__library?.snapshot().ready);
+ await page.locator('#quality').selectOption('fluid');await page.locator('#walk').click();await page.locator('#world').focus();
+ await page.keyboard.down('KeyW');await page.keyboard.down('KeyL');
+ const result=await page.evaluate(seconds=>new Promise(resolve=>{const start=performance.now(),before=__library.snapshot(),values=[];let last=start;function frame(now){values.push(now-last);last=now;if(now-start<seconds*1000){requestAnimationFrame(frame);return;}const sorted=values.slice(1).sort((a,b)=>a-b),mean=sorted.reduce((a,b)=>a+b,0)/sorted.length;resolve({seconds:(now-start)/1000,samples:sorted.length,mean_ms:mean,fps:1000/mean,p95_ms:sorted[Math.floor(sorted.length*.95)],max_ms:sorted.at(-1),over50ms:sorted.filter(v=>v>50).length,over100ms:sorted.filter(v=>v>100).length,before,after:__library.snapshot(),graphics:__library.performance()});}requestAnimationFrame(frame);}),seconds);
+ await page.keyboard.up('KeyW');await page.keyboard.up('KeyL');return {viewport:[width,height],...result};
+}
+(async()=>{const browser=await chromium.launch({headless:true,args:process.env.LIBRARY_D3D11==='1'?['--use-angle=d3d11','--ignore-gpu-blocklist']:[]});try{const page=await browser.newPage();const desktop=await sample(page,1440,960,20),narrow=await sample(page,390,844,12);const result={date:new Date().toISOString(),method:'Unclamped requestAnimationFrame intervals, continuous W+L movement and turning, fluid quality, desktop Chromium with narrow-screen emulation',desktop,narrow};const out=path.resolve(process.env.LIBRARY_OUTPUT||path.join(__dirname,'../validation'));fs.mkdirSync(out,{recursive:true});fs.writeFileSync(path.join(out,'performance-results.json'),JSON.stringify(result,null,2));console.log(JSON.stringify({desktop:{fps:desktop.fps,p95:desktop.p95_ms,max:desktop.max_ms,over50:desktop.over50ms},narrow:{fps:narrow.fps,p95:narrow.p95_ms,max:narrow.max_ms,over50:narrow.over50ms}}));}finally{await browser.close();}})().catch(e=>{console.error(e);process.exitCode=1;});

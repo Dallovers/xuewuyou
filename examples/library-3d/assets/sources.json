@@ -1,0 +1,15 @@
+{
+  "geometry": {"author":"Xuewuyou C library implementation", "method":"Editable mesh construction in src/architecture.js; generated labels, stone microtexture and books; no AI-generated image or projected building photograph."},
+  "sharedAssets": {
+    "root":"../../campus-3d-v5/assets/",
+    "manifest":"../../campus-3d-v5/assets/sources.json",
+    "license":"CC0 / Poly Haven, inherited from the existing reference provenance",
+    "files":["wood-color.jpg","wood-normal.jpg","wood-roughness.jpg","stone-normal.jpg","stone-roughness.jpg","brick-color.jpg","brick-normal.jpg","brick-roughness.jpg","sky.hdr"]
+  },
+  "software":[
+    {"name":"Three.js", "version":"0.170.0", "source":"https://github.com/mrdoob/three.js/tree/r170", "license":"MIT", "notice":"../licenses/Three-MIT.txt"},
+    {"name":"PDF.js", "version":"3.11.174", "source":"https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js", "worker":"https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js", "license":"Apache-2.0", "notice":"../licenses/PDFjs-Apache-2.0.txt", "configuration":"Local worker and isEvalSupported:false; no document sent to a third-party viewer."}
+  ],
+  "documents": {"source":"Existing ../../../js/wenku.js and js/wenku_cat.js; original titles, links and source metadata preserved", "license":"Original repository document provenance applies. No new third-party study documents added or downloaded."},
+  "lighting": {"method":"Library-specific realtime directional sun, sky environment, fill lights, cached shadow map, optional SSAO", "baked":false, "classroomLightmapsReused":false}
+}
