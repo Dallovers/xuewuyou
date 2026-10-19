@@ -21,6 +21,7 @@ window.WG_Rooms = (function () {
     lastEndRefresh = "",
     pollTimer = null,
     pollTick = 0,
+    clockTimer = null,
     inactiveTimer = null;
   var labels = {
       waiting: "等待成员准备",
@@ -112,6 +113,23 @@ window.WG_Rooms = (function () {
     refreshTimer = setTimeout(function () {
       refresh().catch((e) => message(e.message));
     }, 180);
+  }
+  /* 秒针只在「有一间房要看」的时候走。没有房间还留着 1 秒一跳的定时器，
+   * 是纯粹的常驻开销，而且离开板块之后也不会停。 */
+  function startClock() {
+    if (clockTimer) return;
+    clockTimer = setInterval(drawClock, 1000);
+  }
+  function stopClock() {
+    if (!clockTimer) return;
+    clearInterval(clockTimer);
+    clockTimer = null;
+  }
+  /* 兜底轮询同理：没有房间可看的时候留着它，只是每 10 秒空转一次。 */
+  function stopPolling() {
+    if (!pollTimer) return;
+    clearInterval(pollTimer);
+    pollTimer = null;
   }
   async function connect() {
     if (socket) {
@@ -225,6 +243,11 @@ window.WG_Rooms = (function () {
       lastEndRefresh = "";
     }
     current = room;
+    // 有进行中的房间才走秒针；房间结束或已离开时，renderRoom 已经把最终画面画完了
+    if (room && room.phase !== "ended") startClock();
+    else stopClock();
+    // 不在房间页、手上也没有进行中的房间：兜底轮询没有意义，停掉（回到页面时 open() 会重建）
+    if (!visible && (!room || room.phase === "ended")) stopPolling();
     receivedAt = performance.now();
     if (redraw || !$("roomClock")) renderRoom();
     else {
@@ -722,6 +745,9 @@ window.WG_Rooms = (function () {
       socket?.disconnect();
       socket = null;
       watched = "";
+      // 离开板块且没有进行中的房间：轮询和秒针都没有活干，一起停掉
+      stopPolling();
+      stopClock();
     }
   }
   function reset() {
@@ -733,8 +759,8 @@ window.WG_Rooms = (function () {
     current = null;
     data = null;
     goalDirty = false;
-    clearInterval(pollTimer);
-    pollTimer = null;
+    stopPolling();
+    stopClock();
     clearTimeout(refreshTimer);
     clearTimeout(inactiveTimer);
     ["roomDirectory", "roomInvitations", "roomCurrent", "roomHistory"].forEach(
@@ -816,7 +842,6 @@ window.WG_Rooms = (function () {
     window.addEventListener("pagehide", function () {
       socket?.disconnect();
     });
-    setInterval(drawClock, 1000);
     WG_API.onAuthChange(reset);
     if (WG_API.isCloudSession()) connect().catch(() => {});
   }

@@ -121,6 +121,29 @@
     return state.audioElement;
   }
 
+  /* 退出时真正把音频资源放掉。
+   * stopAllAudio 只是「不出声」：blob 地址、已经解码的音频缓冲、AudioContext 都还占着。
+   * 自习室是反复进出的，不收回来的话每进一次就多留一份。 */
+  function releaseAudio() {
+    stopAllAudio();
+    if (state.customAudioUrl) {
+      try { URL.revokeObjectURL(state.customAudioUrl); } catch (e) {}
+      state.customAudioUrl = null;
+    }
+    if (state.audioElement) {
+      try {
+        state.audioElement.removeAttribute('src');
+        state.audioElement.load();
+      } catch (e) {}
+    }
+    if (state.webAudioCtx) {
+      try { state.webAudioCtx.close(); } catch (e) {}
+      state.webAudioCtx = null;
+    }
+    state.noiseNode = null;
+    state.gainNode = null;
+  }
+
   // 播放本地/远程音乐文件
   function playMusicTrack(src) {
     const audio = getAudioElement();
@@ -495,7 +518,7 @@
     state.timerId = null;
     state.active = false;
     stopPresence();
-    stopAllAudio();
+    releaseAudio();
     document.body.classList.remove('study-fullscreen-active');
     if (document.fullscreenElement && document.exitFullscreen) {
       document.exitFullscreen().catch(() => {});
