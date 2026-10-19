@@ -118,7 +118,9 @@ scene.add(human);
 const views = {
   all: { pos: [6.4, 3.4, 7.6], target: [0, 1.0, -3.2] },
   desk: { pos: [3.1, 1.6, 3.6], target: [0, 0.75, -0.2] },
-  shell: { pos: [4.6, 2.4, -4.4], target: [0, 1.5, -10.0] }
+  shell: { pos: [4.6, 2.4, -4.4], target: [0, 1.5, -10.0] },
+  // 贴墙掠视：只有这个角度能同时读出 墙厚 0.24 / 框深 0.14 / 洞口收边 0.10 / 玻璃线
+  side: { pos: [4.0, 1.62, -8.35], target: [-0.9, 1.42, -10.0] }
 };
 function applyView(key) {
   const v = views[key] || views.all;
@@ -184,6 +186,7 @@ const rows = [
   ['窗洞净宽', fmt(SS.window.bayWidth, 2) + ' m'],
   ['玻璃到顶', fmt(SS.window.glassTop, 2) + ' m'],
   ['窗框进深', fmt(SS.window.mullionDepth, 2) + ' m'],
+  ['洞口收边（墙厚−框深）', fmt(SS.room.wallThickness - SS.window.mullionDepth, 2) + ' m'],
   ['门洞宽 × 高', fmt(SS.door.bayWidth, 2) + ' × ' + fmt(SS.door.openingHeight, 2) + ' m'],
   ['门扇高', fmt(SS.door.leafHeight, 2) + ' m'],
   ['墙体厚度', fmt(SS.room.wallThickness, 2) + ' m']
@@ -192,6 +195,7 @@ const tbody = document.getElementById('specBody');
 tbody.innerHTML = rows
   .map((r) => '<tr><th>' + r[0] + '</th><td>' + r[1] + '</td></tr>')
   .join('');
+document.getElementById('pitchVal').textContent = fmt(FS.layout.islandPitchZ, 2);
 document.getElementById('aisleState').textContent =
   aisle >= SS.room.aisle ? '满足 1.5 m' : '不足 1.5 m';
 

@@ -87,11 +87,11 @@
     );
   }
 
-  function glassPane(THREE, parent, name, width, height, cx, cy) {
+  function glassPane(THREE, parent, name, width, height, cx, cy, cz) {
     var geo = new THREE.PlaneGeometry(width, height);
     var mesh = new THREE.Mesh(geo, parent.userData.glassMaterial);
     mesh.name = name;
-    mesh.position.set(cx, cy, 0);
+    mesh.position.set(cx, cy, cz || 0);
     mesh.castShadow = false;
     mesh.receiveShadow = false;
     parent.add(mesh);
@@ -108,40 +108,48 @@
     var span = x1 - x0;
     var mw = W.mullionWidth;
 
+    // 框料进深 0.14 m，贴室外面安装；剩下的 0.10 m 是洞口收边（内披水），
+    // 由相邻墙垛的侧面和窗下矮台的上表面自然形成，不再拿框料去填满 0.24 m 墙厚。
+    var faceExt = -R.wallThickness / 2;
+    var frameZ = faceExt + W.mullionDepth / 2;
+    var glassZ = faceExt + W.mullionDepth * 0.55;
+
     // 窗下矮台与顶框之间的玻璃
     var glassH = W.glassTop - W.sillHeight;
-    glassPane(THREE, g, 'Glass', span - mw, glassH, mid, W.sillHeight + glassH / 2);
+    glassPane(THREE, g, 'Glass', span - mw, glassH, mid, W.sillHeight + glassH / 2, glassZ);
 
-    // 两端立挺直接收到墙厚，等于把洞口的侧壁也做出来，不让墙看起来像一张纸
+    // 两端立挺：与中间立挺同进深，不再加厚到整段墙厚
     [x0 + mw / 2, x1 - mw / 2].forEach(function (cx) {
       core.box(THREE, g, 'MullionEnd',
-        [mw, W.frameTop - W.sillHeight, R.wallThickness],
-        [cx, (W.sillHeight + W.frameTop) / 2, 0], mats.metal_dark);
+        [mw, W.frameTop - W.sillHeight, W.mullionDepth],
+        [cx, (W.sillHeight + W.frameTop) / 2, frameZ], mats.metal_dark);
     });
 
     // 三分两档的中间立挺
     [-1, 1].forEach(function (sign) {
       core.box(THREE, g, 'MullionMid',
         [mw, W.frameTop - W.sillHeight, W.mullionDepth],
-        [mid + sign * span / 6, (W.sillHeight + W.frameTop) / 2, 0], mats.metal_dark);
+        [mid + sign * span / 6, (W.sillHeight + W.frameTop) / 2, frameZ], mats.metal_dark);
     });
 
     // 横挺
     core.box(THREE, g, 'TransomBar',
       [span, W.transomHeight, W.mullionDepth],
-      [mid, W.transomY, 0], mats.metal_dark);
+      [mid, W.transomY, frameZ], mats.metal_dark);
 
     // 顶框
     core.box(THREE, g, 'HeadFrame',
-      [span, W.frameTop - W.glassTop, R.wallThickness],
-      [mid, (W.glassTop + W.frameTop) / 2, 0], mats.metal_dark);
+      [span, W.frameTop - W.glassTop, W.mullionDepth],
+      [mid, (W.glassTop + W.frameTop) / 2, frameZ], mats.metal_dark);
 
-    // 窗下矮台：石材收边，与室内墙面齐平
+    // 窗下矮台：石材收边，与室内墙面齐平；它的上表面就是那 0.10 m 的窗台收边
     core.box(THREE, g, 'WindowCurb',
       [span, W.sillHeight, R.wallThickness],
       [mid, W.sillHeight / 2, 0], mats.stone_light);
 
     g.userData.kind = 'windowBay';
+    g.userData.frameDepth = W.mullionDepth;
+    g.userData.revealDepth = R.wallThickness - W.mullionDepth;
     return g;
   }
 
