@@ -1,5 +1,5 @@
 {
-  "geometry": {"author":"Xuewuyou C library implementation", "method":"Editable mesh construction in src/architecture.js; generated labels, stone microtexture and books; no AI-generated image or projected building photograph."},
+  "geometry": {"author":"Xuewuyou C library implementation", "method":"Editable mesh construction in src/architecture.js and src/landscape.js; procedural labels, stone panel/floor microtexture, fabric bump, connected branches and leaf alpha cutouts; no AI-generated image or projected building photograph."},
   "sharedAssets": {
     "root":"../../campus-3d-v5/assets/",
     "manifest":"../../campus-3d-v5/assets/sources.json",

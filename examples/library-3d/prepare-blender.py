@@ -11,6 +11,7 @@ from mathutils import Vector
 args = sys.argv[sys.argv.index('--') + 1:]
 source, target = map(lambda x: Path(x).resolve(), args[:2])
 bpy.ops.wm.read_factory_settings(use_empty=True)
+bpy.context.preferences.filepaths.save_version = 0
 bpy.ops.import_scene.gltf(filepath=str(source))
 scene = bpy.context.scene
 scene.unit_settings.system = 'METRIC'
@@ -26,9 +27,9 @@ world = bpy.data.worlds.new('Library daylight world')
 scene.world = world
 world.use_nodes = True
 world.node_tree.nodes['Background'].inputs['Color'].default_value = (0.64, 0.73, 0.8, 1)
-world.node_tree.nodes['Background'].inputs['Strength'].default_value = .55
+world.node_tree.nodes['Background'].inputs['Strength'].default_value = .38
 sun_data = bpy.data.lights.new('Library sun', 'SUN')
-sun_data.energy = 3.2
+sun_data.energy = 2.65
 sun_data.angle = .08
 sun = bpy.data.objects.new('Library sun', sun_data)
 scene.collection.objects.link(sun)
@@ -36,7 +37,7 @@ sun.location = (18, -17, 23)
 sun.rotation_euler = (Vector((0, 0, 0)) - sun.location).to_track_quat('-Z', 'Y').to_euler()
 for z in (-4, 3):
     data = bpy.data.lights.new('Reading area soft light', 'AREA')
-    data.energy, data.shape, data.size = 350, 'DISK', 3
+    data.energy, data.shape, data.size = 200, 'DISK', 3
     light = bpy.data.objects.new(data.name, data)
     scene.collection.objects.link(light)
     light.location = (5, -z, 3.5)
@@ -49,7 +50,7 @@ camera_data.lens = 37
 scene.camera = camera
 bpy.ops.file.pack_all()
 target.parent.mkdir(parents=True, exist_ok=True)
-bpy.ops.wm.save_as_mainfile(filepath=str(target))
+bpy.ops.wm.save_as_mainfile(filepath=str(target), compress=True)
 stats = {'source': source.name, 'blender': bpy.app.version_string, 'objects': len(scene.objects),
          'meshObjects': sum(o.type == 'MESH' for o in scene.objects),
          'imagesPacked': sum(bool(i.packed_file) for i in bpy.data.images),
