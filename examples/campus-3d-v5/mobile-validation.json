@@ -1,0 +1,25 @@
+{
+  "action": {
+    "x": 97.5,
+    "y": 533,
+    "right": 292.5,
+    "bottom": 599,
+    "visible": true
+  },
+  "touch": {
+    "x": 18,
+    "y": 621,
+    "right": 165,
+    "bottom": 719,
+    "visible": true
+  },
+  "tools": {
+    "x": 157,
+    "y": 735,
+    "right": 377,
+    "bottom": 831,
+    "visible": true
+  },
+  "no_overlaps": true,
+  "fits": true
+}

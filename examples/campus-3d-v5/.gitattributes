@@ -1,0 +1,8 @@
+*.glb -text
+*.blend -text
+*.hdr -text
+*.png -text
+*.jpg -text
+# Generated bundles include upstream GLSL source formatting.
+app.bundle.js -whitespace linguist-generated=true
+navigation.worker.js linguist-generated=true

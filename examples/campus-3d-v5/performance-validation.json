@@ -1,0 +1,136 @@
+{
+  "url": "http://127.0.0.1:4183/",
+  "environment": {
+    "viewport": [
+      1440,
+      900
+    ],
+    "dpr": 1.5,
+    "buffer": [
+      1655,
+      1035
+    ],
+    "gpu": "ANGLE (Intel, Intel(R) Graphics (0x00007D67) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+    "agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36"
+  },
+  "samples": [
+    {
+      "view": "entry",
+      "key": "KeyW",
+      "frames": 263,
+      "mean_ms": 13.228897338403044,
+      "p50_ms": 12.5,
+      "p95_ms": 16.700000000000728,
+      "p99_ms": 18.200000000000728,
+      "over_33ms": 0,
+      "over_50ms": 0,
+      "diagnostics": {
+        "quality": "auto",
+        "pixelRatio": 1.15,
+        "buffer": [
+          1655,
+          1035
+        ],
+        "aoBuffer": [
+          994,
+          621
+        ],
+        "fps": 73,
+        "p95_ms": 17.299999237060547,
+        "drawCalls": 128,
+        "triangles": 654075,
+        "shadowUpdates": 1,
+        "submit_ms": 1.2
+      }
+    },
+    {
+      "view": "entry",
+      "key": "KeyL",
+      "frames": 363,
+      "mean_ms": 9.561707988980714,
+      "p50_ms": 8.399999999999636,
+      "p95_ms": 12.600000000000364,
+      "p99_ms": 24.899999999999636,
+      "over_33ms": 0,
+      "over_50ms": 0,
+      "diagnostics": {
+        "quality": "auto",
+        "pixelRatio": 1.15,
+        "buffer": [
+          1655,
+          1035
+        ],
+        "aoBuffer": [
+          994,
+          621
+        ],
+        "fps": 120,
+        "p95_ms": 18.299999237060547,
+        "drawCalls": 100,
+        "triangles": 647603,
+        "shadowUpdates": 1,
+        "submit_ms": 1.4
+      }
+    },
+    {
+      "view": "classroom",
+      "key": "KeyW",
+      "frames": 256,
+      "mean_ms": 13.590234375000009,
+      "p50_ms": 12.5,
+      "p95_ms": 16.700000000000728,
+      "p99_ms": 17.099999999998545,
+      "over_33ms": 0,
+      "over_50ms": 0,
+      "diagnostics": {
+        "quality": "auto",
+        "pixelRatio": 1.15,
+        "buffer": [
+          1655,
+          1035
+        ],
+        "aoBuffer": [
+          994,
+          621
+        ],
+        "fps": 73,
+        "p95_ms": 15.899999618530273,
+        "drawCalls": 98,
+        "triangles": 643991,
+        "shadowUpdates": 1,
+        "submit_ms": 1.3
+      }
+    },
+    {
+      "view": "classroom",
+      "key": "KeyL",
+      "frames": 256,
+      "mean_ms": 13.541406249999994,
+      "p50_ms": 12.5,
+      "p95_ms": 16.700000000000728,
+      "p99_ms": 16.900000000001455,
+      "over_33ms": 0,
+      "over_50ms": 0,
+      "diagnostics": {
+        "quality": "auto",
+        "pixelRatio": 1.15,
+        "buffer": [
+          1655,
+          1035
+        ],
+        "aoBuffer": [
+          994,
+          621
+        ],
+        "fps": 75,
+        "p95_ms": 15.800000190734863,
+        "drawCalls": 133,
+        "triangles": 652523,
+        "shadowUpdates": 1,
+        "submit_ms": 1.4
+      }
+    }
+  ],
+  "errors": [],
+  "date": "2026-10-19T09:12:57.734Z"
+}

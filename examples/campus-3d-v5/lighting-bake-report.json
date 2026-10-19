@@ -1,0 +1,49 @@
+{
+  "engine": "Cycles",
+  "device": "OptiX",
+  "gpu": [
+    "NVIDIA GeForce RTX 5070 Laptop GPU"
+  ],
+  "source_sha256": "8f49d5df808a9e5d9cd6c103650fd46d085a85f64e71eedc42ad7bb835709915",
+  "receiver_source_meshes": 72,
+  "polygons": 50610,
+  "atlas_size": 2048,
+  "samples": 512,
+  "diffuse_bounces": 6,
+  "passes": [
+    {
+      "state": "day-open",
+      "seconds": 29.64,
+      "file": "assets/lightmaps/day-open.hdr"
+    },
+    {
+      "state": "day-closed",
+      "seconds": 25.85,
+      "file": "assets/lightmaps/day-closed.hdr"
+    },
+    {
+      "state": "led",
+      "seconds": 10.23,
+      "file": "assets/lightmaps/led.hdr"
+    }
+  ],
+  "denoising": "Blender compositor OpenImageDenoise HDR; denoises irradiance atlases only, not scene photographs",
+  "files": {
+    "classroom-baked.glb": {
+      "bytes": 8478408,
+      "sha256": "08ae581e9b664d5e0c32a4a544d7dd33a76d994f6979a6c2331de9283fd298bb"
+    },
+    "day-open.hdr": {
+      "bytes": 8780627,
+      "sha256": "039d65cca9cfc3decdfd6d9910660c0102ea23eb1f1e8969d29621a557f4b0f7"
+    },
+    "day-closed.hdr": {
+      "bytes": 8144249,
+      "sha256": "ade8ffcafe6b5db713a322b0701bf16970539409dedb8281fbc535656352ef47"
+    },
+    "led.hdr": {
+      "bytes": 8253573,
+      "sha256": "ef11169b6dbb9d52aeb8327cf3717ad2cd3e506f98d44c7524daa1cf4a368bae"
+    }
+  }
+}

@@ -1,0 +1,59 @@
+[
+  {
+    "path": "stone-color.jpg",
+    "bytes": 776097,
+    "source": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/concrete_floor_02/concrete_floor_02_diff_1k.jpg"
+  },
+  {
+    "path": "stone-normal.jpg",
+    "bytes": 192757,
+    "source": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/concrete_floor_02/concrete_floor_02_nor_gl_1k.jpg"
+  },
+  {
+    "path": "stone-roughness.jpg",
+    "bytes": 318550,
+    "source": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/concrete_floor_02/concrete_floor_02_rough_1k.jpg"
+  },
+  {
+    "path": "sky.hdr",
+    "bytes": 1435119,
+    "source": "https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/1k/kloofendal_48d_partly_cloudy_puresky_1k.hdr",
+    "license": "CC0 / Poly Haven"
+  },
+  {
+    "path": "wood-color.jpg",
+    "source": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/white_oak_veneer/white_oak_veneer_diff_1k.jpg",
+    "license": "CC0 / Poly Haven",
+    "bytes": 595257
+  },
+  {
+    "path": "wood-normal.jpg",
+    "source": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/white_oak_veneer/white_oak_veneer_nor_gl_1k.jpg",
+    "license": "CC0 / Poly Haven",
+    "bytes": 623607
+  },
+  {
+    "path": "wood-roughness.jpg",
+    "source": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/white_oak_veneer/white_oak_veneer_rough_1k.jpg",
+    "license": "CC0 / Poly Haven",
+    "bytes": 520649
+  },
+  {
+    "path": "brick-color.jpg",
+    "source": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/brick_wall_08/brick_wall_08_diff_1k.jpg",
+    "license": "CC0 / Poly Haven",
+    "bytes": 722173
+  },
+  {
+    "path": "brick-normal.jpg",
+    "source": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/brick_wall_08/brick_wall_08_nor_gl_1k.jpg",
+    "license": "CC0 / Poly Haven",
+    "bytes": 1068884
+  },
+  {
+    "path": "brick-roughness.jpg",
+    "source": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/brick_wall_08/brick_wall_08_rough_1k.jpg",
+    "license": "CC0 / Poly Haven",
+    "bytes": 477096
+  }
+]
