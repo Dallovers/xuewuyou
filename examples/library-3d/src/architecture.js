@@ -30,12 +30,20 @@ export async function loadMaterials(){
  materials.paper=mat('Paper edges',0xede9dd,{roughness:.95});
  materials.light=mat('Linear LED diffuser',0xfff3dd,{emissive:0xffebc7,emissiveIntensity:1.4});
  materials.glass=new T.MeshPhysicalMaterial({name:'Clear architectural glass',color:0xd4e7e7,transparent:true,opacity:.14,roughness:.09,metalness:.1,depthWrite:false,side:T.DoubleSide});
+ // One review sample only: table R1, its four upholstered seats and the adjacent east pane.
+ materials.sampleWood=materials.wood.clone();materials.sampleWood.name='Sample R1 longitudinal white oak';materials.sampleWood.roughness=.76;
+ for(const key of ['map','normalMap','roughnessMap']){const t=materials.wood[key].clone();t.center.set(.5,.5);t.rotation=Math.PI/2;t.needsUpdate=true;materials.sampleWood[key]=t;}
+ const normal=document.createElement('canvas');normal.width=normal.height=64;const nc=normal.getContext('2d'),pixels=nc.createImageData(64,64);
+ for(let y=0;y<64;y++)for(let x=0;x<64;x++){const i=(y*64+x)*4;pixels.data[i]=128+Math.round(Math.sin(x*Math.PI/2)*18);pixels.data[i+1]=128+Math.round(Math.sin(y*Math.PI/2)*18);pixels.data[i+2]=254;pixels.data[i+3]=255;}nc.putImageData(pixels,0,0);
+ const normalTexture=new T.CanvasTexture(normal);normalTexture.wrapS=normalTexture.wrapT=T.RepeatWrapping;normalTexture.repeat.set(48,48);normalTexture.anisotropy=4;
+ materials.sampleFabric=mat('Sample R1 sage fine woven upholstery',0x7c8573,{normalMap:normalTexture,normalScale:new T.Vector2(.16,.16),roughness:.95});
+ materials.sampleGlass=new T.MeshPhysicalMaterial({name:'Sample east pane 12mm clear glass',color:0xffffff,transmission:.96,thickness:.012,ior:1.5,roughness:.008,metalness:0,attenuationColor:new T.Color(0xe8f0e9),attenuationDistance:6,depthWrite:false,side:T.DoubleSide});
  return materials;
 }
 function box(g,name,x,y,z,w,h,d,m,bevel=.008){
  const key=[w,h,d,bevel].join(',');let geometry=geoCache.get(key);
  if(!geometry){geometry=bevel?new RoundedBoxGeometry(w,h,d,1,Math.min(bevel,w/4,h/4,d/4)):new T.BoxGeometry(w,h,d);const p=geometry.attributes.position,n=geometry.attributes.normal,uv=geometry.attributes.uv;for(let i=0;i<p.count;i++){const ax=Math.abs(n.getX(i)),ay=Math.abs(n.getY(i)),az=Math.abs(n.getZ(i));uv.setXY(i,(ax>ay&&ax>az?p.getZ(i):p.getX(i))/1.6,(ay>ax&&ay>az?p.getZ(i):p.getY(i))/1.6);}geoCache.set(key,geometry);}
- const mesh=new T.Mesh(geometry,m);mesh.name=name;mesh.position.set(x,y,z);mesh.castShadow=!m.transparent;mesh.receiveShadow=true;g.add(mesh);return mesh;
+ const mesh=new T.Mesh(geometry,m);mesh.name=name;mesh.position.set(x,y,z);mesh.castShadow=!m.transparent&&!m.transmission;mesh.receiveShadow=true;g.add(mesh);return mesh;
 }
 function sign(g,text,x,y,z,w,h,rotation=0){const c=document.createElement('canvas');c.width=1024;c.height=256;const ctx=c.getContext('2d');ctx.fillStyle='#edece3';ctx.fillRect(0,0,1024,256);ctx.fillStyle='#172e26';ctx.textAlign='center';ctx.textBaseline='middle';ctx.font='700 104px "Microsoft YaHei",sans-serif';ctx.fillText(text,512,128,970);const t=new T.CanvasTexture(c);t.colorSpace=T.SRGBColorSpace;const mesh=new T.Mesh(new T.PlaneGeometry(w,h),new T.MeshStandardMaterial({name:'Wayfinding: '+text,map:t,roughness:.85}));mesh.name='Sign '+text;mesh.position.set(x,y,z);mesh.rotation.y=rotation;g.add(mesh);return mesh;}
 function wall(g,axis,at,start,end,openings){
@@ -43,7 +51,7 @@ function wall(g,axis,at,start,end,openings){
  function put(a,b,lo,hi){if(b-a<.001||hi-lo<.001)return;const x=axis==='x'?(a+b)/2:at,z=axis==='x'?at:(a+b)/2,w=axis==='x'?b-a:.34,d=axis==='x'?.34:b-a;box(g,'Wall with real opening',x,(lo+hi)/2,z,w,hi-lo,d,materials.stone);if(lo<1.85)obstacle(x,z,w,d,'wall');}
  for(let i=0;i<cuts.length-1;i++){const a=cuts[i],b=cuts[i+1],o=openings.find(o=>(a+b)/2>o.u-o.w/2&&(a+b)/2<o.u+o.w/2);if(o){put(a,b,0,o.bottom);put(a,b,o.top,4.5);}else put(a,b,0,4.5);}
  for(const o of openings){if(o.door)continue;const w=o.w,h=o.top-o.bottom,y=(o.top+o.bottom)/2;function f(du,dy,ww,hh,dd,m=materials.metal){return axis==='x'?box(g,'Window frame and glazing',o.u+du,y+dy,at,ww,hh,dd,m):box(g,'Window frame and glazing',at,y+dy,o.u+du,dd,hh,ww,m);}
-  for(const u of [-w/2,0,w/2])f(u,0,.055,h,.13);for(const v of [-h/2,h/2,h/2-.65])f(0,v,w,.055,.13);f(0,0,w-.07,h-.06,.012,materials.glass);
+  for(const u of [-w/2,0,w/2])f(u,0,.055,h,.13);for(const v of [-h/2,h/2,h/2-.65])f(0,v,w,.055,.13);f(0,0,w-.07,h-.06,.012,axis==='z'&&at===12&&o.u===-5.8?materials.sampleGlass:materials.glass);
   f(0,-h/2-.05,w+.14,.1,.52,materials.stone);
   obstacle(axis==='x'?o.u:at,axis==='x'?at:o.u,axis==='x'?w:.34,axis==='x'?.34:w,'window sill');
  }
@@ -70,13 +78,14 @@ function makeShelf(g,id,label,x,z){
  for(let i=0;i<count;i++){const row=Math.floor(i/29),col=i%29,seed=(i*37+id.length*17)%97,height=.27+seed/97*.14;dummy.position.set(x-1.43+col*.101,.13+row*.48+height/2,z+.025);dummy.rotation.z=(i%13===0?.06:0);dummy.scale.set(.07+seed/97*.025,height,.30+seed/97*.07);dummy.updateMatrix();inst.setMatrixAt(i,dummy.matrix);inst.setColorAt(i,new T.Color(palette[i%palette.length]));}shelf.add(inst);
 }
 function makeReadingTable(g,index,x,z){
- const table=group('Reading table '+index,g);box(table,'Solid oak desktop',x,.75,z,3.8,.055,1.2,materials.wood,.015);box(table,'Oak centre divider',x,.93,z,3.78,.28,.045,materials.wood);
+ const wood=index===1?materials.sampleWood:materials.wood,fabric=index===1?materials.sampleFabric:materials.fabric;
+ const table=group('Reading table '+index,g);box(table,'Solid oak desktop',x,.75,z,3.8,.055,1.2,wood,.015);box(table,'Oak centre divider',x,.93,z,3.78,.28,.045,wood);
  for(const dx of [-1.65,1.65])for(const dz of [-.43,.43])box(table,'Bronze table leg',x+dx,.36,z+dz,.045,.72,.045,materials.metal);
- box(table,'Undertable apron',x,.64,z,3.4,.15,.06,materials.wood);obstacle(x,z,3.8,1.2,'table');
+ box(table,'Undertable apron',x,.64,z,3.4,.15,.06,wood);obstacle(x,z,3.8,1.2,'table');
  for(const side of [-1,1])for(const dx of [-.98,.98]){
   const cx=x+dx,cz=z+side*1.13,id=`R${index}-${side<0?'N':'S'}${dx<0?1:2}`,chair=group('Chair '+id,g);
-  box(chair,'Upholstered seat',cx,.46,cz,.5,.075,.48,materials.fabric,.025);box(chair,'Upholstered back',cx,.76,cz+side*.21,.49,.44,.065,materials.fabric,.025);
-  box(chair,'Oak seat support shell',cx,.405,cz,.49,.035,.47,materials.wood,.015);
+  box(chair,'Upholstered seat',cx,.46,cz,.5,.075,.48,fabric,.025);box(chair,'Upholstered back',cx,.76,cz+side*.21,.49,.44,.065,fabric,.025);
+  box(chair,'Oak seat support shell',cx,.405,cz,.49,.035,.47,wood,.015);
   for(const a of [-.205,.205])box(chair,'Connected back support',cx+a,.65,cz+side*.215,.023,.55,.025,materials.metal);
   for(const a of [-.21,.21])for(const b of [-.19,.19])box(chair,'Chair steel leg',cx+a,.225,cz+b,.023,.45,.023,materials.metal);
   for(const a of [-.21,.21])for(const b of [-.19,.19])box(chair,'Chair foot protector',cx+a,.015,cz+b,.029,.03,.029,materials.fabric,.004);

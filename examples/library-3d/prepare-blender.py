@@ -7,6 +7,7 @@ import sys
 import json
 from pathlib import Path
 from mathutils import Vector
+from math import radians
 
 args = sys.argv[sys.argv.index('--') + 1:]
 source, target = map(lambda x: Path(x).resolve(), args[:2])
@@ -48,6 +49,14 @@ camera.location = (25, -30, 10.5)
 camera.rotation_euler = (Vector((0, -1, 2.2)) - camera.location).to_track_quat('-Z', 'Y').to_euler()
 camera_data.lens = 37
 scene.camera = camera
+for name, eye, aim in [('Window sample', (2.7, 5.2, 1.7), (9, 4.6, 1.25)),
+                          ('Tree 623 sample', (23, -4, 3), (16, 4, 3.6))]:
+    data = bpy.data.cameras.new(name)
+    data.sensor_fit, data.angle_y = 'VERTICAL', radians(55)
+    obj = bpy.data.objects.new(name, data)
+    scene.collection.objects.link(obj)
+    obj.location = eye
+    obj.rotation_euler = (Vector(aim) - obj.location).to_track_quat('-Z', 'Y').to_euler()
 bpy.ops.file.pack_all()
 target.parent.mkdir(parents=True, exist_ok=True)
 bpy.ops.wm.save_as_mainfile(filepath=str(target), compress=True)
