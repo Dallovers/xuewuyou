@@ -82,6 +82,9 @@
   <div class="group">
     <span>视角</span>
     <button data-view="all" class="on">总览</button>
+    <button data-view="room">整屋</button>
+    <button data-view="ceiling">天花</button>
+    <button data-view="plan">平面</button>
     <button data-view="desk">桌椅</button>
     <button data-view="shell">门窗</button>
     <button data-view="side">侧面剖视</button>
@@ -91,6 +94,7 @@
     <span>叠加</span>
     <button data-toggle="grid" class="on">1 m 网格</button>
     <button data-toggle="human" class="on">人体 1.72 m</button>
+    <button data-toggle="roof" class="on">屋面</button>
     <button data-toggle="wire">线框</button>
   </div>
 
@@ -106,6 +110,19 @@
     <p style="font-size:12px;margin:0">岛间距 <span id="pitchVal">—</span> m 时净走道 <span id="aisleState" class="ok">—</span></p>
   </div>
 
+  <div class="group">
+    <span>整屋</span>
+    <p style="font-size:12px;margin:0" id="roomSummary">—</p>
+  </div>
+
+  <div class="group">
+    <span>灯位表（源数据，非图）</span>
+    <p style="font-size:12px;margin:0 0 4px" id="lightHead">—</p>
+    <table>
+      <tbody id="lightBody"></tbody>
+    </table>
+  </div>
+
   <p class="foot">
     材质：stone_light / brick_grey / metal_dark / oak_light / fabric_greygreen 取说明书色值；
     室内抹灰、天花、水磨石、椅架钢为板块内部补充，待负责人统一烘焙时替换。<br>
@@ -119,6 +136,7 @@
 <script src="materials.js"></script>
 <script src="furniture.js"></script>
 <script src="shell.js"></script>
+<script src="room.js"></script>
 <script type="module" src="preview.js"></script>
 </body>
 </html>

@@ -252,6 +252,43 @@
   }
 
   /**
+   * 通用墙段：按 segments 从左到右排队，能拼任意「墩 / 窗 / 门」序列。
+   * 局部坐标下墙沿 X 展开，室内在 +Z、室外在 −Z，原点在这段墙的中心地面点。
+   * 房间四面墙都用它 —— 换朝向交给调用方旋转整组，不要在这里改坐标。
+   */
+  function createWallRun(THREE, mats, opts) {
+    opts = opts || {};
+    var core = global.StudyDistrict.core;
+    var g = core.group(THREE, null, opts.name || 'WallRun');
+    var glassMat = opts.glass || mats.glass;
+    var height = opts.height || R.clearHeight;
+    var segs = opts.segments || SPEC.sample.segments;
+    var total = segs.reduce(function (s, seg) { return s + seg.width; }, 0);
+    var cursor = -total / 2;
+
+    segs.forEach(function (seg) {
+      var x0 = cursor;
+      var x1 = cursor + seg.width;
+      if (seg.type === 'pier') {
+        wallBand(THREE, g, 'StonePier', x0, x1, 0, height, mats.wall_interior, mats);
+      } else if (seg.type === 'brickPier') {
+        if (mats.fitBrickUV) mats.fitBrickUV(seg.width, height);
+        wallBand(THREE, g, 'BrickPier', x0, x1, 0, height, mats.brick_grey, mats);
+      } else if (seg.type === 'window') {
+        g.add(createWindowBay(THREE, mats, glassMat, x0, x1));
+        wallBand(THREE, g, 'WindowHeadBand', x0, x1, W.frameTop, height, mats.wall_interior, mats);
+      } else if (seg.type === 'door') {
+        g.add(createDoorBay(THREE, mats, glassMat, x0, x1));
+        wallBand(THREE, g, 'DoorHeadBand', x0, x1, DR.transomTop + 0.06, height, mats.wall_interior, mats);
+      }
+      cursor = x1;
+    });
+
+    g.userData = { kind: 'wallRun', segments: segs, totalWidth: total, height: height };
+    return g;
+  }
+
+  /**
    * 完整样件：墙段 + 地面 + 天花 + 少量顶棚灯槽。
    * 返回的 Group 原点在这段墙的中心地面点。
    */
@@ -261,27 +298,13 @@
     var g = core.group(THREE, null, 'StudyShellSample');
 
     var glassMat = opts.glass || mats.glass;
-    var total = SPEC.sample.segments.reduce(function (s, seg) { return s + seg.width; }, 0);
-    var cursor = -total / 2;
-
-    SPEC.sample.segments.forEach(function (seg) {
-      var x0 = cursor;
-      var x1 = cursor + seg.width;
-      if (seg.type === 'pier') {
-        wallBand(THREE, g, 'StonePier', x0, x1, 0, R.clearHeight, mats.wall_interior, mats);
-      } else if (seg.type === 'brickPier') {
-        // 砖缝按这个垛的真实宽高铺，不跨构件拉伸
-        if (mats.fitBrickUV) mats.fitBrickUV(seg.width, R.clearHeight);
-        wallBand(THREE, g, 'BrickPier', x0, x1, 0, R.clearHeight, mats.brick_grey, mats);
-      } else if (seg.type === 'window') {
-        g.add(createWindowBay(THREE, mats, glassMat, x0, x1));
-        wallBand(THREE, g, 'WindowHeadBand', x0, x1, W.frameTop, R.clearHeight, mats.wall_interior, mats);
-      } else if (seg.type === 'door') {
-        g.add(createDoorBay(THREE, mats, glassMat, x0, x1));
-        wallBand(THREE, g, 'DoorHeadBand', x0, x1, DR.transomTop + 0.06, R.clearHeight, mats.wall_interior, mats);
-      }
-      cursor = x1;
+    var run = createWallRun(THREE, mats, {
+      name: 'SampleWallRun',
+      segments: SPEC.sample.segments,
+      glass: glassMat
     });
+    g.add(run);
+    var total = run.userData.totalWidth;
 
     // 地面
     if (mats.fitFloorUV) mats.fitFloorUV(total, SPEC.sample.floorDepth);
@@ -325,6 +348,7 @@
   global.StudyDistrict = global.StudyDistrict || {};
   global.StudyDistrict.shell = {
     SPEC: SPEC,
+    createWallRun: createWallRun,
     createWindowBay: createWindowBay,
     createDoorBay: createDoorBay,
     createShellSample: createShellSample

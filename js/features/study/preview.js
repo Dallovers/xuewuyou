@@ -47,15 +47,15 @@ const sun = new THREE.DirectionalLight(0xfff4e2, 2.10);
 sun.position.set(-9, 8.5, 5.5);
 sun.castShadow = true;
 sun.shadow.mapSize.set(2048, 2048);
-sun.shadow.camera.left = -12;
-sun.shadow.camera.right = 12;
-sun.shadow.camera.top = 12;
-sun.shadow.camera.bottom = -14;
+sun.shadow.camera.left = -18;
+sun.shadow.camera.right = 18;
+sun.shadow.camera.top = 18;
+sun.shadow.camera.bottom = -34;
 sun.shadow.camera.near = 1;
-sun.shadow.camera.far = 40;
+sun.shadow.camera.far = 90;
 sun.shadow.bias = -0.0002;
 sun.shadow.normalBias = 0.02;
-sun.target.position.set(0, 0.8, -4);
+sun.target.position.set(0, 0.8, -12);
 scene.add(sun, sun.target);
 
 const fill = new THREE.DirectionalLight(0xdce6e8, 0.30);
@@ -99,6 +99,12 @@ const shell = SD.shell.createShellSample(THREE, mats);
 shell.position.set(0, 0, -10.0);
 scene.add(shell);
 
+// 整屋摆在样件前面单独一块空地上，互不遮挡
+const ROOM_Z = -26.0;
+const room = SD.room.createRoom(THREE, mats);
+room.position.set(0, 0, ROOM_Z);
+scene.add(room);
+
 // 人体参考：1.72 m
 const human = new THREE.Group();
 human.name = 'HumanReference';
@@ -120,10 +126,37 @@ const views = {
   desk: { pos: [3.1, 1.6, 3.6], target: [0, 0.75, -0.2] },
   shell: { pos: [4.6, 2.4, -4.4], target: [0, 1.5, -10.0] },
   // 贴墙掠视：只有这个角度能同时读出 墙厚 0.24 / 框深 0.14 / 洞口收边 0.10 / 玻璃线
-  side: { pos: [4.0, 1.62, -8.35], target: [-0.9, 1.42, -10.0] }
+  side: { pos: [4.0, 1.62, -8.35], target: [-0.9, 1.42, -10.0] },
+  // 整屋：从入口一侧看向大窗，室内真实站姿视角
+  room: { pos: [4.4, 1.65, ROOM_Z + 3.9], target: [-3.4, 1.15, ROOM_Z - 1.2] },
+  // 天花：贴近地面几乎垂直仰视。lookUp 必须开——OrbitControls 默认钳住
+  // 相机不能低于目标点，否则这一视角会被拽回去并算出退化矩阵，画面直接全白。
+  ceiling: { pos: [0, 0.80, ROOM_Z - 2.0], target: [0, 3.79, ROOM_Z - 2.6], lookUp: true },
+  // 平面：高位俯视。刻意留一点倾角——相机正对下方时 up 向量与视线共线，
+  // OrbitControls 会算出退化矩阵，画面直接白掉。
+  plan: { pos: [0, 16.5, ROOM_Z + 2.6], target: [0, 0, ROOM_Z - 0.2], roofOff: true }
 };
+
+// 屋面构件（顶板 / 压顶 / 梁 / 灯具）：俯视和平面视角要把它们藏起来才看得进屋里
+const roofParts = [];
+room.traverse((n) => {
+  if (['CeilingSlab', 'RoofCoping', 'Beam', 'LightFixture'].includes(n.name)) {
+    roofParts.push(n);
+  }
+});
+function setRoofVisible(on) {
+  roofParts.forEach((n) => {
+    n.visible = on;
+  });
+}
 function applyView(key) {
   const v = views[key] || views.all;
+  setRoofVisible(!v.roofOff);
+  document.querySelectorAll('[data-toggle="roof"]').forEach((b) => {
+    b.classList.toggle('on', !v.roofOff);
+  });
+  // 仰视视角要放开极角上限，否则相机被钳在水平线以上
+  controls.maxPolarAngle = v.lookUp ? Math.PI - 0.03 : Math.PI / 2 - 0.03;
   camera.position.set(v.pos[0], v.pos[1], v.pos[2]);
   controls.target.set(v.target[0], v.target[1], v.target[2]);
   controls.update();
@@ -152,6 +185,7 @@ document.querySelectorAll('[data-toggle]').forEach((btn) => {
     const key = btn.dataset.toggle;
     if (key === 'grid') grid.visible = on;
     if (key === 'human') human.visible = on;
+    if (key === 'roof') setRoofVisible(on);
     if (key === 'wire') {
       scene.traverse((n) => {
         if (n.isMesh && n.material && !Array.isArray(n.material)) {
@@ -198,6 +232,30 @@ tbody.innerHTML = rows
 document.getElementById('pitchVal').textContent = fmt(FS.layout.islandPitchZ, 2);
 document.getElementById('aisleState').textContent =
   aisle >= SS.room.aisle ? '满足 1.5 m' : '不足 1.5 m';
+
+// —— 整屋与灯位表：同样从 room.js 的 SPEC 直接读，不另抄一份数字 ——
+const RD = SD.room.ROOM;
+const RL = SD.room.LAYOUT;
+const LT = SD.room.buildLightTable();
+
+document.getElementById('roomSummary').textContent =
+  '净 ' + fmt(RD.width, 1) + ' × ' + fmt(RD.depth, 1) + ' m，净高 ' + fmt(RD.clearHeight, 1) +
+  ' m；桌岛 ' + RL.islands.length + ' 组（' + RL.islands.length * 4 + ' 座）+ 窗边席 ' +
+  RL.windowCounter.stoolCount + ' 座；梁 3 道沿 Z，灯具 ' + LT.count + ' 盏沿 ' + LT.axis + '。';
+
+document.getElementById('lightHead').textContent =
+  LT.count + ' 盏 · 轴向 ' + LT.axis + '（与梁同向）· 每盏 ' + fmt(LT.length, 2) +
+  ' × ' + fmt(LT.width, 2) + ' m · 嵌入 ' + fmt(RL.lights.depth, 2) + ' m';
+
+document.getElementById('lightBody').innerHTML = LT.fixtures
+  .map(
+    (f) =>
+      '<tr><th>' + f.id + '</th><td>' +
+      'X ' + fmt(f.centerX, 2) + ' / Z ' + fmt(f.centerZ, 2) +
+      '<br><span class="rooms-muted">离西墙 ' + fmt(f.toWest, 2) +
+      '，离北墙 ' + fmt(f.toNorth, 2) + '</span></td></tr>'
+  )
+  .join('');
 
 function resize() {
   const w = canvas.clientWidth;
