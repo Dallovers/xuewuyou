@@ -125,33 +125,72 @@
         [cx, (C.topHeight - C.topThickness) / 2, s * (C.length / 2 - 0.06)], mats.steel_chair);
     });
 
-    // 四个凳子，圆心按等分落在台上。人要坐到台子**外侧**，
-    // 所以圆心 = 台外沿 + 间隙 + 半径，不能落进台面进深里。
+    /* 四个凳子，圆心按等分落在台上。人要坐到台子**外侧**，
+       所以圆心 = 台外沿 + 间隙 + 半径，不能落进台面进深里。
+
+       造型跟椅子用同一套语言（软包 + 钢架），但凳子要能塞进台面下、不能有靠背：
+       软包圆垫（和坐垫同一个 bevelSlab，3 mm 倒角）→ 橡木托圈 → 三根外扩钢腿 → 一道脚踏圈。
+       旧版是一块 4.5 cm 的布面圆柱加三根 1 cm 细管：没有托圈、没有横撑，
+       腿之间什么也不连，看着像临时折叠凳。 */
     var step = C.length / (C.stoolCount + 1);
     var stoolX = innerEdge + C.depth + C.stoolGap + C.stoolRadius;
+    var SR = C.stoolRadius;
+    var seatTh = 0.045;
+    var seatBot = C.stoolHeight - seatTh;        // 软包底面 0.405
+    // 腿：上端收在托圈里，下端外扩到 0.152+0.014=0.166，仍在凳半径 0.17 以内，占地不变
+    var legR = 0.014, legTopR = 0.108, legTopY = seatBot - 0.010;
+    var legBotR = 0.152, legBotY = 0.006;
+    var ringY = 0.160;
+
     for (var i = 1; i <= C.stoolCount; i++) {
       var z = -C.length / 2 + step * i;
       var sx = stoolX;
+
+      // 圆角半径直接给到凳半径，方形轮廓被收成一个圆，得到一块真正的圆垫
       var seat = new THREE.Mesh(
-        new THREE.CylinderGeometry(C.stoolRadius, C.stoolRadius, 0.045, 20),
+        core.bevelSlab(THREE, SR * 2, SR * 2, seatTh, 0.003, SR),
         mats.fabric_greygreen
       );
       seat.name = 'StoolSeat';
-      seat.position.set(sx, C.stoolHeight - 0.0225, z);
+      seat.position.set(sx, C.stoolHeight - seatTh / 2, z);
       seat.castShadow = true;
       seat.receiveShadow = true;
       g.add(seat);
-      // 三根细腿
+
+      // 橡木托圈：把软包和钢腿接起来，顺带和橡木台面呼应
+      var collar = new THREE.Mesh(
+        new THREE.CylinderGeometry(SR - 0.007, SR - 0.020, 0.024, 24),
+        mats.oak_light
+      );
+      collar.name = 'StoolCollar';
+      collar.position.set(sx, seatBot - 0.012, z);
+      collar.castShadow = true;
+      collar.receiveShadow = true;
+      g.add(collar);
+
+      // 三根外扩钢腿
       [0, 1, 2].forEach(function (k) {
         var a = (Math.PI * 2 * k) / 3 + Math.PI / 6;
-        var r = C.stoolRadius - 0.02;
         core.tubeBetween(
           THREE, g, 'StoolLeg',
-          [sx + Math.cos(a) * r, C.stoolHeight - 0.045, z + Math.sin(a) * r],
-          [sx + Math.cos(a) * (r + 0.02), 0.0, z + Math.sin(a) * (r + 0.02)],
-          0.010, mats.steel_chair, 8
+          [sx + Math.cos(a) * legTopR, legTopY, z + Math.sin(a) * legTopR],
+          [sx + Math.cos(a) * legBotR, legBotY, z + Math.sin(a) * legBotR],
+          legR, mats.steel_chair, 10
         );
       });
+
+      // 脚踏圈：一整圈穿过三根腿。半径按腿的斜率反算，永远落在腿心线上
+      var ringR = legTopR + (legBotR - legTopR) * ((legTopY - ringY) / (legTopY - legBotY));
+      var stretcher = new THREE.Mesh(
+        new THREE.TorusGeometry(ringR, 0.0070, 5, 24),
+        mats.steel_chair
+      );
+      stretcher.name = 'StoolStretcher';
+      stretcher.rotation.x = Math.PI / 2;
+      stretcher.position.set(sx, ringY, z);
+      stretcher.castShadow = true;
+      stretcher.receiveShadow = true;
+      g.add(stretcher);
     }
 
     g.userData.role = 'windowSeats';

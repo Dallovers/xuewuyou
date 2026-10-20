@@ -247,9 +247,77 @@ try {
       db.min.z >= -HZr - 0.01 && db.max.z <= HZr + 0.01,
       'X ' + db.min.x.toFixed(2) + '~' + db.max.x.toFixed(2) + '，Z ' + db.min.z.toFixed(2) + '~' + db.max.z.toFixed(2));
 
+    // 这条只判整组 bbox 的 Y 范围（0 ~ 层高），是粗筛：杯子整只挂到桌沿外、
+    // 底下直通地板，Y 仍在范围内照样能过。逐件的判据在下面那条。
     check('软装不悬空也不入地',
       db.min.y >= -0.005 && db.max.y <= ROOMSPEC.clearHeight,
       'Y ' + db.min.y.toFixed(3) + '~' + db.max.y.toFixed(3));
+
+    /* 逐个实例判「脚下到底有没有东西」，两条一起看：
+       ① 从底面中心往下打射线，第一个命中的必须是承托面，缝隙 ≤ 5 mm；
+       ② 包围盒的四个水平角点都得落在某块承托面的投影里。
+       为什么要 ②：细长物件（笔）可以「中心在桌上、一头伸出桌沿还悬着」，
+       只判中心的话射线照样打在桌面上，gap 还是 0，等于没判。
+       2026-10-20 就是这么漏的：7 个杯子中心全在桌沿外，4 支笔全越界 2~3 cm，
+       而当时唯一的「软装不悬空」只比较了整组 bbox 的 Y 与层高。 */
+    (function () {
+      const SUPPORT = ['DeskTop', 'ShelfBoard', 'CounterTop', 'DecorBooks'];
+      const probed = [];
+      const bad = [];
+      const ray = new THREE.Raycaster();
+      const DOWN = new THREE.Vector3(0, -1, 0);
+      const tv = new THREE.Vector3();
+      const tm = new THREE.Matrix4();
+      const meshes = [];
+      const footprints = [];
+      r.traverse((n) => {
+        if (!n.isMesh || !n.visible) return;
+        meshes.push(n);
+        if (n.name === 'DeskTop' || n.name === 'CounterTop' || n.name === 'ShelfBoard') {
+          const fb = new THREE.Box3().setFromObject(n);
+          footprints.push(fb);
+        }
+      });
+      const onSomeSurface = (x, z) =>
+        footprints.some((b) => x >= b.min.x - 0.002 && x <= b.max.x + 0.002
+          && z >= b.min.z - 0.002 && z <= b.max.z + 0.002);
+
+      ['DecorCups', 'DecorPens'].forEach((nm) => {
+        const m = decor.getObjectByName(nm);
+        if (!m || !m.isInstancedMesh) return;
+        if (!m.geometry.boundingBox) m.geometry.computeBoundingBox();
+        const gb = m.geometry.boundingBox;
+        for (let i = 0; i < m.count; i++) {
+          m.getMatrixAt(i, tm);
+          tm.premultiply(m.matrixWorld);
+          const bb = new THREE.Box3();
+          for (let c = 0; c < 8; c++) {
+            tv.set(c & 1 ? gb.max.x : gb.min.x, c & 2 ? gb.max.y : gb.min.y, c & 4 ? gb.max.z : gb.min.z);
+            bb.expandByPoint(tv.applyMatrix4(tm));
+          }
+          const cx = (bb.min.x + bb.max.x) / 2, cz = (bb.min.z + bb.max.z) / 2;
+          ray.set(new THREE.Vector3(cx, bb.min.y + 0.001, cz), DOWN);
+          ray.far = 3;
+          const hit = ray.intersectObjects(meshes, false)
+            .find((h) => !(h.object === m && h.instanceId === i));
+          probed.push(nm);
+          const gap = hit ? bb.min.y - hit.point.y : 99;
+          if (!hit) bad.push(nm + '#' + i + ' 下方无命中');
+          else if (SUPPORT.indexOf(hit.object.name) < 0) bad.push(nm + '#' + i + ' 下方是 ' + hit.object.name);
+          else if (gap > 0.005) bad.push(nm + '#' + i + ' 下方 ' + hit.object.name + ' 缝隙 ' + gap.toFixed(3) + ' m');
+          else {
+            // 四个水平角点都得在同一类承托面的投影里，否则就是一头翘在桌沿外
+            const corners = [[bb.min.x, bb.min.z], [bb.max.x, bb.min.z], [bb.min.x, bb.max.z], [bb.max.x, bb.max.z]];
+            const off = corners.filter((p) => !onSomeSurface(p[0], p[1]));
+            if (off.length) bad.push(nm + '#' + i + ' 有 ' + off.length + ' 个角在桌沿外');
+          }
+        }
+      });
+
+      check('杯/笔整个压在承托面上（缝隙 ≤5 mm、四角不出沿）',
+        probed.length > 0 && bad.length === 0,
+        probed.length + ' 个实例' + (bad.length ? '，异常 ' + bad.length + ' 个：' + bad.slice(0, 3).join(' / ') : ''));
+    })();
 
     // 桌面隔板上沿 = 桌高 + 隔板高 ≈ 1.088。桌面上的东西高过它就会挡住对面视线。
     // 墙挂件（公告板、挂钟）本来就在上面，单独判，不混在一条里。
