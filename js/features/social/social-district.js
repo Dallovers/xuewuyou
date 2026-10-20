@@ -33,10 +33,10 @@ const MATERIAL_SPEC = {
   stone_light_in: { color: 0xd2cbbd, roughness: 0.62, metalness: 0.0, envMapIntensity: 0.5, uvUnit: 1.2 },
   brick_grey: { color: 0x9a9f9b, roughness: 0.86, metalness: 0.0, envMapIntensity: 0.5, uvUnit: 1.7 },
   // 深灰构件是涂装面（柱、梁、栏杆、公告栏框）：低金属度、中等粗糙，保留转折与边缘
-  metal_dark: { color: 0x3c4744, roughness: 0.42, metalness: 0.12, envMapIntensity: 0.7 },
+  metal_dark: { color: 0x454b47, roughness: 0.54, metalness: 0.04, envMapIntensity: 0.52 },
   // 裸金属/深铝框：真正带金属反射，用在窗框
   metal_frame: { color: 0x4a5559, roughness: 0.32, metalness: 0.55, envMapIntensity: 0.9 },
-  roof_bluegrey: { color: 0x637581, roughness: 0.44, metalness: 0.5, envMapIntensity: 0.85 },
+  roof_bluegrey: { color: 0x68757a, roughness: 0.63, metalness: 0.22, envMapIntensity: 0.58 },
   // 暖木：color 归白，木色由 albedo 决定，避免再乘底色导致发深。
   // oak_light 竖纹（柜门主面 V 沿高度）；oak_flat 横纹（木条、坐面，长边在 U）
   oak_light: { color: 0xffffff, roughness: 0.62, metalness: 0.0, envMapIntensity: 0.45, uvUnit: 1.8 },
@@ -287,9 +287,9 @@ function makeFineStoneTexture(THREE, owner, withSeam) {
   // 台面（stone_light_in）不走这里：台面是整块石材，出现地砖缝反而不对。
   if (withSeam) {
     for (const [lw, color] of [
-      [13, 'rgba(108,100,86,0.09)'],
-      [7, 'rgba(108,100,86,0.2)'],
-      [2.5, 'rgba(94,86,74,0.5)'],
+      [5, 'rgba(108,100,86,0.05)'],
+      [2.5, 'rgba(108,100,86,0.12)'],
+      [1.2, 'rgba(94,86,74,0.3)'],
     ]) {
       g.strokeStyle = color;
       g.lineWidth = lw;
@@ -333,30 +333,30 @@ function makeLightOakTexture(THREE, owner, horizontal) {
   if (horizontal) {
     let y = -20;
     while (y < h + 20) {
-      const band = 4 + Math.random() * 11;
-      const alpha = 0.05 + Math.random() * 0.055;
+      const band = 0.25 + Math.random() * 0.8;
+      const alpha = 0.025 + Math.random() * 0.028;
       g.fillStyle = 'rgba(138,102,62,' + alpha.toFixed(3) + ')';
-      g.fillRect(0, y, w, band);
+      g.beginPath(); g.lineWidth = band; g.strokeStyle = g.fillStyle; for (let gx = 0; gx <= w; gx += 8) { const gy = y + Math.sin(gx / 80 + y / 35) * 1.4; if (!gx) g.moveTo(gx, gy); else g.lineTo(gx, gy); } g.stroke();
       if (Math.random() > 0.45) {
         const x0 = Math.random() * w * 0.7;
         g.fillStyle = 'rgba(120,86,50,' + (alpha * 1.25).toFixed(3) + ')';
         g.fillRect(x0, y, w * (0.2 + Math.random() * 0.5), band * (0.5 + Math.random() * 0.7));
       }
-      y += band + 9 + Math.random() * 26;
+      y += band + 1.2 + Math.random() * 3.8;
     }
   } else {
     let x = -20;
     while (x < w + 20) {
-      const band = 4 + Math.random() * 11;
-      const alpha = 0.05 + Math.random() * 0.055;
+      const band = 0.25 + Math.random() * 0.8;
+      const alpha = 0.025 + Math.random() * 0.028;
       g.fillStyle = 'rgba(138,102,62,' + alpha.toFixed(3) + ')';
-      g.fillRect(x, 0, band, h);
+      g.beginPath(); g.lineWidth = band; g.strokeStyle = g.fillStyle; for (let gy = 0; gy <= h; gy += 8) { const gx = x + Math.sin(gy / 80 + x / 35) * 1.4; if (!gy) g.moveTo(gx, gy); else g.lineTo(gx, gy); } g.stroke();
       if (Math.random() > 0.45) {
         const y0 = Math.random() * h * 0.7;
         g.fillStyle = 'rgba(120,86,50,' + (alpha * 1.25).toFixed(3) + ')';
         g.fillRect(x, y0, band * (0.5 + Math.random() * 0.7), h * (0.2 + Math.random() * 0.5));
       }
-      x += band + 9 + Math.random() * 26;
+      x += band + 1.2 + Math.random() * 3.8;
     }
   }
 
@@ -617,6 +617,7 @@ export function createDistrict(ctx = {}) {
     mesh.position.set(x, y, z);
     if (opts.rotY) mesh.rotation.y = opts.rotY;
     if (opts.rotX) mesh.rotation.x = opts.rotX;
+    if (opts.rotZ) mesh.rotation.z = opts.rotZ;
     mesh.castShadow = opts.cast !== false;
     mesh.receiveShadow = opts.receive !== false;
     if (opts.name) mesh.name = opts.name;
@@ -651,7 +652,7 @@ export function createDistrict(ctx = {}) {
     if (!g) return null;
 
     // 先铺一层深色当缝
-    g.fillStyle = '#7d7666';
+    g.fillStyle = '#a9a495';
     g.fillRect(0, 0, size, size);
 
     const cols = 4;
@@ -665,7 +666,7 @@ export function createDistrict(ctx = {}) {
         const y = row * th;
         const v = 199 + (Math.random() * 16 - 8);
         g.fillStyle = 'rgb(' + Math.round(v) + ',' + Math.round(v * 0.987) + ',' + Math.round(v * 0.948) + ')';
-        g.fillRect(x + 3, y + 3, tw - 6, th - 6);
+        g.fillRect(x + 1.6, y + 1.6, tw - 3.2, th - 3.2);
         // 单块石材内部的斑驳，避免每块都是一样平的浅灰
         for (let k = 0; k < 24; k++) {
           const px = x + 3 + Math.random() * (tw - 6);
@@ -812,39 +813,49 @@ export function createDistrict(ctx = {}) {
     const plinth = 0.12;
     const colH = P.height - 0.35;
 
-    // 台基与东侧台阶
-    add(boxGeo(P.width + 0.5, plinth, P.length + 0.5), M.stone_light, P.cx, plinth / 2, P.cz, { name: 'pavilion:plinth' });
+    // 分层台基：滴水挑边之下设置浅石材压顶和细分缝，避免单块悬浮盒体。
+    add(beveledBoxGeometry(THREE, P.width + 0.5, plinth, P.length + 0.5, 0.012, 1.15), M.stone_light, P.cx, plinth / 2, P.cz, { name: 'pavilion:plinth' });
+    add(boxGeo(P.width + 0.24, 0.035, P.length + 0.24), M.stone_light_in, P.cx, plinth - 0.018, P.cz, { name: 'pavilion:plinth-cap', cast: false });
     add(boxGeo(2.4, plinth, 1.0), M.stone_light, P.cx + halfW + 0.25, plinth / 2, 0.65, { name: 'pavilion:step' });
+    add(boxGeo(2.4, 0.025, 1.0), M.stone_light_in, P.cx + halfW + 0.25, plinth - 0.012, 0.65, { name: 'pavilion:step-cap', cast: false });
 
-    // 六根柱：截面 0.22，柱心内收 0.35
+    // 六根有柱础的方柱，柱头用浅石包箍收口；截面由柱身向柱头递进。
     const xs = [P.cx - halfW + 0.45, P.cx + halfW - 0.45];
     const zs = [P.cz - halfL + 0.75, P.cz, P.cz + halfL - 0.75];
     for (const x of xs) {
       for (const z of zs) {
-        add(beveledBoxGeometry(THREE, P.column, colH, P.column, 0.002, 1), M.metal_dark, x, plinth + colH / 2, z, { name: 'pavilion:column' });
-        // 柱脚底板：给柱子一个落地关系，不再直接插进台基
+        add(beveledBoxGeometry(THREE, 0.29, 0.12, 0.29, 0.014, 1), M.stone_light_in, x, plinth + 0.06, z, { name: 'pavilion:column-plinth' });
+        add(beveledBoxGeometry(THREE, P.column, colH - 0.12, P.column, 0.01, 1), M.metal_dark, x, plinth + 0.12 + (colH - 0.12) / 2, z, { name: 'pavilion:column' });
+        add(beveledBoxGeometry(THREE, P.column + 0.08, 0.09, P.column + 0.08, 0.008, 1), M.stone_light_in, x, plinth + colH - 0.045, z, { name: 'pavilion:capital' });
         add(boxGeo(P.column + 0.14, 0.018, P.column + 0.14), M.metal_dark, x, plinth + 0.009, z, { name: 'pavilion:column-base' });
         blockBox(P.column, colH, P.column, x, z, 'pavilion:column');
       }
     }
 
-    // 边梁（沿 Z）+ 横梁（沿 X）
+    // 连续檐下主梁与次梁，接在柱帽上而非悬空相交。
     for (const x of xs) {
-      add(boxGeo(0.18, 0.26, P.length + 0.4), M.metal_dark, x, plinth + colH + 0.13, P.cz, { name: 'pavilion:beam-long' });
+      add(beveledBoxGeometry(THREE, 0.27, 0.22, P.length + 0.5, 0.008, 1), M.metal_dark, x, plinth + colH + 0.065, P.cz, { name: 'pavilion:beam-long' });
     }
     for (const z of zs) {
-      add(boxGeo(P.width + 0.4, 0.2, 0.16), M.metal_dark, P.cx, plinth + colH + 0.1, z, { name: 'pavilion:beam-cross' });
+      add(beveledBoxGeometry(THREE, P.width + 0.34, 0.17, 0.20, 0.006, 1), M.metal_dark, P.cx, plinth + colH + 0.11, z, { name: 'pavilion:beam-cross' });
     }
 
-    // 屋顶：oak 格栅 + 蓝灰檐口
-    add(boxGeo(P.width + 0.9, 0.18, P.length + 0.9), M.roof_bluegrey, P.cx, plinth + P.height, P.cz, { name: 'pavilion:roof' });
-    const slatGap = 0.36;
-    const slatCount = Math.floor((P.length - 0.2) / slatGap);
-    for (let i = 0; i < slatCount; i++) {
-      const z = P.cz - (P.length - 0.2) / 2 + i * slatGap + slatGap / 2;
-      add(boxGeo(P.width + 0.4, 0.06, 0.1), M.oak_flat, P.cx, plinth + P.height - 0.09, z, {
-        name: 'pavilion:slat', cast: false,
-      });
+    // 浅坡双面金属屋面：独立薄板做出排水坡，周边连续滴水边与檐底木衬板。
+    const roofY = plinth + P.height;
+    const roofW = P.width + 0.95, roofL = P.length + 0.95, roofT = 0.11, roofSlope = 0.16;
+    const roofAngle = Math.atan2(roofSlope, roofW / 2);
+    const roofHalf = roofW / 2;
+    add(beveledBoxGeometry(THREE, roofW / 2 + 0.03, roofT, roofL, 0.012, 1), M.roof_bluegrey, P.cx - roofW / 4, roofY + roofSlope / 2, P.cz, { name: 'pavilion:roof-plane-west', rotZ: roofAngle });
+    add(beveledBoxGeometry(THREE, roofW / 2 + 0.03, roofT, roofL, 0.012, 1), M.roof_bluegrey, P.cx + roofW / 4, roofY + roofSlope / 2, P.cz, { name: 'pavilion:roof-plane-east', rotZ: -roofAngle });
+    add(boxGeo(0.08, 0.08, roofL + 0.08), M.metal_frame, P.cx, roofY + roofSlope + 0.04, P.cz, { name: 'pavilion:ridge-cap' });
+    for (const z of [P.cz - roofL / 2, P.cz + roofL / 2]) {
+      add(boxGeo(roofW + 0.08, 0.075, 0.07), M.metal_frame, P.cx, roofY - 0.045, z, { name: 'pavilion:fascia' });
+      add(boxGeo(roofW - 0.22, 0.035, 0.045), M.oak_flat, P.cx, roofY - 0.105, z, { name: 'pavilion:soffit-edge', cast: false });
+    }
+    for (const x of [P.cx - roofHalf, P.cx + roofHalf]) add(boxGeo(0.055, 0.075, roofL), M.metal_frame, x, roofY - 0.045, P.cz, { name: 'pavilion:fascia-side' });
+    const slatGap = 0.44;
+    for (let z = P.cz - (P.length - 0.2) / 2; z < P.cz + P.length / 2; z += slatGap) {
+      add(boxGeo(P.width + 0.36, 0.045, 0.065), M.oak_flat, P.cx, roofY - 0.13, z, { name: 'pavilion:slat', cast: false });
     }
 
     // 东侧矮栏只压南北两端，中段完全敞开，保证从主路能直接看到服务台
@@ -867,7 +878,13 @@ export function createDistrict(ctx = {}) {
   function buildDesk() {
     const D = L.desk;
     const y0 = 0.12; // 台基面
-    const body = add(beveledBoxGeometry(THREE, D.w, D.h, D.d, 0.004, 1.8), M.oak_light, D.x, y0 + D.h / 2, D.z, { name: 'social:desk-body' });
+    // 台体采用木饰面围板与内退踢脚，底部留 shadow reveal，避免整块箱体直接贴地。
+    const body = add(beveledBoxGeometry(THREE, D.w - 0.04, D.h - 0.04, D.d - 0.05, 0.004, 1.8), M.oak_light, D.x, y0 + (D.h - 0.04) / 2 + 0.04, D.z, { name: 'social:desk-body' });
+    const frontX = D.x + D.w / 2 - 0.025;
+    add(boxGeo(D.w - 0.14, 0.07, D.d - 0.14), M.metal_dark, D.x, y0 + 0.035, D.z, { name: 'social:desk-plinth' });
+    // 两片 22mm 饰面板，5mm 真缝；侧向主面沿长轴拆成三块饰面板。
+    for (const dz of [-0.17, 0.17]) add(beveledBoxGeometry(THREE, 0.022, D.h - 0.14, 0.333, 0.002, 1.8), M.oak_light, D.x + D.w / 2 - 0.008, y0 + D.h / 2 + 0.01, D.z + dz, { name: 'social:desk-door' });
+    for (const side of [-1, 1]) for (const dx of [-0.59, 0, 0.59]) add(beveledBoxGeometry(THREE, 0.585, D.h - 0.14, 0.022, 0.002, 1.8), M.oak_light, D.x + dx, y0 + D.h / 2 + 0.01, D.z + side * (D.d / 2 - 0.008), { name: 'social:desk-side-panel' });
     // 石质台面，比柜体大一圈
     add(beveledBoxGeometry(THREE, D.w + 0.06, 0.06, D.d + 0.06, 0.003, 1.2), M.stone_light_in, D.x, y0 + D.h + 0.03, D.z, { name: 'social:desk-top' });
     // 台面后方只做矮挡边：整块高背板会挡住从主路看过来的视线
@@ -879,12 +896,6 @@ export function createDistrict(ctx = {}) {
     add(boxGeo(0.03, 0.03, D.d), deskLampMaterial, D.x + D.w / 2 - 0.005, y0 + D.h - 0.02, D.z, {
       name: 'social:desk-lamp', cast: false,
     });
-    // 柜门缝：两条竖向细线，避免整块浅木大板
-    for (const dz of [-0.3, 0.3]) {
-      add(boxGeo(0.005, D.h - 0.12, 0.012), M.metal_dark, D.x + D.w / 2 + 0.002, y0 + D.h / 2, D.z + dz, {
-        name: 'social:desk-seam', cast: false,
-      });
-    }
     // 悬挂标识牌：挂在亭廊梁下，从东侧主路可读
     const signMat = makeSignMaterial('学习搭子 · 服务台');
     if (signMat) {
@@ -961,11 +972,10 @@ export function createDistrict(ctx = {}) {
     group.name = 'social:bench';
     root.add(group);
 
-    // 石座 + 木坐面，坐面顶到 0.45m
-    add(boxGeo(S.length, 0.4, S.depth), M.stone_light, 0, 0.2, 0, { parent: group, name: 'bench:base' });
-    add(boxGeo(S.length + 0.06, 0.05, S.depth + 0.06), M.oak_flat, 0, S.seat - 0.025, 0, {
-      parent: group, name: 'bench:seat',
-    });
+    // 双石墩和横向钢托，坐面由四根 40mm 实木板构成，净缝 6mm。
+    for (const dx of [-0.54, 0.54]) add(beveledBoxGeometry(THREE, 0.22, 0.37, S.depth - 0.06, 0.008, 1.2), M.stone_light_in, dx, 0.185, 0, { parent: group, name: 'bench:base' });
+    for (const dz of [-0.13, 0.13]) add(boxGeo(S.length - 0.12, 0.04, 0.035), M.metal_dark, 0, 0.385, dz, { parent: group, name: 'bench:rail' });
+    for (let i = 0; i < 4; i++) add(beveledBoxGeometry(THREE, S.length, 0.04, 0.099, 0.003, 1.8), M.oak_flat, 0, S.seat - 0.02, (i - 1.5) * 0.105, { parent: group, name: 'bench:seat' });
     const halfX = Math.abs(Math.cos(rotY || 0)) * S.length / 2 + Math.abs(Math.sin(rotY || 0)) * S.depth / 2;
     const halfZ = Math.abs(Math.sin(rotY || 0)) * S.length / 2 + Math.abs(Math.cos(rotY || 0)) * S.depth / 2;
     colliders.push({ name: 'social:bench', type: 'box', center: [x, 0.22, z], half: [halfX, 0.22, halfZ] });
