@@ -111,11 +111,137 @@ function createResourceOwner() {
 }
 
 /**
+ * 倒角盒：12 条边做 45° 切角、8 个角做三角面。
+ * BoxGeometry 是 90° 硬边，近景会直接读出"模型感"；
+ * 这里按 b（米）切角，UV 直接用局部坐标除以 unit，天然按米平铺。
+ */
+function beveledBoxGeometry(THREE, w, h, d, b, unit) {
+  const hw = w / 2, hh = h / 2, hd = d / 2;
+  const bb = Math.min(b, w / 2 - 1e-3, h / 2 - 1e-3, d / 2 - 1e-3);
+  const iw = hw - bb, ih = hh - bb, id = hd - bb;
+  const pos = [];
+  const nor = [];
+  const uvs = [];
+
+  const v = (x, y, z, nx, ny, nz, u, vv) => {
+    pos.push(x, y, z);
+    nor.push(nx, ny, nz);
+    uvs.push(u, vv);
+  };
+  const tri = (a, b2, c) => {
+    // 手写几何容易把绕向写反，这里按给定法线自动纠正，
+    // 避免整块面被背面剔除（表现为"缺面/透空"）
+    const ux = b2[0] - a[0], uy = b2[1] - a[1], uz = b2[2] - a[2];
+    const vx = c[0] - a[0], vy = c[1] - a[1], vz = c[2] - a[2];
+    const cx = uy * vz - uz * vy;
+    const cy = uz * vx - ux * vz;
+    const cz = ux * vy - uy * vx;
+    if (cx * a[3] + cy * a[4] + cz * a[5] < 0) {
+      const t = b2;
+      b2 = c;
+      c = t;
+    }
+    v(...a); v(...b2); v(...c);
+  };
+  const quad = (a, b2, c, d2) => {
+    tri(a, b2, c); tri(a, c, d2);
+  };
+
+  const s = (x) => x / unit; // 米 -> UV
+
+  // 6 个主面
+  // +X / -X：外法线 ±(1,0,0)，面内 u 沿 z、v 沿 y
+  for (const sx of [1, -1]) {
+    const x = sx * hw;
+    const n = [sx, 0, 0];
+    quad(
+      [x, -ih, id, ...n, s(-id), s(-ih)],
+      [x, -ih, -id, ...n, s(-id), s(-ih)],
+      [x, ih, -id, ...n, s(id), s(ih)],
+      [x, ih, id, ...n, s(id), s(ih)],
+    );
+  }
+  // +Y / -Y：u 沿 x、v 沿 z
+  for (const sy of [1, -1]) {
+    const y = sy * hh;
+    const n = [0, sy, 0];
+    quad(
+      [-iw, y, id, ...n, s(-iw), s(-id)],
+      [iw, y, id, ...n, s(iw), s(-id)],
+      [iw, y, -id, ...n, s(iw), s(id)],
+      [-iw, y, -id, ...n, s(-iw), s(id)],
+    );
+  }
+  // +Z / -Z：u 沿 x、v 沿 y
+  for (const sz of [1, -1]) {
+    const z = sz * hd;
+    const n = [0, 0, sz];
+    quad(
+      [-iw, -ih, z, ...n, s(-iw), s(-ih)],
+      [iw, -ih, z, ...n, s(iw), s(-ih)],
+      [iw, ih, z, ...n, s(iw), s(ih)],
+      [-iw, ih, z, ...n, s(-iw), s(ih)],
+    );
+  }
+
+  // 12 条边：两个轴向的 45° 斜面
+  const axes = [
+    [0, 1, 2], [1, 2, 0], [2, 0, 1],
+  ];
+  for (const [a1, a2, a3] of axes) {
+    for (const s1 of [1, -1]) {
+      for (const s2 of [1, -1]) {
+        const sign = [0, 0, 0];
+        sign[a1] = s1;
+        sign[a2] = s2;
+        const n = [0, 0, 0];
+        n[a1] = s1 * Math.SQRT1_2;
+        n[a2] = s2 * Math.SQRT1_2;
+        // 边面连接两个主面的边缘：一侧贴 a1 面（a1 轴在外、a2 轴内缩），
+        // 另一侧贴 a2 面（a2 轴在外、a1 轴内缩）。这样才是 45° 斜面。
+        const half = [iw, ih, id];
+        const outer = [hw, hh, hd];
+        const mk = (onA1Face, t) => {
+          const p = [0, 0, 0];
+          p[a1] = sign[a1] * (onA1Face ? outer[a1] : half[a1]);
+          p[a2] = sign[a2] * (onA1Face ? half[a2] : outer[a2]);
+          p[a3] = t * half[a3];
+          return [p[0], p[1], p[2], n[0], n[1], n[2], s(p[0]), s(p[1])];
+        };
+        quad(mk(true, -1), mk(true, 1), mk(false, 1), mk(false, -1));
+      }
+    }
+  }
+
+  // 8 个角
+  for (const sx of [1, -1]) {
+    for (const sy of [1, -1]) {
+      for (const sz of [1, -1]) {
+        const k = 1 / Math.sqrt(3);
+        const n = [sx * k, sy * k, sz * k];
+        tri(
+          [sx * hw, sy * ih, sz * id, ...n, s(sx * hw), s(sy * ih)],
+          [sx * iw, sy * hh, sz * id, ...n, s(sx * iw), s(sy * hh)],
+          [sx * iw, sy * ih, sz * hd, ...n, s(sx * iw), s(sz * hd)],
+        );
+      }
+    }
+  }
+
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+  return g;
+}
+
+/**
  * 细磨浅石材：低频云纹 + 细颗粒，无方向性，512 图同步生成。
  * 不复用 v5 的 stone-color.jpg —— 那张实际是 concrete_floor_02 强斑驳地坪，
  * 放到台面、台基、台阶上会显脏，也读不出"细石材"。
+ * withSeam：台基与台阶需要分格缝来读尺度；台面是整块石材，不做地砖式分缝。
  */
-function makeFineStoneTexture(THREE, owner) {
+function makeFineStoneTexture(THREE, owner, withSeam) {
   if (typeof document === 'undefined') return null;
   const size = 512;
   const canvas = document.createElement('canvas');
@@ -155,17 +281,20 @@ function makeFineStoneTexture(THREE, owner) {
 
   // 分格缝：三条叠加，模拟"缝芯 + 两侧倒角阴影"。
   // 单条细线缩到远景就消失了，这样即使整片台基也能读出石材块尺度。
-  for (const [lw, color] of [
-    [13, 'rgba(108,100,86,0.09)'],
-    [7, 'rgba(108,100,86,0.2)'],
-    [2.5, 'rgba(94,86,74,0.5)'],
-  ]) {
-    g.strokeStyle = color;
-    g.lineWidth = lw;
-    g.beginPath();
-    g.moveTo(size / 2, 0); g.lineTo(size / 2, size);
-    g.moveTo(0, size / 2); g.lineTo(size, size / 2);
-    g.stroke();
+  // 台面（stone_light_in）不走这里：台面是整块石材，出现地砖缝反而不对。
+  if (withSeam) {
+    for (const [lw, color] of [
+      [13, 'rgba(108,100,86,0.09)'],
+      [7, 'rgba(108,100,86,0.2)'],
+      [2.5, 'rgba(94,86,74,0.5)'],
+    ]) {
+      g.strokeStyle = color;
+      g.lineWidth = lw;
+      g.beginPath();
+      g.moveTo(size / 2, 0); g.lineTo(size / 2, size);
+      g.moveTo(0, size / 2); g.lineTo(size, size / 2);
+      g.stroke();
+    }
   }
 
   const tex = new THREE.CanvasTexture(canvas);
@@ -194,21 +323,21 @@ function makeLightOakTexture(THREE, owner) {
   g.fillStyle = '#d9bd93';
   g.fillRect(0, 0, w, h);
 
-  // 年轮带：沿 U 方向的宽色带。间距按 512 图/1.8m 换算约 7-20cm，
-  // 太密（1cm 一条）在远景会糊成纯色，反而看不出木纹。
-  let y = -20;
-  while (y < h + 20) {
-    const band = 3 + Math.random() * 9;
-    const alpha = 0.035 + Math.random() * 0.065;
+  // 年轮带沿 V 方向（画布上是竖条）：柜门主面是 ±X 面，U 沿深度、V 沿高度，
+  // 只有让纹理走 V 才是竖纹。间距按 512 图 / 1.8m 换算约 9-16cm。
+  let x = -20;
+  while (x < w + 20) {
+    const band = 4 + Math.random() * 11;
+    const alpha = 0.035 + Math.random() * 0.06;
     g.fillStyle = 'rgba(138,102,62,' + alpha.toFixed(3) + ')';
-    g.fillRect(0, y, w, band);
-    // 局部加深，打断整齐的横带
+    g.fillRect(x, 0, band, h);
+    // 局部加深，打断整齐的直纹
     if (Math.random() > 0.45) {
-      const x0 = Math.random() * w * 0.7;
+      const y0 = Math.random() * h * 0.7;
       g.fillStyle = 'rgba(120,86,50,' + (alpha * 1.25).toFixed(3) + ')';
-      g.fillRect(x0, y, w * (0.2 + Math.random() * 0.5), band * (0.5 + Math.random() * 0.7));
+      g.fillRect(x, y0, band * (0.5 + Math.random() * 0.7), h * (0.2 + Math.random() * 0.5));
     }
-    y += band + 8 + Math.random() * 22;
+    x += band + 9 + Math.random() * 26;
   }
 
   // 细颗粒
@@ -263,7 +392,7 @@ function resolveMaterials(THREE, shared, owner) {
     if (spec.depthWrite === false) params.depthWrite = false;
     // 程序化 albedo：石材与木色同步生成，直接带进构造函数
     if (id === 'stone_light' || id === 'stone_light_in') {
-      const fine = makeFineStoneTexture(THREE, owner);
+      const fine = makeFineStoneTexture(THREE, owner, id === 'stone_light');
       if (fine) params.map = fine;
     }
     if (id === 'oak_light') {
@@ -535,6 +664,9 @@ export function createDistrict(ctx = {}) {
     tex.repeat.set(repX, repY);
     tex.colorSpace = THREE.SRGBColorSpace;
     tex.anisotropy = 8;
+    // 贴图必须单独登记：材质 dispose 不会释放它自己的 map，
+    // 只登记材质会每轮漏一张
+    if (!owner.ownTexture(tex)) return null;
     const mat = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.8, metalness: 0.0, color: baseColor });
     mat.name = 'paving:' + baseColor;
     owner.ownMaterial(mat);
@@ -542,7 +674,7 @@ export function createDistrict(ctx = {}) {
     return mat;
   }
 
-  /* 运行时绘制的文字标识牌，不是生成图；C 需要统一贴图时整块替换即可 */
+  /* 运行时绘制的文字标识牌，不是生成图；面板本身是独立可替换件 */
   function makeSignMaterial(text) {
     if (typeof document === 'undefined') return null;
     const canvas = document.createElement('canvas');
@@ -563,6 +695,7 @@ export function createDistrict(ctx = {}) {
     const tex = new THREE.CanvasTexture(canvas);
     tex.colorSpace = THREE.SRGBColorSpace;
     tex.anisotropy = 4;
+    if (!owner.ownTexture(tex)) return null;
     const mat = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.6, metalness: 0.0 });
     mat.name = 'sign:desk';
     owner.ownMaterial(mat);
@@ -596,6 +729,7 @@ export function createDistrict(ctx = {}) {
     tex.repeat.set(35, 35);
     tex.colorSpace = THREE.SRGBColorSpace;
     tex.anisotropy = 8;
+    if (!owner.ownTexture(tex)) return null;
     const mat = new THREE.MeshStandardMaterial({
       map: tex, color: 0x5e6b49, roughness: 0.97, metalness: 0.0,
     });
@@ -667,7 +801,9 @@ export function createDistrict(ctx = {}) {
     const zs = [P.cz - halfL + 0.75, P.cz, P.cz + halfL - 0.75];
     for (const x of xs) {
       for (const z of zs) {
-        add(boxGeo(P.column, colH, P.column), M.metal_dark, x, plinth + colH / 2, z, { name: 'pavilion:column' });
+        add(beveledBoxGeometry(THREE, P.column, colH, P.column, 0.002, 1), M.metal_dark, x, plinth + colH / 2, z, { name: 'pavilion:column' });
+        // 柱脚底板：给柱子一个落地关系，不再直接插进台基
+        add(boxGeo(P.column + 0.14, 0.018, P.column + 0.14), M.metal_dark, x, plinth + 0.009, z, { name: 'pavilion:column-base' });
         blockBox(P.column, colH, P.column, x, z, 'pavilion:column');
       }
     }
@@ -711,9 +847,9 @@ export function createDistrict(ctx = {}) {
   function buildDesk() {
     const D = L.desk;
     const y0 = 0.12; // 台基面
-    const body = add(boxGeo(D.w, D.h, D.d), M.oak_light, D.x, y0 + D.h / 2, D.z, { name: 'social:desk-body' });
+    const body = add(beveledBoxGeometry(THREE, D.w, D.h, D.d, 0.004, 1.8), M.oak_light, D.x, y0 + D.h / 2, D.z, { name: 'social:desk-body' });
     // 石质台面，比柜体大一圈
-    add(boxGeo(D.w + 0.06, 0.06, D.d + 0.06), M.stone_light_in, D.x, y0 + D.h + 0.03, D.z, { name: 'social:desk-top' });
+    add(beveledBoxGeometry(THREE, D.w + 0.06, 0.06, D.d + 0.06, 0.003, 1.2), M.stone_light_in, D.x, y0 + D.h + 0.03, D.z, { name: 'social:desk-top' });
     // 台面后方只做矮挡边：整块高背板会挡住从主路看过来的视线
     add(boxGeo(0.06, 0.16, D.d + 0.06), M.oak_light, D.x - D.w / 2 - 0.04, y0 + D.h + 0.14, D.z, {
       name: 'social:desk-back',

@@ -76,6 +76,37 @@ WG_Community.open('posts');
 
 `createDistrict` 的 `openFeature` 若被注入就用注入的；没有则回退到上面这条现成路径，并在返回值里带 `via: 'WG_Community.open'`。
 
+## 第三轮：纹理泄漏修复与近景倒角（2026-10-20）
+
+### 阻塞项：canvas 贴图未登记
+
+`makePavingMaterial` / `makeSignMaterial` / `makeLawnMaterial` 创建 `CanvasTexture` 后只登记了材质，没登记贴图。
+three 的 `material.dispose()` 不会释放它自己的 map，所以每轮漏 5 张（草地、广场铺装、主路、支路、服务台牌）。
+
+修法：三处在 `new CanvasTexture()` 之后立即 `owner.ownTexture(tex)`，登记失败就返回 null 不建材质。
+没有采用"遍历所有材质 map 去释放"的写法——那会误杀宿主共享材质上的纹理。
+
+### 五轮加载 / 渲染 / 卸载（同一 renderer）
+
+`.tmp/cycle.html`：每轮 create → 渲染 3 帧 → dispose → 再渲染一帧，读 `renderer.info.memory`。
+
+| 轮次 | 加载后 textures / geometries | 卸载后 |
+| --- | --- | --- |
+| 1 | 14 / 24 | 0 / 0 |
+| 2 | 14 / 24 | 0 / 0 |
+| 3 | 14 / 24 | 0 / 0 |
+| 4 | 14 / 24 | 0 / 0 |
+| 5 | 14 / 24 | 0 / 0 |
+
+增量 0；修复前同一测试每轮 +5。
+
+### 近景补充
+
+- 台面不再画分格缝：`makeFineStoneTexture(..., withSeam)` 只在台基/台阶/池体上分缝，台面是整块石材
+- 木纹改走 V 方向（柜门主面是 ±X 面，U 沿深度、V 沿高度），柜门变竖纹，间距放宽到 9–16cm
+- 新增 `beveledBoxGeometry`：12 条边 45° 切角 + 8 个角三角面，按法线自动纠正绕向；
+  台面 3mm、柜体 4mm、柱 2mm，柱子另加 18mm 柱脚底板给落地关系
+
 ## 照片级样板精修（2026-10-20 第二轮）
 
 依据《给A_照片级观感优化执行单》，本轮只精修「亭廊 + 服务台 + 一段铺装」近景样板，保留入口、功能与主要尺寸。
@@ -171,7 +202,7 @@ WG_Community.open('posts');
 | 缺陷 | 修法 | 复验 |
 | --- | --- | --- |
 | 异步贴图覆盖宿主共享材质 | 共享材质一律 `clone()` 出本模块副本，原件只读；`userData.borrowedFrom` 留溯源 | 宿主 map 名称、color、dispose 次数均不变 |
-| 卸载后晚到纹理回写且未释放 | `createResourceOwner()` 统一登记自有纹理/材质；`owner.disposed` 后到达的纹理立即释放且不回写；`dispose()` 幂等 | 未就绪即卸载：7/7 晚到纹理被丢弃，材质槽保持空，`disposed: true` |
+| 卸载后晚到纹理回写且未释放 | `createResourceOwner()` 统一登记自有纹理/材质；`owner.disposed` 后到达的纹理立即释放且不回写；`dispose()` 幂等 | 未就绪即卸载：6 张晚到纹理被丢弃，材质槽保持空，`disposed: true` |
 | 关闭面板后原地提示不恢复 | `closePanel()` 清空 `hintShown` 缓存 | E → Esc 原地不动，提示重新出现；关闭按钮路径同样成立 |
 
 复验数据在 `.tmp/shots/fix-report.json`（本地，不入库）。
@@ -180,8 +211,8 @@ WG_Community.open('posts');
 
 | 项 | 结果 |
 | --- | --- |
-| PBR 贴图 | 7/7 加载成功（3 组构件 + 铺装法线） |
-| 场景规模 | 211 mesh（原 133），17 碰撞体，3 交互点 |
+| 贴图任务 | 5 个加载任务 / 6 个外部 JPG（砖 3 + 木 2 + 石材法线 1），全部成功 |
+| 场景规模 | 217 mesh（原 133），17 碰撞体，3 交互点 |
 | 交互回归 | 7 项全过：靠近提示 / E 触发 / 锁移动 / Esc 恢复 / 公告栏 / 喷泉碰撞 |
 | 观感 | `previews/01-overview.png`、`02-desk-hint.png`、`04-south-view.png` |
 
