@@ -185,35 +185,64 @@
   }
 
   var SEAT = {
-    // 半径要大于椅面半宽（0.225），否则从正上方看这个圈被椅面完全挡住，
-    // 等于没做。0.32 让圈在椅子外围露出来，俯视也能看见。
-    ringRadius: 0.32,
-    ringTube: 0.014,
+    /* 座位在地面上不再画标记圈。
+       原来是一个 r=0.32 的 torus 贴在 y=0.015 上，视觉上不像"座位在这里"，
+       更像椅子脚下焊了一圈铁箍——负责人 2026-10-20 直接要求去掉。
+       现在座位只剩交互点（Group），"已坐下"的反馈改由座垫变色承担，
+       见 bindSeatPads 与 district.js 的 paintSeat。 */
     y: 0.015,
     radius: 1.6          // 交互判定半径，交给 district 用
   };
 
   /**
-   * 座位的本地标记圈。16 个位置从家具 SPEC 算出来，不手抄坐标——
-   * 桌岛一挪，座位圈跟着走。
+   * 座位的交互锚点。**只有 Group，没有可视 mesh。**
    *
    * 座位坐标必须落在 Group 上，不能只落在子 mesh 上：district 把这个 Group
    * 本身登记成交互点，宿主按 object.getWorldPosition() 的 XZ 距离找最近的一个。
    * 如果 Group 零变换，16 个交互点会全部挤在原点，站到哪个座位都选中第一个。
+   *
+   * 座垫引用由 bindSeatPads 在建完家具之后补上。
    */
-  function createSeatRing(THREE, parent, seat) {
+  function createSeatAnchor(THREE, parent, seat) {
     var g = global.StudyDistrict.core.group(THREE, parent, 'Seat.' + seat.id);
-    var geo = new THREE.TorusGeometry(SEAT.ringRadius, SEAT.ringTube, 6, 24);
-    var mesh = new THREE.Mesh(geo, parent.userData.seatMaterial);
-    mesh.name = 'SeatRing.' + seat.id;
-    mesh.rotation.x = -Math.PI / 2;
-    mesh.position.set(0, SEAT.y, 0);          // 子 mesh 只留相对高度
-    mesh.castShadow = false;
-    mesh.receiveShadow = false;
-    g.add(mesh);
     g.position.set(seat.x, 0, seat.z);        // 绝对坐标放这里，锚点才对得上
     g.userData.seat = seat;
     return g;
+  }
+
+  /**
+   * 把每个座位锚点绑到它正上方的那块座垫上（椅子的 ChairSeat / 凳子的 StoolSeat）。
+   *
+   * 为什么不用遍历父子关系：座位锚点和家具是两棵独立的子树，谁都不引用谁。
+   * 按 XZ 距离匹配最省事——家具本身就是按这些坐标摆的，误差在毫米级。
+   * 容差 0.3 m 是刻意放宽的：座垫是圆柱/方块，圆心与锚点未必严丝合缝，
+   * 但最近的那个一定是自己那把椅子。
+   */
+  function bindSeatPads(THREE, seatsGroup, scene) {
+    var pads = [];
+    scene.traverse(function (n) {
+      if (n.isMesh && (n.name === 'ChairSeat' || n.name === 'StoolSeat')) pads.push(n);
+    });
+    // 刚 add 进来的子树矩阵还没算，不先更新一次 getWorldPosition 会拿到旧值
+    scene.updateMatrixWorld(true);
+
+    var v = new THREE.Vector3();
+    var bound = 0;
+    seatsGroup.userData.seats.forEach(function (s) {
+      var node = seatsGroup.getObjectByName('Seat.' + s.id);
+      if (!node) return;
+      var best = null, bestD = 0.3;
+      pads.forEach(function (p) {
+        p.getWorldPosition(v);
+        var d = Math.sqrt((v.x - s.x) * (v.x - s.x) + (v.z - s.z) * (v.z - s.z));
+        if (d < bestD) { bestD = d; best = p; }
+      });
+      node.userData.pad = best;
+      node.userData.padBaseMaterial = best ? best.material : null;
+      if (best) bound++;
+    });
+    seatsGroup.userData.boundPads = bound;
+    return bound;
   }
 
   /** 16 个座位的坐标：桌岛按家具 SPEC 的椅子位置算，窗边席按凳子等分算 */
@@ -246,16 +275,16 @@
   function createSeatMarkers(THREE, parent) {
     var core = global.StudyDistrict.core;
     var g = core.group(THREE, parent, 'SeatMarkers');
-    g.userData.seatMaterial = new THREE.MeshStandardMaterial({
-      // 比地面深一档，否则水磨石上根本看不出有这个圈
-      color: 0x6f7a72, roughness: 0.6, metalness: 0.1, emissive: 0x000000
-    });
+    // 只剩"已坐下"这一套高亮材质，作用在座垫上；原来那套深绿地圈材质已随圈一起删掉。
+    // 色值是为**座垫**挑的，不是为地圈挑的：原来那个 0xc9ad82 浅米金涂在整块坐垫上
+    // 和灰绿布料几乎分不出（实测截图看不见），换成琥珀棕才有足够辨识度，
+    // 又不会红成霓虹灯。
     g.userData.seatMaterialActive = new THREE.MeshStandardMaterial({
-      color: 0xc9ad82, roughness: 0.45, metalness: 0.1, emissive: 0x6b4a1e, emissiveIntensity: 0.45
+      color: 0xd08a3c, roughness: 0.5, metalness: 0.08, emissive: 0x7a3f10, emissiveIntensity: 0.5
     });
     var seats = buildSeats();
     seats.forEach(function (s) {
-      g.add(createSeatRing(THREE, g, s));
+      g.add(createSeatAnchor(THREE, g, s));
     });
     g.userData.seats = seats;
     g.userData.radius = SEAT.radius;
@@ -407,6 +436,9 @@
       g.add(s);
       return s;
     });
+
+    /* 座位锚点 → 座垫，必须等家具都挂进场景之后再绑 */
+    bindSeatPads(THREE, seats, g);
 
     /* —— 软装：桌上的书与文具、书架排书、窗台绿植 ——
        放在独立的 Decor 组里，**不进 district 的碰撞体清单**：
