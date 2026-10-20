@@ -421,6 +421,63 @@ try {
   let twiceOk = true;
   try { district2.dispose(); } catch (e) { twiceOk = false; }
   check('重复 dispose 不抛异常', twiceOk);
+
+  /* —— 板件 UV：侧面不能退化 ——
+     第三批审查的 P2：bevelSlab 曾经把所有顶点按 XZ 投影，竖直侧面上下两点的 XZ 相同，
+     UV 面积直接为 0（桌面与坐垫各有 156 片非退化三角形、其中 40 片面积为 0），
+     薄边纹理被压成一条线。现在顶/底面走 XZ 投影、侧面走「轮廓弧长 × 厚度」。
+     这里按审查的验收方式量：只统计几何面积非零的三角形，看 UV 面积是不是 0，
+     以及同一面内 UV 密度是否恒定（平面映射是线性的，不恒定就说明算错了）。 */
+  function slabUV(w, d, t, b, r) {
+    const geo = window.StudyDistrict.core.bevelSlab(THREE, w, d, t, b, r);
+    const pos = geo.attributes.position;
+    const uv = geo.attributes.uv;
+    const tri = pos.count / 3;
+    const A = new THREE.Vector3(), B = new THREE.Vector3(), C = new THREE.Vector3();
+    const ta = new THREE.Vector2(), tb = new THREE.Vector2(), tc = new THREE.Vector2();
+    const capR = [];
+    const sideR = [];
+    let zero = 0, nonDeg = 0;
+    for (let i = 0; i < tri; i++) {
+      const i0 = i * 3;
+      A.fromBufferAttribute(pos, i0); B.fromBufferAttribute(pos, i0 + 1); C.fromBufferAttribute(pos, i0 + 2);
+      const e1 = B.clone().sub(A), e2 = C.clone().sub(A);
+      const gA = e1.clone().cross(e2).length() / 2;
+      if (gA < 1e-10) continue;
+      nonDeg++;
+      ta.fromBufferAttribute(uv, i0); tb.fromBufferAttribute(uv, i0 + 1); tc.fromBufferAttribute(uv, i0 + 2);
+      const uA = Math.abs((tb.x - ta.x) * (tc.y - ta.y) - (tc.x - ta.x) * (tb.y - ta.y)) / 2;
+      if (uA < 1e-12) { zero++; continue; }
+      if (gA < 1e-7) continue;                    // 碎三角除出来是浮点噪声
+      const n = e1.clone().cross(e2).normalize();
+      if (Math.abs(n.y) > 0.9) capR.push(uA / gA);      // 板已躺平，顶/底面法线沿 ±Y
+      else if (Math.abs(n.y) < 0.3) sideR.push(uA / gA); // 竖直侧面
+    }
+    geo.dispose();
+    const mn = capR.length ? Math.min.apply(null, capR) : 0;
+    const mx = capR.length ? Math.max.apply(null, capR) : 0;
+    const sideMx = sideR.length ? Math.max.apply(null, sideR) : 0;
+    /* 侧面上限 = 四块主面（两长两短）。它必须与顶面密度一致，
+       否则就是纵向被拉伸——第三批审查 P2 的实质问题（V 除以 width 而不是 depth）就是这个。 */
+    return { nonDeg, zero, capSpread: mn > 0 ? mx / mn : Infinity, capRatio: mx, sideVsCap: mx > 0 ? sideMx / mx : 0 };
+  }
+  const uvDesk = slabUV(2.4, 1.16, 0.04, 0.004, 0.012);
+  const uvPad = slabUV(0.45, 0.44, 0.045, 0.004, 0.012);
+  check('桌板 UV 没有退化三角形', uvDesk.zero === 0,
+    '非退化 ' + uvDesk.nonDeg + ' 片，UV 面积为 0 的 ' + uvDesk.zero + ' 片');
+  check('坐垫 UV 没有退化三角形', uvPad.zero === 0,
+    '非退化 ' + uvPad.nonDeg + ' 片，UV 面积为 0 的 ' + uvPad.zero + ' 片');
+  check('桌板顶面 UV 密度恒定', uvDesk.capSpread < 1.02, 'max/min ' + uvDesk.capSpread.toFixed(3));
+  check('坐垫顶面 UV 密度恒定', uvPad.capSpread < 1.02, 'max/min ' + uvPad.capSpread.toFixed(3));
+  check('桌板侧面与顶面同密度', Math.abs(uvDesk.sideVsCap - 1) < 0.02, '侧面/顶面 ' + uvDesk.sideVsCap.toFixed(3));
+  check('坐垫侧面与顶面同密度', Math.abs(uvPad.sideVsCap - 1) < 0.02, '侧面/顶面 ' + uvPad.sideVsCap.toFixed(3));
+  /* 跨板件：UV 按世界米数展开，所以 UV面积/几何面积 恒等于 1/1.8²，与板件尺寸无关。
+     2.4 m 的桌板和 0.45 m 的坐垫尺寸差 5 倍，这个比值必须一样——
+     不一样就说明分母还在用"这块板自己的尺寸"，木纹密度会随家具尺寸变。 */
+  const crossRatio = uvDesk.capRatio > 0 ? uvPad.capRatio / uvDesk.capRatio : 0;
+  check('桌板与坐垫 UV 尺度一致', Math.abs(crossRatio - 1) < 0.02,
+    '桌板 ' + uvDesk.capRatio.toFixed(4) + ' / 坐垫 ' + uvPad.capRatio.toFixed(4) +
+    '（1/1.8² = ' + (1 / 3.24).toFixed(4) + '）');
 } catch (e) {
   fails++;
   log('FAIL 抛异常 → ' + (e && e.stack ? e.stack.split('\n').slice(0, 3).join(' | ') : e));
