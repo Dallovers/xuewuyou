@@ -34,7 +34,7 @@ preview.html?x=-4.4&z=0.65&yaw=90&pitch=-4
 
 `yaw`/`pitch` 为角度制。`yaw=0` 朝北（-Z），`yaw=90` 朝西，`yaw=-90` 朝东。
 
-## 挂到主站（给 C 的接入片段）
+## 挂到主站（给 D 的接入片段）
 
 ```js
 import { createDistrict } from './js/features/social/social-district.js';
@@ -76,6 +76,57 @@ WG_Community.open('posts');
 
 `createDistrict` 的 `openFeature` 若被注入就用注入的；没有则回退到上面这条现成路径，并在返回值里带 `via: 'WG_Community.open'`。
 
+## 照片级样板精修（2026-10-20 第二轮）
+
+依据《给A_照片级观感优化执行单》，本轮只精修「亭廊 + 服务台 + 一段铺装」近景样板，保留入口、功能与主要尺寸。
+
+### 固定相机
+
+等效焦距按 `FOV = 2·atan(12/mm)` 换算，不把毫米数直接当 fov 填。预览页支持 `?mm=35`、`?hud=0`，视高默认 1.6m。
+
+| 机位 | 参数 | 用途 |
+| --- | --- | --- |
+| A1 | `x=-3.8 z=-1.2 yaw=118.6 pitch=-11 mm=35` | 服务台三分之四视角：台面、柜体主面、侧面、两根柱脚、一段地面 |
+| A2 | `x=0.5 z=6 yaw=47.7 pitch=0 mm=35` | 主路看向亭廊中景：轮廓、服务台可见性、台阶与铺装连接 |
+| A3 | `x=-7.2 z=6.2 yaw=0 pitch=0 mm=35` | 侧向检查，防止只在一个角度成立 |
+
+渲染参数：ACES Filmic、曝光 0.86、PCFSoft 2048、主光 2.2、半球光 0.42、`sky.hdr` 作环境。
+阴影相机从 ±26m 收到 ±10m 并跟随亭廊中心，2048 下每像素由 2.5cm 变为 1cm。
+
+### 改了什么
+
+| 项 | 改动 |
+| --- | --- |
+| 浅石材 | 台面/台基/台阶改用程序化细磨石灰岩（低频云纹 + 细颗粒 + 分格缝），不再复用 `concrete_floor_02` 那张强斑驳地坪 |
+| 暖木 | 木色改由程序化浅橡木 albedo 决定，`wood` 贴图只留法线与粗糙度；材质 color 归白 |
+| 深色构件 | 拆成涂装面（柱/梁/栏杆/框，metalness 0.12）与裸金属（窗框，0.55），不再统一 0.45 |
+| UV | 修 `add()` 里 `isBoxGeometry` 判断失效——`BoxGeometry` 没有该标志，按尺寸重算 UV 的分支此前从未执行 |
+| 台面 | 悬挑由 6cm 收到 3cm；柜门缝 12mm → 5mm |
+| 屋顶 | 厚度 0.12 → 0.18m |
+| 灯带 | emissive 0.7 → 0.32，动画幅度减半 |
+
+### 三项接入缺陷复验
+
+| 缺陷 | 复验结果 |
+| --- | --- |
+| 异步贴图覆盖宿主共享材质 | 宿主 map 名仍是 `host-original-map`、color 不变、material/texture 的 dispose 次数均为 0；模块用的是 `clone()` 副本（`borrowedFrom: shared-stone_light`） |
+| 卸载后晚到纹理回写 | 未就绪即 dispose：`normalBeforeDispose=false`、`normalAfterLateArrival=false`、`roughnessAfterLateArrival=false`、`skipped=6`；`dispose()` 重复调用无异常 |
+| 关闭面板后原地提示不恢复 | E → Esc 原地不动，`hintOnAfterClose=true` 且文案正确；关闭按钮路径同样成立 |
+
+### 性能（headless Chrome 155 / 1536×1024 / DPR 1）
+
+真实按键驱动 6 秒，共 1444 帧：P50 4.2ms、P95 4.4ms、最长 4.9ms、超过 50ms 0 次；
+当前视角 20 draw calls / 210 三角形；纹理 18、几何 53。
+**这是无头环境，不作为显示 FPS 或其它设备的结论。**
+
+### 本轮未完成
+
+- 真实倒角几何（台面 2–4mm、金属 1–2mm、石材 3–6mm）未做：该尺度在 1536px 画面里不足 1px，本轮优先做了材质与接触阴影；下一批连同窗洞进深一起做
+- 背景楼仍是占位盒、窗为贴片，D 接入时替换
+- 水面仍是 `opacity` 透明近似，没有 transmission，也没有水流
+- 树冠仍为低模，只保留现有两处树池
+- 样板内的 AO 与檐下漫反射需离线烘焙，按要求另行提交同版模型给总策划
+
 ## 材质与观感（2026-10-20）
 
 第一交付交付的是纯色灰模，本轮用仓库里已有的素材补上贴图和 IBL，**业务逻辑一行未改**。
@@ -108,13 +159,22 @@ WG_Community.open('posts');
 | 背景楼窗 | 深色洞 → 深色底 + 反光玻璃 + 竖挺，26 个洞口 |
 | `preview.html` | `sky.hdr` → PMREM → `scene.environment`；压半球光、调曝光与阴影 bias |
 
-### 关键结论
+### 关键结论（已按执行单修正先前口径）
 
-- **金属发黑的根因不是材质参数，是缺 `scene.environment`。** 预览页现在用 `sky.hdr` 做 IBL；
-  主站这一条必须由 C 在公共场景里设置，否则挂载后亭廊柱子会退回死黑。
-- 贴图不阻塞建场：先按纯色建好，到位后改材质槽并置 `needsUpdate`。返回值多了 `ready`（Promise），
-  宿主可以 `await district.ready` 之后再截图或验收。
+- **缺环境贴图会让部分金属看起来不自然**：没有环境反射时暗部发闷、边缘发死。但**不存在**「metalness 超过某个数值就必然变黑」的统一阈值——明暗取决于入射光、环境、底色、粗糙度和表面类型。本轮把 `metal_dark` 从 0.6 降到 0.45 是配合当前反射环境做的标定，不是通用规则。
+- **玻璃与水目前是 `MeshPhysicalMaterial` + `opacity` 的透明近似，没有设置 `transmission`，不能称为已实现物理透射。** 近景若要真实折射，需要另做小范围透射并处理透明排序。
+- 贴图不阻塞建场：先按纯色建好，到位后改材质槽并置 `needsUpdate`。返回值多了 `ready`（Promise），宿主可以 `await district.ready` 之后再截图或验收。
 - 铺装没有直接用天然石纹贴图：单张石纹平铺后重复感重、也看不出板缝，所以自己画错缝石板，只借法线做凹凸。
+
+### 资源所有权与卸载（2026-10-20 修复）
+
+| 缺陷 | 修法 | 复验 |
+| --- | --- | --- |
+| 异步贴图覆盖宿主共享材质 | 共享材质一律 `clone()` 出本模块副本，原件只读；`userData.borrowedFrom` 留溯源 | 宿主 map 名称、color、dispose 次数均不变 |
+| 卸载后晚到纹理回写且未释放 | `createResourceOwner()` 统一登记自有纹理/材质；`owner.disposed` 后到达的纹理立即释放且不回写；`dispose()` 幂等 | 未就绪即卸载：7/7 晚到纹理被丢弃，材质槽保持空，`disposed: true` |
+| 关闭面板后原地提示不恢复 | `closePanel()` 清空 `hintShown` 缓存 | E → Esc 原地不动，提示重新出现；关闭按钮路径同样成立 |
+
+复验数据在 `.tmp/shots/fix-report.json`（本地，不入库）。
 
 ### 本轮自测（headless Chrome 155 / 1600×900）
 
@@ -145,7 +205,7 @@ fps 在 headless 下 150–197，仍不作为性能结论。
 截图（本地 `previews/`，按仓库约定不入库）：`01-overview.png`（南入口全景）、`02-desk-hint.png`（服务台提示）、
 `03-desk-panel.png`（按 E 后）、`04-south-view.png`（从北侧回看入口与树池）、`05-board-front.png`（公告栏正面）。
 
-帧率在 headless 下 29–229 波动，**不作为性能结论**；性能以 C 的统一环境为准。
+帧率在 headless 下 29–229 波动，**不作为性能结论**；性能以宿主（D）的统一环境为准。
 
 ## 后端现状（不需要重写）
 
@@ -178,7 +238,7 @@ fps 在 headless 下 150–197，仍不作为性能结论。
 
 ## 未完成 / 明确不做
 
-- 喷泉水流：只提交 `on/off` 状态，水面是 `fountain:water-placeholder` 静态片，效果归统一渲染。
+- 喷泉水流：只提交 `on/off` 状态，水面是 `fountain:water-placeholder` 静态片，水面与水流效果均未实现。
 - 坐凳未做"坐下/退出"交互，首批只保证通行与碰撞（按 04 文档允许的第一批范围）。
 - 好友挑战（`arena`）未改动，独立竞技场美术放第二批。
 - 未接入真实业务数据到 3D 内：面板仍是主站原有 DOM，3D 只负责触发。

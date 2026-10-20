@@ -111,7 +111,15 @@ try {
   console.warn('[preview] 天空 HDR 未加载，回退纯色背景与环境', err);
 }
 
-const camera = new THREE.PerspectiveCamera(58, 1, 0.1, 240);
+/* 相机按等效全画幅焦距换算，不把"35mm"直接当 FOV 填进去。
+   36×24 画幅：垂直 FOV = 2·atan(12/mm)。35mm → 37.8°，40mm → 33.4°，50mm → 27.0°。
+   ?mm=40 覆盖焦距，?fov=xx 直接指定垂直 FOV（调试用）。 */
+const qs = new URLSearchParams(location.search);
+function fovFromMm(mm) { return 2 * Math.atan(12 / mm) * 180 / Math.PI; }
+const EQUIV_MM = qs.has('mm') ? parseFloat(qs.get('mm')) : 35;
+const CAMERA_FOV = qs.has('fov') ? parseFloat(qs.get('fov')) : fovFromMm(EQUIV_MM);
+
+const camera = new THREE.PerspectiveCamera(CAMERA_FOV, 1, 0.1, 240);
 camera.rotation.order = 'YXZ';
 
 // 有 IBL 之后半球光要压下来，否则整体过曝、阴影细节被冲掉
@@ -119,19 +127,23 @@ const hemi = new THREE.HemisphereLight(0xdfeaf2, 0x6f7564, envState.ok ? 0.42 : 
 scene.add(hemi);
 
 const sun = new THREE.DirectionalLight(0xfff3de, envState.ok ? 2.2 : 2.1);
-sun.position.set(16, 24, 13);
+sun.position.set(-7.2 + 16, 24, -1.0 + 13);
+// 主光指向亭廊样板中心，阴影相机只覆盖样板范围：
+// 跨度从 52m 收到 20m，2048 贴图下每像素从 2.5cm 变成 1cm，近景接触阴影才有细节
+sun.target.position.set(-7.2, 1.6, -1.0);
 sun.castShadow = true;
 sun.shadow.mapSize.set(2048, 2048);
 sun.shadow.camera.near = 1;
-sun.shadow.camera.far = 80;
-sun.shadow.camera.left = -26;
-sun.shadow.camera.right = 26;
-sun.shadow.camera.top = 26;
-sun.shadow.camera.bottom = -26;
+sun.shadow.camera.far = 60;
+sun.shadow.camera.left = -10;
+sun.shadow.camera.right = 10;
+sun.shadow.camera.top = 10;
+sun.shadow.camera.bottom = -10;
 // 贴近 v5 的取值：bias 过大会让阴影脱离物体（浮空），过小会出现条纹
-sun.shadow.bias = -0.000025;
-sun.shadow.normalBias = 0.014;
-sun.shadow.radius = 3;
+sun.shadow.bias = -0.00004;
+sun.shadow.normalBias = 0.012;
+sun.shadow.radius = 2;
+scene.add(sun.target);
 scene.add(sun);
 
 const fill = new THREE.DirectionalLight(0xdce8ef, envState.ok ? 0.16 : 0.6);
@@ -146,14 +158,14 @@ district.ready.then((r) => console.log('[preview] PBR 贴图', r, '环境', envS
 
 /* ---------- 第一人称行走（预览自用） ---------- */
 
-const PLAYER = { x: 0, z: 7.6, y: 1.65, speed: 4.2, run: 6.6, radius: 0.35 };
+const PLAYER = { x: 0, z: 7.6, y: 1.6, speed: 4.2, run: 6.6, radius: 0.35 };
 let yaw = 0; // 朝北（-Z），从南入口看向广场
 let pitch = -0.10;
 
-/* 调试定位：?x=-5&z=2&yaw=-90&pitch=-6（角度制），方便直接站到某个构件前检查 */
-const qs = new URLSearchParams(location.search);
+/* 调试定位：?x=-5&z=2&yaw=-90&pitch=-6&mm=35（角度制），方便直接站到某个构件前检查 */
 if (qs.has('x')) PLAYER.x = parseFloat(qs.get('x')) || 0;
 if (qs.has('z')) PLAYER.z = parseFloat(qs.get('z')) || 0;
+if (qs.has('h')) PLAYER.y = parseFloat(qs.get('h')) || PLAYER.y;
 if (qs.has('yaw')) yaw = (parseFloat(qs.get('yaw')) || 0) * Math.PI / 180;
 if (qs.has('pitch')) pitch = (parseFloat(qs.get('pitch')) || 0) * Math.PI / 180;
 
@@ -306,7 +318,7 @@ const PANEL_COPY = {
     body: () => `
       <p>池体几何是独立模块：外壁 / 内壁 / 顶环 / 池底 / 喷嘴，水面目前是静态占位片
       （<b>fountain:water-placeholder</b>）。</p>
-      <p>按统一风格约定，<b>水流效果由 C 的统一渲染实现</b>，本板块只提交开关状态，不写水面 shader 或粒子。</p>
+      <p>按统一风格约定，<b>水面与水流效果尚未实现</b>，本板块只提交开关状态，不写水面 shader 或粒子。</p>
       <p id="fountainState"><span class="social-ui__tag">当前状态</span> 水流：关闭</p>
       <div class="social-ui__note">喷泉状态与好友业务完成度无关，不复用同一套状态字段。</div>`,
   },
@@ -321,7 +333,7 @@ function openPanel(it, result) {
     const el = document.getElementById('fountainState');
     if (el) {
       el.innerHTML = '<span class="social-ui__tag' + (result.on ? '' : ' is-warn') + '">当前状态</span> 水流：' +
-        (result.on ? '开启（等待统一渲染接管）' : '关闭');
+        (result.on ? '开启（水面效果未实现）' : '关闭');
     }
   }
   panelEl.hidden = false;
@@ -333,6 +345,9 @@ function closePanel() {
   panelEl.hidden = true;
   panelOpen = false;
   current = null;
+  // 必须清掉提示缓存：否则下一帧算出的 key 与缓存相同，提示不会重新出现
+  // （E → Esc → 原地不动时会停在"面板关了但提示也没了"的状态）
+  hintShown = undefined;
   // 关闭后恢复行走：清空按键并交回指针
   for (const k of Object.keys(keys)) keys[k] = false;
   dragging = false;
@@ -420,8 +435,9 @@ function tick(now) {
     frames = 0;
     fpsAcc = 0;
     debugEl.textContent =
-      'x ' + PLAYER.x.toFixed(1) + '  z ' + PLAYER.z.toFixed(1) +
-      '\nyaw ' + (yaw * 180 / Math.PI).toFixed(0) + '°  fps ' + fps +
+      'x ' + PLAYER.x.toFixed(2) + '  z ' + PLAYER.z.toFixed(2) + '  h ' + PLAYER.y.toFixed(2) +
+      '\nyaw ' + (yaw * 180 / Math.PI).toFixed(1) + '°  pitch ' + (pitch * 180 / Math.PI).toFixed(1) + '°' +
+      '\nfov ' + CAMERA_FOV.toFixed(1) + '° ≈' + EQUIV_MM + 'mm  fps ' + fps +
       '\n碰撞体 ' + district.colliders.length + '  交互点 ' + district.interactions.length +
       '\n' + (LIVE ? '真实模块在线' : '预览替身（未接主站）');
   }
@@ -437,14 +453,20 @@ district.update(0);
 renderer.render(scene, camera);
 
 ui.hidden = false;
+// 截图用：?hud=0 隐藏所有覆盖层，不改交互与入口
+if (qs.get('hud') === '0') ui.hidden = true;
 rafId = requestAnimationFrame(tick);
 
 /* 供自动化检查用：读当前交互点、强制触发一次（不改变主站行为） */
 window.__social = {
   district,
   player: PLAYER,
+  renderer,
+  camera,
   get current() { return current; },
   get panelOpen() { return panelOpen; },
+  get fov() { return CAMERA_FOV; },
+  get env() { return envState; },
   interact() { if (current) trigger(current); return current ? current.id : null; },
   close() { closePanel(); },
 };
