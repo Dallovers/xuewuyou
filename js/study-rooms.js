@@ -369,18 +369,22 @@ window.WG_Rooms = (function () {
         labels[r.phase] + " · 已加入 " + r.count + " 人 · 近期在线 " + r.online + " 人",
       );
       if (r.goal) el(row, "p", r.goal, "room-goal");
+      // 满员时不要只把「加入房间」置灰——那样用户只看到一个点不动的按钮，
+      // 不知道为什么。直接把文案换成「已满员」，这是唯一的线索。
+      var full = !r.joined && r.count >= r.capacity;
       var b = btn(
         row,
-        r.joined ? "回到这间房" : "加入房间",
+        r.joined ? "回到这间房" : full ? "已满员" : "加入房间",
         async function (s) {
           if (r.joined) {
             var v = await api("GET", "/room?id=" + r.id);
             if (s === epoch) applyRoom(v.room);
           } else await join(r.id, s);
         },
-        true,
+        !full,
       );
-      b.disabled = !r.joined && r.count >= r.capacity;
+      b.disabled = full;
+      if (full) b.setAttribute("title", "房间已满，等有人离开后再加入");
     });
     var history = $("roomHistory");
     history.replaceChildren();
