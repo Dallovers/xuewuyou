@@ -21,6 +21,7 @@ window.WG_Rooms = (function () {
     lastEndRefresh = "",
     pollTimer = null,
     pollTick = 0,
+    clockTimer = null,
     inactiveTimer = null;
   var labels = {
       waiting: "等待成员准备",
@@ -112,6 +113,23 @@ window.WG_Rooms = (function () {
     refreshTimer = setTimeout(function () {
       refresh().catch((e) => message(e.message));
     }, 180);
+  }
+  /* 秒针只在「有一间房要看」的时候走。没有房间还留着 1 秒一跳的定时器，
+   * 是纯粹的常驻开销，而且离开板块之后也不会停。 */
+  function startClock() {
+    if (clockTimer) return;
+    clockTimer = setInterval(drawClock, 1000);
+  }
+  function stopClock() {
+    if (!clockTimer) return;
+    clearInterval(clockTimer);
+    clockTimer = null;
+  }
+  /* 兜底轮询同理：没有房间可看的时候留着它，只是每 10 秒空转一次。 */
+  function stopPolling() {
+    if (!pollTimer) return;
+    clearInterval(pollTimer);
+    pollTimer = null;
   }
   async function connect() {
     if (socket) {
@@ -225,6 +243,11 @@ window.WG_Rooms = (function () {
       lastEndRefresh = "";
     }
     current = room;
+    // 有进行中的房间才走秒针；房间结束或已离开时，renderRoom 已经把最终画面画完了
+    if (room && room.phase !== "ended") startClock();
+    else stopClock();
+    // 不在房间页、手上也没有进行中的房间：兜底轮询没有意义，停掉（回到页面时 open() 会重建）
+    if (!visible && (!room || room.phase === "ended")) stopPolling();
     receivedAt = performance.now();
     if (redraw || !$("roomClock")) renderRoom();
     else {
@@ -337,24 +360,31 @@ window.WG_Rooms = (function () {
         r.subject + " · " + r.durationMinutes + " 分钟 · 房主 " + r.hostNick,
         "rooms-muted",
       );
+      // 「已加入」= 未离开的成员数（服务端 count）；「近期在线」= 其中心跳仍在有效期内的人数
+      // （服务端 online，阈值沿用服务端 TTL 45 s）。两者必须分开显示：
+      // join 成功那一刻客户端还没发心跳，online 会是 0，合并写就会被读成「没进房」。
       el(
         row,
         "p",
-        labels[r.phase] + " · " + r.online + " 人在线 / " + r.count + " 人加入",
+        labels[r.phase] + " · 已加入 " + r.count + " 人 · 近期在线 " + r.online + " 人",
       );
       if (r.goal) el(row, "p", r.goal, "room-goal");
+      // 满员时不要只把「加入房间」置灰——那样用户只看到一个点不动的按钮，
+      // 不知道为什么。直接把文案换成「已满员」，这是唯一的线索。
+      var full = !r.joined && r.count >= r.capacity;
       var b = btn(
         row,
-        r.joined ? "回到这间房" : "加入房间",
+        r.joined ? "回到这间房" : full ? "已满员" : "加入房间",
         async function (s) {
           if (r.joined) {
             var v = await api("GET", "/room?id=" + r.id);
             if (s === epoch) applyRoom(v.room);
           } else await join(r.id, s);
         },
-        true,
+        !full,
       );
-      b.disabled = !r.joined && r.count >= r.capacity;
+      b.disabled = full;
+      if (full) b.setAttribute("title", "房间已满，等有人离开后再加入");
     });
     var history = $("roomHistory");
     history.replaceChildren();
@@ -722,6 +752,9 @@ window.WG_Rooms = (function () {
       socket?.disconnect();
       socket = null;
       watched = "";
+      // 离开板块且没有进行中的房间：轮询和秒针都没有活干，一起停掉
+      stopPolling();
+      stopClock();
     }
   }
   function reset() {
@@ -733,8 +766,8 @@ window.WG_Rooms = (function () {
     current = null;
     data = null;
     goalDirty = false;
-    clearInterval(pollTimer);
-    pollTimer = null;
+    stopPolling();
+    stopClock();
     clearTimeout(refreshTimer);
     clearTimeout(inactiveTimer);
     ["roomDirectory", "roomInvitations", "roomCurrent", "roomHistory"].forEach(
@@ -753,9 +786,15 @@ window.WG_Rooms = (function () {
     if (WG_API.isCloudSession()) connect().catch(() => {});
   }
   function init() {
+    /* e.submitter 只有「点按钮」时才有值；表单被 requestSubmit() / form.submit()
+     * 程序化提交时是 null，直接读 button.disabled 会抛异常，整个提交静默失败。
+     * 拿不到 submitter 就退回表单里的提交按钮。 */
+    function submitterOf(e) {
+      return e.submitter || e.target.querySelector('[type="submit"]');
+    }
     $("roomCreateForm").onsubmit = function (e) {
       e.preventDefault();
-      action(e.submitter, async function (s) {
+      action(submitterOf(e), async function (s) {
         var v = await api("POST", "", {
           title: $("roomTitle").value,
           subject: $("roomSubject").value,
@@ -775,7 +814,7 @@ window.WG_Rooms = (function () {
     };
     $("roomInviteForm").onsubmit = function (e) {
       e.preventDefault();
-      action(e.submitter, async function (s) {
+      action(submitterOf(e), async function (s) {
         await api("POST", "/invite", {
           id: current.id,
           to: $("roomFriend").value,
@@ -816,7 +855,6 @@ window.WG_Rooms = (function () {
     window.addEventListener("pagehide", function () {
       socket?.disconnect();
     });
-    setInterval(drawClock, 1000);
     WG_API.onAuthChange(reset);
     if (WG_API.isCloudSession()) connect().catch(() => {});
   }
