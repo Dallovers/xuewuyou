@@ -782,9 +782,15 @@ window.WG_Rooms = (function () {
     if (WG_API.isCloudSession()) connect().catch(() => {});
   }
   function init() {
+    /* e.submitter 只有「点按钮」时才有值；表单被 requestSubmit() / form.submit()
+     * 程序化提交时是 null，直接读 button.disabled 会抛异常，整个提交静默失败。
+     * 拿不到 submitter 就退回表单里的提交按钮。 */
+    function submitterOf(e) {
+      return e.submitter || e.target.querySelector('[type="submit"]');
+    }
     $("roomCreateForm").onsubmit = function (e) {
       e.preventDefault();
-      action(e.submitter, async function (s) {
+      action(submitterOf(e), async function (s) {
         var v = await api("POST", "", {
           title: $("roomTitle").value,
           subject: $("roomSubject").value,
@@ -804,7 +810,7 @@ window.WG_Rooms = (function () {
     };
     $("roomInviteForm").onsubmit = function (e) {
       e.preventDefault();
-      action(e.submitter, async function (s) {
+      action(submitterOf(e), async function (s) {
         await api("POST", "/invite", {
           id: current.id,
           to: $("roomFriend").value,
