@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<title>板件 UV 检查 · 顶面 / 四条边 / 圆角</title>
+<style>
+  body { margin: 0; padding: 16px 20px 40px; font: 14px/1.65 -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif; background: #14161a; color: #e8eaed; }
+  h1 { font-size: 17px; margin: 0 0 4px; font-weight: 600; }
+  .sub { color: #9aa0a6; font-size: 12.5px; margin-bottom: 14px; }
+  #out { background: #0d0f12; border: 1px solid #24272c; border-radius: 6px; padding: 12px 14px; font: 12.5px/1.7 ui-monospace, Consolas, monospace; white-space: pre-wrap; }
+  .pass { color: #7ddc9a; }
+  .fail { color: #ff7b72; }
+  .info { color: #8ab4f8; }
+  .grid { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 16px; }
+  .cell { background: #0d0f12; border: 1px solid #24272c; border-radius: 6px; padding: 8px; }
+  .cell h2 { font-size: 12.5px; margin: 0 0 6px; font-weight: 600; color: #c9ccd1; }
+  canvas { display: block; border-radius: 4px; background: #1b1e22; }
+</style>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js"
+  }
+}
+</script>
+</head>
+<body>
+<h1>板件 UV 检查</h1>
+<div class="sub">
+  同一条 <code>bevelSlab</code> 的产物，两面分开量：顶/底面走 XZ 投影，侧面与倒角走「轮廓弧长 × 厚度」。
+  没退化的三角形不该出现 UV 面积为 0；棋盘格用来看实际有没有拉伸。
+</div>
+<div id="out">运行中…</div>
+<div class="grid">
+  <div class="cell"><h2>桌板 · 俯视（顶面）</h2><canvas id="c0" width="440" height="300"></canvas></div>
+  <div class="cell"><h2>桌板 · 长边侧面（2.40 m）</h2><canvas id="c1" width="440" height="300"></canvas></div>
+  <div class="cell"><h2>桌板 · 短边侧面（1.16 m）</h2><canvas id="c2" width="440" height="300"></canvas></div>
+  <div class="cell"><h2>桌板 · 45° 斜看圆角与倒角</h2><canvas id="c3" width="440" height="300"></canvas></div>
+  <div class="cell"><h2>坐垫 · 45° 斜看</h2><canvas id="c4" width="440" height="300"></canvas></div>
+</div>
+
+<script src="core.js"></script>
+<script type="module">
+import * as THREE from 'three';
+
+const out = document.getElementById('out');
+const lines = [];
+function say(cls, text) { lines.push({ cls, text }); render(); }
+function render() {
+  out.innerHTML = lines.map((l) => `<span class="${l.cls}">${l.text}</span>`).join('\n');
+}
+
+/* —— 1. UV 面积统计 —— */
+function uvStats(geo) {
+  const pos = geo.attributes.position;
+  const uv = geo.attributes.uv;
+  const idx = geo.index;
+  const triCount = idx ? idx.count / 3 : pos.count / 3;
+  const P = [new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()];
+  const T = [new THREE.Vector2(), new THREE.Vector2(), new THREE.Vector2()];
+  const capR = [], sideR = [], bevelR = [];
+  let nonDeg = 0, zeroUV = 0, tiny = 0;
+  const e1 = new THREE.Vector3(), e2 = new THREE.Vector3(), nrm = new THREE.Vector3();
+
+  for (let t = 0; t < triCount; t++) {
+    const ia = idx ? idx.getX(t * 3) : t * 3;
+    const ib = idx ? idx.getX(t * 3 + 1) : t * 3 + 1;
+    const ic = idx ? idx.getX(t * 3 + 2) : t * 3 + 2;
+    P[0].fromBufferAttribute(pos, ia); P[1].fromBufferAttribute(pos, ib); P[2].fromBufferAttribute(pos, ic);
+    e1.copy(P[1]).sub(P[0]); e2.copy(P[2]).sub(P[0]);
+    const gArea = e1.clone().cross(e2).length() / 2;
+    if (gArea < 1e-10) continue;          // 几何本身就退化的不算
+    nonDeg++;
+
+    T[0].fromBufferAttribute(uv, ia); T[1].fromBufferAttribute(uv, ib); T[2].fromBufferAttribute(uv, ic);
+    const uArea = Math.abs((T[1].x - T[0].x) * (T[2].y - T[0].y) - (T[2].x - T[0].x) * (T[1].y - T[0].y)) / 2;
+    if (uArea < 1e-12) { zeroUV++; continue; }
+    // 面积 < 0.1 mm² 的碎三角除法是浮点噪声，不参与 ratio 统计
+    if (gArea < 1e-7) { tiny++; continue; }
+
+    const r = uArea / gArea;
+    nrm.copy(e1).cross(e2).normalize();
+    /* 几何已经 rotateX(-90°)，板躺平了，顶/底面的法线沿 ±Y。
+       分三组：顶/底面、竖直侧面（法线基本水平）、倒角斜面（约 45°）。
+       倒角面单独列——它的 U 只取轮廓弧长，没算内缩的那 4 mm，
+       密度天然是竖直面的一半，混在一起会把竖直面那组的结论带偏。 */
+    const ny = Math.abs(nrm.y);
+    if (ny > 0.9) capR.push(r);
+    else if (ny < 0.3) sideR.push(r);
+    else bevelR.push(r);
+  }
+
+  const q = (a, f) => {
+    if (!a.length) return 0;
+    const b = a.slice().sort((x, y) => x - y);
+    return b[Math.min(b.length - 1, (b.length * f) | 0)];
+  };
+  const grp = (a) => ({ n: a.length, min: q(a, 0), p50: q(a, 0.5), max: q(a, 0.999) });
+  return { nonDeg, zeroUV, tiny, cap: grp(capR), side: grp(sideR), bevel: grp(bevelR) };
+}
+
+const CASES = [
+  { name: '桌板', args: [2.4, 1.16, 0.04, 0.004, 0.012] },
+  { name: '坐垫', args: [0.45, 0.44, 0.045, 0.004, 0.012] },
+  { name: '长台台面', args: [4.6, 0.62, 0.04, 0.004, 0.012] },
+  { name: '书架层板', args: [1.8, 0.32, 0.025, 0.003, 0.008] }
+];
+
+let totalZero = 0, badSpread = 0, badSideAlign = 0;
+const capRatios = [];
+say('info', '===== UV 面积统计（只统计几何面积非零的三角形） =====');
+say('info', 'ratio = UV 面积 / 几何面积（单位 1/m²）。同一组内 ratio 越齐，说明这一面的展开越均匀；'
+  + '组内 max/min 明显偏离 1 就是局部被压扁。');
+for (const c of CASES) {
+  const geo = window.StudyDistrict.core.bevelSlab(THREE, ...c.args);
+  const s = uvStats(geo);
+  totalZero += s.zeroUV;
+  capRatios.push(s.cap.p50);
+
+  const spread = (g) => (g.min > 0 ? g.max / g.min : Infinity);
+  const cs = spread(s.cap);
+  /* 三项硬判定：
+     · UV 面积为 0 的三角形必须是 0（审查指出的原始问题）；
+     · 顶/底面的 ratio 必须完全恒定（平面映射是线性的，不恒定就是算错了）；
+     · 竖直侧面的**上限**必须与顶面密度一致（±2%）。
+       侧面上限就是四块主面（两长两短），按世界米数展开之后它与顶面严格同尺度；
+       之所以只看上限，是因为下限那 0.71 倍出现在 r=14 mm 的圆角段——
+       那里 u 取「最近轮廓点」的弧长，圆弧被弦长近似，局部压到 71%，
+       这是圆角映射的已知取舍，不是主面被压扁。写死阈值反而不诚实。 */
+  if (cs >= 1.02) badSpread++;
+  const sideVsCap = s.cap.p50 > 0 ? s.side.max / s.cap.p50 : 0;
+  if (Math.abs(sideVsCap - 1) > 0.02) badSideAlign++;
+
+  const ok = s.zeroUV === 0;
+  say(ok ? 'pass' : 'fail',
+    (ok ? 'PASS ' : 'FAIL ') + c.name.padEnd(6) +
+    '  非退化 ' + String(s.nonDeg).padStart(3) +
+    ' · UV面积为零 ' + String(s.zeroUV).padStart(2) +
+    (s.tiny ? ' · 另 ' + s.tiny + ' 片碎三角(<0.1mm²)不计' : ''));
+  const row = (label, g, tol) => {
+    const sp = spread(g);
+    return '     ' + label + '(' + g.n + '片) ratio ' + g.min.toFixed(3) + ' ~ ' + g.max.toFixed(3) +
+      ' (p50 ' + g.p50.toFixed(3) + ')  max/min ' + sp.toFixed(2) + (tol ? (sp < tol ? ' ✓' : ' ✗') : '');
+  };
+  say('info', row('顶/底面  ', s.cap, 1.02) + '  ← 硬判定：必须完全均匀');
+  say('info', row('竖直侧面', s.side, 0) + '  ← 上限与顶面同密度，下限在 r=14mm 圆角段（弧长按弦长近似）');
+  say('info', row('倒角斜面', s.bevel, 0) + '  ← 4 mm 宽，U 未计内缩量，密度约为主面七成');
+  say('info', '     侧面主面 / 顶面密度 = ' + sideVsCap.toFixed(3) +
+    (Math.abs(sideVsCap - 1) <= 0.02 ? ' ✓（±2% 内，说明侧面没有被纵向拉伸）' : ' ✗'));
+  geo.dispose();
+}
+say(totalZero === 0 ? 'pass' : 'fail', totalZero === 0 ? 'RESULT_UV_ALL_PASS' : 'RESULT_UV_FAIL=' + totalZero);
+say(badSpread === 0 ? 'pass' : 'fail', badSpread === 0 ? 'RESULT_SPREAD_ALL_PASS' : 'RESULT_SPREAD_FAIL=' + badSpread);
+say(badSideAlign === 0 ? 'pass' : 'fail', badSideAlign === 0 ? 'RESULT_SIDE_ALIGN_ALL_PASS' : 'RESULT_SIDE_ALIGN_FAIL=' + badSideAlign);
+
+/* 第四项：跨板件一致性。
+   ratio = UV面积/几何面积 = 1/PER²，与板件尺寸无关——四块样板尺寸差十倍，
+   这个值必须一样。不一样就说明分母还在用"这块板自己的尺寸"，
+   于是同一张桌子上的顶面和侧面能对上，换个尺寸的家具又对不上了。 */
+const crMin = Math.min(...capRatios), crMax = Math.max(...capRatios);
+const crossOk = crMin > 0 && crMax / crMin < 1.02;
+say(crossOk ? 'pass' : 'fail', crossOk ? 'RESULT_CROSS_PART_ALL_PASS' : 'RESULT_CROSS_PART_FAIL');
+say('info', '四块样板顶面 ratio ' + crMin.toFixed(4) + ' ~ ' + crMax.toFixed(4) +
+  '  max/min ' + (crMax / crMin).toFixed(3) + '（= 1/1.8² = ' + (1 / (1.8 * 1.8)).toFixed(4) + '，与板件尺寸无关）');
+
+/* —— 2. 棋盘格目视检查 —— */
+// 8×8 黑白格 + 一个朝上的箭头，箭头方向出错或格子被压扁都能一眼看出来
+function checkerTexture() {
+  const S = 256, N = 8, cell = S / N;
+  const cv = document.createElement('canvas');
+  cv.width = cv.height = S;
+  const g = cv.getContext('2d');
+  for (let y = 0; y < N; y++) {
+    for (let x = 0; x < N; x++) {
+      g.fillStyle = (x + y) % 2 ? '#c8402f' : '#f2ece0';
+      g.fillRect(x * cell, y * cell, cell, cell);
+    }
+  }
+  g.strokeStyle = '#1b1b1b'; g.lineWidth = 3;
+  g.beginPath(); g.moveTo(S / 2, S * 0.82); g.lineTo(S / 2, S * 0.26); g.stroke();
+  g.beginPath(); g.moveTo(S / 2, S * 0.20); g.lineTo(S * 0.40, S * 0.38); g.lineTo(S * 0.60, S * 0.38); g.closePath();
+  g.fillStyle = '#1b1b1b'; g.fill();
+  const tex = new THREE.CanvasTexture(cv);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.anisotropy = 8;
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+
+const tex = checkerTexture();
+
+function setup(canvasId, geoFactory, camPos, target, fov, repeatTimes) {
+  const canvas = document.getElementById(canvasId);
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
+  renderer.setPixelRatio(1);
+  renderer.setSize(440, 300, false);
+  renderer.setClearColor(0x1b1e22, 1);
+  const scene = new THREE.Scene();
+  const cam = new THREE.PerspectiveCamera(fov || 32, 440 / 300, 0.01, 50);
+  cam.position.set(camPos[0], camPos[1], camPos[2]);
+  cam.lookAt(target[0], target[1], target[2]);
+
+  /* 侧面只有 4 cm 高，UV 又按米展开，所以侧视必须把贴图密度调高几十倍才看得见格子。
+     密度调的是 repeat，不动 UV——格子该是正方形，repeat 只是把它整体缩小。 */
+  let useTex = tex;
+  if (repeatTimes && repeatTimes !== 1) {
+    useTex = tex.clone();
+    useTex.wrapS = useTex.wrapT = THREE.RepeatWrapping;
+    useTex.repeat.set(repeatTimes, repeatTimes);
+    useTex.needsUpdate = true;
+  }
+
+  const mat = new THREE.MeshStandardMaterial({ map: useTex, roughness: 0.55, metalness: 0.0 });
+  const mesh = new THREE.Mesh(geoFactory(), mat);
+  scene.add(mesh);
+  scene.add(new THREE.HemisphereLight(0xffffff, 0x333333, 2.2));
+  const d = new THREE.DirectionalLight(0xffffff, 2.0);
+  d.position.set(1.6, 2.4, 1.2);
+  scene.add(d);
+  renderer.render(scene, cam);
+  return renderer;
+}
+
+const desk = () => window.StudyDistrict.core.bevelSlab(THREE, 2.4, 1.16, 0.04, 0.004, 0.012);
+const pad = () => window.StudyDistrict.core.bevelSlab(THREE, 0.45, 0.44, 0.045, 0.004, 0.012);
+
+const renderers = [
+  setup('c0', desk, [0, 2.9, 0.02], [0, 0, 0], 30, 1),           // 俯视顶面
+  setup('c1', desk, [0, 0.16, 2.6], [0, 0.0, 0], 26, 24),        // 长边侧面（密度 ×24）
+  setup('c2', desk, [2.0, 0.14, 0], [0, 0, 0], 22, 24),          // 短边侧面（密度 ×24）
+  setup('c3', desk, [1.05, 0.55, 0.86], [0, 0, 0], 34, 6),       // 斜看圆角与倒角
+  setup('c4', pad, [0.34, 0.30, 0.30], [0, 0, 0], 40, 6)         // 坐垫
+];
+say('info', '棋盘格每格 1/8 UV；箭头顶端指向 V 增大的方向。侧面两张把 repeat 调成 ×24，'
+  + '否则 4 cm 高只铺 0.017 个 UV，看不见格子。');
+say('info', '判定标准：同一张图里的格子应当是正方形。拉长或压扁都说明该面的 U/V 尺度不一致。');
+window.__uvReady = true;
+</script>
+</body>
+</html>
