@@ -15,6 +15,19 @@
 </head>
 <body>
 <pre id="out">running…</pre>
+<script>
+/* 模块级异常会让整个脚本根本不执行，页面就永远停在 running…，
+   看不出是「跑慢了」还是「语法错了」。把错误贴到结果区，一眼能分清。 */
+window.addEventListener('error', function (e) {
+  var el = document.getElementById('out');
+  if (el) el.textContent += '\nERROR ' + (e.message || '') + '\n' + ((e.error && e.error.stack) || '');
+});
+window.addEventListener('unhandledrejection', function (e) {
+  var el = document.getElementById('out');
+  var r = e.reason;
+  if (el) el.textContent += '\nREJECTION ' + ((r && (r.stack || r.message)) || r) + '\n';
+});
+</script>
 <script type="module">
 import * as THREE from 'three';
 import { createDistrict } from './district.js';
@@ -173,6 +186,38 @@ try {
   check('每个交互点都能站进判定半径', unreachable.length === 0,
     unreachable.length ? '走不到: ' + unreachable.join(' / ') : '共 ' + district.interactions.length + ' 个');
 
+  // —— 真实几何量尺寸：不读 SPEC 当结论 ——
+  // 上一版只验「有这个构件」，没量每个轴的尺寸，所以桌板竖起来、坐垫立着都没被发现。
+  const FS = (window.StudyDistrict && window.StudyDistrict.furniture && window.StudyDistrict.furniture.SPEC) || null;
+  const sizeOf = (name) => {
+    const out = [];
+    district.root.traverse((n) => {
+      if (n.isMesh && n.name === name) {
+        const b = new THREE.Box3().setFromObject(n);
+        const s = b.getSize(new THREE.Vector3());
+        out.push({ x: s.x, y: s.y, z: s.z, top: b.max.y });
+      }
+    });
+    return out;
+  };
+  const dims = (list) => list.map((t) => t.x.toFixed(3) + '×' + t.y.toFixed(3) + '×' + t.z.toFixed(3)).join(' ');
+
+  if (FS) {
+    const tops = sizeOf('DeskTop');
+    const badTop = tops.filter((t) => Math.abs(t.y - FS.desk.topThickness) > 0.006 || Math.abs(t.x - FS.desk.length) > 0.02);
+    check('桌板是水平板：X=桌长，Y=板厚', tops.length > 0 && badTop.length === 0, tops.length ? dims(tops) : '找不到 DeskTop');
+    check('桌面上表面标高 ≈ ' + FS.desk.height.toFixed(2),
+      tops.length > 0 && tops.every((t) => Math.abs(t.top - FS.desk.height) < 0.01),
+      tops.map((t) => t.top.toFixed(3)).join(','));
+
+    const cush = sizeOf('ChairSeat');
+    const badCush = cush.filter((c) => Math.abs(c.y - FS.chair.seatThickness) > 0.006 || Math.abs(c.x - FS.chair.seatWidth) > 0.02);
+    check('坐垫是水平垫：X=座宽，Y=垫厚', cush.length > 0 && badCush.length === 0, cush.length ? dims(cush) : '找不到 ChairSeat');
+    check('坐面标高 ≈ ' + FS.chair.seatHeight.toFixed(2),
+      cush.length > 0 && cush.every((c) => Math.abs(c.top - FS.chair.seatHeight) < 0.01),
+      cush.map((c) => c.top.toFixed(3)).join(','));
+  }
+
   // 入口交互 + 16 个座位
   check('交互点共 17 个（1 入口 + 16 座位）', district.interactions.length === 17, '实际 ' + district.interactions.length);
   const it = district.interactions.find((i) => i.id === 'study.entry');
@@ -209,9 +254,96 @@ try {
   check('起身后 getSeat() 回到 null', district.getSeat() === null);
   check('起身后标签回到默认', sB.label.indexOf('坐下') === 0, sB.label);
 
-  // 释放
+  // —— 交互锚点：宿主只按 object.getWorldPosition() 算 XZ 距离 ——
+  // 座位坐标写在子 mesh 上、外层 Group 零变换的话，16 个锚点会全部落在房间原点，
+  // 就近选座就永远选到数组第一个。这里量锚点本身，不看子 mesh。
+  const anchors = seats.map((s) => s.object.getWorldPosition(new THREE.Vector3()));
+  const uniqPos = new Set(anchors.map((v) => v.x.toFixed(2) + ',' + v.z.toFixed(2)));
+  check('16 个座位锚点互不重合', uniqPos.size === 16, '不同位置 ' + uniqPos.size + ' 个');
+
+  const anchorMismatch = [];
+  seats.forEach((s, k) => {
+    const id = s.id.slice('study.seat.'.length);
+    const node = district.root.getObjectByName('Seat.' + id);
+    const spec = node && node.userData && node.userData.seat;
+    const a = anchors[k];
+    if (!spec) { anchorMismatch.push(id + ':无座位记录'); return; }
+    if (Math.hypot(a.x - spec.x, a.z - spec.z) > 0.02) {
+      anchorMismatch.push(id + ' 锚点(' + a.x.toFixed(2) + ',' + a.z.toFixed(2) + ') ≠ 座位(' + spec.x + ',' + spec.z + ')');
+    }
+  });
+  check('锚点与座位坐标一致', anchorMismatch.length === 0, anchorMismatch.slice(0, 4).join(' / '));
+
+  // 就近选择：对每个座位找「离它最近的可站点」，按宿主的规则算最近交互点，必须选中它自己。
+  // 然后真的按下这个交互点（调 action），看坐下的到底是哪一座——这一步才是宿主里按 E 的效果，
+  // 只算距离不调 action 的话，action 绑定错座位这件事查不出来。
+  const pickWrong = [];
+  const pressWrong = [];
+  const trace = [];
+  seats.forEach((s, k) => {
+    const a = anchors[k];
+    let stand = null, bestD = Infinity;
+    for (let dx = -1.6; dx <= 1.6; dx += step / 2) {
+      for (let dz = -1.6; dz <= 1.6; dz += step / 2) {
+        if (!reachable(a.x + dx, a.z + dz)) continue;
+        const d = Math.hypot(dx, dz);
+        if (d > 0.4 && d < bestD) { bestD = d; stand = { x: a.x + dx, z: a.z + dz }; }
+      }
+    }
+    if (!stand) { pickWrong.push(s.id + ':附近无可站点'); return; }
+    let pick = null, pickItem = null, pd = Infinity;
+    district.interactions.forEach((o) => {
+      const op = o.object.getWorldPosition(new THREE.Vector3());
+      const d = Math.hypot(op.x - stand.x, op.z - stand.z);
+      if (d <= o.radius && d < pd) { pd = d; pick = o.id; pickItem = o; }
+    });
+    if (pick !== s.id) pickWrong.push(s.id + ' 站在最近可站点选中 ' + pick);
+
+    let sat = null;
+    if (pickItem) {
+      const res = pickItem.action();
+      sat = res && res.seat ? 'study.seat.' + res.seat : null;
+      if (sat) pickItem.action(); // 起身复位，给下一个座位留干净状态
+    }
+    if (sat !== s.id) pressWrong.push(s.id + ' 按 E 坐下 ' + sat);
+    trace.push({
+      id: s.id.slice('study.seat.'.length),
+      stand,
+      anchor: a,
+      pick,
+      sat
+    });
+  });
+  check('就近选择在每个座位都选中自己', pickWrong.length === 0, pickWrong.slice(0, 3).join(' / '));
+  check('按 E 在每个座位都坐下自己', pressWrong.length === 0, pressWrong.slice(0, 3).join(' / '));
+
+  log('');
+  log('INFO 逐座位记录（站位 = 该座位 0.4 m 外最近的可站点；选中 = 按宿主规则取 XZ 最近的交互点）');
+  trace.forEach((t, k) => {
+    log(
+      '     ' + String(k + 1).padStart(2, ' ') + '. ' + t.id.padEnd(12, ' ') +
+      ' 锚点(' + t.anchor.x.toFixed(2) + ',' + t.anchor.z.toFixed(2) + ')' +
+      ' 站位(' + t.stand.x.toFixed(2) + ',' + t.stand.z.toFixed(2) + ')' +
+      ' 选中 ' + (t.pick || '—').replace('study.seat.', '') +
+      ' 按下后坐进 ' + (t.sat || '—').replace('study.seat.', '')
+    );
+  });
+  log('');
+
+  // 释放：只验「parent 为 null」是不够的——root 本来就没挂过父节点，这条断言恒真。
+  // 真正要验的是「挂进场景之后能被摘掉」，以及重复销毁不炸。
   district.dispose();
   check('dispose 后从父节点移除', r.parent === null);
+
+  const scene2 = new THREE.Scene();
+  const district2 = createDistrict({ THREE, openFeature: () => Promise.resolve({ ok: true }), api: null, mode: 'preview' });
+  scene2.add(district2.root);
+  check('销毁前确实挂在场景上', district2.root.parent === scene2 && scene2.children.length === 1, 'children=' + scene2.children.length);
+  district2.dispose();
+  check('挂入场景后 dispose 能摘掉', district2.root.parent === null && scene2.children.length === 0, 'children=' + scene2.children.length);
+  let twiceOk = true;
+  try { district2.dispose(); } catch (e) { twiceOk = false; }
+  check('重复 dispose 不抛异常', twiceOk);
 } catch (e) {
   fails++;
   log('FAIL 抛异常 → ' + (e && e.stack ? e.stack.split('\n').slice(0, 3).join(' | ') : e));

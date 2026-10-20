@@ -196,6 +196,10 @@
   /**
    * 座位的本地标记圈。16 个位置从家具 SPEC 算出来，不手抄坐标——
    * 桌岛一挪，座位圈跟着走。
+   *
+   * 座位坐标必须落在 Group 上，不能只落在子 mesh 上：district 把这个 Group
+   * 本身登记成交互点，宿主按 object.getWorldPosition() 的 XZ 距离找最近的一个。
+   * 如果 Group 零变换，16 个交互点会全部挤在原点，站到哪个座位都选中第一个。
    */
   function createSeatRing(THREE, parent, seat) {
     var g = global.StudyDistrict.core.group(THREE, parent, 'Seat.' + seat.id);
@@ -203,10 +207,11 @@
     var mesh = new THREE.Mesh(geo, parent.userData.seatMaterial);
     mesh.name = 'SeatRing.' + seat.id;
     mesh.rotation.x = -Math.PI / 2;
-    mesh.position.set(seat.x, SEAT.y, seat.z);
+    mesh.position.set(0, SEAT.y, 0);          // 子 mesh 只留相对高度
     mesh.castShadow = false;
     mesh.receiveShadow = false;
     g.add(mesh);
+    g.position.set(seat.x, 0, seat.z);        // 绝对坐标放这里，锚点才对得上
     g.userData.seat = seat;
     return g;
   }
