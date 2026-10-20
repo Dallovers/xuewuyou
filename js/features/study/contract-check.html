@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>自习室板块 · 场景接口自检</title>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+  }
+}
+</script>
+<style>body{margin:0;font:16px/1.75 ui-monospace,Consolas,monospace;padding:18px;background:#fff;color:#111}</style>
+</head>
+<body>
+<pre id="out">running…</pre>
+<script>
+/* 模块级异常会让整个脚本根本不执行，页面就永远停在 running…，
+   看不出是「跑慢了」还是「语法错了」。把错误贴到结果区，一眼能分清。 */
+window.addEventListener('error', function (e) {
+  var el = document.getElementById('out');
+  if (el) el.textContent += '\nERROR ' + (e.message || '') + '\n' + ((e.error && e.error.stack) || '');
+});
+window.addEventListener('unhandledrejection', function (e) {
+  var el = document.getElementById('out');
+  var r = e.reason;
+  if (el) el.textContent += '\nREJECTION ' + ((r && (r.stack || r.message)) || r) + '\n';
+});
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { createDistrict } from './district.js';
+
+const lines = [];
+const log = (s) => lines.push(s);
+let fails = 0;
+function check(name, ok, detail) {
+  if (!ok) fails++;
+  log((ok ? 'PASS ' : 'FAIL ') + name + (detail === undefined ? '' : '  → ' + detail));
+}
+
+/* 复刻参考宿主的碰撞判定：只挡 0.1~1.7 m 高度带，角色水平半径 0.25 */
+function blocked(colliders, x, z) {
+  return colliders.some(
+    (c) =>
+      c.enabled !== false &&
+      c.type === 'box' &&
+      c.center[1] + c.half[1] > 0.1 &&
+      c.center[1] - c.half[1] < 1.7 &&
+      Math.abs(x - c.center[0]) < c.half[0] + 0.25 &&
+      Math.abs(z - c.center[2]) < c.half[2] + 0.25
+  );
+}
+function walk(colliders, from, to, step) {
+  const n = Math.max(1, Math.ceil(Math.hypot(to[0] - from[0], to[1] - from[1]) / step));
+  let x = from[0], z = from[1];
+  for (let i = 0; i < n; i++) {
+    const nx = x + (to[0] - from[0]) / n;
+    const nz = z + (to[1] - from[1]) / n;
+    if (!blocked(colliders, nx, z)) x = nx;
+    if (!blocked(colliders, x, nz)) z = nz;
+  }
+  return [x, z];
+}
+
+try {
+  const calls = [];
+  const district = createDistrict({
+    THREE,
+    openFeature: (view, o) => { calls.push([view, o]); return Promise.resolve({ ok: true }); },
+    api: null,
+    mode: 'preview'
+  });
+
+  const r = district.root;
+  check('root 是 THREE.Group', r && r.isGroup === true);
+  check('root 单位平移', r.position.length() === 0, JSON.stringify(r.position.toArray()));
+  check('root 无旋转', r.rotation.x === 0 && r.rotation.y === 0 && r.rotation.z === 0);
+  check('root 缩放为 1', r.scale.x === 1 && r.scale.y === 1 && r.scale.z === 1);
+  check('update 是函数', typeof district.update === 'function');
+  check('dispose 是函数', typeof district.dispose === 'function');
+
+  // 几何规模
+  let meshes = 0, tris = 0;
+  r.traverse((n) => {
+    if (n.isMesh) {
+      meshes++;
+      const g = n.geometry;
+      if (g && g.index) tris += g.index.count / 3;
+      else if (g && g.attributes.position) tris += g.attributes.position.count / 3;
+    }
+  });
+  log('INFO mesh=' + meshes + ' 三角形≈' + Math.round(tris));
+
+  // 碰撞体
+  const ids = district.colliders.map((c) => c.id);
+  check('碰撞体全部是 root 局部轴的 box', district.colliders.every((c) => c.type === 'box'));
+  check('有四面墙', ['wall.north', 'wall.east', 'wall.west', 'wall.south.left', 'wall.south.right']
+    .every((k) => ids.includes('study.' + k)));
+  check('有三个桌岛', [1, 2, 3].every((i) => ids.includes('study.desk.island.' + i)));
+  check('有窗边席与书架', ids.includes('study.window.counter') && ids.includes('study.wall.shelf'));
+  check('有门扇碰撞体', ids.filter((s) => s.startsWith('study.door.leaf')).length === 2);
+
+  // 门洞必须真的能走
+  const doorX = 3.3;
+  check('门洞中线上没有碰撞', !blocked(district.colliders, doorX, 4.62));
+  check('门洞一侧墙体仍然阻挡', blocked(district.colliders, 0, 4.62));
+
+  const outside = [doorX, 6.2];
+  const inside = walk(district.colliders, outside, [doorX, 2.0], 0.05);
+  check('从门外直走进房间', inside[1] < 2.2, '落点 z=' + inside[1].toFixed(3));
+
+  const throughWall = walk(district.colliders, [0, 6.2], [0, 2.0], 0.05);
+  check('撞墙走不进去', throughWall[1] > 4.4, '落点 z=' + throughWall[1].toFixed(3));
+
+  // 桌岛净距（静态）与角色净距
+  const d1 = district.colliders.find((c) => c.id === 'study.desk.island.1');
+  const d2 = district.colliders.find((c) => c.id === 'study.desk.island.2');
+  const gap = Math.abs(d2.center[2] - d1.center[2]) - d1.half[2] - d2.half[2];
+  check('桌岛净距 ≈ 1.506', Math.abs(gap - 1.5057) < 0.01, '实测 ' + gap.toFixed(4) + ' m');
+  check('扣掉角色半径 0.25 仍可通过', gap - 0.5 > 0.9, '角色净宽 ' + (gap - 0.5).toFixed(3) + ' m');
+
+  // 窗边长台（含凳子）到桌岛：这一条是实际最窄的纵向通道
+  const ctr = district.colliders.find((c) => c.id === 'study.window.counter');
+  const ctrMaxX = ctr.center[0] + ctr.half[0];
+  const islMinX = d1.center[0] - d1.half[0];
+  const sideGap = islMinX - ctrMaxX;
+  check('长台外沿到桌岛净距 ≥1.4', sideGap >= 1.4, '实测 ' + sideGap.toFixed(3) + ' m（角色净宽 ' + (sideGap - 0.5).toFixed(3) + ' m）');
+
+  // 可行走性：用 0.25 m 栅格做连通性检查，比单点走直线更贴近「能不能真的走到」
+  const step = 0.25;
+  const x0 = -5.75, x1 = 5.75, z0 = -4.25, z1 = 4.25;
+  const nx = Math.round((x1 - x0) / step) + 1;
+  const nz = Math.round((z1 - z0) / step) + 1;
+  const key = (i, j) => i + ',' + j;
+  const free = new Uint8Array(nx * nz);
+  for (let i = 0; i < nx; i++) {
+    for (let j = 0; j < nz; j++) {
+      free[i * nz + j] = blocked(district.colliders, x0 + i * step, z0 + j * step) ? 0 : 1;
+    }
+  }
+  const startI = Math.round((doorX - x0) / step);
+  const startJ = Math.round((4.15 - z0) / step);
+  const seen = new Set([key(startI, startJ)]);
+  const q = [[startI, startJ]];
+  while (q.length) {
+    const [i, j] = q.pop();
+    for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const a = i + di, b = j + dj;
+      if (a < 0 || b < 0 || a >= nx || b >= nz) continue;
+      if (!free[a * nz + b]) continue;
+      const k2 = key(a, b);
+      if (seen.has(k2)) continue;
+      seen.add(k2);
+      q.push([a, b]);
+    }
+  }
+  const reachable = (x, z) => seen.has(key(Math.round((x - x0) / step), Math.round((z - z0) / step)));
+  const freeRatio = [...free].filter(Boolean).length / free.length;
+  log('INFO 可行走栅格占比 ' + (freeRatio * 100).toFixed(1) + '%，从门内连通到 ' + seen.size + ' 格');
+  check('从门内能走到窗边长台前', reachable(-4.6, 0));
+  check('从门内能走到 1 号桌岛旁', reachable(-2.6, -0.2));
+  check('从门内能走到 2 号桌岛旁', reachable(-2.6, 0.6));
+  check('从门内能走到 3 号桌岛旁', reachable(1.9, -1.2));
+  check('从门内能走到低书架前', reachable(0, -3.6));
+  check('从门内能走到房间四角', reachable(-5.5, -3.9) && reachable(5.5, -3.9) && reachable(-5.5, 3.9) && reachable(5.5, 3.9));
+  check('没有与外界连通的漏洞', !reachable(-6.5, 0) && !reachable(0, 5.2));
+
+  // 每个交互点都得起作用：宿主要在 radius 内才认这个交互点。
+  // 座位点落在椅子上，如果椅子挡住了、半径又小于「最近可站位置到点的距离」，
+  // 那就永远按不到 E —— 之前的断言直接调 action()，测不出这种情况。
+  const unreachable = [];
+  const v = new THREE.Vector3();
+  district.interactions.forEach((it) => {
+    it.object.getWorldPosition(v);
+    let ok = false;
+    for (let dx = -it.radius; dx <= it.radius && !ok; dx += step / 2) {
+      for (let dz = -it.radius; dz <= it.radius && !ok; dz += step / 2) {
+        if (dx * dx + dz * dz > it.radius * it.radius) continue;
+        if (reachable(v.x + dx, v.z + dz)) ok = true;
+      }
+    }
+    if (!ok) unreachable.push(it.id + ' @(' + v.x.toFixed(2) + ',' + v.z.toFixed(2) + ') r=' + it.radius);
+  });
+  check('每个交互点都能站进判定半径', unreachable.length === 0,
+    unreachable.length ? '走不到: ' + unreachable.join(' / ') : '共 ' + district.interactions.length + ' 个');
+
+  // —— 真实几何量尺寸：不读 SPEC 当结论 ——
+  // 上一版只验「有这个构件」，没量每个轴的尺寸，所以桌板竖起来、坐垫立着都没被发现。
+  const FS = (window.StudyDistrict && window.StudyDistrict.furniture && window.StudyDistrict.furniture.SPEC) || null;
+  const sizeOf = (name) => {
+    const out = [];
+    district.root.traverse((n) => {
+      if (n.isMesh && n.name === name) {
+        const b = new THREE.Box3().setFromObject(n);
+        const s = b.getSize(new THREE.Vector3());
+        out.push({ x: s.x, y: s.y, z: s.z, top: b.max.y });
+      }
+    });
+    return out;
+  };
+  const dims = (list) => list.map((t) => t.x.toFixed(3) + '×' + t.y.toFixed(3) + '×' + t.z.toFixed(3)).join(' ');
+
+  if (FS) {
+    const tops = sizeOf('DeskTop');
+    const badTop = tops.filter((t) => Math.abs(t.y - FS.desk.topThickness) > 0.006 || Math.abs(t.x - FS.desk.length) > 0.02);
+    check('桌板是水平板：X=桌长，Y=板厚', tops.length > 0 && badTop.length === 0, tops.length ? dims(tops) : '找不到 DeskTop');
+    check('桌面上表面标高 ≈ ' + FS.desk.height.toFixed(2),
+      tops.length > 0 && tops.every((t) => Math.abs(t.top - FS.desk.height) < 0.01),
+      tops.map((t) => t.top.toFixed(3)).join(','));
+
+    const cush = sizeOf('ChairSeat');
+    const badCush = cush.filter((c) => Math.abs(c.y - FS.chair.seatThickness) > 0.006 || Math.abs(c.x - FS.chair.seatWidth) > 0.02);
+    check('坐垫是水平垫：X=座宽，Y=垫厚', cush.length > 0 && badCush.length === 0, cush.length ? dims(cush) : '找不到 ChairSeat');
+    check('坐面标高 ≈ ' + FS.chair.seatHeight.toFixed(2),
+      cush.length > 0 && cush.every((c) => Math.abs(c.top - FS.chair.seatHeight) < 0.01),
+      cush.map((c) => c.top.toFixed(3)).join(','));
+  }
+
+  /* —— 软装：只影响观感，不许影响通行 ——
+     桌面上的书坐在 0.74 m 台面上，本来就不参与水平通行判定；但书架排书时
+     如果算错宽度会顶出包围盒、窗台绿植会撑大长台外沿，那两条净距断言就会被动到。
+     所以这里单独钉三条：碰撞体没变多、东西都在房里、没有高过桌面隔板。 */
+  const ROOMSPEC = window.StudyDistrict.room.ROOM;
+  const decor = district.root.getObjectByName('Decor');
+  check('有软装组 Decor', !!decor);
+  if (decor) {
+    const dc = decor.userData.counts || {};
+    log('INFO 软装：书 ' + dc.books + ' 本 / 摊开的书 ' + dc.openBooks + ' 本 / 笔 ' + dc.pens +
+      ' 支 / 杯 ' + dc.cups + ' 个 / 盆栽 ' + dc.pots + ' 盆 / 空座位 ' + dc.emptySeats + ' 个');
+
+    check('软装没有新增碰撞体', district.colliders.length === 12, '实际 ' + district.colliders.length);
+
+    let instMeshes = 0, instTotal = 0;
+    decor.traverse((n) => {
+      if (n.isInstancedMesh) { instMeshes++; instTotal += n.count; }
+    });
+    check('软装用实例化合批（网格数远少于物件数）',
+      instMeshes > 0 && instMeshes <= 8 && instTotal >= 100,
+      instMeshes + ' 个 InstancedMesh / ' + instTotal + ' 个实例');
+
+    const db = new THREE.Box3().setFromObject(decor);
+    const HXr = ROOMSPEC.width / 2, HZr = ROOMSPEC.depth / 2;
+    check('软装都在房间净空内',
+      db.min.x >= -HXr - 0.01 && db.max.x <= HXr + 0.01 &&
+      db.min.z >= -HZr - 0.01 && db.max.z <= HZr + 0.01,
+      'X ' + db.min.x.toFixed(2) + '~' + db.max.x.toFixed(2) + '，Z ' + db.min.z.toFixed(2) + '~' + db.max.z.toFixed(2));
+
+    check('软装不悬空也不入地',
+      db.min.y >= -0.005 && db.max.y <= ROOMSPEC.clearHeight,
+      'Y ' + db.min.y.toFixed(3) + '~' + db.max.y.toFixed(3));
+
+    // 桌面隔板上沿 = 桌高 + 隔板高 ≈ 1.088。桌面上的东西高过它就会挡住对面视线。
+    // 墙挂件（公告板、挂钟）本来就在上面，单独判，不混在一条里。
+    const dividerTop = FS ? FS.desk.height + FS.desk.dividerHeight : 1.09;
+    const surfaceNames = ['DecorBooks', 'DecorPens', 'DecorCups', 'DecorPots', 'DecorLeaves', 'DecorOpenPages'];
+    let maxSurfaceY = -Infinity;
+    surfaceNames.forEach((nm) => {
+      const n = decor.getObjectByName(nm);
+      if (!n) return;
+      maxSurfaceY = Math.max(maxSurfaceY, new THREE.Box3().setFromObject(n).max.y);
+    });
+    check('桌面/台面/书架软装不超桌面隔板（≈' + dividerTop.toFixed(2) + '）',
+      maxSurfaceY <= dividerTop + 0.02,
+      '最高 ' + (maxSurfaceY === -Infinity ? '—' : maxSurfaceY.toFixed(3)));
+
+    const wall = decor.getObjectByName('DecorWall');
+    check('有墙挂件（公告板 + 挂钟）', !!wall);
+    if (wall) {
+      const wb = new THREE.Box3().setFromObject(wall);
+      check('墙挂件只在 1.2 m 以上，进不了通行判定带',
+        wb.min.y >= 1.2 && wb.max.y <= ROOMSPEC.clearHeight - 0.05,
+        'Y ' + wb.min.y.toFixed(2) + '~' + wb.max.y.toFixed(2));
+    }
+  }
+
+  // 入口交互 + 16 个座位
+  check('交互点共 17 个（1 入口 + 16 座位）', district.interactions.length === 17, '实际 ' + district.interactions.length);
+  const it = district.interactions.find((i) => i.id === 'study.entry');
+  check('入口交互存在且绑定了 Object3D', !!it && !!it.object && it.object.isObject3D === true, it && it.object.name);
+  check('入口交互半径 2.8', it.radius === 2.8);
+  const p = it.object.getWorldPosition(new THREE.Vector3());
+  check('入口交互点在门内侧墙上', Math.abs(p.z - 4.5) < 0.3 && p.x > 4.0, 'pos=' + p.toArray().map((v) => v.toFixed(2)).join(','));
+
+  await it.action();
+  check('action 调用了 openFeature', calls.length === 1, JSON.stringify(calls[0] || null));
+  check('入口参数是 rooms + from=study.entry',
+    calls[0] && calls[0][0] === 'rooms' && calls[0][1] && calls[0][1].from === 'study.entry');
+
+  // —— 座位：本地选位 ——
+  const seats = district.interactions.filter((i) => i.id.indexOf('study.seat.') === 0);
+  check('16 个座位交互', seats.length === 16, '实际 ' + seats.length);
+  check('座位交互都绑定了对象', seats.every((s) => s.object && s.object.isObject3D));
+  check('未坐下时 getSeat() 为 null', district.getSeat() === null);
+
+  const sA = seats[0], sB = seats[1];
+  const r1 = sA.action();
+  check('坐下返回 sit', r1 && r1.mode === 'sit', JSON.stringify(r1));
+  check('坐下后 getSeat() 是这座', district.getSeat() === sA.id.slice('study.seat.'.length), String(district.getSeat()));
+  check('该座位标签变「起身」', sA.label === '起身', sA.label);
+  check('其它座位标签变「换到这座」', sB.label.indexOf('换到这座') === 0, sB.label);
+
+  const r2 = sB.action();
+  check('换座返回 sit', r2 && r2.mode === 'sit', JSON.stringify(r2));
+  check('换座后 getSeat() 是新座', district.getSeat() === sB.id.slice('study.seat.'.length));
+  check('原座位标签退回「换到这座」', sA.label.indexOf('换到这座') === 0, sA.label);
+
+  const r3 = sB.action();
+  check('再按一次是起身', r3 && r3.mode === 'stand', JSON.stringify(r3));
+  check('起身后 getSeat() 回到 null', district.getSeat() === null);
+  check('起身后标签回到默认', sB.label.indexOf('坐下') === 0, sB.label);
+
+  // —— 交互锚点：宿主只按 object.getWorldPosition() 算 XZ 距离 ——
+  // 座位坐标写在子 mesh 上、外层 Group 零变换的话，16 个锚点会全部落在房间原点，
+  // 就近选座就永远选到数组第一个。这里量锚点本身，不看子 mesh。
+  const anchors = seats.map((s) => s.object.getWorldPosition(new THREE.Vector3()));
+  const uniqPos = new Set(anchors.map((v) => v.x.toFixed(2) + ',' + v.z.toFixed(2)));
+  check('16 个座位锚点互不重合', uniqPos.size === 16, '不同位置 ' + uniqPos.size + ' 个');
+
+  const anchorMismatch = [];
+  seats.forEach((s, k) => {
+    const id = s.id.slice('study.seat.'.length);
+    const node = district.root.getObjectByName('Seat.' + id);
+    const spec = node && node.userData && node.userData.seat;
+    const a = anchors[k];
+    if (!spec) { anchorMismatch.push(id + ':无座位记录'); return; }
+    if (Math.hypot(a.x - spec.x, a.z - spec.z) > 0.02) {
+      anchorMismatch.push(id + ' 锚点(' + a.x.toFixed(2) + ',' + a.z.toFixed(2) + ') ≠ 座位(' + spec.x + ',' + spec.z + ')');
+    }
+  });
+  check('锚点与座位坐标一致', anchorMismatch.length === 0, anchorMismatch.slice(0, 4).join(' / '));
+
+  // 就近选择：对每个座位找「离它最近的可站点」，按宿主的规则算最近交互点，必须选中它自己。
+  // 然后真的按下这个交互点（调 action），看坐下的到底是哪一座——这一步才是宿主里按 E 的效果，
+  // 只算距离不调 action 的话，action 绑定错座位这件事查不出来。
+  const pickWrong = [];
+  const pressWrong = [];
+  const trace = [];
+  seats.forEach((s, k) => {
+    const a = anchors[k];
+    let stand = null, bestD = Infinity;
+    for (let dx = -1.6; dx <= 1.6; dx += step / 2) {
+      for (let dz = -1.6; dz <= 1.6; dz += step / 2) {
+        if (!reachable(a.x + dx, a.z + dz)) continue;
+        const d = Math.hypot(dx, dz);
+        if (d > 0.4 && d < bestD) { bestD = d; stand = { x: a.x + dx, z: a.z + dz }; }
+      }
+    }
+    if (!stand) { pickWrong.push(s.id + ':附近无可站点'); return; }
+    let pick = null, pickItem = null, pd = Infinity;
+    district.interactions.forEach((o) => {
+      const op = o.object.getWorldPosition(new THREE.Vector3());
+      const d = Math.hypot(op.x - stand.x, op.z - stand.z);
+      if (d <= o.radius && d < pd) { pd = d; pick = o.id; pickItem = o; }
+    });
+    if (pick !== s.id) pickWrong.push(s.id + ' 站在最近可站点选中 ' + pick);
+
+    let sat = null;
+    if (pickItem) {
+      const res = pickItem.action();
+      sat = res && res.seat ? 'study.seat.' + res.seat : null;
+      if (sat) pickItem.action(); // 起身复位，给下一个座位留干净状态
+    }
+    if (sat !== s.id) pressWrong.push(s.id + ' 按 E 坐下 ' + sat);
+    trace.push({
+      id: s.id.slice('study.seat.'.length),
+      stand,
+      anchor: a,
+      pick,
+      sat
+    });
+  });
+  check('就近选择在每个座位都选中自己', pickWrong.length === 0, pickWrong.slice(0, 3).join(' / '));
+  check('按 E 在每个座位都坐下自己', pressWrong.length === 0, pressWrong.slice(0, 3).join(' / '));
+
+  log('');
+  log('INFO 逐座位记录（站位 = 该座位 0.4 m 外最近的可站点；选中 = 按宿主规则取 XZ 最近的交互点）');
+  trace.forEach((t, k) => {
+    log(
+      '     ' + String(k + 1).padStart(2, ' ') + '. ' + t.id.padEnd(12, ' ') +
+      ' 锚点(' + t.anchor.x.toFixed(2) + ',' + t.anchor.z.toFixed(2) + ')' +
+      ' 站位(' + t.stand.x.toFixed(2) + ',' + t.stand.z.toFixed(2) + ')' +
+      ' 选中 ' + (t.pick || '—').replace('study.seat.', '') +
+      ' 按下后坐进 ' + (t.sat || '—').replace('study.seat.', '')
+    );
+  });
+  log('');
+
+  // 释放：只验「parent 为 null」是不够的——root 本来就没挂过父节点，这条断言恒真。
+  // 真正要验的是「挂进场景之后能被摘掉」，以及重复销毁不炸。
+  district.dispose();
+  check('dispose 后从父节点移除', r.parent === null);
+
+  const scene2 = new THREE.Scene();
+  const district2 = createDistrict({ THREE, openFeature: () => Promise.resolve({ ok: true }), api: null, mode: 'preview' });
+  scene2.add(district2.root);
+  check('销毁前确实挂在场景上', district2.root.parent === scene2 && scene2.children.length === 1, 'children=' + scene2.children.length);
+  district2.dispose();
+  check('挂入场景后 dispose 能摘掉', district2.root.parent === null && scene2.children.length === 0, 'children=' + scene2.children.length);
+  let twiceOk = true;
+  try { district2.dispose(); } catch (e) { twiceOk = false; }
+  check('重复 dispose 不抛异常', twiceOk);
+} catch (e) {
+  fails++;
+  log('FAIL 抛异常 → ' + (e && e.stack ? e.stack.split('\n').slice(0, 3).join(' | ') : e));
+}
+
+log('');
+log(fails === 0 ? 'RESULT_ALL_PASS' : 'RESULT_FAIL=' + fails);
+document.getElementById('out').textContent = lines.join('\n');
+document.title = fails === 0 ? 'PASS' : 'FAIL' + fails;
+</script>
+</body>
+</html>

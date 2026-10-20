@@ -1,0 +1,261 @@
+{
+  "generatedAt": "2026-10-19T14:03:55.130Z",
+  "source": "Existing js/wenku.js and js/wenku_cat.js, filesystem checks only; no demonstration entries.",
+  "totalEntries": 713,
+  "localReferences": 63,
+  "availableFiles": 63,
+  "files": {
+    "data/pdf/ielts/写作/我的写作/写作1.docx": {
+      "available": true,
+      "bytes": 13133
+    },
+    "data/pdf/ielts/写作/我的写作/写作2.docx": {
+      "available": true,
+      "bytes": 12216
+    },
+    "data/pdf/ielts/写作/我的写作/写作3.docx": {
+      "available": true,
+      "bytes": 11152
+    },
+    "data/pdf/ielts/写作/我的写作/写作4.docx": {
+      "available": true,
+      "bytes": 11667
+    },
+    "data/pdf/ielts/写作/我的写作/写作5.docx": {
+      "available": true,
+      "bytes": 713435
+    },
+    "data/pdf/ielts/写作/我的写作/写作6.docx": {
+      "available": true,
+      "bytes": 713272
+    },
+    "data/pdf/ielts/半半班 26 夏 题库(7).docx": {
+      "available": true,
+      "bytes": 39219
+    },
+    "data/pdf/ielts/阅读/一词多义.xlsx": {
+      "available": true,
+      "bytes": 22177
+    },
+    "data/pdf/ielts/写作/大作文/段落写法/大作文论点思考.pptx.pdf": {
+      "available": true,
+      "bytes": 2909967
+    },
+    "data/pdf/ielts/写作/大作文/段落写法/结尾段写法.pdf": {
+      "available": true,
+      "bytes": 1728237
+    },
+    "data/pdf/ielts/写作/大作文/段落写法/让步转折积极方面.pdf": {
+      "available": true,
+      "bytes": 1714737
+    },
+    "data/pdf/ielts/写作/大作文/论证方法/论证方法：因果+举例&一边倒衔接手段.pdf": {
+      "available": true,
+      "bytes": 9234916
+    },
+    "data/pdf/ielts/写作/大作文/论证方法/论证方法：对比论证.pdf": {
+      "available": true,
+      "bytes": 5128910
+    },
+    "data/pdf/ielts/写作/大作文/题型与结构/双边讨论题型双边讨论文章结构衔接手段.pdf": {
+      "available": true,
+      "bytes": 1523619
+    },
+    "data/pdf/ielts/写作/大作文/题型与结构/报告类文章结构+各段衔接手段.pdf": {
+      "available": true,
+      "bytes": 1822879
+    },
+    "data/pdf/ielts/写作/大作文/题型与结构/让步转折：消极方面+利弊分析题型双边讨论文章结构衔接手段.pdf": {
+      "available": true,
+      "bytes": 6192278
+    },
+    "data/pdf/ielts/写作/小作文（图表题）/动态图开头段+主体段句式词汇+结尾段.pdf": {
+      "available": true,
+      "bytes": 11373800
+    },
+    "data/pdf/ielts/写作/小作文（图表题）/动态图知识点(1).pdf": {
+      "available": true,
+      "bytes": 12091837
+    },
+    "data/pdf/ielts/写作/小作文（图表题）/地图知识点+词汇句式.pdf": {
+      "available": true,
+      "bytes": 13775346
+    },
+    "data/pdf/ielts/写作/小作文（图表题）/流程图知识点+词汇句式.pdf": {
+      "available": true,
+      "bytes": 14296207
+    },
+    "data/pdf/ielts/写作/小作文（图表题）/静态图知识点+词汇句式.pdf": {
+      "available": true,
+      "bytes": 13153730
+    },
+    "data/pdf/ielts/阅读/C9-20高频同义替换练习册/C10 高频同义替换练习册.pdf": {
+      "available": true,
+      "bytes": 21037682
+    },
+    "data/pdf/ielts/阅读/C9-20高频同义替换练习册/C11 高频同义替换练习册.pdf": {
+      "available": true,
+      "bytes": 23197790
+    },
+    "data/pdf/ielts/阅读/C9-20高频同义替换练习册/C12 高频同义替换练习册.pdf": {
+      "available": true,
+      "bytes": 21201940
+    },
+    "data/pdf/ielts/阅读/C9-20高频同义替换练习册/C13 高频同义替换练习册.pdf": {
+      "available": true,
+      "bytes": 22877335
+    },
+    "data/pdf/ielts/阅读/C9-20高频同义替换练习册/C14 高频同义替换练习册.pdf": {
+      "available": true,
+      "bytes": 23258191
+    },
+    "data/pdf/ielts/阅读/C9-20高频同义替换练习册/C15 高频同义替换练习册.pdf": {
+      "available": true,
+      "bytes": 23035708
+    },
+    "data/pdf/ielts/阅读/C9-20高频同义替换练习册/C16 高频同义替换练习册.pdf": {
+      "available": true,
+      "bytes": 21002810
+    },
+    "data/pdf/ielts/阅读/C9-20高频同义替换练习册/C17 高频同义替换练习册.pdf": {
+      "available": true,
+      "bytes": 21026759
+    },
+    "data/pdf/ielts/阅读/C9-20高频同义替换练习册/C18 高频同义替换练习册.pdf": {
+      "available": true,
+      "bytes": 21130581
+    },
+    "data/pdf/ielts/阅读/C9-20高频同义替换练习册/C19 高频同义替换练习册.pdf": {
+      "available": true,
+      "bytes": 21063432
+    },
+    "data/pdf/ielts/阅读/C9-20高频同义替换练习册/C20 高频同义替换练习册.pdf": {
+      "available": true,
+      "bytes": 21057803
+    },
+    "data/pdf/ielts/阅读/C9-20高频同义替换练习册/C9 高频同义替换练习册.pdf": {
+      "available": true,
+      "bytes": 23085887
+    },
+    "data/pdf/ielts/阅读/词海漫游：雅思阅读高阶词汇必备手册_B2分册.pdf": {
+      "available": true,
+      "bytes": 2129299
+    },
+    "data/pdf/ielts/阅读/词海漫游：雅思阅读高阶词汇必备手册_C1分册.pdf": {
+      "available": true,
+      "bytes": 2065136
+    },
+    "data/pdf/ielts/IELTS_Study_Notes.pdf": {
+      "available": true,
+      "bytes": 467965
+    },
+    "data/pdf/ielts/写作/大作文/段落写法/大作文开头段.pdf": {
+      "available": true,
+      "bytes": 9379891
+    },
+    "data/pdf/ielts/写作/大作文/题型与结构/大作文题型介绍-审题步骤-文章结构.pdf": {
+      "available": true,
+      "bytes": 13170737
+    },
+    "data/pdf/ielts/阅读/雅思阅读长难句分析手册－汇总版.pdf": {
+      "available": true,
+      "bytes": 3751375
+    },
+    "data/pdf/梁志清数学分析做题本.pdf": {
+      "available": true,
+      "bytes": 11525337
+    },
+    "data/pdf/丘维声《高等代数学习指导书》上册完整解析册.pdf": {
+      "available": true,
+      "bytes": 1952109
+    },
+    "data/pdf/丘维声《高等代数学习指导书》下册完整解析册.pdf": {
+      "available": true,
+      "bytes": 2087719
+    },
+    "data/pdf/谢惠民《数学分析习题解析》上册完整解析册.pdf": {
+      "available": true,
+      "bytes": 11755030
+    },
+    "data/pdf/谢惠民《数学分析习题解析》下册完整解析册.pdf": {
+      "available": true,
+      "bytes": 3270277
+    },
+    "data/pdf/傅里叶分析习题集.pdf": {
+      "available": true,
+      "bytes": 16815684
+    },
+    "data/pdf/2026年部分院校高等代数解答.pdf": {
+      "available": true,
+      "bytes": 12156016
+    },
+    "data/pdf/2026年部分院校数学分析解答.pdf": {
+      "available": true,
+      "bytes": 13179715
+    },
+    "data/pdf/GTM73 代数中文.pdf": {
+      "available": true,
+      "bytes": 3062429
+    },
+    "data/pdf/2026 考研数学三真题解析.pdf": {
+      "available": true,
+      "bytes": 134741
+    },
+    "data/pdf/2026 考研数学三真题卷.pdf": {
+      "available": true,
+      "bytes": 83248
+    },
+    "data/pdf/2026 考研数学一真题解析.pdf": {
+      "available": true,
+      "bytes": 137559
+    },
+    "data/pdf/2026 考研数学一真题卷.pdf": {
+      "available": true,
+      "bytes": 86493
+    },
+    "data/pdf/Atiyah-Macdonald 中文交换代数.pdf": {
+      "available": true,
+      "bytes": 816613
+    },
+    "data/pdf/Folland 实分析（B站：欧拉的费米子）.pdf": {
+      "available": true,
+      "bytes": 3892365
+    },
+    "data/pdf/微分几何复习笔记.pdf": {
+      "available": true,
+      "bytes": 897958
+    },
+    "data/pdf/西北工业大学2026.pdf": {
+      "available": true,
+      "bytes": 179417
+    },
+    "data/pdf/西北大学2026解析.pdf": {
+      "available": true,
+      "bytes": 279237
+    },
+    "data/pdf/中国科学技术大学2026.pdf": {
+      "available": true,
+      "bytes": 159049
+    },
+    "data/pdf/浙江大学2026.pdf": {
+      "available": true,
+      "bytes": 158485
+    },
+    "data/pdf/哈尔滨工业大学2026.pdf": {
+      "available": true,
+      "bytes": 116307
+    },
+    "data/pdf/大连理工大学2026.pdf": {
+      "available": true,
+      "bytes": 128739
+    },
+    "data/pdf/大连理工大学2025.pdf": {
+      "available": true,
+      "bytes": 126710
+    },
+    "data/pdf/大连理工大学2024年数学分析真题.pdf": {
+      "available": true,
+      "bytes": 58320
+    }
+  }
+}

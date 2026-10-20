@@ -2952,6 +2952,7 @@ var WG_App = (function () {
         openStudySetup();
       }
     }
+    else if (name === 'library3d') location.assign(new URL('examples/library-3d/', document.baseURI).href);
     else if (name === 'wenku') gateData(function () { renderWenku(); });
     else if (name === 'mistakes') gateData(function () { renderMistakes(); });
     else if (name === 'report') renderReport();
@@ -3026,6 +3027,8 @@ var WG_App = (function () {
     } else {
       goHome();
     }
+    /* 图书馆独立页面返回现有资料目录，沿用主站数据加载和账号。 */
+    if (location.hash === '#wenku') navTo('wenku');
   }
 
   /* 供自习室引擎调用：重新打开入场设置弹窗 */

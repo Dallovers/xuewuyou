@@ -1,0 +1,5 @@
+# Generated shader strings retain upstream Three.js whitespace; logs retain actual test output.
+app.bundle.js -whitespace
+validation/*.txt -whitespace
+*.blend binary
+assets/*.glb binary

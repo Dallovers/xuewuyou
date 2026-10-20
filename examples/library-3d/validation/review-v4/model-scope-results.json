@@ -1,0 +1,47 @@
+{
+  "passed": true,
+  "before": "before-ac1369a.glb",
+  "after": "wenku-library.glb",
+  "checks": [
+    {
+      "unchangedGeometryTransformsAndMaterialAssignments": [
+        "Library tree 142",
+        "Library tree 318",
+        "Reading table 2",
+        "Chair R2-N1",
+        "Chair R2-N2",
+        "Chair R2-S1",
+        "Chair R2-S2",
+        "Bookshelf exam",
+        "Bookshelf book",
+        "Bookshelf ielts",
+        "Bookshelf topic",
+        "Welcome and catalogue desk",
+        "Roof editable zinc and clerestory",
+        "Operable entrance sliding doors"
+      ]
+    },
+    {
+      "unchangedOtherFoliageInstances": 3356
+    },
+    {
+      "physicalGlassPanes": 1,
+      "thicknessMetres": 0.012
+    },
+    "Sample upholstery exports a packed normal texture; glass exports transmission and volume",
+    "Exactly three trees remain; only representative tree 623 geometry changed",
+    {
+      "reusedChairModules": 4,
+      "partsPerChair": 6,
+      "actualBackSagMetres": 0.07271311804652214,
+      "backTopMetres": 0.7979999780654907,
+      "padTopMetres": 0.46000000834465027,
+      "padThicknessMetres": 0.02799999713897705
+    },
+    {
+      "exportedNearTreeLeaves": 4480,
+      "trianglesPerLeaf": 4
+    },
+    "Front-facing physical glazing exports with standard transmission/volume; runtime sampling remains a documented Three.js adjustment"
+  ]
+}

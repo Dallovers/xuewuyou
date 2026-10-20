@@ -1,0 +1,13 @@
+{
+  "reopened": true,
+  "packedImages": 28,
+  "objects": 10688,
+  "localLight": {
+    "name": "R1 window sky approximation",
+    "type": "SPOT",
+    "spotSize": 1.7200000286102295
+  },
+  "inspectionCameras": 4,
+  "hiddenDistantAlternativeObjects": 2244,
+  "lightmapBake": false
+}

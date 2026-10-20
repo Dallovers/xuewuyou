@@ -1,0 +1,563 @@
+{
+  "method": "Filesystem SHA-256; PyMuPDF page tree and first page; Office ZIP integrity",
+  "files": 63,
+  "formats": {
+    ".docx": 7,
+    ".xlsx": 1,
+    ".pdf": 55
+  },
+  "valid": 63,
+  "results": [
+    {
+      "path": "data/pdf/ielts/写作/我的写作/写作1.docx",
+      "bytes": 13133,
+      "sha256": "f931f81e4c888eb4664a7b86d744e9294fe1b3c95d77c0b695215c3a9d29badc",
+      "officeContainerValid": true,
+      "valid": true
+    },
+    {
+      "path": "data/pdf/ielts/写作/我的写作/写作2.docx",
+      "bytes": 12216,
+      "sha256": "267f2f6d6b43aa4cb5ea28d812294a950094eef65e862a6f1281ca8596966226",
+      "officeContainerValid": true,
+      "valid": true
+    },
+    {
+      "path": "data/pdf/ielts/写作/我的写作/写作3.docx",
+      "bytes": 11152,
+      "sha256": "5065a1005393f90602b82b03321b32040639e2613363eb3ba72e4fe9e9288da3",
+      "officeContainerValid": true,
+      "valid": true
+    },
+    {
+      "path": "data/pdf/ielts/写作/我的写作/写作4.docx",
+      "bytes": 11667,
+      "sha256": "df62a050368345a882b71591f29d82dc32f670aebd007d45ece9019338d8f4c3",
+      "officeContainerValid": true,
+      "valid": true
+    },
+    {
+      "path": "data/pdf/ielts/写作/我的写作/写作5.docx",
+      "bytes": 713435,
+      "sha256": "68ca36895d45c0f283942d27f8962666658c378f0d1495694ad3ea631000afb1",
+      "officeContainerValid": true,
+      "valid": true
+    },
+    {
+      "path": "data/pdf/ielts/写作/我的写作/写作6.docx",
+      "bytes": 713272,
+      "sha256": "b99277224d1f633af01166bf3e85c8237b1f8d12557eda3e9ca2f595ac842543",
+      "officeContainerValid": true,
+      "valid": true
+    },
+    {
+      "path": "data/pdf/ielts/半半班 26 夏 题库(7).docx",
+      "bytes": 39219,
+      "sha256": "54f8934c9a209547dbda685caa3915d4aa82d822db4e329be2223f1a9a7ba53a",
+      "officeContainerValid": true,
+      "valid": true
+    },
+    {
+      "path": "data/pdf/ielts/阅读/一词多义.xlsx",
+      "bytes": 22177,
+      "sha256": "a34f61a4b4c39f9ff61986ed11292ded78f6d0e42f3656a416bfd6ec17956876",
+      "officeContainerValid": true,
+      "valid": true
+    },
+    {
+      "path": "data/pdf/ielts/写作/大作文/段落写法/大作文论点思考.pptx.pdf",
+      "bytes": 2909967,
+      "sha256": "06b9eafcdc3b348ca0f4b9319aa8cc4498874e559b7654e1a7c063803226b8c7",
+      "pages": 5,
+      "passwordRequired": 0,
+      "firstPageTextCharacters": 0,
+      "valid": true
+    },
+    {
+      "path": "data/pdf/ielts/写作/大作文/段落写法/结尾段写法.pdf",
+      "bytes": 1728237,
+      "sha256": "7912f68579a095aa048021487222d282512e254417164d3ec7661c4bffdd5334",
+      "pages": 3,
+      "passwordRequired": 0,
+      "firstPageTextCharacters": 0,
+      "valid": true
+    },
+    {
+      "path": "data/pdf/ielts/写作/大作文/段落写法/让步转折积极方面.pdf",
+      "bytes": 1714737,
+      "sha256": "cb8ff6dcd4fff3a3fb839d5f8c19c65ba7d65365f977b6e02995ab29a8a38525",
+      "pages": 3,
+      "passwordRequired": 0,
+      "firstPageTextCharacters": 0,
+      "valid": true
+    },
+    {
+      "path": "data/pdf/ielts/写作/大作文/论证方法/论证方法：因果+举例&一边倒衔接手段.pdf",
+      "bytes": 9234916,
+      "sha256": "97ad68790d3f1f4563fbbe7236aa3eab66bf8383dc9fda4ed241071999b9b2e7",
+      "pages": 9,
+      "passwordRequired": 0,
+      "firstPageTextCharacters": 0,
+      "valid": true
+    },
+    {
+      "path": "data/pdf/ielts/写作/大作文/论证方法/论证方法：对比论证.pdf",
+      "bytes": 5128910,
+      "sha256": "c7422ed4c8bd6b8e574ba532743256853886fd160f75538f5d48be8a8d19d0a2",
+      "pages": 6,
+      "passwordRequired": 0,
+      "firstPageTextCharacters": 0,
+      "valid": true
+    },
+    {
+      "path": "data/pdf/ielts/写作/大作文/题型与结构/双边讨论题型双边讨论文章结构衔接手段.pdf",
+      "bytes": 1523619,
+      "sha256": "557fd50ed07a1b3dfc68fe408423061051e116799ae1ad4ae3eb6b5fd057bc07",
+      "pages": 3,
+      "passwordRequired": 0,
+      "firstPageTextCharacters": 0,
+      "valid": true
+    },
+    {
+      "path": "data/pdf/ielts/写作/大作文/题型与结构/报告类文章结构+各段衔接手段.pdf",
+      "bytes": 1822879,
+      "sha256": "e4078cd15018ade92531c9f239209616b79f52fc9653625a896dacbe8846e8cd",
+      "pages": 3,
+      "passwordRequired": 0,
+      "firstPageTextCharacters": 0,
+      "valid": true
+    },
+    {
+      "path": "data/pdf/ielts/写作/大作文/题型与结构/让步转折：消极方面+利弊分析题型双边讨论文章结构衔接手段.pdf",
+      "bytes": 6192278,
+      "sha256": "7a4dbb1b4a22d2bd6159d59ef848f6391567e3ba74714fb8cbf065442dd3005b",
+      "pages": 7,
+      "passwordRequired": 0,
+      "firstPageTextCharacters": 0,
+      "valid": true
+    },
+    {
+      "path": "data/pdf/ielts/写作/小作文（图表题）/动态图开头段+主体段句式词汇+结尾段.pdf",
+      "bytes": 11373800,
+      "sha256": "51c2a966880389b037c5d836fe93ed3d5dca96e8b11b81fdbc9564f465f4d1c7",
+      "pages": 13,
+      "passwordRequired": 0,
+      "firstPageTextCharacters": 0,
+      "valid": true
+    },
+    {
+      "path": "data/pdf/ielts/写作/小作文（图表题）/动态图知识点(1).pdf",
+      "bytes": 12091837,
+      "sha256": "1404d8891ba702488ddd8d72569db62758b6e7565566c56c6d3a734f1793e130",
+      "pages": 17,
+      "passwordRequired": 0,
+      "firstPageTextCharacters": 0,
+      "valid": true
+    },
+    {
+      "path": "data/pdf/ielts/写作/小作文（图表题）/地图知识点+词汇句式.pdf",
+      "bytes": 13775346,
+      "sha256": "85f3fe1bdc3a8625b408d3f8a7f2db90985f0be02705760f4fc990e26db07b5d",
+      "pages": 14,
+      "passwordRequired": 0,
+      "firstPageTextCharacters": 0,
+      "valid": true
+    },
+    {
+      "path": "data/pdf/ielts/写作/小作文（图表题）/流程图知识点+词汇句式.pdf",
+      "bytes": 14296207,
+      "sha256": "22eb83c9748ac3c46db40004f39a8cd8bd3678a8af5eab7b88766a621b841039",
+      "pages": 18,
+      "passwordRequired": 0,
+      "firstPageTextCharacters": 0,
+      "valid": true
+    },
+    {
+      "path": "data/pdf/ielts/写作/小作文（图表题）/静态图知识点+词汇句式.pdf",
+      "bytes": 13153730,
+      "sha256": "0444cdca59ecf381938638e2e9eea07c5865bec1cdbdd979c7fa3c44cff33464",
+      "pages": 16,
+      "passwordRequired": 0,
+      "firstPageTextCharacters": 0,
+      "valid": true
+    },
+    {
+      "path": "data/pdf/ielts/阅读/C9-20高频同义替换练习册/C10 高频同义替换练习册.pdf",
+      "bytes": 21037682,
+      "sha256": "6b1cae5c7b06cd6b5ecb77b0af8ebe16ede993e453bb69a8b28b05a30d0557cc",
+      "pages": 12,
+      "passwordRequired": 0,
+      "firstPageTextCharacters": 1822,
+      "valid": true
+    },
+    {
+      "path": "data/pdf/ielts/阅读/C9-20高频同义替换练习册/C11 高频同义替换练习册.pdf",
+      "bytes": 23197790,
+      "sha256": "e195e0272ee2b023b19e3ec9610b488db11e314f4393e1f4b50bb3e7f8ac6b0f",
+      "pages": 16,
+      "passwordRequired": 0,
+      "firstPageTextCharacters": 912,
+      "valid": true
+    },
+    {
+      "path": "data/pdf/ielts/阅读/C9-20高频同义替换练习册/C12 高频同义替换练习册.pdf",
+      "bytes": 21201940,
+      "sha256": "3d37d648bb7bf048425dfad73a06aca184ad88d2fd0a81fada7e2eb6f0bbe7bb",
+      "pages": 14,
+      "passwordRequired": 0,
+      "firstPageTextCharacters": 971,
+      "valid": true
+    },
+    {
+      "path": "data/pdf/ielts/阅读/C9-20高频同义替换练习册/C13 高频同义替换练习册.pdf",
+      "bytes": 22877335,
+      "sha256": "49a9e1644323aa432a6daf6e8665c0a1e8038fd1e36c91a14b396a87c748958a",
+      "pages": 13,
+      "passwordRequired": 0,
+      "firstPageTextCharacters": 2018,
+      "valid": true
+    },
+    {
+      "path": "data/pdf/ielts/阅读/C9-20高频同义替换练习册/C14 高频同义替换练习册.pdf",
+      "bytes": 23258191,
+      "sha256": "f9baae0b10a0e14990d4f32e56b35707d514631279232b1cf309fc8811962d41",
+      "pages": 12,
+      "passwordRequired": 0,
+      "firstPageTextCharacters": 2403,
+      "valid": true
+    },
+    {
+      "path": "data/pdf/ielts/阅读/C9-20高频同义替换练习册/C15 高频同义替换练习册.pdf",
+      "bytes": 23035708,
+      "sha256": "478705ea7437bcf7292ddf8178a3f649f2235b263da6dab1b1ab8b9c41ff304a",
+      "pages": 13,
+      "passwordRequired": 0,
+      "firstPageTextCharacters": 1862,
+      "valid": true
+    },
+    {
+      "path": "data/pdf/ielts/阅读/C9-20高频同义替换练习册/C16 高频同义替换练习册.pdf",
+      "bytes": 21002810,
+      "sha256": "58fb4cf32bc3aa37db231f35ab247917dc404ddcfa6397f1f6440b305155aefb",
+      "pages": 11,
+      "passwordRequired": 0,
+      "firstPageTextCharacters": 2126,
+      "valid": true
+    },
+    {
+      "path": "data/pdf/ielts/阅读/C9-20高频同义替换练习册/C17 高频同义替换练习册.pdf",
+      "bytes": 21026759,
+      "sha256": "45c31156e3444d1bb39617f926e074ad21c15c5bbb85c1732ecdebd094dcc75d",
+      "pages": 13,
+      "passwordRequired": 0,
+      "firstPageTextCharacters": 1903,
+      "valid": true
+    },
+    {
+      "path": "data/pdf/ielts/阅读/C9-20高频同义替换练习册/C18 高频同义替换练习册.pdf",
+      "bytes": 21130581,
+      "sha256": "dd9ec228470688c804c4bdb5f28b6ecb65c856186e62b8a1c4ae3b0449653aeb",
+      "pages": 15,
+      "passwordRequired": 0,
+      "firstPageTextCharacters": 931,
+      "valid": true
+    },
+    {
+      "path": "data/pdf/ielts/阅读/C9-20高频同义替换练习册/C19 高频同义替换练习册.pdf",
+      "bytes": 21063432,
+      "sha256": "d6fa3f7af369ff785cc576d1d19f7c111fa7aa344969c94634fedae1e987ffce",
+      "pages": 13,
+      "passwordRequired": 0,
+      "firstPageTextCharacters": 852,
+      "valid": true
+    },
+    {
+      "path": "data/pdf/ielts/阅读/C9-20高频同义替换练习册/C20 高频同义替换练习册.pdf",
+      "bytes": 21057803,
+      "sha256": "008f0e0cc0dd679200b8d99def3750ae75e482a1c6179483f61a3e8662d80aab",
+      "pages": 12,
+      "passwordRequired": 0,
+      "firstPageTextCharacters": 2108,
+      "valid": true
+    },
+    {
+      "path": "data/pdf/ielts/阅读/C9-20高频同义替换练习册/C9 高频同义替换练习册.pdf",
+      "bytes": 23085887,
+      "sha256": "2df43dcbcabb0625088d75ce5992dc4cd96a6fcbbb26571e3b763dda84681b4d",
+      "pages": 13,
+      "passwordRequired": 0,
+      "firstPageTextCharacters": 1032,
+      "valid": true
+    },
+    {
+      "path": "data/pdf/ielts/阅读/词海漫游：雅思阅读高阶词汇必备手册_B2分册.pdf",
+      "bytes": 2129299,
+      "sha256": "b91f3bbfd982d95008ed1488cb3301908b59815cf4e45ac43ecbbda5b67867b7",
+      "pages": 81,
+      "passwordRequired": 0,
+      "firstPageTextCharacters": 118,
+      "valid": true
+    },
+    {
+      "path": "data/pdf/ielts/阅读/词海漫游：雅思阅读高阶词汇必备手册_C1分册.pdf",
+      "bytes": 2065136,
+      "sha256": "328f6a090fa109efb0c43d0925750632a7d00ab82f3d9636e38574dc27ec68c0",
+      "pages": 75,
+      "passwordRequired": 0,
+      "firstPageTextCharacters": 0,
+      "valid": true
+    },
+    {
+      "path": "data/pdf/ielts/IELTS_Study_Notes.pdf",
+      "bytes": 467965,
+      "sha256": "3739170ad78900e22db9ba64294822cde2744bd4a9575412490e570774beefd3",
+      "pages": 17,
+      "passwordRequired": 0,
+      "firstPageTextCharacters": 87,
+      "valid": true
+    },
+    {
+      "path": "data/pdf/ielts/写作/大作文/段落写法/大作文开头段.pdf",
+      "bytes": 9379891,
+      "sha256": "47b725d886fb7b6cdcfb333bc1530ce4c34e6ef16dba16240d3e4c94441788be",
+      "pages": 12,
+      "passwordRequired": 0,
+      "firstPageTextCharacters": 0,
+      "valid": true
+    },
+    {
+      "path": "data/pdf/ielts/写作/大作文/题型与结构/大作文题型介绍-审题步骤-文章结构.pdf",
+      "bytes": 13170737,
+      "sha256": "3c98f005a160ee7267756810838e6820e1a962a2915ca5bf68d281125157f74b",
+      "pages": 18,
+      "passwordRequired": 0,
+      "firstPageTextCharacters": 0,
+      "valid": true
+    },
+    {
+      "path": "data/pdf/ielts/阅读/雅思阅读长难句分析手册－汇总版.pdf",
+      "bytes": 3751375,
+      "sha256": "b6d123c9c78c54685c1d4280e8b1039950aa9c438f78a84f4b30e6cbcde90338",
+      "pages": 189,
+      "passwordRequired": 0,
+      "firstPageTextCharacters": 43,
+      "valid": true
+    },
+    {
+      "path": "data/pdf/梁志清数学分析做题本.pdf",
+      "bytes": 11525337,
+      "sha256": "5b3299020b678d4aab50466a07040834477cb1e9d4513a6b18b2464b8848e44b",
+      "pages": 2597,
+      "passwordRequired": 0,
+      "firstPageTextCharacters": 46,
+      "valid": true
+    },
+    {
+      "path": "data/pdf/丘维声《高等代数学习指导书》上册完整解析册.pdf",
+      "bytes": 1952109,
+      "sha256": "0232dad77a4a2afabe984b33f5a5da688b211e8af3e7a2d28ae180427547ba50",
+      "pages": 205,
+      "passwordRequired": 0,
+      "firstPageTextCharacters": 117,
+      "valid": true
+    },
+    {
+      "path": "data/pdf/丘维声《高等代数学习指导书》下册完整解析册.pdf",
+      "bytes": 2087719,
+      "sha256": "2bcd0c6d424c637a51fae143af25a6e231b98f4f8acfa3ae6f5bf4ee8506901a",
+      "pages": 218,
+      "passwordRequired": 0,
+      "firstPageTextCharacters": 117,
+      "valid": true
+    },
+    {
+      "path": "data/pdf/谢惠民《数学分析习题解析》上册完整解析册.pdf",
+      "bytes": 11755030,
+      "sha256": "5bda1c07b5dfc6cd3bf6f3ca2c9a778d72c1e6360be28f66877eb8dcccdf8e5c",
+      "pages": 704,
+      "passwordRequired": 0,
+      "firstPageTextCharacters": 117,
+      "valid": true
+    },
+    {
+      "path": "data/pdf/谢惠民《数学分析习题解析》下册完整解析册.pdf",
+      "bytes": 3270277,
+      "sha256": "31148b431d686de70a3e0db15be822af71a8cd8700176d269ec7d9feedabb29a",
+      "pages": 357,
+      "passwordRequired": 0,
+      "firstPageTextCharacters": 117,
+      "valid": true
+    },
+    {
+      "path": "data/pdf/傅里叶分析习题集.pdf",
+      "bytes": 16815684,
+      "sha256": "aaced5a47719bd7743002b9e75f3e819c08ea76bdf5d97cac7d67aecbcf88153",
+      "pages": 480,
+      "passwordRequired": 0,
+      "firstPageTextCharacters": 16,
+      "valid": true
+    },
+    {
+      "path": "data/pdf/2026年部分院校高等代数解答.pdf",
+      "bytes": 12156016,
+      "sha256": "9de61e3322f98fb0b598d4f585fdf1771861729d791382f8bcd67aae4fe8c490",
+      "pages": 359,
+      "passwordRequired": 0,
+      "firstPageTextCharacters": 59,
+      "valid": true
+    },
+    {
+      "path": "data/pdf/2026年部分院校数学分析解答.pdf",
+      "bytes": 13179715,
+      "sha256": "2011febf015c00c8136aee61022f86af5c87f7fa7559aaea368a11dec2351a60",
+      "pages": 374,
+      "passwordRequired": 0,
+      "firstPageTextCharacters": 59,
+      "valid": true
+    },
+    {
+      "path": "data/pdf/GTM73 代数中文.pdf",
+      "bytes": 3062429,
+      "sha256": "23e22be5003bcfaa01f2a88aee63ea9a7148150c1faefbacf6877bec33375e09",
+      "pages": 707,
+      "passwordRequired": 0,
+      "firstPageTextCharacters": 76,
+      "valid": true
+    },
+    {
+      "path": "data/pdf/2026 考研数学三真题解析.pdf",
+      "bytes": 134741,
+      "sha256": "f4cf209d953e68e66f1aa159c4cce36d85691655c378fe29d41d5dd0d6ae5c01",
+      "pages": 13,
+      "passwordRequired": 0,
+      "firstPageTextCharacters": 656,
+      "valid": true
+    },
+    {
+      "path": "data/pdf/2026 考研数学三真题卷.pdf",
+      "bytes": 83248,
+      "sha256": "73f8c1083dc1daec38cbe6bccc0623730272473984f612cdaa5926bcd4aebb38",
+      "pages": 5,
+      "passwordRequired": 0,
+      "firstPageTextCharacters": 685,
+      "valid": true
+    },
+    {
+      "path": "data/pdf/2026 考研数学一真题解析.pdf",
+      "bytes": 137559,
+      "sha256": "a4f4d91fd6c2e86e8079b69b5143118811b96300994ffcc509ae5e1079cd64b3",
+      "pages": 12,
+      "passwordRequired": 0,
+      "firstPageTextCharacters": 751,
+      "valid": true
+    },
+    {
+      "path": "data/pdf/2026 考研数学一真题卷.pdf",
+      "bytes": 86493,
+      "sha256": "a3ee983ce2fcd8cd789c019fd644f22f3c8a310c498f61bb116f1d03b5f848b2",
+      "pages": 5,
+      "passwordRequired": 0,
+      "firstPageTextCharacters": 733,
+      "valid": true
+    },
+    {
+      "path": "data/pdf/Atiyah-Macdonald 中文交换代数.pdf",
+      "bytes": 816613,
+      "sha256": "85654e1ab03aaf87a538723939349fca7ca90265691f87fa21d69d79a8e621e0",
+      "pages": 146,
+      "passwordRequired": 0,
+      "firstPageTextCharacters": 59,
+      "valid": true
+    },
+    {
+      "path": "data/pdf/Folland 实分析（B站：欧拉的费米子）.pdf",
+      "bytes": 3892365,
+      "sha256": "811a28c86f1b509df3a238f1196eb7ce20c05b029f0e3061663526d1b0828bb0",
+      "pages": 724,
+      "passwordRequired": 0,
+      "firstPageTextCharacters": 16,
+      "valid": true
+    },
+    {
+      "path": "data/pdf/微分几何复习笔记.pdf",
+      "bytes": 897958,
+      "sha256": "bfc7e82560a771e0085c91ae7d22958a91dd72d35a687bf33ab70ec5ea69c5f2",
+      "pages": 91,
+      "passwordRequired": 0,
+      "firstPageTextCharacters": 867,
+      "valid": true
+    },
+    {
+      "path": "data/pdf/西北工业大学2026.pdf",
+      "bytes": 179417,
+      "sha256": "aa0b30e73ad3485252bd13330eb479f36157334ef9b83201da6ab052fc4e41cc",
+      "pages": 3,
+      "passwordRequired": 0,
+      "firstPageTextCharacters": 966,
+      "valid": true
+    },
+    {
+      "path": "data/pdf/西北大学2026解析.pdf",
+      "bytes": 279237,
+      "sha256": "0f33ca96a2823edfe18192d42ecf90025861404feb0a85bf91446aa2e4539b68",
+      "pages": 17,
+      "passwordRequired": 0,
+      "firstPageTextCharacters": 1013,
+      "valid": true
+    },
+    {
+      "path": "data/pdf/中国科学技术大学2026.pdf",
+      "bytes": 159049,
+      "sha256": "ecbd5ee56e36f268778b2091d6beab2c21ba90b8dff473a31683195fea680296",
+      "pages": 2,
+      "passwordRequired": 0,
+      "firstPageTextCharacters": 1013,
+      "valid": true
+    },
+    {
+      "path": "data/pdf/浙江大学2026.pdf",
+      "bytes": 158485,
+      "sha256": "15f206cac92c82dd6c9c99f732f07ca51c09d7acf0a59f5076932103225d318e",
+      "pages": 2,
+      "passwordRequired": 0,
+      "firstPageTextCharacters": 1528,
+      "valid": true
+    },
+    {
+      "path": "data/pdf/哈尔滨工业大学2026.pdf",
+      "bytes": 116307,
+      "sha256": "b4c01b4204cb9be6d07504732026a846020ccce443b1965ba579aef9c56bfbf6",
+      "pages": 1,
+      "passwordRequired": 0,
+      "firstPageTextCharacters": 927,
+      "valid": true
+    },
+    {
+      "path": "data/pdf/大连理工大学2026.pdf",
+      "bytes": 128739,
+      "sha256": "36fb6bd218d55c3ed4a2c29568cb1c2e5828fa7da7e390473cc2ccc576a2ff74",
+      "pages": 3,
+      "passwordRequired": 0,
+      "firstPageTextCharacters": 600,
+      "valid": true
+    },
+    {
+      "path": "data/pdf/大连理工大学2025.pdf",
+      "bytes": 126710,
+      "sha256": "5acfcc9d0031676da9fb119839141150f68b2fd1a7ecbcb9ad20b490cb61daf0",
+      "pages": 2,
+      "passwordRequired": 0,
+      "firstPageTextCharacters": 945,
+      "valid": true
+    },
+    {
+      "path": "data/pdf/大连理工大学2024年数学分析真题.pdf",
+      "bytes": 58320,
+      "sha256": "bd185db520753c4069b31d90b4272da8a5c3aebb77973f8c5668dfee78fc9765",
+      "pages": 2,
+      "passwordRequired": 0,
+      "firstPageTextCharacters": 572,
+      "valid": true
+    }
+  ]
+}

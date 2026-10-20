@@ -1,0 +1,195 @@
+✖ 掌握度接口显式标明这是模型估计 (74.479ms)
+✖ 样本不足时降级置信度并给出提示，而不是给一个看起来很确定的百分比 (3.802ms)
+✖ 没有作答记录的章节不出现在结果里，而不是显示成 0 掌握度 (9.3354ms)
+✖ 样本累积后置信度随之提升 (29.9113ms)
+✖ 学习孪生里的掌握度同样带估计标识 (4.5376ms)
+✔ campus profiles are opt-in, authenticated and exclude private records (232.2572ms)
+✔ Socket.IO rejects anonymous connections and routes invitations only to participants (106.6146ms)
+✔ only the recipient accepts requests and accepted buddies can be challenged (60.5196ms)
+✔ question discussions support scoped replies, owner deletion and safe Markdown (73.961ms)
+✔ challenge questions are identical, private and do not reveal solutions before completion (17.9314ms)
+✖ server grades once, retains learning records and waits for both submissions before review (27.1337ms)
+✔ late submissions time out on the server and started challenges survive refresh (76.7015ms)
+✔ restart repairs interrupted learning delivery without duplicate records (272.3551ms)
+✖ real pyBKT posterior matches Bayesian update and missing probe does not add an answer (80.1692ms)
+✖ map uses bundled bank; mastery rejects self-assessed and duplicate FSRS mirror records (50.7437ms)
+✔ boards are separated by user and question, preserve images, and reject stale saves (60.71ms)
+✔ experiments store snapshots without executing code and stay private (77.2279ms)
+✖ a real FSRS answer counts once and future reviews are excluded from planning (62.8055ms)
+✖ campus twin reflects private records, board saves and focus time and follows new answers (35.6022ms)
+✖ real OR-Tools chooses urgent tasks, handles zero capacity, and has no overlaps (0.4514ms)
+✖ plan skips busy intervals, preserves completed work, and enforces optimistic concurrency (2.1151ms)
+ℹ tests 21
+ℹ suites 0
+ℹ pass 9
+ℹ fail 12
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1383.9594
+
+✖ failing tests:
+
+test at server\test\ability-state.test.js:53:1
+✖ 掌握度接口显式标明这是模型估计 (74.479ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  503 !== 200
+  
+      at TestContext.<anonymous> (C:\Users\Dallovers\Documents\Codex\2026-10-18\3d-pbr-v-ray-corona-unreal\work\publish-xuewuyou-3d-v5\server\test\ability-state.test.js:56:10)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1313:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:385:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 503,
+    expected: 200,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at server\test\ability-state.test.js:62:1
+✖ 样本不足时降级置信度并给出提示，而不是给一个看起来很确定的百分比 (3.802ms)
+  TypeError: Cannot read properties of undefined (reading '函数与极限')
+      at TestContext.<anonymous> (C:\Users\Dallovers\Documents\Codex\2026-10-18\3d-pbr-v-ray-corona-unreal\work\publish-xuewuyou-3d-v5\server\test\ability-state.test.js:64:21)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1313:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:897:7)
+
+test at server\test\ability-state.test.js:73:1
+✖ 没有作答记录的章节不出现在结果里，而不是显示成 0 掌握度 (9.3354ms)
+  TypeError: Cannot convert undefined or null to object
+      at Object.keys (<anonymous>)
+      at TestContext.<anonymous> (C:\Users\Dallovers\Documents\Codex\2026-10-18\3d-pbr-v-ray-corona-unreal\work\publish-xuewuyou-3d-v5\server\test\ability-state.test.js:75:23)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1313:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:897:7)
+
+test at server\test\ability-state.test.js:81:1
+✖ 样本累积后置信度随之提升 (29.9113ms)
+  TypeError: Cannot read properties of undefined (reading '函数与极限')
+      at TestContext.<anonymous> (C:\Users\Dallovers\Documents\Codex\2026-10-18\3d-pbr-v-ray-corona-unreal\work\publish-xuewuyou-3d-v5\server\test\ability-state.test.js:93:21)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1313:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:897:7)
+
+test at server\test\ability-state.test.js:98:1
+✖ 学习孪生里的掌握度同样带估计标识 (4.5376ms)
+  AssertionError [ERR_ASSERTION]: 孪生应携带掌握度
+      at TestContext.<anonymous> (C:\Users\Dallovers\Documents\Codex\2026-10-18\3d-pbr-v-ray-corona-unreal\work\publish-xuewuyou-3d-v5\server\test\ability-state.test.js:101:10)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1313:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:897:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: null,
+    expected: true,
+    operator: '==',
+    diff: 'simple'
+  }
+
+test at server\test\community.test.js:49:1
+✖ server grades once, retains learning records and waits for both submissions before review (27.1337ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  undefined !== 5
+  
+      at TestContext.<anonymous> (C:\Users\Dallovers\Documents\Codex\2026-10-18\3d-pbr-v-ray-corona-unreal\work\publish-xuewuyou-3d-v5\server\test\community.test.js:53:78)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1313:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:897:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    expected: 5,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at server\test\learning.test.js:20:1
+✖ real pyBKT posterior matches Bayesian update and missing probe does not add an answer (80.1692ms)
+  Error: 请先运行 services/Setup-Learning.ps1 安装学习引擎
+      at run (C:\Users\Dallovers\Documents\Codex\2026-10-18\3d-pbr-v-ray-corona-unreal\work\publish-xuewuyou-3d-v5\server\learning\engine.js:9:67)
+      at TestContext.<anonymous> (C:\Users\Dallovers\Documents\Codex\2026-10-18\3d-pbr-v-ray-corona-unreal\work\publish-xuewuyou-3d-v5\server\test\learning.test.js:21:17)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1306:25)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:385:3) {
+    status: 503
+  }
+
+test at server\test\learning.test.js:26:1
+✖ map uses bundled bank; mastery rejects self-assessed and duplicate FSRS mirror records (50.7437ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + undefined
+  - 'pyBKT'
+  
+      at TestContext.<anonymous> (C:\Users\Dallovers\Documents\Codex\2026-10-18\3d-pbr-v-ray-corona-unreal\work\publish-xuewuyou-3d-v5\server\test\learning.test.js:35:39)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1313:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:897:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    expected: 'pyBKT',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at server\test\learning.test.js:53:1
+✖ a real FSRS answer counts once and future reviews are excluded from planning (62.8055ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  undefined !== 2
+  
+      at TestContext.<anonymous> (C:\Users\Dallovers\Documents\Codex\2026-10-18\3d-pbr-v-ray-corona-unreal\work\publish-xuewuyou-3d-v5\server\test\learning.test.js:59:39)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1313:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:897:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    expected: 2,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at server\test\learning.test.js:61:1
+✖ campus twin reflects private records, board saves and focus time and follows new answers (35.6022ms)
+  TypeError: Cannot read properties of null (reading 'count')
+      at TestContext.<anonymous> (C:\Users\Dallovers\Documents\Codex\2026-10-18\3d-pbr-v-ray-corona-unreal\work\publish-xuewuyou-3d-v5\server\test\learning.test.js:65:179)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1313:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:897:7)
+
+test at server\test\learning.test.js:72:1
+✖ real OR-Tools chooses urgent tasks, handles zero capacity, and has no overlaps (0.4514ms)
+  Error: 请先运行 services/Setup-Learning.ps1 安装学习引擎
+      at run (C:\Users\Dallovers\Documents\Codex\2026-10-18\3d-pbr-v-ray-corona-unreal\work\publish-xuewuyou-3d-v5\server\learning\engine.js:9:67)
+      at TestContext.<anonymous> (C:\Users\Dallovers\Documents\Codex\2026-10-18\3d-pbr-v-ray-corona-unreal\work\publish-xuewuyou-3d-v5\server\test\learning.test.js:74:17)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1306:25)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:897:7) {
+    status: 503
+  }
+
+test at server\test\learning.test.js:77:1
+✖ plan skips busy intervals, preserves completed work, and enforces optimistic concurrency (2.1151ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  503 !== 200
+  
+      at TestContext.<anonymous> (C:\Users\Dallovers\Documents\Codex\2026-10-18\3d-pbr-v-ray-corona-unreal\work\publish-xuewuyou-3d-v5\server\test\learning.test.js:80:62)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1313:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:897:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 503,
+    expected: 200,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

@@ -121,6 +121,38 @@
     return state.audioElement;
   }
 
+  /* 退出时真正把音频资源放掉。
+   * stopAllAudio 只是「不出声」：blob 地址、已经解码的音频缓冲、AudioContext 都还占着。
+   * 自习室是反复进出的，不收回来的话每进一次就多留一份。 */
+  function releaseAudio() {
+    stopAllAudio();
+    if (state.customAudioUrl) {
+      try { URL.revokeObjectURL(state.customAudioUrl); } catch (e) {}
+      state.customAudioUrl = null;
+    }
+    if (state.audioElement) {
+      try {
+        state.audioElement.removeAttribute('src');
+        state.audioElement.load();
+      } catch (e) {}
+    }
+    if (state.webAudioCtx) {
+      try { state.webAudioCtx.close(); } catch (e) {}
+      state.webAudioCtx = null;
+    }
+    state.noiseNode = null;
+    state.gainNode = null;
+    /* 界面也要跟着回到初始态。不重置的话会出现「显示着上一轮的文件名、
+     * 但音频地址已经被 revoke」的不一致。
+     * input.value 必须清空：浏览器只在值变化时才触发 change，
+     * 不清空的话退出后再选同一个文件根本不会触发，用户会以为点了没反应。 */
+    if (dom.customFileName) dom.customFileName.textContent = '未选择文件';
+    if (dom.audioStatusText) dom.audioStatusText.textContent = '默认音频 · 播放中';
+    if (dom.localAudioInput) {
+      try { dom.localAudioInput.value = ''; } catch (e) {}
+    }
+  }
+
   // 播放本地/远程音乐文件
   function playMusicTrack(src) {
     const audio = getAudioElement();
@@ -495,7 +527,7 @@
     state.timerId = null;
     state.active = false;
     stopPresence();
-    stopAllAudio();
+    releaseAudio();
     document.body.classList.remove('study-fullscreen-active');
     if (document.fullscreenElement && document.exitFullscreen) {
       document.exitFullscreen().catch(() => {});

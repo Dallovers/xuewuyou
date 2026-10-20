@@ -592,13 +592,15 @@ const MIME = {
   '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.gif': 'image/gif',
   '.svg': 'image/svg+xml', '.ico': 'image/x-icon', '.wav': 'audio/wav', '.mp3': 'audio/mpeg',
   '.pdf': 'application/pdf', '.woff': 'font/woff', '.woff2': 'font/woff2',
-  '.wasm': 'application/wasm', '.mjs': 'application/javascript', '.ttf': 'font/ttf'
+  '.wasm': 'application/wasm', '.mjs': 'application/javascript', '.ttf': 'font/ttf',
+  '.hdr': 'application/octet-stream', '.glb': 'model/gltf-binary'
 };
 
 function serveStatic(req, res) {
   let urlPath;
   try { urlPath = decodeURIComponent((req.url.split('?')[0] || '/')); } catch { return sendError(res, 400, '路径格式错误'); }
   if (urlPath === '/') urlPath = '/index.html';
+  if (urlPath === '/examples/library-3d/') urlPath += 'index.html';
   const filePath = path.normalize(path.join(ROOT, urlPath));
   const relative = path.relative(ROOT, filePath);
   const parts = relative.split(path.sep);
@@ -606,7 +608,10 @@ function serveStatic(req, res) {
    * 页面本身是静态的（里面没有任何数据，数据全部走 /api/admin/* 鉴权），
    * 但仍然不放进目录里扩散，避免以后有人把备份、日志之类的东西丢进来就被伺服出去。 */
   const ALLOWED_ROOTS = ['index.html', 'admin.html', 'js', 'css', 'audio', 'data', 'vendor'];
-  if (relative.startsWith('..') || path.isAbsolute(relative) || parts.some(p => p.startsWith('.')) || !ALLOWED_ROOTS.includes(parts[0])) return sendError(res, 403, '禁止访问');
+  const publicPath = parts.join('/');
+  const libraryAsset = /^examples\/library-3d\/(?:index\.html|library\.css|app\.bundle\.js|assets\/(?:catalog-availability\.json|wenku-library\.glb)|vendor\/pdfjs\/(?:pdf\.min\.js|pdf\.worker\.min\.js))$/.test(publicPath);
+  const libraryMaterial = /^examples\/campus-3d-v5\/assets\/(?:[a-z]+-(?:color|normal|roughness)\.jpg|sky\.hdr)$/.test(publicPath);
+  if (relative.startsWith('..') || path.isAbsolute(relative) || parts.some(p => p.startsWith('.')) || !(ALLOWED_ROOTS.includes(parts[0]) || libraryAsset || libraryMaterial)) return sendError(res, 403, '禁止访问');
   fs.readFile(filePath, (err, buf) => {
     if (err) return sendError(res, 404, '文件不存在');
     const ext = path.extname(filePath).toLowerCase();
