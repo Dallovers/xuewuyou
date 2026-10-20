@@ -1,0 +1,12 @@
+{
+  "passed": true,
+  "three": "0.170.0 local module",
+  "bounds": {
+    "canWalkThroughDoor": true,
+    "frontWallSolid": true,
+    "backWallSolid": true
+  },
+  "realMainRoomsView": true,
+  "closeResumes": true,
+  "errors": []
+}
