@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>自习室样件 · 桌椅与门窗（B · study）</title>
+<style>
+  :root {
+    --ink: #23291f;
+    --muted: #6b7268;
+    --line: #d7d8cf;
+    --panel: #f6f6f1;
+    --accent: #38443F;
+    --ok: #4a6b52;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    font-family: "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
+    color: var(--ink);
+    background: #e9ebe6;
+    display: grid;
+    grid-template-columns: 1fr 336px;
+    overflow: hidden;
+  }
+  #view { width: 100%; height: 100%; display: block; }
+  aside {
+    border-left: 1px solid var(--line);
+    background: var(--panel);
+    padding: 18px 18px 24px;
+    overflow: auto;
+  }
+  h1 { font-size: 15px; margin: 0 0 4px; letter-spacing: .01em; }
+  .sub { font-size: 11.5px; color: var(--muted); line-height: 1.65; margin: 0 0 14px; }
+  .badge {
+    display: inline-block; font-size: 10.5px; letter-spacing: .06em;
+    color: #fff; background: var(--accent); border-radius: 3px;
+    padding: 2px 6px; margin-bottom: 10px;
+  }
+  .group { margin-bottom: 16px; }
+  .group > span {
+    display: block; font-size: 10.5px; letter-spacing: .08em;
+    color: var(--muted); margin-bottom: 6px; text-transform: uppercase;
+  }
+  button {
+    font: inherit; font-size: 12px;
+    background: #fff; color: var(--ink);
+    border: 1px solid var(--line); border-radius: 5px;
+    padding: 5px 9px; margin: 0 5px 5px 0; cursor: pointer;
+  }
+  button:hover { border-color: #b4b6aa; }
+  button.on { background: var(--accent); color: #fff; border-color: var(--accent); }
+  table { width: 100%; border-collapse: collapse; font-size: 11.5px; }
+  th, td { padding: 4px 0; border-bottom: 1px solid #e6e6dd; text-align: left; font-weight: 400; }
+  th { color: var(--muted); }
+  td { text-align: right; font-variant-numeric: tabular-nums; }
+  .foot { font-size: 11px; color: var(--muted); line-height: 1.7; margin-top: 14px; }
+  .ok { color: var(--ok); font-weight: 600; }
+  .tip {
+    position: fixed; left: 14px; bottom: 12px; font-size: 11px;
+    color: #55605a; background: rgba(255,255,255,.78);
+    border: 1px solid var(--line); border-radius: 5px; padding: 5px 9px;
+  }
+</style>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body>
+<canvas id="view"></canvas>
+
+<aside>
+  <span class="badge">B · study · 样件 v1</span>
+  <h1>第一组标准桌椅与一段门窗</h1>
+  <p class="sub">按《风格基准与AB建模说明》第六节尺寸起点建模，供负责人核对结构、比例与材质衔接。通过后再沿房间四周复制。</p>
+
+  <div class="group">
+    <span>视角</span>
+    <button data-view="all" class="on">总览</button>
+    <button data-view="room">整屋</button>
+    <button data-view="ceiling">天花</button>
+    <button data-view="plan">平面</button>
+    <button data-view="desk">桌椅</button>
+    <button data-view="shell">门窗</button>
+    <button data-view="side">侧面剖视</button>
+  </div>
+
+  <div class="group">
+    <span>叠加</span>
+    <button data-toggle="grid" class="on">1 m 网格</button>
+    <button data-toggle="human" class="on">人体 1.72 m</button>
+    <button data-toggle="roof" class="on">屋面</button>
+    <button data-toggle="wire">线框</button>
+  </div>
+
+  <div class="group">
+    <span>关键尺寸</span>
+    <table>
+      <tbody id="specBody"></tbody>
+    </table>
+  </div>
+
+  <div class="group">
+    <span>走道校核</span>
+    <p style="font-size:12px;margin:0">岛间距 <span id="pitchVal">—</span> m 时净走道 <span id="aisleState" class="ok">—</span></p>
+  </div>
+
+  <div class="group">
+    <span>整屋</span>
+    <p style="font-size:12px;margin:0" id="roomSummary">—</p>
+  </div>
+
+  <div class="group">
+    <span>灯位表（源数据，非图）</span>
+    <p style="font-size:12px;margin:0 0 4px" id="lightHead">—</p>
+    <table>
+      <tbody id="lightBody"></tbody>
+    </table>
+  </div>
+
+  <p class="foot">
+    材质：stone_light / brick_grey / metal_dark / oak_light / fabric_greygreen 取说明书色值；
+    室内抹灰、天花、水磨石、椅架钢为板块内部补充，待负责人统一烘焙时替换。<br>
+    此页仅用于检查，不属于主站运行时代码。
+  </p>
+</aside>
+
+<div class="tip">拖动旋转 · 滚轮缩放 · 右键平移</div>
+
+<script src="core.js"></script>
+<script src="materials.js"></script>
+<script src="furniture.js"></script>
+<script src="shell.js"></script>
+<script src="room.js"></script>
+<script type="module" src="preview.js"></script>
+</body>
+</html>
