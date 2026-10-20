@@ -32,10 +32,12 @@
   var HZ = ROOM.depth / 2;   // 4.5
 
   var LAYOUT = {
-    // 三个桌岛。前两个沿 Z 按 3.55 m 中心距排（净走道 1.506 m），第三个错开摆放，不排成方阵
+    // 三个桌岛。前两个沿 Z 按 3.55 m 中心距排（净走道 1.506 m），第三个错开摆放，不排成方阵。
+    // X 取 −2.40 而不是 −2.60：窗边长台的凳子外沿在 −5.05，留出 1.45 m 净距，
+    // 扣掉角色半径 0.25 后中心可走带宽 0.95 m。取 −2.60 时只有 1.25 / 0.75，偏挤。
     islands: [
-      { x: -2.60, z: -1.60 },
-      { x: -2.60, z: 1.95 },
+      { x: -2.40, z: -1.60 },
+      { x: -2.40, z: 1.95 },
       { x: 1.90, z: 0.20 }
     ],
     // 窗边席：贴着西墙（大窗那面）的橡木长台 + 四个凳子
@@ -232,11 +234,11 @@
       { name: 'WallWest', seg: SEG_WEST, pos: [-(HX + ROOM.wallThickness / 2), 0, 0], ry: Math.PI / 2 },
       { name: 'WallEast', seg: SEG_SOLID_EW, pos: [HX + ROOM.wallThickness / 2, 0, 0], ry: -Math.PI / 2 },
       { name: 'WallNorth', seg: SEG_SOLID_NS, pos: [0, 0, -(HZ + ROOM.wallThickness / 2)], ry: 0 },
-      { name: 'WallSouth', seg: SEG_SOUTH, pos: [0, 0, HZ + ROOM.wallThickness / 2], ry: Math.PI }
+      { name: 'WallSouth', seg: SEG_SOUTH, pos: [0, 0, HZ + ROOM.wallThickness / 2], ry: Math.PI, doorOpenDeg: 88 }
     ];
     walls.forEach(function (w) {
       var run = shell.createWallRun(THREE, mats, {
-        name: w.name, segments: w.seg, glass: glassMat
+        name: w.name, segments: w.seg, glass: glassMat, doorOpenDeg: w.doorOpenDeg
       });
       run.position.set(w.pos[0], w.pos[1], w.pos[2]);
       run.rotation.y = w.ry;

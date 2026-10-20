@@ -87,8 +87,14 @@
     );
   }
 
-  function glassPane(THREE, parent, name, width, height, cx, cy, cz) {
-    var geo = new THREE.PlaneGeometry(width, height);
+  /**
+   * 玻璃：做 0.016 m 的薄实体，不是零厚度平面。
+   * 负责人 2026-10-20 指出「SPEC 里写了 0.016、实际是 PlaneGeometry」——
+   * 参数存在不等于实现了，这里补上真实厚度，侧剖视才经得起看。
+   */
+  function glassPane(THREE, parent, name, width, height, cx, cy, cz, thickness) {
+    var t = thickness || W.glassThickness;
+    var geo = new THREE.BoxGeometry(width, height, t);
     var mesh = new THREE.Mesh(geo, parent.userData.glassMaterial);
     mesh.name = name;
     mesh.position.set(cx, cy, cz || 0);
@@ -154,7 +160,8 @@
   }
 
   /** 门洞：深青铜门框 + 双扇玻璃门 + 门头亮窗 + 洞口 0.24 m 进深的侧壁衬板。 */
-  function createDoorBay(THREE, mats, glassMat, x0, x1) {
+  function createDoorBay(THREE, mats, glassMat, x0, x1, opts) {
+    opts = opts || {};
     var core = global.StudyDistrict.core;
     var g = core.group(THREE, null, 'DoorBay');
     g.userData.glassMaterial = glassMat;
@@ -199,11 +206,16 @@
         [mid, DR.transomTop + 0.03, 0], mats.metal_dark);
     }
 
-    // 双扇门
+    // 双扇门。铰链在外侧边，openDeg 为 0 时与之前完全一致；
+    // 整屋用 88° 让门真的开着，人才走得进去（静态样件仍保持关闭状态）。
+    var openRad = (opts.doorOpenDeg || 0) * Math.PI / 180;
     [-1, 1].forEach(function (sign) {
-      var leafCx = mid + sign * (DR.leafWidth / 2 + 0.002);
-      var leaf = core.group(THREE, g, 'DoorLeaf');
-      leaf.position.set(leafCx, 0, 0);
+      var hingeX = mid + sign * (DR.leafWidth + 0.002);
+      var hinge = core.group(THREE, g, 'DoorHinge');
+      hinge.position.set(hingeX, 0, 0);
+      hinge.rotation.y = sign * openRad;
+      var leaf = core.group(THREE, hinge, 'DoorLeaf');
+      leaf.position.set(-sign * DR.leafWidth / 2, 0, 0);
       leaf.userData.glassMaterial = glassMat;
 
       // 边框
@@ -278,7 +290,7 @@
         g.add(createWindowBay(THREE, mats, glassMat, x0, x1));
         wallBand(THREE, g, 'WindowHeadBand', x0, x1, W.frameTop, height, mats.wall_interior, mats);
       } else if (seg.type === 'door') {
-        g.add(createDoorBay(THREE, mats, glassMat, x0, x1));
+        g.add(createDoorBay(THREE, mats, glassMat, x0, x1, { doorOpenDeg: opts.doorOpenDeg }));
         wallBand(THREE, g, 'DoorHeadBand', x0, x1, DR.transomTop + 0.06, height, mats.wall_interior, mats);
       }
       cursor = x1;
