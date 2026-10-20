@@ -46,7 +46,8 @@
 <script type="importmap">
 {
   "imports": {
-    "three": "https://unpkg.com/three@0.160.0/build/three.module.js"
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
   }
 }
 </script>
@@ -81,22 +82,43 @@ try {
   throw err;
 }
 renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.05;
+renderer.toneMappingExposure = 0.86;
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0xc6dae4);
-scene.fog = new THREE.Fog(0xc6dae4, 42, 96);
+scene.fog = new THREE.Fog(0xc6dae4, 46, 112);
+
+/* 天空 HDR → 环境反射（IBL）。
+   没有环境贴图时，metalness 偏高的材质（亭廊立柱、窗框、栏杆）只能渲染成死黑，
+   这是之前"塑料/发灰"最直接的来源。加载失败就退回纯色背景，预览照常跑。 */
+let envState = { ok: false, reason: 'not-started' };
+try {
+  const { RGBELoader } = await import('three/addons/loaders/RGBELoader.js');
+  const hdr = await new RGBELoader().loadAsync('../../../examples/campus-3d-v5/assets/sky.hdr');
+  hdr.mapping = THREE.EquirectangularReflectionMapping;
+  scene.background = hdr;
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  pmrem.compileEquirectangularShader();
+  scene.environment = pmrem.fromEquirectangular(hdr).texture;
+  pmrem.dispose();
+  envState = { ok: true, source: 'sky.hdr' };
+} catch (err) {
+  envState = { ok: false, reason: err && err.message };
+  console.warn('[preview] 天空 HDR 未加载，回退纯色背景与环境', err);
+}
 
 const camera = new THREE.PerspectiveCamera(58, 1, 0.1, 240);
 camera.rotation.order = 'YXZ';
 
-const hemi = new THREE.HemisphereLight(0xdfeaf2, 0x6f7564, 1.15);
+// 有 IBL 之后半球光要压下来，否则整体过曝、阴影细节被冲掉
+const hemi = new THREE.HemisphereLight(0xdfeaf2, 0x6f7564, envState.ok ? 0.42 : 1.05);
 scene.add(hemi);
 
-const sun = new THREE.DirectionalLight(0xfff3de, 2.1);
+const sun = new THREE.DirectionalLight(0xfff3de, envState.ok ? 2.2 : 2.1);
 sun.position.set(16, 24, 13);
 sun.castShadow = true;
 sun.shadow.mapSize.set(2048, 2048);
@@ -106,10 +128,13 @@ sun.shadow.camera.left = -26;
 sun.shadow.camera.right = 26;
 sun.shadow.camera.top = 26;
 sun.shadow.camera.bottom = -26;
-sun.shadow.bias = -0.0007;
+// 贴近 v5 的取值：bias 过大会让阴影脱离物体（浮空），过小会出现条纹
+sun.shadow.bias = -0.000025;
+sun.shadow.normalBias = 0.014;
+sun.shadow.radius = 3;
 scene.add(sun);
 
-const fill = new THREE.DirectionalLight(0xdce8ef, 0.35);
+const fill = new THREE.DirectionalLight(0xdce8ef, envState.ok ? 0.16 : 0.6);
 fill.position.set(-14, 9, -10);
 scene.add(fill);
 
@@ -117,6 +142,7 @@ scene.add(fill);
 
 const district = createDistrict({ THREE, mode: 'preview' });
 scene.add(district.root);
+district.ready.then((r) => console.log('[preview] PBR 贴图', r, '环境', envState));
 
 /* ---------- 第一人称行走（预览自用） ---------- */
 

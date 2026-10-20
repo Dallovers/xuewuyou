@@ -23,24 +23,51 @@ export const SOCIAL_LAYOUT = {
   facade: { z: -12.6, width: 30, height: 8, thickness: 0.5 },
 };
 
-/* 起始色值来自统一风格文档，不是从生成图测得的材质数据 */
+/* 起始色值来自统一风格文档，不是从生成图测得的材质数据。
+   贴图借自 examples/campus-3d-v5/assets（Poly Haven CC0，出处见该目录 sources.json），
+   只借 PBR 三件套与天空 HDR，不借教室的几何和光照烘焙图集。 */
 const MATERIAL_SPEC = {
-  stone_light: { color: 0xd8d2c3, roughness: 0.72, metalness: 0.0 },
-  stone_light_in: { color: 0xd8d2c3, roughness: 0.5, metalness: 0.0 },
-  brick_grey: { color: 0x8a908b, roughness: 0.85, metalness: 0.0 },
-  metal_dark: { color: 0x38443f, roughness: 0.42, metalness: 0.6 },
-  roof_bluegrey: { color: 0x637581, roughness: 0.5, metalness: 0.35 },
-  oak_light: { color: 0xc9ad82, roughness: 0.55, metalness: 0.0 },
+  stone_light: { color: 0xd8d2c3, roughness: 0.72, metalness: 0.0, envMapIntensity: 0.85, uvUnit: 3 },
+  stone_light_in: { color: 0xd8d2c3, roughness: 0.5, metalness: 0.0, envMapIntensity: 0.7, uvUnit: 2.4 },
+  brick_grey: { color: 0x8a908b, roughness: 0.85, metalness: 0.0, envMapIntensity: 0.8, uvUnit: 1.7 },
+  // 没有 envMap 时高金属度只会渲染成死黑，这里降到 0.45；配上 IBL 仍能出金属感
+  metal_dark: { color: 0x38443f, roughness: 0.42, metalness: 0.45, envMapIntensity: 1.1 },
+  roof_bluegrey: { color: 0x637581, roughness: 0.5, metalness: 0.28, envMapIntensity: 1.0 },
+  oak_light: { color: 0xb59a70, roughness: 0.55, metalness: 0.0, envMapIntensity: 0.6, uvUnit: 1.8 },
   fabric_greygreen: { color: 0x777d6e, roughness: 0.9, metalness: 0.0 },
-  glass: { color: 0xcddfe4, roughness: 0.08, metalness: 0.0, transparent: true, opacity: 0.35 },
-  window_dark: { color: 0x46555a, roughness: 0.28, metalness: 0.35 },
-  water_placeholder: { color: 0x86adb8, roughness: 0.15, metalness: 0.0, transparent: true, opacity: 0.6 },
+  glass: {
+    color: 0xcddfe4, roughness: 0.08, metalness: 0.05, transparent: true, opacity: 0.22,
+    physical: true, depthWrite: false, envMapIntensity: 1.2,
+  },
+  window_dark: { color: 0x46555a, roughness: 0.28, metalness: 0.35, envMapIntensity: 1.0 },
+  water_placeholder: {
+    color: 0x86adb8, roughness: 0.12, metalness: 0.05, transparent: true, opacity: 0.72,
+    physical: true, envMapIntensity: 1.3,
+  },
   accent_amber: { color: 0xc98b3f, roughness: 0.4, metalness: 0.2, emissive: 0xc98b3f, emissiveIntensity: 0.7 },
   ground_paving: { color: 0xbdb6a6, roughness: 0.82, metalness: 0.0 },
   ground_lawn: { color: 0x7e8a71, roughness: 0.95, metalness: 0.0 },
-  leaf: { color: 0x6d7a5c, roughness: 0.92, metalness: 0.0 },
+  leaf: { color: 0x5a6a47, roughness: 0.92, metalness: 0.0 },
   soil: { color: 0x5a5045, roughness: 0.98, metalness: 0.0 },
 };
+
+/* 材质 ID → 贴图组。尺度与 v5 architecture.js 的 unit 对齐：
+   stone 3m、brick 1.7m、wood 1.8m 一个平铺循环。 */
+const PBR_GROUPS = {
+  stone_light: { set: 'stone', normalScale: 0.025 },
+  stone_light_in: { set: 'stone', normalScale: 0.02 },
+  brick_grey: { set: 'brick', normalScale: 0.1 },
+  oak_light: { set: 'wood', normalScale: 0.045 },
+};
+
+/* 素材目录：js/features/social/ → 仓库根 → examples/campus-3d-v5/assets/ */
+const ASSET_DIR = (() => {
+  try {
+    return new URL('../../../examples/campus-3d-v5/assets/', import.meta.url).href;
+  } catch (_) {
+    return null;
+  }
+})();
 
 function resolveMaterials(THREE, shared) {
   const lib = {};
@@ -56,6 +83,7 @@ function resolveMaterials(THREE, shared) {
       roughness: spec.roughness,
       metalness: spec.metalness,
     };
+    if (spec.envMapIntensity !== undefined) params.envMapIntensity = spec.envMapIntensity;
     if (spec.emissive !== undefined) {
       params.emissive = spec.emissive;
       params.emissiveIntensity = spec.emissiveIntensity;
@@ -64,12 +92,90 @@ function resolveMaterials(THREE, shared) {
       params.transparent = true;
       params.opacity = spec.opacity;
     }
-    const m = new THREE.MeshStandardMaterial(params);
+    if (spec.depthWrite === false) params.depthWrite = false;
+    // 玻璃和水用 Physical：多一层 clearcoat/透射，和标准材质的塑料感明显不同
+    const Ctor = spec.physical ? THREE.MeshPhysicalMaterial : THREE.MeshStandardMaterial;
+    const m = new Ctor(params);
     m.name = id;
+    // 供 add() 判断这块几何要不要按尺寸重算 UV；0 表示无贴图、不必处理
+    m.userData.uvUnit = spec.uvUnit || 0;
     lib[id] = m;
     owned.push(m);
   }
   return { lib, owned };
+}
+
+/**
+ * 异步补挂 PBR 贴图。
+ * createDistrict 必须同步返回 root，所以贴图不阻塞建场：
+ * 先按纯色建好，贴图到位后直接改现有材质的贴图槽并置 needsUpdate。
+ * 任何一步失败都只保留纯色回退，不抛错，预览页照常可跑。
+ */
+function attachTextures(THREE, lib, pavingMats) {
+  if (!ASSET_DIR || typeof document === 'undefined' || typeof THREE.TextureLoader !== 'function') {
+    return Promise.resolve({ ok: false, reason: 'no-asset-env', loaded: 0, total: 0 });
+  }
+
+  const loader = new THREE.TextureLoader();
+  const pending = new Map();
+  const owned = [];
+
+  function load(file, srgb) {
+    if (pending.has(file)) return pending.get(file);
+    const job = loader.loadAsync(ASSET_DIR + file).then((tex) => {
+      tex.wrapS = THREE.RepeatWrapping;
+      tex.wrapT = THREE.RepeatWrapping;
+      tex.anisotropy = 8;
+      if (srgb) tex.colorSpace = THREE.SRGBColorSpace;
+      owned.push(tex);
+      return tex;
+    });
+    pending.set(file, job);
+    return job;
+  }
+
+  const jobs = [];
+
+  // 构件材质：共享同一份贴图，repeat 保持 1×1，靠 unit 决定观感尺度
+  for (const [id, group] of Object.entries(PBR_GROUPS)) {
+    const mat = lib[id];
+    if (!mat) continue;
+    jobs.push((async () => {
+      const [color, normal, rough] = await Promise.all([
+        load(group.set + '-color.jpg', true),
+        load(group.set + '-normal.jpg', false),
+        load(group.set + '-roughness.jpg', false),
+      ]);
+      mat.map = color;
+      mat.normalMap = normal;
+      mat.normalScale = new THREE.Vector2(group.normalScale, group.normalScale);
+      mat.roughnessMap = rough;
+      mat.needsUpdate = true;
+    })());
+  }
+
+  // 地面铺装：保留程序化石板做颜色，只借 stone-normal 提供凹凸；
+  // 换成天然石纹贴图反而会丢掉板缝，重复感也更重
+  for (const item of pavingMats) {
+    jobs.push((async () => {
+      const normal = await load('stone-normal.jpg', false);
+      const n = normal.clone();
+      n.needsUpdate = true;
+      n.repeat.set(item.repeat[0], item.repeat[1]);
+      item.mat.normalMap = n;
+      item.mat.normalScale = new THREE.Vector2(0.28, 0.28);
+      item.mat.needsUpdate = true;
+      owned.push(n);
+    })());
+  }
+
+  return Promise.allSettled(jobs).then((results) => {
+    const failed = results.filter((r) => r.status === 'rejected');
+    if (failed.length) {
+      console.warn('[social] 部分贴图未加载，已保留纯色回退', failed.map((f) => f.reason && f.reason.message));
+    }
+    return { ok: failed.length === 0, loaded: results.length - failed.length, total: results.length };
+  });
 }
 
 export function createDistrict(ctx = {}) {
@@ -88,6 +194,7 @@ export function createDistrict(ctx = {}) {
   const colliders = [];
   const interactions = [];
   const animated = [];
+  const pavingMaterials = [];
 
   function boxGeo(w, h, d) {
     const key = 'b' + w.toFixed(3) + '|' + h.toFixed(3) + '|' + d.toFixed(3);
@@ -96,6 +203,46 @@ export function createDistrict(ctx = {}) {
       g = new THREE.BoxGeometry(w, h, d);
       g.userData.__socialCached = true;
       geoCache.set(key, g);
+    }
+    return g;
+  }
+
+  /* 按材质尺度重算 Box 的 UV。
+     Box 默认每面都是 0–1，一块 1.9m 宽的台面用 0–1 铺石材，纹理会沿长边被拉成条状；
+     这里按面的真实尺寸除以 unit 得到平铺次数。思路同 v5 architecture.js 的 uvWorld，
+     区别是只按局部尺寸算，这样同尺寸的几何仍能缓存复用，不因摆放位置不同而各建一份。 */
+  const tiledGeoCache = new Map();
+
+  function tileBoxUV(geo, unit) {
+    const p = geo.parameters || {};
+    const w = p.width || 1;
+    const h = p.height || 1;
+    const d = p.depth || 1;
+    const uv = geo.attributes.uv;
+    if (!uv) return geo;
+    // BoxGeometry 面序：+X, -X, +Y, -Y, +Z, -Z，每面 4 个独立顶点
+    const spans = [[d, h], [d, h], [w, d], [w, d], [w, h], [w, h]];
+    for (let f = 0; f < 6; f++) {
+      const su = spans[f][0] / unit;
+      const sv = spans[f][1] / unit;
+      for (let i = 0; i < 4; i++) {
+        const idx = f * 4 + i;
+        uv.setXY(idx, uv.getX(idx) * su, uv.getY(idx) * sv);
+      }
+    }
+    uv.needsUpdate = true;
+    return geo;
+  }
+
+  function tiledBox(geometry, unit) {
+    const p = geometry.parameters || {};
+    const key = 't' + p.width + '|' + p.height + '|' + p.depth + '|' + unit;
+    let g = tiledGeoCache.get(key);
+    if (!g) {
+      g = geometry.clone();
+      g.userData.__socialDisposable = true;
+      tileBoxUV(g, unit);
+      tiledGeoCache.set(key, g);
     }
     return g;
   }
@@ -113,6 +260,9 @@ export function createDistrict(ctx = {}) {
 
   /* 统一入口：所有实体都走这里，便于统计与释放 */
   function add(geometry, material, x, y, z, opts = {}) {
+    // 带贴图尺度的材质：换成按尺寸重算过 UV 的几何副本
+    const uvUnit = material && material.userData ? material.userData.uvUnit : 0;
+    if (uvUnit && geometry.isBoxGeometry) geometry = tiledBox(geometry, uvUnit);
     // 缓存外的几何（圆盘、环、平面）随本模块一起释放，避免切场景后泄漏
     if (geometry.userData && !geometry.userData.__socialCached) {
       geometry.userData.__socialDisposable = true;
@@ -140,44 +290,58 @@ export function createDistrict(ctx = {}) {
 
   /* ---------- 场地与通路 ---------- */
 
-  /* 程序化铺装：一张 2×2 石砖分缝图，按 2m 一格平铺。
-     比"一整块纯色平面"能明显看出铺装尺度，也不依赖外部贴图。 */
-  function makePavingMaterial(baseColor, repX, repY) {
+  /* 程序化石板铺装：1024 的错缝石板图，每块有独立亮度与斑驳。
+     单张天然石纹贴图平铺后重复感很强、也看不出"铺装"这件事，
+     所以这里自己画石板，法线再借 v5 的 stone-normal 做凹凸。 */
+  function makePavingMaterial(baseColor, width, depth, unit) {
+    const repX = width / unit;
+    const repY = depth / unit;
     if (typeof document === 'undefined') return null;
-    const size = 256;
+    const size = 1024;
     const canvas = document.createElement('canvas');
     canvas.width = size;
     canvas.height = size;
     const g = canvas.getContext('2d');
     if (!g) return null;
-    g.fillStyle = baseColor;
+
+    // 先铺一层深色当缝
+    g.fillStyle = '#7d7666';
     g.fillRect(0, 0, size, size);
-    // 轻微色斑，避免完全均匀
-    for (let i = 0; i < 90; i++) {
-      const w = 12 + Math.random() * 34;
-      const h = 8 + Math.random() * 22;
-      const x = Math.random() * size;
-      const y = Math.random() * size;
-      g.fillStyle = 'rgba(255,255,255,' + (0.02 + Math.random() * 0.05).toFixed(3) + ')';
-      g.fillRect(x, y, w, h);
+
+    const cols = 4;
+    const rows = 4;
+    const tw = size / cols;
+    const th = size / rows;
+    for (let row = 0; row < rows; row++) {
+      const offset = (row % 2) * (tw / 2);
+      for (let col = -1; col <= cols; col++) {
+        const x = col * tw + offset;
+        const y = row * th;
+        const v = 199 + (Math.random() * 16 - 8);
+        g.fillStyle = 'rgb(' + Math.round(v) + ',' + Math.round(v * 0.987) + ',' + Math.round(v * 0.948) + ')';
+        g.fillRect(x + 3, y + 3, tw - 6, th - 6);
+        // 单块石材内部的斑驳，避免每块都是一样平的浅灰
+        for (let k = 0; k < 24; k++) {
+          const px = x + 3 + Math.random() * (tw - 6);
+          const py = y + 3 + Math.random() * (th - 6);
+          g.fillStyle = 'rgba(146,136,116,' + (0.03 + Math.random() * 0.05).toFixed(3) + ')';
+          g.beginPath();
+          g.arc(px, py, 3 + Math.random() * 13, 0, Math.PI * 2);
+          g.fill();
+        }
+      }
     }
-    g.strokeStyle = 'rgba(112,105,92,0.34)';
-    g.lineWidth = 1.2;
-    g.beginPath();
-    g.moveTo(0, 0.5); g.lineTo(size, 0.5);
-    g.moveTo(0.5, 0); g.lineTo(0.5, size);
-    g.moveTo(size / 2, 0); g.lineTo(size / 2, size);
-    g.moveTo(0, size / 2); g.lineTo(size, size / 2);
-    g.stroke();
+
     const tex = new THREE.CanvasTexture(canvas);
     tex.wrapS = THREE.RepeatWrapping;
     tex.wrapT = THREE.RepeatWrapping;
     tex.repeat.set(repX, repY);
     tex.colorSpace = THREE.SRGBColorSpace;
     tex.anisotropy = 8;
-    const mat = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.82, metalness: 0.0 });
+    const mat = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.8, metalness: 0.0, color: baseColor });
     mat.name = 'paving:' + baseColor;
     ownedMaterials.push(mat);
+    pavingMaterials.push({ mat, repeat: [repX, repY] });
     return mat;
   }
 
@@ -208,28 +372,64 @@ export function createDistrict(ctx = {}) {
     return mat;
   }
 
+  /* 草地：仓库里没有草地贴图，用程序化颗粒噪点 + 颜色着色，
+     避免 70×70 的底面上出现一整片死平的绿。 */
+  function makeLawnMaterial() {
+    if (typeof document === 'undefined') return null;
+    const size = 256;
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    const g = canvas.getContext('2d');
+    if (!g) return null;
+    g.fillStyle = '#e9efe3';
+    g.fillRect(0, 0, size, size);
+    for (let i = 0; i < 2600; i++) {
+      const x = Math.random() * size;
+      const y = Math.random() * size;
+      const r = 0.6 + Math.random() * 1.6;
+      g.fillStyle = Math.random() > 0.5 ? 'rgba(255,255,255,0.26)' : 'rgba(116,134,104,0.32)';
+      g.beginPath();
+      g.arc(x, y, r, 0, Math.PI * 2);
+      g.fill();
+    }
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.wrapS = THREE.RepeatWrapping;
+    tex.wrapT = THREE.RepeatWrapping;
+    tex.repeat.set(35, 35);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.anisotropy = 8;
+    const mat = new THREE.MeshStandardMaterial({
+      map: tex, color: 0x5e6b49, roughness: 0.97, metalness: 0.0,
+    });
+    mat.name = 'lawn';
+    ownedMaterials.push(mat);
+    return mat;
+  }
+
   function buildSite() {
-    add(new THREE.PlaneGeometry(70, 70), M.ground_lawn, 0, -0.04, 0, {
+    const lawnMat = makeLawnMaterial() || M.ground_lawn;
+    add(new THREE.PlaneGeometry(70, 70), lawnMat, 0, -0.04, 0, {
       rotX: -Math.PI / 2, name: 'site:lawn', cast: false,
     });
-    // 广场铺装：22 × 18，2m 一格，抬高 2cm 避免与草地 Z-fighting
-    const plazaMat = makePavingMaterial('#bdb6a6', 22, 18) || M.ground_paving;
+    // 广场铺装：22 × 18，石材 3m 一个平铺循环，抬高 2cm 避免与草地 Z-fighting
+    const plazaMat = makePavingMaterial('#a8a08f', L.site.w, L.site.d, 2.2) || M.ground_paving;
     add(new THREE.PlaneGeometry(L.site.w, L.site.d), plazaMat, 0, 0.02, 0, {
       rotX: -Math.PI / 2, name: 'site:paving', cast: false,
     });
-    // 主通路：4.5m 宽、南北贯通，用略亮的同规格铺装区分
-    const pathMat = makePavingMaterial('#d8d2c3', 4.5, 18) || M.stone_light;
+    // 主通路：4.5m 宽、南北贯通。贴图会把颜色差吃掉一部分，所以刻意把明度差拉大
+    const pathMat = makePavingMaterial('#ddd6c6', L.path.width, L.site.d, 2.2) || M.stone_light;
     add(new THREE.PlaneGeometry(L.path.width, L.site.d), pathMat, 0, 0.04, 0, {
       rotX: -Math.PI / 2, name: 'path:main', cast: false,
     });
-    // 路缘石：给通路一条清楚的边界，比单靠明度差更稳
+    // 路缘石：浅石材，只做一道细边。用砖材质会变成两条黑铁轨
     for (const sx of [-1, 1]) {
-      add(boxGeo(0.16, 0.07, L.site.d), M.brick_grey, sx * (L.path.width / 2), 0.035, 0, {
+      add(boxGeo(0.12, 0.05, L.site.d), M.stone_light, sx * (L.path.width / 2), 0.045, 0, {
         name: 'path:edge', cast: false,
       });
     }
     // 东西向支路：通往公告栏与亭廊，3m 宽
-    const branchMat = makePavingMaterial('#d8d2c3', 15.5, 3) || M.stone_light;
+    const branchMat = makePavingMaterial('#ddd6c6', 15.5, L.path.branchWidth, 2.2) || M.stone_light;
     add(new THREE.PlaneGeometry(15.5, L.path.branchWidth), branchMat, 0.5, 0.038, -0.6, {
       rotX: -Math.PI / 2, name: 'path:branch', cast: false,
     });
@@ -247,7 +447,7 @@ export function createDistrict(ctx = {}) {
     });
     add(cylGeo(0.1, 0.15, 2.3, 10), M.soil, x, 1.35, z, { name: 'green:trunk' });
     for (const [dx, dy, dz, s] of [[0, 3.0, 0, 1.25], [0.55, 2.68, 0.35, 0.85], [-0.5, 2.74, -0.3, 0.8]]) {
-      add(new THREE.IcosahedronGeometry(s, 1), M.leaf, x + dx, dy, z + dz, { name: 'green:crown' });
+      add(new THREE.IcosahedronGeometry(s, 2), M.leaf, x + dx, dy, z + dz, { name: 'green:crown' });
     }
     colliders.push({ name: 'green:pit', type: 'cylinder', center: [x, 0.19, z], radius: r, height: 0.38 });
   }
@@ -482,11 +682,18 @@ export function createDistrict(ctx = {}) {
       name: 'placeholder:facade-cap', placeholder: true,
     });
     // 窗洞示意：三层开间，只是给占位体量一点建筑比例，不是可交付立面
+    // 深色块 + 一层反光玻璃 + 一道竖挺，远看有框料和分格，不再是一排黑洞
     for (let floor = 0; floor < 3; floor++) {
       const y = 2.0 + floor * 2.4;
       for (let i = -6; i <= 6; i++) {
-        add(boxGeo(1.4, 1.5, 0.08), M.window_dark, i * 2.4, y, F.z + F.thickness / 2 + 0.02, {
+        add(boxGeo(1.4, 1.5, 0.06), M.window_dark, i * 2.4, y, F.z + F.thickness / 2 + 0.02, {
           name: 'placeholder:facade-window', cast: false, placeholder: true,
+        });
+        add(boxGeo(1.3, 1.4, 0.03), M.glass, i * 2.4, y, F.z + F.thickness / 2 + 0.06, {
+          name: 'placeholder:facade-glazing', cast: false, receive: false, placeholder: true,
+        });
+        add(boxGeo(0.045, 1.44, 0.05), M.metal_dark, i * 2.4, y, F.z + F.thickness / 2 + 0.07, {
+          name: 'placeholder:facade-mullion', cast: false, placeholder: true,
         });
       }
     }
@@ -534,6 +741,10 @@ export function createDistrict(ctx = {}) {
   buildTreePit(6.6, 4.4);
   buildFountain();
 
+  /* 贴图异步补挂：不阻塞 createDistrict 的同步返回。
+     调用方可以 await district.ready 之后再截图或验收，也可以不等。 */
+  const texturesReady = attachTextures(THREE, M, pavingMaterials);
+
   if (deskLampMaterial) {
     animated.push((t) => {
       deskLampMaterial.emissiveIntensity = 0.55 + 0.25 * Math.sin(t * 1.6);
@@ -546,6 +757,8 @@ export function createDistrict(ctx = {}) {
     root,
     colliders,
     interactions,
+    /** 贴图就绪（含失败回退）后 resolve，便于宿主截图前等待一帧 */
+    ready: texturesReady,
     /** 由宿主主循环调用；本模块不启动自己的 RAF */
     update(dt) {
       const step = Math.min(Math.max(dt || 0, 0), 0.1);
@@ -561,10 +774,17 @@ export function createDistrict(ctx = {}) {
       });
       for (const g of geoCache.values()) g.dispose();
       geoCache.clear();
+      for (const g of tiledGeoCache.values()) g.dispose();
+      tiledGeoCache.clear();
       for (const m of ownedMaterials) {
-        if (m.map && m.map.isTexture) m.map.dispose();
+        for (const slot of ['map', 'normalMap', 'roughnessMap', 'metalnessMap', 'emissiveMap', 'alphaMap']) {
+          const tex = m[slot];
+          if (tex && tex.isTexture) tex.dispose();
+        }
         m.dispose();
       }
+      ownedMaterials.length = 0;
+      pavingMaterials.length = 0;
       if (root.parent) root.parent.remove(root);
     },
   };
