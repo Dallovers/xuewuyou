@@ -10,6 +10,13 @@ export const building=new T.Group();building.name='Wenku_Editable_Library';build
 export const materials={};
 let samplePane;
 let bentwoodChair;
+const r1Maps={};
+export function r1ReviewResources(){return {textures:Object.values(r1Maps),materials:[materials.previousSampleGlass].filter(Boolean)};}
+export function setR1Look(mode='final'){
+ if(!['baseline','contact','final'].includes(mode))return false;
+ materials.sampleWood.map=mode==='final'?r1Maps.tableFinal:r1Maps.tableBaseline;materials.chairWood.map=mode==='final'?r1Maps.chairFinal:r1Maps.chairBaseline;
+ return {mode,localFillCandela:mode==='baseline'?0:26,contactShadowMap:1024,globalExposure:1};
+}
 export function reviewGlass(mode='clear'){
  if(!samplePane||!['none','previous','clear'].includes(mode))return false;
  samplePane.visible=mode!=='none';samplePane.material=mode==='previous'?materials.previousSampleGlass:materials.sampleGlass;
@@ -57,6 +64,8 @@ export async function loadMaterials(){
  materials.chairWood=materials.sampleWood.clone();materials.chairWood.name='Pale bent oak chair veneer';materials.chairWood.roughness=.78;materials.chairWood.normalScale.set(.045,.045);
  const oakCanvas=document.createElement('canvas');oakCanvas.width=wood.image.width;oakCanvas.height=wood.image.height;const oc=oakCanvas.getContext('2d');oc.drawImage(wood.image,0,0);oc.fillStyle='rgba(234,220,197,.28)';oc.fillRect(0,0,oakCanvas.width,oakCanvas.height);
  const oakTexture=new T.CanvasTexture(oakCanvas);oakTexture.colorSpace=T.SRGBColorSpace;oakTexture.wrapS=oakTexture.wrapT=T.RepeatWrapping;oakTexture.center.set(.5,.5);oakTexture.rotation=Math.PI/2;oakTexture.anisotropy=4;materials.chairWood.map=oakTexture;
+ function paleOak(strength){const c=document.createElement('canvas');c.width=wood.image.width;c.height=wood.image.height;const ctx=c.getContext('2d');ctx.drawImage(wood.image,0,0);ctx.fillStyle=`rgba(234,220,197,${strength})`;ctx.fillRect(0,0,c.width,c.height);const t=new T.CanvasTexture(c);t.colorSpace=T.SRGBColorSpace;t.wrapS=t.wrapT=T.RepeatWrapping;t.center.set(.5,.5);t.rotation=Math.PI/2;t.anisotropy=4;return t;}
+ r1Maps.tableBaseline=materials.sampleWood.map;r1Maps.chairBaseline=materials.chairWood.map;r1Maps.tableFinal=paleOak(.18);r1Maps.chairFinal=paleOak(.40);setR1Look('final');
  return materials;
 }
 function box(g,name,x,y,z,w,h,d,m,bevel=.008){
@@ -149,5 +158,8 @@ export function createBuilding(){
  createLandscape(site,materials.wood,obstacle);
  const door=makeDoor(structure);
  batchStatic(building);
- return {building,door};
+ // Bounded window-sky approximation for R1 only. The low-bias cached local
+ // shadow resolves feet much smaller than the full-site sun shadow texels.
+ const fillRoot=group('R1 bounded daylight fill'),r1Light=new T.SpotLight(0xeaf0f2,26,8,.86,.95,2);r1Light.name='R1 window sky approximation';r1Light.position.set(11.35,2.4,-6.1);r1Light.lookAt(6.6,.4,-4.5);r1Light.target.position.set(0,0,-1);r1Light.add(r1Light.target);r1Light.castShadow=true;r1Light.shadow.mapSize.set(1024,1024);r1Light.shadow.camera.near=.12;r1Light.shadow.bias=-.00002;r1Light.shadow.normalBias=.001;fillRoot.add(r1Light);fillRoot.userData={purpose:'Local real-time window-sky approximation and contact shadow; no baked indirect light',rangeMetres:8,globalExposureUnchanged:true};
+ return {building,door,r1Light};
 }

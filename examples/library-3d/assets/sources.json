@@ -3,7 +3,8 @@
     "author": "Xuewuyou C library implementation",
     "method": "Editable mesh construction in src/architecture.js and src/landscape.js; procedural labels, stone panel/floor microtexture, fabric bump, connected branches and leaf alpha cutouts; no AI-generated image or projected building photograph.",
     "reviewSample": "Only table R1 and four chairs, east pane at x=12/z=-5.8 and tree 623 at x=16/z=-4. Rotated inherited oak maps, procedural fine-weave normal and 9x24cm cupped leaves; other two trees retain original geometry and instance transforms. No new downloaded image.",
-    "thirdReview": "R1 bentwood chairs use shared subdivided curved back/seat/frame modules and inherited oak maps with a pale-oak canvas mix. One pane retains physical transmission and uses a scoped Three r170 base-LOD sampling correction. Tree 623 retains its 28 clusters and branches, using four-triangle near leaves and a two-triangle/half-instance distant alternative. Supplied commander-generated reference PNGs are comparison targets only and are never runtime surfaces."
+    "thirdReview": "R1 bentwood chairs use shared subdivided curved back/seat/frame modules and inherited oak maps with a pale-oak canvas mix. One pane retains physical transmission and uses a scoped Three r170 base-LOD sampling correction. Tree 623 retains its 28 clusters and branches, using four-triangle near leaves and a two-triangle/half-instance distant alternative. Supplied commander-generated reference PNGs are comparison targets only and are never runtime surfaces.",
+    "fourthReview": "R1 only: inherited oak image mixed with pale oak colour for table and chair, one bounded standard spotlight for window-sky/contact-shadow approximation. Geometry and instance buffers unchanged; no new image dependency, baked lightmap or classroom lightmap reuse."
   },
   "sharedAssets": {
     "root": "../../campus-3d-v5/assets/",

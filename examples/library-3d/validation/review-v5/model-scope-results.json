@@ -1,0 +1,33 @@
+{
+  "passed": true,
+  "before": "c-round4-baseline.glb",
+  "after": "wenku-library.glb",
+  "unchangedGeometryTransformsMaterialAssignments": [
+    "Structure stone and real window openings",
+    "Furniture bookcases and reading desks",
+    "Roof editable zinc and clerestory",
+    "Library forecourt"
+  ],
+  "changedMaterialSemantics": [
+    "Sample R1 longitudinal white oak",
+    "Pale bent oak chair veneer"
+  ],
+  "unchangedMaterialSemantics": 28,
+  "unchangedInstanceTransformsAndColours": 8300,
+  "additionalLight": {
+    "name": "R1 window sky approximation",
+    "color": [
+      0.8227857543924378,
+      0.8713671191959567,
+      0.8879231178794776
+    ],
+    "intensity": 26,
+    "type": "spot",
+    "range": 8,
+    "spot": {
+      "innerConeAngle": 0.04300000000000004,
+      "outerConeAngle": 0.86
+    }
+  },
+  "note": "Material comparison resolves texture indices to embedded image bytes and sampler values; it does not compare rendered illumination."
+}

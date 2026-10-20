@@ -1,0 +1,117 @@
+{
+  "date": "2026-10-20T12:04:05.556Z",
+  "errors": [],
+  "requests": [],
+  "checks": [
+    "Three fixed-camera views rendered at high quality with procedural material and botanical cutouts",
+    "All eight seating approaches and repeated stand-up routes remain usable",
+    "New landscape trunk blocks movement without occupying the entrance or reading paths",
+    "Fluid mode renders the revised scene with a single cached static shadow update and no failed resources"
+  ],
+  "screenshots": [
+    "after-exterior.png",
+    "after-hall.png",
+    "after-reading.png",
+    "after-reading-fluid.png"
+  ],
+  "model": {
+    "meshes": 102,
+    "triangles": 86882,
+    "instances": 6060,
+    "materials": [
+      "Honed grey stone",
+      "Sample east pane 12mm clear glass",
+      "Wayfinding: 知 识 图 书 馆",
+      "Wayfinding: 馆藏书架",
+      "Wayfinding: 安静阅览",
+      "Grey brick",
+      "Wayfinding: 学 无 忧  ·  阅 读 与 思 考",
+      "Clear architectural glass",
+      "Dark bronze powder coating",
+      "Cream limestone",
+      "Stone floor joints",
+      "Linear LED diffuser",
+      "Wayfinding: 考研真题卷",
+      "Clothbound book spines",
+      "White oak veneer",
+      "Wayfinding: 教材习题集",
+      "Wayfinding: 雅思备考库",
+      "Wayfinding: 专题与心得",
+      "Paper edges",
+      "Sage woven upholstery",
+      "Sample R1 longitudinal white oak",
+      "Pale bent oak chair veneer",
+      "Sample R1 sage fine woven upholstery",
+      "Wayfinding: 馆 藏 检 索",
+      "Mineral plaster and acoustic ceiling",
+      "Blue grey standing seam roof",
+      "Landscape ground",
+      "Planting soil",
+      "Tree bark",
+      "Botanical leaf cutouts"
+    ],
+    "groups": [
+      "Structure stone and real window openings",
+      "Furniture bookcases and reading desks",
+      "Roof editable zinc and clerestory",
+      "Library forecourt",
+      "R1 bounded daylight fill"
+    ],
+    "dimensions": {
+      "width": 24,
+      "depth": 18,
+      "clearHeight": 4.4,
+      "doorWidth": 2.8,
+      "mainAisle": 3,
+      "units": "metres"
+    },
+    "colliders": 60,
+    "shelves": 4,
+    "seats": 8,
+    "landscape": {
+      "trees": 3,
+      "foliageInstances": 5596,
+      "sample": {
+        "tree": 623,
+        "leaves": 4480,
+        "bladeMetres": [
+          0.09,
+          0.24
+        ],
+        "clusters": 28,
+        "detail": {
+          "policy": "auto",
+          "level": "far",
+          "nearLeaves": 4480,
+          "farLeaves": 2240,
+          "nearLeafTriangles": 17920,
+          "farLeafTriangles": 4480,
+          "farAfterMetres": 30,
+          "nearBeforeMetres": 26
+        }
+      },
+      "source": "Procedural branches and leaf alpha, no external image dependency",
+      "allocatedFoliageInstances": 7836
+    }
+  },
+  "fluid": {
+    "quality": "fluid",
+    "exposure": 1,
+    "pixelRatio": 0.85,
+    "ambientOcclusion": false,
+    "buffer": [
+      1224,
+      816
+    ],
+    "samples": 42,
+    "fps": 60.1,
+    "mean_ms": 16.650000000283832,
+    "p95_ms": 18,
+    "max_ms": 20.799999952316284,
+    "drawCalls": 139,
+    "triangles": 167656,
+    "shadowUpdates": 1,
+    "submit_ms": 1.4000000357627869
+  },
+  "passed": true
+}

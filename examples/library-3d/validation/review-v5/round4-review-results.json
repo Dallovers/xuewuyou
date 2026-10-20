@@ -1,0 +1,104 @@
+{
+  "date": "2026-10-20T12:00:52.956Z",
+  "errors": [],
+  "failedResources": [],
+  "stages": {
+    "baseline": {
+      "mode": "baseline",
+      "localFillCandela": 0,
+      "contactShadowMap": 1024,
+      "globalExposure": 1,
+      "graphics": {
+        "quality": "high",
+        "exposure": 1,
+        "pixelRatio": 1,
+        "ambientOcclusion": true,
+        "buffer": [
+          1440,
+          960
+        ],
+        "samples": 101,
+        "fps": 55.2,
+        "mean_ms": 18.10198019813783,
+        "p95_ms": 18,
+        "max_ms": 169.60000002384186,
+        "drawCalls": 213,
+        "triangles": 252181,
+        "shadowUpdates": 2,
+        "submit_ms": 1.5
+      }
+    },
+    "contact": {
+      "mode": "contact",
+      "localFillCandela": 26,
+      "contactShadowMap": 1024,
+      "globalExposure": 1,
+      "graphics": {
+        "quality": "high",
+        "exposure": 1,
+        "pixelRatio": 1,
+        "ambientOcclusion": true,
+        "buffer": [
+          1440,
+          960
+        ],
+        "samples": 208,
+        "fps": 57.6,
+        "mean_ms": 17.36153846176771,
+        "p95_ms": 18,
+        "max_ms": 169.60000002384186,
+        "drawCalls": 213,
+        "triangles": 252181,
+        "shadowUpdates": 3,
+        "submit_ms": 1.699999988079071
+      }
+    },
+    "final": {
+      "mode": "final",
+      "localFillCandela": 26,
+      "contactShadowMap": 1024,
+      "globalExposure": 1,
+      "graphics": {
+        "quality": "high",
+        "exposure": 1,
+        "pixelRatio": 1,
+        "ambientOcclusion": true,
+        "buffer": [
+          1440,
+          960
+        ],
+        "samples": 240,
+        "fps": 60,
+        "mean_ms": 16.665833333383002,
+        "p95_ms": 18.099999964237213,
+        "max_ms": 21,
+        "drawCalls": 213,
+        "triangles": 252181,
+        "shadowUpdates": 4,
+        "submit_ms": 1.399999976158142
+      }
+    }
+  },
+  "seatingCycles": 24,
+  "fluid": {
+    "quality": "fluid",
+    "exposure": 1,
+    "pixelRatio": 0.85,
+    "ambientOcclusion": false,
+    "buffer": [
+      1224,
+      816
+    ],
+    "samples": 72,
+    "fps": 60.1,
+    "mean_ms": 16.65000000016557,
+    "p95_ms": 18.399999976158142,
+    "max_ms": 19.80000001192093,
+    "drawCalls": 103,
+    "triangles": 153176,
+    "shadowUpdates": 4,
+    "submit_ms": 1.4000000357627869
+  },
+  "explicitDisposeStopsRendering": true,
+  "passed": true
+}
