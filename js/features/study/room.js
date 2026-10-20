@@ -357,6 +357,43 @@
       });
     });
 
+    // 12 块发光面合成 1 个 draw call：深色灯槽下缘贴一层自发光白面，
+    // 白天也能读出「这是灯」而不是一条黑漆。
+    var faceGeo = new THREE.BoxGeometry(Li.width * 0.82, 0.002, Li.length * 0.97);
+    var faces = new THREE.InstancedMesh(faceGeo, mats.light_face, Li.xs.length * Li.zs.length);
+    faces.name = 'LightFace';
+    faces.castShadow = false;
+    faces.receiveShadow = false;
+    var dm = new THREE.Object3D();
+    var fi = 0;
+    Li.xs.forEach(function (x) {
+      Li.zs.forEach(function (z) {
+        dm.position.set(x, L - Li.depth - 0.001, z);
+        dm.updateMatrix();
+        faces.setMatrixAt(fi++, dm.matrix);
+      });
+    });
+    faces.instanceMatrix.needsUpdate = true;
+    g.add(faces);
+
+    /* —— 踢脚线：墙脚一条 80 mm 深色收边 ——
+       缺了它，墙像是直接插进地面。高度 0.08 在 0.1–1.7 m 的通行判定带以下，
+       而且不进碰撞体清单，所以不影响任何净距校核。 */
+    var skirtH = 0.08, skirtT = 0.018;
+    var sx = HX - skirtT / 2;
+    var sz = HZ - skirtT / 2;
+    var skirtOpt = { castShadow: false, receiveShadow: true };
+    core.box(THREE, g, 'Skirting', [ROOM.width, skirtH, skirtT], [0, skirtH / 2, -sz], mats.metal_dark, skirtOpt);
+    core.box(THREE, g, 'Skirting', [skirtT, skirtH, ROOM.depth], [sx, skirtH / 2, 0], mats.metal_dark, skirtOpt);
+    core.box(THREE, g, 'Skirting', [skirtT, skirtH, ROOM.depth], [-sx, skirtH / 2, 0], mats.metal_dark, skirtOpt);
+    // 南墙要绕过门洞（2.10 ~ 4.50）
+    [
+      { len: 2.10 + HX, cx: (2.10 - HX) / 2 },        // 门左（含西北角）
+      { len: HX - 4.50, cx: (4.50 + HX) / 2 }         // 门右
+    ].forEach(function (s) {
+      core.box(THREE, g, 'Skirting', [s.len, skirtH, skirtT], [s.cx, skirtH / 2, sz], mats.metal_dark, skirtOpt);
+    });
+
     /* —— 家具 —— */
     var counter = createWindowCounter(THREE, mats, g);
     var shelf = createLowShelf(THREE, mats, g);
@@ -371,13 +408,24 @@
       return s;
     });
 
+    /* —— 软装：桌上的书与文具、书架排书、窗台绿植 ——
+       放在独立的 Decor 组里，**不进 district 的碰撞体清单**：
+       桌面物件坐在 0.74 m 的台面上，不参与水平通行判定，
+       所以加多少杂物都不会改变「净走道 1.506 / 长台净距 1.450」这两条校核结果。 */
+    var decor = global.StudyDistrict.props.createDecor(THREE, mats, {
+      layout: LAYOUT,
+      spec: furniture.SPEC,
+      room: ROOM
+    });
+    g.add(decor);
+
     g.userData = {
       kind: 'studyRoom',
       spec: ROOM,
       layout: LAYOUT,
       lightTable: buildLightTable(),
       seats: seats.userData.seats,
-      parts: { counter: counter, shelf: shelf, entry: entry, seats: seats, islands: sets }
+      parts: { counter: counter, shelf: shelf, entry: entry, seats: seats, islands: sets, decor: decor }
     };
     return g;
   }

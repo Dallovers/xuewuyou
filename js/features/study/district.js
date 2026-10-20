@@ -19,6 +19,7 @@ import './core.js';
 import './materials.js';
 import './furniture.js';
 import './shell.js';
+import './props.js';
 import './room.js';
 
 const DOOR = {

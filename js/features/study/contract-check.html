@@ -218,6 +218,63 @@ try {
       cush.map((c) => c.top.toFixed(3)).join(','));
   }
 
+  /* —— 软装：只影响观感，不许影响通行 ——
+     桌面上的书坐在 0.74 m 台面上，本来就不参与水平通行判定；但书架排书时
+     如果算错宽度会顶出包围盒、窗台绿植会撑大长台外沿，那两条净距断言就会被动到。
+     所以这里单独钉三条：碰撞体没变多、东西都在房里、没有高过桌面隔板。 */
+  const ROOMSPEC = window.StudyDistrict.room.ROOM;
+  const decor = district.root.getObjectByName('Decor');
+  check('有软装组 Decor', !!decor);
+  if (decor) {
+    const dc = decor.userData.counts || {};
+    log('INFO 软装：书 ' + dc.books + ' 本 / 摊开的书 ' + dc.openBooks + ' 本 / 笔 ' + dc.pens +
+      ' 支 / 杯 ' + dc.cups + ' 个 / 盆栽 ' + dc.pots + ' 盆 / 空座位 ' + dc.emptySeats + ' 个');
+
+    check('软装没有新增碰撞体', district.colliders.length === 12, '实际 ' + district.colliders.length);
+
+    let instMeshes = 0, instTotal = 0;
+    decor.traverse((n) => {
+      if (n.isInstancedMesh) { instMeshes++; instTotal += n.count; }
+    });
+    check('软装用实例化合批（网格数远少于物件数）',
+      instMeshes > 0 && instMeshes <= 8 && instTotal >= 100,
+      instMeshes + ' 个 InstancedMesh / ' + instTotal + ' 个实例');
+
+    const db = new THREE.Box3().setFromObject(decor);
+    const HXr = ROOMSPEC.width / 2, HZr = ROOMSPEC.depth / 2;
+    check('软装都在房间净空内',
+      db.min.x >= -HXr - 0.01 && db.max.x <= HXr + 0.01 &&
+      db.min.z >= -HZr - 0.01 && db.max.z <= HZr + 0.01,
+      'X ' + db.min.x.toFixed(2) + '~' + db.max.x.toFixed(2) + '，Z ' + db.min.z.toFixed(2) + '~' + db.max.z.toFixed(2));
+
+    check('软装不悬空也不入地',
+      db.min.y >= -0.005 && db.max.y <= ROOMSPEC.clearHeight,
+      'Y ' + db.min.y.toFixed(3) + '~' + db.max.y.toFixed(3));
+
+    // 桌面隔板上沿 = 桌高 + 隔板高 ≈ 1.088。桌面上的东西高过它就会挡住对面视线。
+    // 墙挂件（公告板、挂钟）本来就在上面，单独判，不混在一条里。
+    const dividerTop = FS ? FS.desk.height + FS.desk.dividerHeight : 1.09;
+    const surfaceNames = ['DecorBooks', 'DecorPens', 'DecorCups', 'DecorPots', 'DecorLeaves', 'DecorOpenPages'];
+    let maxSurfaceY = -Infinity;
+    surfaceNames.forEach((nm) => {
+      const n = decor.getObjectByName(nm);
+      if (!n) return;
+      maxSurfaceY = Math.max(maxSurfaceY, new THREE.Box3().setFromObject(n).max.y);
+    });
+    check('桌面/台面/书架软装不超桌面隔板（≈' + dividerTop.toFixed(2) + '）',
+      maxSurfaceY <= dividerTop + 0.02,
+      '最高 ' + (maxSurfaceY === -Infinity ? '—' : maxSurfaceY.toFixed(3)));
+
+    const wall = decor.getObjectByName('DecorWall');
+    check('有墙挂件（公告板 + 挂钟）', !!wall);
+    if (wall) {
+      const wb = new THREE.Box3().setFromObject(wall);
+      check('墙挂件只在 1.2 m 以上，进不了通行判定带',
+        wb.min.y >= 1.2 && wb.max.y <= ROOMSPEC.clearHeight - 0.05,
+        'Y ' + wb.min.y.toFixed(2) + '~' + wb.max.y.toFixed(2));
+    }
+  }
+
   // 入口交互 + 16 个座位
   check('交互点共 17 个（1 入口 + 16 座位）', district.interactions.length === 17, '实际 ' + district.interactions.length);
   const it = district.interactions.find((i) => i.id === 'study.entry');

@@ -208,7 +208,17 @@
           params.userData = { ownsMap: true };
         }
       }
-      out[id] = new THREE.MeshStandardMaterial(params);
+      // 桌面、台面、书架是刷过清漆的橡木。一层极薄的 clearcoat 会在边角与
+      // 桌沿折出一线高光——这是「真木头」和「塑料板」最便宜的区分手段。
+      // 数值刻意压低：教室家具不是钢琴漆，超过 0.12 就油得发假。
+      if (id === 'oak_light') {
+        out[id] = new THREE.MeshPhysicalMaterial(Object.assign({}, params, {
+          clearcoat: 0.10,
+          clearcoatRoughness: 0.55
+        }));
+      } else {
+        out[id] = new THREE.MeshStandardMaterial(params);
+      }
     });
 
     // 玻璃：真实透光，不涂成不透明蓝色镜面
@@ -222,6 +232,17 @@
       depthWrite: false,
       side: THREE.DoubleSide,
       envMapIntensity: 1.2
+    });
+
+    // 灯具发光面：不是灯（不产生光），只是把深色灯槽的下缘换成一块自发光白面，
+    // 否则 12 盏灯在白天看着像 12 条黑漆，读不出「这是灯」。
+    out.light_face = new THREE.MeshStandardMaterial({
+      name: 'light_face',
+      color: new THREE.Color('#fff8ec'),
+      emissive: new THREE.Color('#fff2d9'),
+      emissiveIntensity: 0.9,
+      roughness: 0.45,
+      metalness: 0.0
     });
 
     // 地面一次生成、按块平铺：给平面几何设置 repeat
