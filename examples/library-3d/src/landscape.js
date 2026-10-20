@@ -1,5 +1,13 @@
 import * as T from 'three';
 import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
+let representative;
+const treeCenter=new T.Vector3(16,4.2,-4);
+export function treeDetail(){return representative?{policy:representative.policy,level:representative.level,nearLeaves:4480,farLeaves:2240,nearLeafTriangles:17920,farLeafTriangles:4480,farAfterMetres:30,nearBeforeMetres:26}:null;}
+function selectDetail(level){const r=representative;if(!r)return;r.level=level;r.inst.geometry=level==='far'?r.far:r.near;r.inst.count=level==='far'?2240:4480;r.inst.computeBoundingSphere();r.root.userData.foliageInstances=3356+r.inst.count;r.root.userData.allocatedFoliageInstances=7836;r.root.userData.sample.detail=treeDetail();}
+export function setTreeDetail(policy='auto'){if(!representative||!['auto','near','far'].includes(policy))return false;representative.policy=policy;if(policy!=='auto')selectDetail(policy);else representative.root.userData.sample.detail=treeDetail();return treeDetail();}
+export function updateTreeDetail(camera){const r=representative;if(!r)return;if(r.policy==='auto'){const distance=camera.position.distanceTo(treeCenter);const next=r.level==='near'?(distance>30?'far':'near'):(distance<26?'near':'far');if(next!==r.level)selectDetail(next);}return treeDetail();}
+export function representativeTree(detail='near'){if(!representative||!['near','far'].includes(detail))return null;const r=representative,g=new T.Group();g.name='Tree 623 '+detail+' editable variant';g.userData={...treeDetail(),variant:detail};g.add(r.trunk.clone(true));const inst=r.inst.clone();inst.geometry=detail==='far'?r.far:r.near;inst.count=detail==='far'?2240:4480;g.add(inst);return g;}
+export function disposeLandscape(){if(representative){const r=representative;(r.inst.geometry===r.near?r.far:r.near).dispose();representative=null;}}
 
 // Deterministic geometry and a procedural cutout, never a generated scene photograph.
 function random(seed){return ()=>{seed=(Math.imul(seed,1664525)+1013904223)|0;return (seed>>>0)/4294967296;};}
@@ -13,8 +21,8 @@ function leafTexture(){
 // The east-window sample uses a cupped blade rather than intersecting large cards.
 // A 9 cm x 24 cm blade is modelled in metres; every instance has a varied normal.
 function curvedLeaf(){
- const g=new T.BufferGeometry();g.setAttribute('position',new T.Float32BufferAttribute([0,-.12,0,-.045,-.04,-.012,0,-.04,.014,.045,-.04,-.012,-.04,.045,-.008,0,.045,.024,.04,.045,-.008,0,.12,-.02],3));
- g.setAttribute('uv',new T.Float32BufferAttribute([.5,0,0,.33,.5,.33,1,.33,0,.69,.5,.69,1,.69,.5,1],2));g.setIndex([0,1,2,0,2,3,1,4,2,2,4,5,2,5,3,3,5,6,4,7,5,5,7,6]);g.computeVertexNormals();return g;
+ const g=new T.BufferGeometry();g.setAttribute('position',new T.Float32BufferAttribute([0,-.12,0,-.045,0,-.012,0,0,.018,.045,0,-.012,0,.12,-.02],3));
+ g.setAttribute('uv',new T.Float32BufferAttribute([.5,0,0,.5,.5,.5,1,.5,.5,1],2));g.setIndex([0,1,2,0,2,3,1,4,2,2,4,3]);g.computeVertexNormals();return g;
 }
 export function createLandscape(parent,wood,obstacle){
  const root=new T.Group();root.name='Library landscape trees and planted beds';parent.add(root);
@@ -56,7 +64,9 @@ export function createLandscape(parent,wood,obstacle){
  const a=new T.Color(0x617b48),b=new T.Color(0x9d9f64);
  leaves.forEach((leaf,i)=>{dummy.position.set(leaf.x,leaf.y,leaf.z);dummy.rotation.set(leaf.tilt,leaf.angle,leaf.tilt*.5);dummy.scale.setScalar(leaf.scale);dummy.updateMatrix();inst.setMatrixAt(i,dummy.matrix);inst.setColorAt(i,a.clone().lerp(b,leaf.tint*.55));});inst.computeBoundingSphere();root.add(inst);
  const sample=new T.InstancedMesh(curvedLeaf(),material,sampleLeaves.length);sample.name='East window sample cupped foliage';sample.castShadow=true;sample.receiveShadow=true;
- sampleLeaves.forEach((leaf,i)=>{dummy.position.set(leaf.x,leaf.y,leaf.z);dummy.rotation.set(leaf.tilt,leaf.angle,leaf.roll);dummy.scale.setScalar(leaf.scale);dummy.updateMatrix();sample.setMatrixAt(i,dummy.matrix);sample.setColorAt(i,a.clone().lerp(b,leaf.tint*.55));});sample.computeBoundingSphere();root.add(sample);
+ // Interleave all 28 clusters so the first half remains spatially distributed.
+ for(let i=0;i<sampleLeaves.length;i++){const leaf=sampleLeaves[(i%28)*160+Math.floor(i/28)];dummy.position.set(leaf.x,leaf.y,leaf.z);dummy.rotation.set(leaf.tilt,leaf.angle,leaf.roll);dummy.scale.setScalar(leaf.scale);dummy.updateMatrix();sample.setMatrixAt(i,dummy.matrix);sample.setColorAt(i,a.clone().lerp(b,leaf.tint*.55));}sample.computeBoundingSphere();root.add(sample);
  root.userData={trees:3,foliageInstances:leaves.length+sampleLeaves.length,sample:{tree:623,leaves:sampleLeaves.length,bladeMetres:[.09,.24],clusters:28},source:'Procedural branches and leaf alpha, no external image dependency'};
+ representative={root,inst:sample,near:sample.geometry,far:new T.PlaneGeometry(.09*Math.SQRT2,.24*Math.SQRT2),trunk:root.children.find(n=>n.name==='Library tree 623'),policy:'auto',level:'near'};root.userData.sample.detail=treeDetail();
  return root;
 }

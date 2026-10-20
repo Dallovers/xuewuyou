@@ -1,0 +1,14 @@
+{
+  "reopened": true,
+  "packedImages": 27,
+  "objects": 10685,
+  "glassTransmission": 0.9599999785423279,
+  "inspectionCameras": [
+    "Window sample",
+    "Tree 623 sample",
+    "Bentwood chair sample",
+    "Distant tree sample"
+  ],
+  "hiddenDistantAlternativeObjects": 2244,
+  "lightmapBake": false
+}

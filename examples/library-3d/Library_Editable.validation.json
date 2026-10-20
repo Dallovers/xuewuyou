@@ -1,9 +1,9 @@
 {
   "source": "wenku-library.glb",
   "blender": "4.5.3 LTS",
-  "objects": 8431,
-  "meshObjects": 8392,
-  "imagesPacked": 22,
+  "objects": 10685,
+  "meshObjects": 10637,
+  "imagesPacked": 27,
   "lightmapBake": false,
-  "outputBytes": 16826780
+  "outputBytes": 23603399
 }

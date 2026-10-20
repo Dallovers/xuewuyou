@@ -1,0 +1,177 @@
+{
+  "date": "2026-10-20T11:13:10.914Z",
+  "method": "Unclamped requestAnimationFrame intervals, continuous W+L movement and turning, fluid quality, desktop Chromium with narrow-screen emulation",
+  "baselineBundle": "C:\\Users\\Dallovers\\Documents\\Codex\\2026-10-19\\c-c-users-dallovers-documents-codex\\work\\c-round3-baseline-src\\app.bundle.js",
+  "desktop": {
+    "viewport": [
+      1440,
+      960
+    ],
+    "seconds": 20.0058,
+    "samples": 1200,
+    "mean_ms": 16.665916666666774,
+    "fps": 60.00270012150508,
+    "p95_ms": 16.700000000000728,
+    "max_ms": 16.80000000000291,
+    "over50ms": 0,
+    "over100ms": 0,
+    "before": {
+      "ready": true,
+      "mode": "walk",
+      "pos": [
+        1.7,
+        0,
+        6.665
+      ],
+      "yaw": 0,
+      "seated": null,
+      "modal": false,
+      "nearest": null,
+      "door": {
+        "open": 0,
+        "target": 0,
+        "blocked": true
+      },
+      "frames": 11,
+      "catalog": {
+        "category": "exam",
+        "results": 566,
+        "reader": false,
+        "catalog": false,
+        "pdfPages": 0,
+        "pdfPage": 1
+      }
+    },
+    "after": {
+      "ready": true,
+      "mode": "walk",
+      "pos": [
+        3.0206163923546194,
+        0,
+        8.358710302055831
+      ],
+      "yaw": -24.020879999971367,
+      "seated": null,
+      "modal": false,
+      "nearest": null,
+      "door": {
+        "open": 0,
+        "target": 0,
+        "blocked": true
+      },
+      "frames": 1212,
+      "catalog": {
+        "category": "exam",
+        "results": 566,
+        "reader": false,
+        "catalog": false,
+        "pdfPages": 0,
+        "pdfPage": 1
+      }
+    },
+    "graphics": {
+      "quality": "fluid",
+      "pixelRatio": 0.85,
+      "ambientOcclusion": false,
+      "buffer": [
+        1224,
+        816
+      ],
+      "samples": 240,
+      "fps": 60,
+      "mean_ms": 16.67333333318432,
+      "p95_ms": 17.900000035762787,
+      "max_ms": 18.400000035762787,
+      "drawCalls": 58,
+      "triangles": 60026,
+      "shadowUpdates": 1,
+      "submit_ms": 0.8999999761581421
+    }
+  },
+  "narrow": {
+    "viewport": [
+      390,
+      844
+    ],
+    "seconds": 12.005900000023841,
+    "samples": 719,
+    "mean_ms": 16.689151599443708,
+    "fps": 59.91916329847064,
+    "p95_ms": 16.700000000000728,
+    "max_ms": 33.200000000000045,
+    "over50ms": 0,
+    "over100ms": 0,
+    "before": {
+      "ready": true,
+      "mode": "walk",
+      "pos": [
+        1.7,
+        0,
+        6.7
+      ],
+      "yaw": 0,
+      "seated": null,
+      "modal": false,
+      "nearest": null,
+      "door": {
+        "open": 0,
+        "target": 0,
+        "blocked": true
+      },
+      "frames": 6,
+      "catalog": {
+        "category": "exam",
+        "results": 566,
+        "reader": false,
+        "catalog": false,
+        "pdfPages": 0,
+        "pdfPage": 1
+      }
+    },
+    "after": {
+      "ready": true,
+      "mode": "walk",
+      "pos": [
+        4.660289448687439,
+        0,
+        4.009295617720109
+      ],
+      "yaw": -14.4199199999571,
+      "seated": null,
+      "modal": false,
+      "nearest": null,
+      "door": {
+        "open": 0,
+        "target": 0,
+        "blocked": true
+      },
+      "frames": 726,
+      "catalog": {
+        "category": "exam",
+        "results": 566,
+        "reader": false,
+        "catalog": false,
+        "pdfPages": 0,
+        "pdfPage": 1
+      }
+    },
+    "graphics": {
+      "quality": "fluid",
+      "pixelRatio": 0.85,
+      "ambientOcclusion": false,
+      "buffer": [
+        331,
+        717
+      ],
+      "samples": 240,
+      "fps": 60,
+      "mean_ms": 16.668333333233992,
+      "p95_ms": 17.799999952316284,
+      "max_ms": 19.5,
+      "drawCalls": 25,
+      "triangles": 42386,
+      "shadowUpdates": 1,
+      "submit_ms": 0.5
+    }
+  }
+}

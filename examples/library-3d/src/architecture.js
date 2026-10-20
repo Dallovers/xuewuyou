@@ -2,11 +2,19 @@ import * as T from 'three';
 import {RoundedBoxGeometry} from 'three/addons/geometries/RoundedBoxGeometry.js';
 import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
 import {createLandscape} from './landscape.js';
+import {bentwoodChairFactory} from './chairs.js';
 
 export const dimensions={width:24,depth:18,clearHeight:4.4,doorWidth:2.8,mainAisle:3,units:'metres'};
 export const colliders=[],shelves=[],seats=[];
 export const building=new T.Group();building.name='Wenku_Editable_Library';building.userData={...dimensions,lighting:'New library geometry; realtime sun + environment + screen space ambient occlusion. No classroom lightmap.'};
 export const materials={};
+let samplePane;
+let bentwoodChair;
+export function reviewGlass(mode='clear'){
+ if(!samplePane||!['none','previous','clear'].includes(mode))return false;
+ samplePane.visible=mode!=='none';samplePane.material=mode==='previous'?materials.previousSampleGlass:materials.sampleGlass;
+ return {mode,geometryThicknessMetres:.012,materialThickness:samplePane.material.thickness,roughness:samplePane.material.roughness,transmission:samplePane.material.transmission};
+}
 const textureRoot=new URL('../campus-3d-v5/assets/',document.baseURI);
 const geoCache=new Map();
 function group(name,parent=building){const g=new T.Group();g.name=name;parent.add(g);return g;}
@@ -38,6 +46,17 @@ export async function loadMaterials(){
  const normalTexture=new T.CanvasTexture(normal);normalTexture.wrapS=normalTexture.wrapT=T.RepeatWrapping;normalTexture.repeat.set(48,48);normalTexture.anisotropy=4;
  materials.sampleFabric=mat('Sample R1 sage fine woven upholstery',0x7c8573,{normalMap:normalTexture,normalScale:new T.Vector2(.16,.16),roughness:.95});
  materials.sampleGlass=new T.MeshPhysicalMaterial({name:'Sample east pane 12mm clear glass',color:0xffffff,transmission:.96,thickness:.012,ior:1.5,roughness:.008,metalness:0,attenuationColor:new T.Color(0xe8f0e9),attenuationDistance:6,depthWrite:false,side:T.DoubleSide});
+ materials.previousSampleGlass=materials.sampleGlass.clone();materials.previousSampleGlass.name='Previous sample glass diagnostic';
+ materials.sampleGlass.side=T.FrontSide;
+ // r170 clamps physical roughness to .0525, then bicubic/mip filters transmission.
+ // Only this polished pane samples the full-resolution base level below LOD .75.
+ // Fresnel reflection, IOR, volume absorption and the 12mm mesh remain physical.
+ materials.sampleGlass.onBeforeCompile=shader=>{shader.fragmentShader=shader.fragmentShader.replace('#include <transmission_pars_fragment>',T.ShaderChunk.transmission_pars_fragment.replace('return textureBicubic( transmissionSamplerMap, fragCoord.xy, lod );','if ( lod < 0.75 ) return textureLod( transmissionSamplerMap, fragCoord.xy, 0.0 );\n return textureBicubic( transmissionSamplerMap, fragCoord.xy, lod );'));};
+ materials.sampleGlass.customProgramCacheKey=()=> 'library-polished-pane-r170-base-level-v1';
+ materials.sampleGlass.userData={geometryThicknessMetres:.012,opticalThicknessMetres:.012,runtimeSampling:'r170 polished-pane base LOD below .75; standard physical glTF fallback'};
+ materials.chairWood=materials.sampleWood.clone();materials.chairWood.name='Pale bent oak chair veneer';materials.chairWood.roughness=.78;materials.chairWood.normalScale.set(.045,.045);
+ const oakCanvas=document.createElement('canvas');oakCanvas.width=wood.image.width;oakCanvas.height=wood.image.height;const oc=oakCanvas.getContext('2d');oc.drawImage(wood.image,0,0);oc.fillStyle='rgba(234,220,197,.28)';oc.fillRect(0,0,oakCanvas.width,oakCanvas.height);
+ const oakTexture=new T.CanvasTexture(oakCanvas);oakTexture.colorSpace=T.SRGBColorSpace;oakTexture.wrapS=oakTexture.wrapT=T.RepeatWrapping;oakTexture.center.set(.5,.5);oakTexture.rotation=Math.PI/2;oakTexture.anisotropy=4;materials.chairWood.map=oakTexture;
  return materials;
 }
 function box(g,name,x,y,z,w,h,d,m,bevel=.008){
@@ -51,7 +70,7 @@ function wall(g,axis,at,start,end,openings){
  function put(a,b,lo,hi){if(b-a<.001||hi-lo<.001)return;const x=axis==='x'?(a+b)/2:at,z=axis==='x'?at:(a+b)/2,w=axis==='x'?b-a:.34,d=axis==='x'?.34:b-a;box(g,'Wall with real opening',x,(lo+hi)/2,z,w,hi-lo,d,materials.stone);if(lo<1.85)obstacle(x,z,w,d,'wall');}
  for(let i=0;i<cuts.length-1;i++){const a=cuts[i],b=cuts[i+1],o=openings.find(o=>(a+b)/2>o.u-o.w/2&&(a+b)/2<o.u+o.w/2);if(o){put(a,b,0,o.bottom);put(a,b,o.top,4.5);}else put(a,b,0,4.5);}
  for(const o of openings){if(o.door)continue;const w=o.w,h=o.top-o.bottom,y=(o.top+o.bottom)/2;function f(du,dy,ww,hh,dd,m=materials.metal){return axis==='x'?box(g,'Window frame and glazing',o.u+du,y+dy,at,ww,hh,dd,m):box(g,'Window frame and glazing',at,y+dy,o.u+du,dd,hh,ww,m);}
-  for(const u of [-w/2,0,w/2])f(u,0,.055,h,.13);for(const v of [-h/2,h/2,h/2-.65])f(0,v,w,.055,.13);f(0,0,w-.07,h-.06,.012,axis==='z'&&at===12&&o.u===-5.8?materials.sampleGlass:materials.glass);
+  for(const u of [-w/2,0,w/2])f(u,0,.055,h,.13);for(const v of [-h/2,h/2,h/2-.65])f(0,v,w,.055,.13);const pane=f(0,0,w-.07,h-.06,.012,axis==='z'&&at===12&&o.u===-5.8?materials.sampleGlass:materials.glass);if(pane.material===materials.sampleGlass)samplePane=pane;
   f(0,-h/2-.05,w+.14,.1,.52,materials.stone);
   obstacle(axis==='x'?o.u:at,axis==='x'?at:o.u,axis==='x'?w:.34,axis==='x'?.34:w,'window sill');
  }
@@ -84,12 +103,14 @@ function makeReadingTable(g,index,x,z){
  box(table,'Undertable apron',x,.64,z,3.4,.15,.06,wood);obstacle(x,z,3.8,1.2,'table');
  for(const side of [-1,1])for(const dx of [-.98,.98]){
   const cx=x+dx,cz=z+side*1.13,id=`R${index}-${side<0?'N':'S'}${dx<0?1:2}`,chair=group('Chair '+id,g);
-  box(chair,'Upholstered seat',cx,.46,cz,.5,.075,.48,fabric,.025);box(chair,'Upholstered back',cx,.76,cz+side*.21,.49,.44,.065,fabric,.025);
+  if(index===1){bentwoodChair??=bentwoodChairFactory(materials.chairWood,fabric,materials.metal,materials.fabric);const module=bentwoodChair();module.position.set(cx,0,cz);module.rotation.y=side<0?Math.PI:0;chair.add(module);}
+  else{box(chair,'Upholstered seat',cx,.46,cz,.5,.075,.48,fabric,.025);box(chair,'Upholstered back',cx,.76,cz+side*.21,.49,.44,.065,fabric,.025);
   box(chair,'Oak seat support shell',cx,.405,cz,.49,.035,.47,wood,.015);
   for(const a of [-.205,.205])box(chair,'Connected back support',cx+a,.65,cz+side*.215,.023,.55,.025,materials.metal);
   for(const a of [-.21,.21])for(const b of [-.19,.19])box(chair,'Chair steel leg',cx+a,.225,cz+b,.023,.45,.023,materials.metal);
   for(const a of [-.21,.21])for(const b of [-.19,.19])box(chair,'Chair foot protector',cx+a,.015,cz+b,.029,.03,.029,materials.fabric,.004);
-  obstacle(cx,cz,.54,.55,'chair '+id);
+  }
+  obstacle(cx,cz,.54,index===1?.60:.55,'chair '+id);
   seats.push({id,label:'阅览位 '+id,x:cx,z:cz,yaw:side===1?0:Math.PI,approach:{x:cx,z:cz+side*.85}});
   box(table,'Recessed desktop power outlet',cx,.782,z+side*.12,.22,.007,.07,materials.metal);
  }

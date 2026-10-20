@@ -50,13 +50,26 @@ camera.rotation_euler = (Vector((0, -1, 2.2)) - camera.location).to_track_quat('
 camera_data.lens = 37
 scene.camera = camera
 for name, eye, aim in [('Window sample', (2.7, 5.2, 1.7), (9, 4.6, 1.25)),
-                          ('Tree 623 sample', (23, -4, 3), (16, 4, 3.6))]:
+                          ('Tree 623 sample', (23, -4, 3), (16, 4, 3.6)),
+                          ('Bentwood chair sample', (4.55, 7.1, 1.0), (5.62, 5.63, .48)),
+                          ('Distant tree sample', (39, -22, 4.5), (16, 4, 3.7))]:
     data = bpy.data.cameras.new(name)
     data.sensor_fit, data.angle_y = 'VERTICAL', radians(55)
     obj = bpy.data.objects.new(name, data)
     scene.collection.objects.link(obj)
     obj.location = eye
     obj.rotation_euler = (Vector(aim) - obj.location).to_track_quat('-Z', 'Y').to_euler()
+if len(args) > 2:
+    existing = set(bpy.data.objects)
+    bpy.ops.import_scene.gltf(filepath=str(Path(args[2]).resolve()))
+    collection = bpy.data.collections.new('Tree 623 distant editable alternative')
+    scene.collection.children.link(collection)
+    for obj in set(bpy.data.objects) - existing:
+        for owner in list(obj.users_collection):
+            owner.objects.unlink(obj)
+        collection.objects.link(obj)
+    collection.hide_viewport = collection.hide_render = True
+    scene['distant_tree_note'] = 'Hidden editable alternative only; browser uses distance hysteresis 30m/26m. Enable in isolation, not over the near tree.'
 bpy.ops.file.pack_all()
 target.parent.mkdir(parents=True, exist_ok=True)
 bpy.ops.wm.save_as_mainfile(filepath=str(target), compress=True)
