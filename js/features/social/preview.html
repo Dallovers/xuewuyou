@@ -300,7 +300,8 @@ const PANEL_COPY = {
       <p>它内部会依次执行 <b>tab('friends')</b> → <b>StudyAppBridge.navTo('community')</b> → <b>WG_Community.load()</b>，
       这条链路已在 main 分支确认存在，不需要等公共 openFeature 落地。</p>
       <p><span class="social-ui__tag">验收闭环</span> 搭子列表 → 发申请 → 另一账号接受 → 好友列表更新</p>
-      <div class="social-ui__note">本页是独立预览，没有主站的社区 DOM，因此只显示调用意图，不渲染真实列表。</div>`,
+      <div class="social-ui__note">本页是独立预览，没有主站的社区 DOM，所以上面这段调用意图在这里会返回 <b>no-bridge</b>；下方是直连同一套 <code>/api/community</code> 接口的真实数据视图。</div>
+      <div id="realPanel" class="social-ui__real">正在读取真实数据…</div>`,
   },
   'social.board': {
     title: '校园留言',
@@ -310,7 +311,8 @@ const PANEL_COPY = {
       <code>WG_Community.open('posts')</code>
       <p>展板是独立可替换件（<b>board:panel</b>），文字不烘进墙体贴图；贴纸、便签由 <b>js/community.js</b> 渲染，3D 侧只负责打开。</p>
       <p><span class="social-ui__tag">验收闭环</span> 查看留言 → 发布留言 → 另一账号可见</p>
-      <div class="social-ui__note">留言面板的样式仍由主站现有 CSS 提供，本板块不改 .sticky-note / .note-thread。</div>`,
+      <div class="social-ui__note">留言面板的样式仍由主站现有 CSS 提供，本板块不改 .sticky-note / .note-thread。下面是直连接口的真实数据视图。</div>
+      <div id="realPanel" class="social-ui__real">正在读取真实数据…</div>`,
   },
   'social.fountain': {
     title: '广场喷泉',
@@ -323,6 +325,145 @@ const PANEL_COPY = {
       <div class="social-ui__note">喷泉状态与好友业务完成度无关，不复用同一套状态字段。</div>`,
   },
 };
+
+/* ---------- 真实业务直连 ----------
+ * 独立预览没有主站的社区 DOM，WG_Community 在这里只会返回 no-bridge。
+ * 为了让服务台/公告栏能验证真实业务，这里直连同一套 /api/community/*：
+ * 只做「读 + 一条写」，不复制主站业务逻辑，也不伪造数据。
+ * 未登录、接口不可用都会显式说明原因。 */
+const API_BASE = qs.get('api') || 'http://127.0.0.1:3000';
+let authToken = localStorage.getItem('social.preview.token') || '';
+let authName = localStorage.getItem('social.preview.name') || '';
+
+async function apiCall(method, path, body) {
+  const res = await fetch(API_BASE + '/api/community/' + path, {
+    method,
+    headers: Object.assign(
+      { 'Content-Type': 'application/json' },
+      authToken ? { Authorization: 'Bearer ' + authToken } : {},
+    ),
+    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+  });
+  let data = null;
+  try { data = await res.json(); } catch (_) {}
+  if (!res.ok) throw new Error((data && data.error) || ('HTTP ' + res.status));
+  return data;
+}
+
+function escHtml(value) {
+  return String(value).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+}
+
+const REAL_STYLE = 'margin-top:10px;padding:10px;border:1px solid rgba(0,0,0,.14);border-radius:6px;background:rgba(255,255,255,.5)';
+const REAL_INPUT = 'flex:1;min-width:0;padding:4px 6px;border:1px solid rgba(0,0,0,.2);border-radius:4px;font:inherit';
+
+async function renderReal(kind) {
+  const box = document.getElementById('realPanel');
+  if (!box) return;
+  box.setAttribute('style', REAL_STYLE);
+
+  if (!authToken) {
+    box.innerHTML = '<div class="social-ui__note">未登录：直连接口需要云端账号，登录后才能读真实好友与留言。</div>' +
+      '<div style="display:flex;gap:6px;margin-top:6px">' +
+      '<input id="realUser" placeholder="账号" autocomplete="username" style="' + REAL_INPUT + '">' +
+      '<input id="realPass" type="password" placeholder="密码" autocomplete="current-password" style="' + REAL_INPUT + '">' +
+      '<button id="realLogin" type="button">登录</button></div>' +
+      '<div id="realMsg" style="margin-top:6px;font-size:12px"></div>';
+    document.getElementById('realLogin').onclick = async () => {
+      const u = document.getElementById('realUser').value.trim();
+      const p = document.getElementById('realPass').value;
+      const msg = document.getElementById('realMsg');
+      msg.textContent = '登录中…';
+      try {
+        const res = await fetch(API_BASE + '/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: u, password: p }),
+        });
+        const data = await res.json().catch(() => null);
+        if (!res.ok || !data || !data.token) throw new Error((data && data.error) || '登录失败');
+        authToken = data.token;
+        authName = u;
+        localStorage.setItem('social.preview.token', authToken);
+        localStorage.setItem('social.preview.name', authName);
+        renderReal(kind);
+      } catch (e) {
+        msg.textContent = '登录失败：' + e.message;
+      }
+    };
+    return;
+  }
+
+  box.innerHTML = '<div class="social-ui__note">读取中…</div>';
+  try {
+    if (kind === 'friends') {
+      const home = await apiCall('GET', 'home');
+      const friends = home.friends || [];
+      const requests = home.requests || [];
+      const directory = (home.directory || []).slice(0, 4);
+      const canInvite = directory.filter((p) => !p.isFriend);
+      box.innerHTML =
+        '<div><b>已登录 ' + escHtml(authName) + '</b> · 学习搭子 ' + friends.length + ' · 待处理 ' + requests.length + '</div>' +
+        '<div style="margin-top:4px">' + (friends.length
+          ? friends.map((p) => '<span style="margin-right:6px">· ' + escHtml(p.nick) + '</span>').join('')
+          : '<em>还没有学习搭子</em>') + '</div>' +
+        (requests.length ? '<div class="social-ui__note">待处理：' + requests.map((r) => escHtml(r.person.nick) + (r.to === home.uid ? '（邀请你）' : '（等待对方）')).join('、') + '</div>' : '') +
+        (directory.length ? '<div class="social-ui__note">目录：' + directory.map((p) => escHtml(p.nick) + (p.isFriend ? '（已是搭子）' : '')).join('、') + '</div>' : '<div class="social-ui__note">目录为空</div>') +
+        (canInvite.length ? '<button id="realInvite" type="button" style="margin-top:6px">邀请 ' + escHtml(canInvite[0].nick) + '</button>' : '') +
+        '<div id="realMsg" style="margin-top:6px;font-size:12px"></div>';
+
+      const btn = document.getElementById('realInvite');
+      if (btn) {
+        btn.onclick = async () => {
+          const target = canInvite[0];
+          const msg = document.getElementById('realMsg');
+          btn.disabled = true;
+          msg.textContent = '发送中…';
+          try {
+            await apiCall('POST', 'request', { to: target.id, message: '一起学习吧' });
+            msg.textContent = '已向 ' + target.nick + ' 发送邀请（真实写入）';
+            setTimeout(() => renderReal('friends'), 700);
+          } catch (e) {
+            msg.textContent = '发送失败：' + e.message;
+            btn.disabled = false;
+          }
+        };
+      }
+    } else {
+      const r = await apiCall('GET', 'posts?mode=all');
+      const all = r.posts || [];
+      const recent = all.slice(-3).reverse();
+      box.innerHTML =
+        '<div><b>已登录 ' + escHtml(authName) + '</b> · 公告栏 ' + all.length + ' 条</div>' +
+        '<div style="margin-top:4px">' + (recent.length
+          ? recent.map((p) => '<div style="margin:2px 0"><b>' + escHtml(p.author.nick) + '</b> ' + escHtml((p.text || '').slice(0, 50)) + '</div>').join('')
+          : '<em>还没有留言</em>') + '</div>' +
+        '<div style="display:flex;gap:6px;margin-top:6px">' +
+        '<input id="realPost" placeholder="写一条真留言" maxlength="200" style="' + REAL_INPUT + '">' +
+        '<button id="realSend" type="button">发布</button></div>' +
+        '<div id="realMsg" style="margin-top:6px;font-size:12px"></div>';
+
+      document.getElementById('realSend').onclick = async () => {
+        const input = document.getElementById('realPost');
+        const msg = document.getElementById('realMsg');
+        const text = input.value.trim();
+        if (!text) { msg.textContent = '请先写点什么'; return; }
+        msg.textContent = '发布中…';
+        try {
+          await apiCall('POST', 'posts', { text });
+          input.value = '';
+          msg.textContent = '已发布（真实写入）';
+          setTimeout(() => renderReal('posts'), 600);
+        } catch (e) {
+          msg.textContent = '发布失败：' + e.message;
+        }
+      };
+    }
+  } catch (e) {
+    box.innerHTML = '<div class="social-ui__note">读取失败：' + escHtml(e.message) +
+      '<br>接口：' + escHtml(API_BASE) + '（后端未启动或跨域被拒时会这样）</div>';
+  }
+}
 
 function openPanel(it, result) {
   const copy = PANEL_COPY[it.id] || { title: it.label, sub: '', body: () => '' };
@@ -339,6 +480,9 @@ function openPanel(it, result) {
   panelEl.hidden = false;
   panelOpen = true;
   hintEl.classList.remove('is-on');
+  // 服务台/公告栏额外挂真实数据视图（不影响上面的调用意图说明）
+  if (it.id === 'social.desk') renderReal('friends');
+  else if (it.id === 'social.board') renderReal('posts');
 }
 
 function closePanel() {
