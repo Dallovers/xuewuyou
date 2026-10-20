@@ -103,6 +103,56 @@
     return geo;
   }
 
+  /**
+   * 带真实倒角的板：四条边和四角都做出斜切。
+   * 不是加装饰条——几何本身被切掉了，所以侧面能直接看到 45° 的斜面，
+   * 也才有真实的高光断点。桌板、坐垫这类「可见硬边」用它。
+   *
+   * @param {number} bevel 倒角宽度（米），会被夹到不损伤板厚的上限内
+   */
+  function bevelSlab(THREE, width, depth, thickness, bevel, cornerRadius) {
+    var b = Math.max(0.0005, Math.min(bevel, thickness / 2 - 0.001, width / 2 - 0.01, depth / 2 - 0.01));
+    var w = Math.max(0.02, width - 2 * b);
+    var d = Math.max(0.02, depth - 2 * b);
+    var r = Math.min(cornerRadius === undefined ? 0.012 : cornerRadius, w / 2 - 0.001, d / 2 - 0.001);
+
+    var shape = new THREE.Shape();
+    var x0 = -w / 2;
+    var y0 = -d / 2;
+    shape.moveTo(x0 + r, y0);
+    shape.lineTo(x0 + w - r, y0);
+    shape.quadraticCurveTo(x0 + w, y0, x0 + w, y0 + r);
+    shape.lineTo(x0 + w, y0 + d - r);
+    shape.quadraticCurveTo(x0 + w, y0 + d, x0 + w - r, y0 + d);
+    shape.lineTo(x0 + r, y0 + d);
+    shape.quadraticCurveTo(x0, y0 + d, x0, y0 + d - r);
+    shape.lineTo(x0, y0 + r);
+    shape.quadraticCurveTo(x0, y0, x0 + r, y0);
+
+    var geo = new THREE.ExtrudeGeometry(shape, {
+      depth: Math.max(0.002, thickness - 2 * b),
+      bevelEnabled: true,
+      bevelThickness: b,
+      bevelSize: b,
+      bevelSegments: 1,
+      curveSegments: 4
+    });
+    geo.center();
+
+    /* ExtrudeGeometry 自带的 UV 在薄边上会拉得很长，木纹直接糊掉。
+       板是水平的，用 XZ 平面投影；归一化到 0..1，跟原来方块单个面的贴图比例一致，
+       否则按米单位投影会让纹理被放得过大、看着像没有木纹。
+       v 取 X，让木纹顺着长边走。 */
+    var pos = geo.attributes.position;
+    var uv = geo.attributes.uv;
+    for (var i = 0; i < pos.count; i++) {
+      uv.setXY(i, (pos.getZ(i) + depth / 2) / depth, (pos.getX(i) + width / 2) / width);
+    }
+    uv.needsUpdate = true;
+    geo.computeVertexNormals();
+    return geo;
+  }
+
   /** 释放一棵子树的几何与贴图，退出板块时调用。 */
   function disposeTree(root) {
     if (!root) return;
@@ -125,6 +175,7 @@
     group: group,
     box: box,
     boxFaces: boxFaces,
+    bevelSlab: bevelSlab,
     tubeBetween: tubeBetween,
     curvedPanel: curvedPanel,
     disposeTree: disposeTree

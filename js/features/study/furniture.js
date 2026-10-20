@@ -71,14 +71,17 @@
     var underTop = D.height - D.topThickness;
     var panelHeight = underTop;
 
-    // 桌板：木纹沿长边（X）走
-    core.box(
-      THREE, g, 'DeskTop',
-      [D.length, D.topThickness, totalDepth],
-      [0, topY, 0],
-      opts.topMaterial || mats.oak_light,
-      { uvSwap: true }
+    // 桌板：真实倒角。四条边切 4 mm、角部 14 mm 圆角，
+    // 侧面能看到 45° 斜面和高光断点——纯方块是做不到这个的。
+    var topMesh = new THREE.Mesh(
+      core.bevelSlab(THREE, D.length, totalDepth, D.topThickness, 0.004, 0.014),
+      opts.topMaterial || mats.oak_light
     );
+    topMesh.name = 'DeskTop';
+    topMesh.position.set(0, topY, 0);
+    topMesh.castShadow = true;
+    topMesh.receiveShadow = true;
+    g.add(topMesh);
 
     // 两端端板。底部做 0.09 m 高的退让（toe space）：脚要能收进去，
     // 端板直接落地的话坐着的人脚尖顶板，是实际使用里最先被抱怨的地方。
@@ -169,13 +172,16 @@
     var fabric = mats.fabric_greygreen;
     var steel = mats.steel_chair;
 
-    // 坐面
-    core.box(
-      THREE, g, 'ChairSeat',
-      [C.seatWidth, C.seatThickness, C.seatDepth],
-      [0, seatCenterY, 0],
+    // 坐面：软包件同样要有倒角，3 mm 边 + 18 mm 圆角，坐上去的观感全靠这个
+    var seatMesh = new THREE.Mesh(
+      core.bevelSlab(THREE, C.seatWidth, C.seatDepth, C.seatThickness, 0.003, 0.018),
       opts.seatMaterial || fabric
     );
+    seatMesh.name = 'ChairSeat';
+    seatMesh.position.set(0, seatCenterY, 0);
+    seatMesh.castShadow = true;
+    seatMesh.receiveShadow = true;
+    g.add(seatMesh);
 
     // 靠背：同一函数偏移前后两面，厚度真实
     var backGeo = core.curvedPanel(THREE, C.backWidth, C.backHeight, C.backThickness, C.backBend, 14);
