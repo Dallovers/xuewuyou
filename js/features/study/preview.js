@@ -155,7 +155,10 @@ const views = {
   ceiling: { pos: [2.6, 1.15, ROOM_Z + 3.4], target: [-0.8, 3.55, ROOM_Z - 1.6], lookUp: true },
   // 平面：高位俯视。刻意留一点倾角——相机正对下方时 up 向量与视线共线，
   // OrbitControls 会算出退化矩阵，画面直接白掉。
-  plan: { pos: [0, 16.5, ROOM_Z + 2.6], target: [0, 0, ROOM_Z - 0.2], roofOff: true }
+  plan: { pos: [0, 16.5, ROOM_Z + 2.6], target: [0, 0, ROOM_Z - 0.2], roofOff: true },
+  // 整屋 1 号岛的近景：查桌面软装、板件倒角、椅子软包。
+  // 注意 `desk` 那个视角看的是独立样件（setA），不带软装——两件事别混。
+  island: { pos: [-0.80, 1.28, ROOM_Z + 0.60], target: [-2.40, 0.84, ROOM_Z - 1.60] }
 };
 
 // 屋面构件（顶板 / 压顶 / 梁 / 灯具）：俯视和平面视角要把它们藏起来才看得进屋里
