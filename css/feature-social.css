@@ -1,0 +1,227 @@
+/* 学无忧 · 社交广场（板块 A）
+ * 只服务 social 板块的 3D 界面层：板块标识、靠近提示、业务面板外框、调试读数。
+ * 全部类名以 .social-ui 为作用域，不修改主站既有的 .btn / .panel 等公共样式。
+ * 面板内部的表单与列表仍由 js/community.js 渲染，这里只提供外壳定位。
+ */
+
+.social-ui {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  pointer-events: none;
+  font-family: "PingFang SC", "Microsoft YaHei", system-ui, -apple-system, sans-serif;
+  color: #f2efe6;
+  -webkit-font-smoothing: antialiased;
+}
+
+.social-ui__badge {
+  position: absolute;
+  top: 18px;
+  left: 18px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: rgba(24, 30, 28, 0.72);
+  border: 1px solid rgba(201, 173, 130, 0.34);
+  backdrop-filter: blur(6px);
+  font-size: 13px;
+  line-height: 1.5;
+  max-width: 260px;
+}
+.social-ui__badge b {
+  display: block;
+  font-size: 15px;
+  letter-spacing: 0.04em;
+  color: #e6cfa4;
+  margin-bottom: 4px;
+}
+.social-ui__badge span {
+  color: rgba(242, 239, 230, 0.66);
+}
+
+.social-ui__crosshair {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 4px;
+  height: 4px;
+  margin: -2px 0 0 -2px;
+  border-radius: 50%;
+  background: rgba(242, 239, 230, 0.6);
+  box-shadow: 0 0 0 3px rgba(24, 30, 28, 0.28);
+}
+
+.social-ui__hint {
+  position: absolute;
+  left: 50%;
+  bottom: 64px;
+  transform: translate(-50%, 8px);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  border-radius: 999px;
+  background: rgba(24, 30, 28, 0.82);
+  border: 1px solid rgba(201, 173, 130, 0.4);
+  font-size: 14px;
+  opacity: 0;
+  transition: opacity 0.16s ease, transform 0.16s ease;
+}
+.social-ui__hint.is-on {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+.social-ui__key {
+  display: inline-grid;
+  place-items: center;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 6px;
+  border-radius: 6px;
+  background: #e6cfa4;
+  color: #242a26;
+  font-weight: 700;
+  font-size: 13px;
+}
+.social-ui__hint em {
+  font-style: normal;
+  color: #e6cfa4;
+  margin-right: 6px;
+}
+
+.social-ui__panel {
+  position: absolute;
+  top: 50%;
+  right: 0;
+  width: min(420px, 92vw);
+  max-height: 78vh;
+  transform: translate(0, -50%);
+  display: flex;
+  flex-direction: column;
+  background: rgba(246, 243, 235, 0.97);
+  color: #2b3330;
+  border-radius: 14px 0 0 14px;
+  box-shadow: -18px 0 48px rgba(0, 0, 0, 0.28);
+  pointer-events: auto;
+  overflow: hidden;
+}
+.social-ui__panel[hidden] {
+  display: none;
+}
+.social-ui__panel-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 18px 12px;
+  border-bottom: 1px solid rgba(43, 51, 48, 0.12);
+}
+.social-ui__panel-head h2 {
+  margin: 0;
+  font-size: 16px;
+  letter-spacing: 0.02em;
+}
+.social-ui__panel-head p {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: #6d756f;
+}
+.social-ui__close {
+  flex: none;
+  width: 30px;
+  height: 30px;
+  border: 1px solid rgba(43, 51, 48, 0.18);
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+}
+.social-ui__close:hover {
+  background: rgba(43, 51, 48, 0.07);
+}
+.social-ui__panel-body {
+  padding: 16px 18px 20px;
+  overflow: auto;
+  font-size: 13px;
+  line-height: 1.72;
+}
+.social-ui__panel-body code {
+  display: block;
+  margin: 8px 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: rgba(43, 51, 48, 0.07);
+  font-family: "Cascadia Mono", Consolas, monospace;
+  font-size: 12px;
+  color: #38443f;
+  word-break: break-all;
+}
+.social-ui__tag {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  letter-spacing: 0.03em;
+  background: rgba(119, 125, 110, 0.18);
+  color: #4d564e;
+}
+.social-ui__tag.is-warn {
+  background: rgba(201, 139, 63, 0.2);
+  color: #8a5a1c;
+}
+.social-ui__note {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px dashed rgba(43, 51, 48, 0.16);
+  color: #6d756f;
+  font-size: 12px;
+}
+
+.social-ui__debug {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: rgba(24, 30, 28, 0.6);
+  border: 1px solid rgba(242, 239, 230, 0.12);
+  font-family: "Cascadia Mono", Consolas, monospace;
+  font-size: 11px;
+  line-height: 1.7;
+  color: rgba(242, 239, 230, 0.78);
+  white-space: pre;
+}
+
+.social-ui__fatal {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: #1d2320;
+  color: #f2efe6;
+  pointer-events: auto;
+  text-align: center;
+  font-size: 14px;
+  line-height: 1.8;
+  z-index: 60;
+}
+/* 作者样式的 display:grid 会盖掉 [hidden] 的 UA 默认值，必须显式收回 */
+.social-ui__fatal[hidden] {
+  display: none;
+}
+
+@media (max-width: 720px) {
+  .social-ui__badge {
+    display: none;
+  }
+  .social-ui__panel {
+    width: 100vw;
+    border-radius: 14px 14px 0 0;
+    top: auto;
+    bottom: 0;
+    transform: none;
+    max-height: 70vh;
+  }
+}
