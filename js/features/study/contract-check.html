@@ -311,6 +311,26 @@ try {
   check('起身后 getSeat() 回到 null', district.getSeat() === null);
   check('起身后标签回到默认', sB.label.indexOf('坐下') === 0, sB.label);
 
+  // —— 地面上的座位标记圈已移除，高亮改到座垫上 ——
+  // 原来每座位一个 r=0.32 的 torus 贴在地面上，视觉上像椅子腿底下的铁箍。
+  // 这里同时守住两件事：圈真的没了（否则删了代码又加回来没人发现），
+  // 以及"已坐下"仍有画面反馈（座垫换材质），不然删圈等于把功能一起删了。
+  const seatMarkers = district.root.getObjectByName('SeatMarkers');
+  const ringMeshes = [];
+  seatMarkers.traverse((n) => { if (n.isMesh) ringMeshes.push(n.name || '(未命名)'); });
+  check('地面上没有座位标记圈', ringMeshes.length === 0, 'SeatMarkers 下的 mesh：' + (ringMeshes.join(',') || '无'));
+  check('每个座位都绑到了座垫', seatMarkers.userData.boundPads === 16, '实际 ' + seatMarkers.userData.boundPads);
+
+  const idA = sA.id.slice('study.seat.'.length);
+  const padA = seatMarkers.getObjectByName('Seat.' + idA).userData.pad;
+  check('座位能找到对应座垫', !!padA, padA ? padA.name : 'null');
+  const padBase = padA.material;
+  sA.action();                       // 坐进这座
+  check('坐下后座垫换成高亮材质',
+    padA.material === seatMarkers.userData.seatMaterialActive && padA.material !== padBase);
+  sA.action();                       // 再按一次起身
+  check('起身后座垫换回原材质', padA.material === padBase);
+
   // —— 交互锚点：宿主只按 object.getWorldPosition() 算 XZ 距离 ——
   // 座位坐标写在子 mesh 上、外层 Group 零变换的话，16 个锚点会全部落在房间原点，
   // 就近选座就永远选到数组第一个。这里量锚点本身，不看子 mesh。
