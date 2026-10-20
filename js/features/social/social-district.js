@@ -37,8 +37,10 @@ const MATERIAL_SPEC = {
   // 裸金属/深铝框：真正带金属反射，用在窗框
   metal_frame: { color: 0x4a5559, roughness: 0.32, metalness: 0.55, envMapIntensity: 0.9 },
   roof_bluegrey: { color: 0x637581, roughness: 0.44, metalness: 0.5, envMapIntensity: 0.85 },
-  // 暖木：color 归白，木色由 albedo 决定，避免再乘底色导致发深
+  // 暖木：color 归白，木色由 albedo 决定，避免再乘底色导致发深。
+  // oak_light 竖纹（柜门主面 V 沿高度）；oak_flat 横纹（木条、坐面，长边在 U）
   oak_light: { color: 0xffffff, roughness: 0.62, metalness: 0.0, envMapIntensity: 0.45, uvUnit: 1.8 },
+  oak_flat: { color: 0xffffff, roughness: 0.62, metalness: 0.0, envMapIntensity: 0.45, uvUnit: 1.8 },
   fabric_greygreen: { color: 0x777d6e, roughness: 0.9, metalness: 0.0 },
   glass: {
     color: 0xcddfe4, roughness: 0.08, metalness: 0.05, transparent: true, opacity: 0.22,
@@ -62,6 +64,7 @@ const PBR_GROUPS = {
   brick_grey: { set: 'brick', normalScale: 0.08 },
   // 木色由程序化 albedo 决定，这里只借 wood 的法线与粗糙度
   oak_light: { set: 'wood', normalScale: 0.035, skipColor: true },
+  oak_flat: { set: 'wood', normalScale: 0.035, skipColor: true },
 };
 
 /* 素材目录：js/features/social/ → 仓库根 → examples/campus-3d-v5/assets/ */
@@ -155,9 +158,9 @@ function beveledBoxGeometry(THREE, w, h, d, b, unit) {
     const x = sx * hw;
     const n = [sx, 0, 0];
     quad(
-      [x, -ih, id, ...n, s(-id), s(-ih)],
+      [x, -ih, id, ...n, s(id), s(-ih)],
       [x, -ih, -id, ...n, s(-id), s(-ih)],
-      [x, ih, -id, ...n, s(id), s(ih)],
+      [x, ih, -id, ...n, s(-id), s(ih)],
       [x, ih, id, ...n, s(id), s(ih)],
     );
   }
@@ -166,10 +169,10 @@ function beveledBoxGeometry(THREE, w, h, d, b, unit) {
     const y = sy * hh;
     const n = [0, sy, 0];
     quad(
-      [-iw, y, id, ...n, s(-iw), s(-id)],
-      [iw, y, id, ...n, s(iw), s(-id)],
-      [iw, y, -id, ...n, s(iw), s(id)],
-      [-iw, y, -id, ...n, s(-iw), s(id)],
+      [-iw, y, id, ...n, s(-iw), s(id)],
+      [iw, y, id, ...n, s(iw), s(id)],
+      [iw, y, -id, ...n, s(iw), s(-id)],
+      [-iw, y, -id, ...n, s(-iw), s(-id)],
     );
   }
   // +Z / -Z：u 沿 x、v 沿 y
@@ -310,7 +313,7 @@ function makeFineStoneTexture(THREE, owner, withSeam) {
  * 所以木色改由这张程序化 albedo 决定，wood 贴图只留法线与粗糙度提供质感。
  * 纹理沿 U（板件长边）走，避免每块板都出现同一个木结。
  */
-function makeLightOakTexture(THREE, owner) {
+function makeLightOakTexture(THREE, owner, horizontal) {
   if (typeof document === 'undefined') return null;
   const w = 512;
   const h = 512;
@@ -323,21 +326,38 @@ function makeLightOakTexture(THREE, owner) {
   g.fillStyle = '#d9bd93';
   g.fillRect(0, 0, w, h);
 
-  // 年轮带沿 V 方向（画布上是竖条）：柜门主面是 ±X 面，U 沿深度、V 沿高度，
-  // 只有让纹理走 V 才是竖纹。间距按 512 图 / 1.8m 换算约 9-16cm。
-  let x = -20;
-  while (x < w + 20) {
-    const band = 4 + Math.random() * 11;
-    const alpha = 0.035 + Math.random() * 0.06;
-    g.fillStyle = 'rgba(138,102,62,' + alpha.toFixed(3) + ')';
-    g.fillRect(x, 0, band, h);
-    // 局部加深，打断整齐的直纹
-    if (Math.random() > 0.45) {
-      const y0 = Math.random() * h * 0.7;
-      g.fillStyle = 'rgba(120,86,50,' + (alpha * 1.25).toFixed(3) + ')';
-      g.fillRect(x, y0, band * (0.5 + Math.random() * 0.7), h * (0.2 + Math.random() * 0.5));
+  // 年轮带方向按构件走：
+  // 竖纹（horizontal=false）沿 V，用于柜门这类高大于宽的板件；
+  // 横纹（horizontal=true）沿 U，用于顶棚木条、坐面这类长边在 U 的构件。
+  // 间距按 512 图 / 1.8m 换算约 9-16cm。
+  if (horizontal) {
+    let y = -20;
+    while (y < h + 20) {
+      const band = 4 + Math.random() * 11;
+      const alpha = 0.05 + Math.random() * 0.055;
+      g.fillStyle = 'rgba(138,102,62,' + alpha.toFixed(3) + ')';
+      g.fillRect(0, y, w, band);
+      if (Math.random() > 0.45) {
+        const x0 = Math.random() * w * 0.7;
+        g.fillStyle = 'rgba(120,86,50,' + (alpha * 1.25).toFixed(3) + ')';
+        g.fillRect(x0, y, w * (0.2 + Math.random() * 0.5), band * (0.5 + Math.random() * 0.7));
+      }
+      y += band + 9 + Math.random() * 26;
     }
-    x += band + 9 + Math.random() * 26;
+  } else {
+    let x = -20;
+    while (x < w + 20) {
+      const band = 4 + Math.random() * 11;
+      const alpha = 0.05 + Math.random() * 0.055;
+      g.fillStyle = 'rgba(138,102,62,' + alpha.toFixed(3) + ')';
+      g.fillRect(x, 0, band, h);
+      if (Math.random() > 0.45) {
+        const y0 = Math.random() * h * 0.7;
+        g.fillStyle = 'rgba(120,86,50,' + (alpha * 1.25).toFixed(3) + ')';
+        g.fillRect(x, y0, band * (0.5 + Math.random() * 0.7), h * (0.2 + Math.random() * 0.5));
+      }
+      x += band + 9 + Math.random() * 26;
+    }
   }
 
   // 细颗粒
@@ -395,8 +415,8 @@ function resolveMaterials(THREE, shared, owner) {
       const fine = makeFineStoneTexture(THREE, owner, id === 'stone_light');
       if (fine) params.map = fine;
     }
-    if (id === 'oak_light') {
-      const oak = makeLightOakTexture(THREE, owner);
+    if (id === 'oak_light' || id === 'oak_flat') {
+      const oak = makeLightOakTexture(THREE, owner, id === 'oak_flat');
       if (oak) params.map = oak;
     }
     // 玻璃和水用 Physical：多一层 clearcoat，和标准材质的塑料感明显不同
@@ -822,7 +842,7 @@ export function createDistrict(ctx = {}) {
     const slatCount = Math.floor((P.length - 0.2) / slatGap);
     for (let i = 0; i < slatCount; i++) {
       const z = P.cz - (P.length - 0.2) / 2 + i * slatGap + slatGap / 2;
-      add(boxGeo(P.width + 0.4, 0.06, 0.1), M.oak_light, P.cx, plinth + P.height - 0.09, z, {
+      add(boxGeo(P.width + 0.4, 0.06, 0.1), M.oak_flat, P.cx, plinth + P.height - 0.09, z, {
         name: 'pavilion:slat', cast: false,
       });
     }
@@ -943,7 +963,7 @@ export function createDistrict(ctx = {}) {
 
     // 石座 + 木坐面，坐面顶到 0.45m
     add(boxGeo(S.length, 0.4, S.depth), M.stone_light, 0, 0.2, 0, { parent: group, name: 'bench:base' });
-    add(boxGeo(S.length + 0.06, 0.05, S.depth + 0.06), M.oak_light, 0, S.seat - 0.025, 0, {
+    add(boxGeo(S.length + 0.06, 0.05, S.depth + 0.06), M.oak_flat, 0, S.seat - 0.025, 0, {
       parent: group, name: 'bench:seat',
     });
     const halfX = Math.abs(Math.cos(rotY || 0)) * S.length / 2 + Math.abs(Math.sin(rotY || 0)) * S.depth / 2;

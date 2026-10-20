@@ -104,8 +104,11 @@ three 的 `material.dispose()` 不会释放它自己的 map，所以每轮漏 5 
 
 - 台面不再画分格缝：`makeFineStoneTexture(..., withSeam)` 只在台基/台阶/池体上分缝，台面是整块石材
 - 木纹改走 V 方向（柜门主面是 ±X 面，U 沿深度、V 沿高度），柜门变竖纹，间距放宽到 9–16cm
+- 木纹再按构件分方向：`oak_light` 竖纹（柜门等竖板）、`oak_flat` 横纹（顶棚木条、坐面，长边在 U），
+  两套 albedo 共享同一份 wood 法线与粗糙度
 - 新增 `beveledBoxGeometry`：12 条边 45° 切角 + 8 个角三角面，按法线自动纠正绕向；
   台面 3mm、柜体 4mm、柱 2mm，柱子另加 18mm 柱脚底板给落地关系
+- 修 `beveledBoxGeometry` 六面 UV：`+X` 面的 u 曾写成常量，纹理会被拉成横条带
 
 ## 照片级样板精修（2026-10-20 第二轮）
 
