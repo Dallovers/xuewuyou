@@ -80,13 +80,22 @@
       { uvSwap: true }
     );
 
-    // 两端端板
+    // 两端端板。底部做 0.09 m 高的退让（toe space）：脚要能收进去，
+    // 端板直接落地的话坐着的人脚尖顶板，是实际使用里最先被抱怨的地方。
+    // 做法是上段满深、下段缩进 0.06 一圈，比给方块挖缺口省几何。
     var panelX = D.length / 2 - D.endPanelInset - D.endPanelThickness / 2;
+    var toe = 0.09;
     [-1, 1].forEach(function (sign) {
       core.box(
         THREE, g, 'DeskEndPanel',
-        [D.endPanelThickness, panelHeight, D.endPanelDepth],
-        [sign * panelX, panelHeight / 2, 0],
+        [D.endPanelThickness, panelHeight - toe, D.endPanelDepth],
+        [sign * panelX, toe + (panelHeight - toe) / 2, 0],
+        mats.oak_light
+      );
+      core.box(
+        THREE, g, 'DeskEndPanelToe',
+        [D.endPanelThickness, toe, Math.max(0.2, D.endPanelDepth - 0.12)],
+        [sign * panelX, toe / 2, 0],
         mats.oak_light
       );
     });
