@@ -1,0 +1,15 @@
+{
+  "errors": [],
+  "checks": [
+    "Main snapshot cache versions preserved together",
+    "Main library entry and return #wenku work after merge",
+    "Merged personal focus deep link and multiplayer room navigation initialize"
+  ],
+  "scripts": [
+    "js/study.js?v=11",
+    "js/app.js?v=55",
+    "js/study-rooms.js?v=3",
+    "js/campus-registry.js?v=6"
+  ],
+  "passed": true
+}

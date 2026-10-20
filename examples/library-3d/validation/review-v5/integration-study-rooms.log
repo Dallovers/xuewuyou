@@ -1,0 +1,20 @@
+✔ 加载并 init 之后没有任何常驻定时器 (1.5747ms)
+✔ 进入房间页后只有一条兜底轮询，重复进入不叠加 (1.6392ms)
+✔ 没有进行中房间时离开板块，轮询与秒针都归零 (0.5694ms)
+✔ 没有房间时，离开再回来仍然是干净的 (0.5283ms)
+✔ 房间列表已加入人数与近期在线人数分开渲染 (0.7018ms)
+✔ rooms require authentication and validate limits before creation (345.9862ms)
+✔ private invites reach only the friend and require explicit join; socket watches are authorized (106.5017ms)
+✔ only the host starts the timer after all participants are online and ready (203.2827ms)
+✔ server credit handles background tabs, multiple windows, heartbeat gaps and pauses without trusting client elapsed time (209.7283ms)
+✔ a complete session persists exact focus, goal completion, history and one statistics credit (369.7382ms)
+✔ host departure transfers control and a final departure closes the room; simultaneous joins respect capacity (122.6599ms)
+✔ room membership, paused time and personal goals survive a server restart (421.8953ms)
+ℹ tests 12
+ℹ suites 0
+ℹ pass 12
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2437.3636

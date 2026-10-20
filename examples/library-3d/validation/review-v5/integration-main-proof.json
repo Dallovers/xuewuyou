@@ -1,0 +1,125 @@
+{
+  "main": "78efa41f60ccc45eb25addf629a51e995465857f",
+  "cacheVersions": {
+    "study": "11",
+    "studyRooms": "3",
+    "campusRegistry": "6",
+    "app": "55"
+  },
+  "mergeCommits": [
+    "296ccfe6d8953a112a992819c234376058c4ea37",
+    "ee7726ad1b475a01dcfd6d21bae444dcb120ff59"
+  ],
+  "protectedMainFiles": [
+    {
+      "path": "docs/team/d-campus-bridge.md",
+      "blob": "4b8d8c1ad92a257d971406832eb8c3136fbea25c",
+      "identicalToMain": true
+    },
+    {
+      "path": "examples/campus-integration/README.md",
+      "blob": "c6136223c81a4ce1e28a39533a9bc887872cd732",
+      "identicalToMain": true
+    },
+    {
+      "path": "examples/campus-integration/district.js",
+      "blob": "ce72104e2139ab2756bdb89b10b3d6515f773767",
+      "identicalToMain": true
+    },
+    {
+      "path": "examples/campus-integration/host.js",
+      "blob": "29d4b3b7a090ce7b293c069a99c379114fd9d83c",
+      "identicalToMain": true
+    },
+    {
+      "path": "examples/campus-integration/preview.html",
+      "blob": "baad7a2324e279187017288fda7b0668a7b4a136",
+      "identicalToMain": true
+    },
+    {
+      "path": "examples/campus-integration/server.mjs",
+      "blob": "372d46ba1fc7b963922f05c07a223b9d3e3f6a9a",
+      "identicalToMain": true
+    },
+    {
+      "path": "examples/campus-integration/validation.json",
+      "blob": "757ae81578ade2b0c7652db31959c30b2c3e8506",
+      "identicalToMain": true
+    },
+    {
+      "path": "examples/campus-integration/vendor/README.md",
+      "blob": "e1ad39b7474a60636b55f3549ccae12e70847901",
+      "identicalToMain": true
+    },
+    {
+      "path": "examples/campus-integration/vendor/THREE-LICENSE.txt",
+      "blob": "d33709fbf00f10b928bae20baf72a5c6da92d03a",
+      "identicalToMain": true
+    },
+    {
+      "path": "examples/campus-integration/vendor/three.module.js",
+      "blob": "6bc781491ae24ffd29ee22c8f019cdb67c2c61b7",
+      "identicalToMain": true
+    },
+    {
+      "path": "js/features/study/contract-check.html",
+      "blob": "5a23588e1d6f7cd32234eeee770e6a64c835de99",
+      "identicalToMain": true
+    },
+    {
+      "path": "js/features/study/core.js",
+      "blob": "0e3a6acb7f6612c28ebb29abbe3e375e25a8f76b",
+      "identicalToMain": true
+    },
+    {
+      "path": "js/features/study/district.js",
+      "blob": "a918857aeea2718114bddb5e7b7ab0f52ca71dbe",
+      "identicalToMain": true
+    },
+    {
+      "path": "js/features/study/furniture.js",
+      "blob": "6bac46ed45c0974cfe4786ad9dad456ce560fb9c",
+      "identicalToMain": true
+    },
+    {
+      "path": "js/features/study/materials.js",
+      "blob": "a248bb094fa36b5ead9d1a3f00ea33de1a183d21",
+      "identicalToMain": true
+    },
+    {
+      "path": "js/features/study/preview.html",
+      "blob": "734a138d52512c810e2d0787845a28646c26dccd",
+      "identicalToMain": true
+    },
+    {
+      "path": "js/features/study/preview.js",
+      "blob": "06bc78699138e23847e10a8560f35f05b13e803c",
+      "identicalToMain": true
+    },
+    {
+      "path": "js/features/study/room.js",
+      "blob": "3af3cc141b6e6f302123fb274fbbce2f130abc45",
+      "identicalToMain": true
+    },
+    {
+      "path": "js/features/study/shell.js",
+      "blob": "4ab8dee9ed29844b33fb904ded2c8e23bf868f32",
+      "identicalToMain": true
+    },
+    {
+      "path": "js/study-rooms.js",
+      "blob": "5ecf780c5b730bb56f4d67515309f492098ef800",
+      "identicalToMain": true
+    },
+    {
+      "path": "js/study.js",
+      "blob": "a77b6ad2ec3302a4718f78d03a4f021b73f317c7",
+      "identicalToMain": true
+    },
+    {
+      "path": "server/test/study-rooms-cleanup.test.js",
+      "blob": "daea26a31089fbb074e71c1555f1ca11dce2ecb4",
+      "identicalToMain": true
+    }
+  ]
+}

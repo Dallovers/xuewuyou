@@ -1,0 +1,99 @@
+{
+  "date": "2026-10-19T15:31:47.219Z",
+  "errors": [],
+  "failedResources": [],
+  "model": {
+    "meshes": 98,
+    "triangles": 115986,
+    "instances": 8300,
+    "materials": [
+      "Honed grey stone",
+      "Sample east pane 12mm clear glass",
+      "Wayfinding: 知 识 图 书 馆",
+      "Wayfinding: 馆藏书架",
+      "Wayfinding: 安静阅览",
+      "Grey brick",
+      "Wayfinding: 学 无 忧  ·  阅 读 与 思 考",
+      "Clear architectural glass",
+      "Dark bronze powder coating",
+      "Cream limestone",
+      "Stone floor joints",
+      "Linear LED diffuser",
+      "Wayfinding: 考研真题卷",
+      "Clothbound book spines",
+      "White oak veneer",
+      "Wayfinding: 教材习题集",
+      "Wayfinding: 雅思备考库",
+      "Wayfinding: 专题与心得",
+      "Paper edges",
+      "Sage woven upholstery",
+      "Sample R1 longitudinal white oak",
+      "Sample R1 sage fine woven upholstery",
+      "Wayfinding: 馆 藏 检 索",
+      "Mineral plaster and acoustic ceiling",
+      "Blue grey standing seam roof",
+      "Landscape ground",
+      "Planting soil",
+      "Tree bark",
+      "Botanical leaf cutouts"
+    ],
+    "groups": [
+      "Structure stone and real window openings",
+      "Furniture bookcases and reading desks",
+      "Roof editable zinc and clerestory",
+      "Library forecourt"
+    ],
+    "dimensions": {
+      "width": 24,
+      "depth": 18,
+      "clearHeight": 4.4,
+      "doorWidth": 2.8,
+      "mainAisle": 3,
+      "units": "metres"
+    },
+    "colliders": 60,
+    "shelves": 4,
+    "seats": 8,
+    "landscape": {
+      "trees": 3,
+      "foliageInstances": 7836,
+      "sample": {
+        "tree": 623,
+        "leaves": 4480,
+        "bladeMetres": [
+          0.09,
+          0.24
+        ],
+        "clusters": 28
+      },
+      "source": "Procedural branches and leaf alpha, no external image dependency"
+    }
+  },
+  "frames": {
+    "durationMs": 10012.600000023842,
+    "samples": 600,
+    "fps": 60.00240009600387,
+    "p95_ms": 16.700000000000728,
+    "max_ms": 16.80000000000109,
+    "over50ms": 0,
+    "graphics": {
+      "quality": "fluid",
+      "pixelRatio": 0.85,
+      "ambientOcclusion": false,
+      "buffer": [
+        1224,
+        816
+      ],
+      "samples": 240,
+      "fps": 60,
+      "mean_ms": 16.655416666716338,
+      "p95_ms": 19.700000047683716,
+      "max_ms": 24.80000001192093,
+      "drawCalls": 96,
+      "triangles": 184612,
+      "shadowUpdates": 1,
+      "submit_ms": 1.300000011920929
+    }
+  },
+  "passed": true
+}

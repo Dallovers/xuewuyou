@@ -1,0 +1,9 @@
+{
+  "name": "xuewuyou-library-3d",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {"start":"node server.mjs", "build":"node build.mjs", "test":"node tests/acceptance.cjs"},
+  "dependencies": {"three":"0.170.0"},
+  "devDependencies": {"esbuild":"0.28.2", "playwright":"1.64.1"}
+}

@@ -1,0 +1,52 @@
+{
+  "geometry": {
+    "author": "Xuewuyou C library implementation",
+    "method": "Editable mesh construction in src/architecture.js and src/landscape.js; procedural labels, stone panel/floor microtexture, fabric bump, connected branches and leaf alpha cutouts; no AI-generated image or projected building photograph.",
+    "reviewSample": "Only table R1 and four chairs, east pane at x=12/z=-5.8 and tree 623 at x=16/z=-4. Rotated inherited oak maps, procedural fine-weave normal and 9x24cm cupped leaves; other two trees retain original geometry and instance transforms. No new downloaded image.",
+    "thirdReview": "R1 bentwood chairs use shared subdivided curved back/seat/frame modules and inherited oak maps with a pale-oak canvas mix. One pane retains physical transmission and uses a scoped Three r170 base-LOD sampling correction. Tree 623 retains its 28 clusters and branches, using four-triangle near leaves and a two-triangle/half-instance distant alternative. Supplied commander-generated reference PNGs are comparison targets only and are never runtime surfaces.",
+    "fourthReview": "R1 only: inherited oak image mixed with pale oak colour for table and chair, one bounded standard spotlight for window-sky/contact-shadow approximation. Geometry and instance buffers unchanged; no new image dependency, baked lightmap or classroom lightmap reuse."
+  },
+  "sharedAssets": {
+    "root": "../../campus-3d-v5/assets/",
+    "manifest": "../../campus-3d-v5/assets/sources.json",
+    "license": "CC0 / Poly Haven, inherited from the existing reference provenance",
+    "files": [
+      "wood-color.jpg",
+      "wood-normal.jpg",
+      "wood-roughness.jpg",
+      "stone-normal.jpg",
+      "stone-roughness.jpg",
+      "brick-color.jpg",
+      "brick-normal.jpg",
+      "brick-roughness.jpg",
+      "sky.hdr"
+    ]
+  },
+  "software": [
+    {
+      "name": "Three.js",
+      "version": "0.170.0",
+      "source": "https://github.com/mrdoob/three.js/tree/r170",
+      "license": "MIT",
+      "notice": "../licenses/Three-MIT.txt"
+    },
+    {
+      "name": "PDF.js",
+      "version": "3.11.174",
+      "source": "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js",
+      "worker": "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js",
+      "license": "Apache-2.0",
+      "notice": "../licenses/PDFjs-Apache-2.0.txt",
+      "configuration": "Local worker and isEvalSupported:false; no document sent to a third-party viewer."
+    }
+  ],
+  "documents": {
+    "source": "Existing ../../../js/wenku.js and js/wenku_cat.js; original titles, links and source metadata preserved",
+    "license": "Original repository document provenance applies. No new third-party study documents added or downloaded."
+  },
+  "lighting": {
+    "method": "Library-specific realtime directional sun, sky environment, fill lights, cached shadow map, optional SSAO",
+    "baked": false,
+    "classroomLightmapsReused": false
+  }
+}

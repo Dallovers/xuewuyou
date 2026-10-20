@@ -1,0 +1,589 @@
+{
+  "date": "2026-10-20T11:11:13.337Z",
+  "baseline": "ac1369a geometry/material/light with two inspection cameras only",
+  "errors": [],
+  "failedResources": [],
+  "views": {
+    "sample": {
+      "model": {
+        "meshes": 98,
+        "triangles": 115986,
+        "instances": 8300,
+        "materials": [
+          "Honed grey stone",
+          "Sample east pane 12mm clear glass",
+          "Wayfinding: 知 识 图 书 馆",
+          "Wayfinding: 馆藏书架",
+          "Wayfinding: 安静阅览",
+          "Grey brick",
+          "Wayfinding: 学 无 忧  ·  阅 读 与 思 考",
+          "Clear architectural glass",
+          "Dark bronze powder coating",
+          "Cream limestone",
+          "Stone floor joints",
+          "Linear LED diffuser",
+          "Wayfinding: 考研真题卷",
+          "Clothbound book spines",
+          "White oak veneer",
+          "Wayfinding: 教材习题集",
+          "Wayfinding: 雅思备考库",
+          "Wayfinding: 专题与心得",
+          "Paper edges",
+          "Sage woven upholstery",
+          "Sample R1 longitudinal white oak",
+          "Sample R1 sage fine woven upholstery",
+          "Wayfinding: 馆 藏 检 索",
+          "Mineral plaster and acoustic ceiling",
+          "Blue grey standing seam roof",
+          "Landscape ground",
+          "Planting soil",
+          "Tree bark",
+          "Botanical leaf cutouts"
+        ],
+        "groups": [
+          "Structure stone and real window openings",
+          "Furniture bookcases and reading desks",
+          "Roof editable zinc and clerestory",
+          "Library forecourt"
+        ],
+        "dimensions": {
+          "width": 24,
+          "depth": 18,
+          "clearHeight": 4.4,
+          "doorWidth": 2.8,
+          "mainAisle": 3,
+          "units": "metres"
+        },
+        "colliders": 60,
+        "shelves": 4,
+        "seats": 8,
+        "landscape": {
+          "trees": 3,
+          "foliageInstances": 7836,
+          "sample": {
+            "tree": 623,
+            "leaves": 4480,
+            "bladeMetres": [
+              0.09,
+              0.24
+            ],
+            "clusters": 28
+          },
+          "source": "Procedural branches and leaf alpha, no external image dependency"
+        }
+      },
+      "graphicsHigh": {
+        "quality": "high",
+        "pixelRatio": 1,
+        "ambientOcclusion": true,
+        "buffer": [
+          1440,
+          960
+        ],
+        "samples": 56,
+        "fps": 60,
+        "mean_ms": 16.662500000425748,
+        "p95_ms": 17.799999952316284,
+        "max_ms": 18.19999998807907,
+        "drawCalls": 145,
+        "triangles": 276919,
+        "shadowUpdates": 1,
+        "submit_ms": 1.800000011920929
+      },
+      "fluid": {
+        "samples": 179,
+        "mean_ms": 16.665363128491624,
+        "p95_ms": 16.700000000000728,
+        "max_ms": 16.800000000000182,
+        "drawCalls": 96,
+        "renderedTriangles": 184612,
+        "meanSubmitMs": 1.3811111079321967,
+        "model": {
+          "meshes": 98,
+          "triangles": 115986,
+          "instances": 8300,
+          "materials": [
+            "Honed grey stone",
+            "Sample east pane 12mm clear glass",
+            "Wayfinding: 知 识 图 书 馆",
+            "Wayfinding: 馆藏书架",
+            "Wayfinding: 安静阅览",
+            "Grey brick",
+            "Wayfinding: 学 无 忧  ·  阅 读 与 思 考",
+            "Clear architectural glass",
+            "Dark bronze powder coating",
+            "Cream limestone",
+            "Stone floor joints",
+            "Linear LED diffuser",
+            "Wayfinding: 考研真题卷",
+            "Clothbound book spines",
+            "White oak veneer",
+            "Wayfinding: 教材习题集",
+            "Wayfinding: 雅思备考库",
+            "Wayfinding: 专题与心得",
+            "Paper edges",
+            "Sage woven upholstery",
+            "Sample R1 longitudinal white oak",
+            "Sample R1 sage fine woven upholstery",
+            "Wayfinding: 馆 藏 检 索",
+            "Mineral plaster and acoustic ceiling",
+            "Blue grey standing seam roof",
+            "Landscape ground",
+            "Planting soil",
+            "Tree bark",
+            "Botanical leaf cutouts"
+          ],
+          "groups": [
+            "Structure stone and real window openings",
+            "Furniture bookcases and reading desks",
+            "Roof editable zinc and clerestory",
+            "Library forecourt"
+          ],
+          "dimensions": {
+            "width": 24,
+            "depth": 18,
+            "clearHeight": 4.4,
+            "doorWidth": 2.8,
+            "mainAisle": 3,
+            "units": "metres"
+          },
+          "colliders": 60,
+          "shelves": 4,
+          "seats": 8,
+          "landscape": {
+            "trees": 3,
+            "foliageInstances": 7836,
+            "sample": {
+              "tree": 623,
+              "leaves": 4480,
+              "bladeMetres": [
+                0.09,
+                0.24
+              ],
+              "clusters": 28
+            },
+            "source": "Procedural branches and leaf alpha, no external image dependency"
+          }
+        }
+      }
+    },
+    "chair": {
+      "model": {
+        "meshes": 98,
+        "triangles": 115986,
+        "instances": 8300,
+        "materials": [
+          "Honed grey stone",
+          "Sample east pane 12mm clear glass",
+          "Wayfinding: 知 识 图 书 馆",
+          "Wayfinding: 馆藏书架",
+          "Wayfinding: 安静阅览",
+          "Grey brick",
+          "Wayfinding: 学 无 忧  ·  阅 读 与 思 考",
+          "Clear architectural glass",
+          "Dark bronze powder coating",
+          "Cream limestone",
+          "Stone floor joints",
+          "Linear LED diffuser",
+          "Wayfinding: 考研真题卷",
+          "Clothbound book spines",
+          "White oak veneer",
+          "Wayfinding: 教材习题集",
+          "Wayfinding: 雅思备考库",
+          "Wayfinding: 专题与心得",
+          "Paper edges",
+          "Sage woven upholstery",
+          "Sample R1 longitudinal white oak",
+          "Sample R1 sage fine woven upholstery",
+          "Wayfinding: 馆 藏 检 索",
+          "Mineral plaster and acoustic ceiling",
+          "Blue grey standing seam roof",
+          "Landscape ground",
+          "Planting soil",
+          "Tree bark",
+          "Botanical leaf cutouts"
+        ],
+        "groups": [
+          "Structure stone and real window openings",
+          "Furniture bookcases and reading desks",
+          "Roof editable zinc and clerestory",
+          "Library forecourt"
+        ],
+        "dimensions": {
+          "width": 24,
+          "depth": 18,
+          "clearHeight": 4.4,
+          "doorWidth": 2.8,
+          "mainAisle": 3,
+          "units": "metres"
+        },
+        "colliders": 60,
+        "shelves": 4,
+        "seats": 8,
+        "landscape": {
+          "trees": 3,
+          "foliageInstances": 7836,
+          "sample": {
+            "tree": 623,
+            "leaves": 4480,
+            "bladeMetres": [
+              0.09,
+              0.24
+            ],
+            "clusters": 28
+          },
+          "source": "Procedural branches and leaf alpha, no external image dependency"
+        }
+      },
+      "graphicsHigh": {
+        "quality": "high",
+        "pixelRatio": 1,
+        "ambientOcclusion": true,
+        "buffer": [
+          1440,
+          960
+        ],
+        "samples": 98,
+        "fps": 54,
+        "mean_ms": 18.5336734695094,
+        "p95_ms": 17.899999976158142,
+        "max_ms": 214.80000001192093,
+        "drawCalls": 202,
+        "triangles": 299281,
+        "shadowUpdates": 1,
+        "submit_ms": 1.199999988079071
+      }
+    },
+    "sampleTree": {
+      "model": {
+        "meshes": 98,
+        "triangles": 115986,
+        "instances": 8300,
+        "materials": [
+          "Honed grey stone",
+          "Sample east pane 12mm clear glass",
+          "Wayfinding: 知 识 图 书 馆",
+          "Wayfinding: 馆藏书架",
+          "Wayfinding: 安静阅览",
+          "Grey brick",
+          "Wayfinding: 学 无 忧  ·  阅 读 与 思 考",
+          "Clear architectural glass",
+          "Dark bronze powder coating",
+          "Cream limestone",
+          "Stone floor joints",
+          "Linear LED diffuser",
+          "Wayfinding: 考研真题卷",
+          "Clothbound book spines",
+          "White oak veneer",
+          "Wayfinding: 教材习题集",
+          "Wayfinding: 雅思备考库",
+          "Wayfinding: 专题与心得",
+          "Paper edges",
+          "Sage woven upholstery",
+          "Sample R1 longitudinal white oak",
+          "Sample R1 sage fine woven upholstery",
+          "Wayfinding: 馆 藏 检 索",
+          "Mineral plaster and acoustic ceiling",
+          "Blue grey standing seam roof",
+          "Landscape ground",
+          "Planting soil",
+          "Tree bark",
+          "Botanical leaf cutouts"
+        ],
+        "groups": [
+          "Structure stone and real window openings",
+          "Furniture bookcases and reading desks",
+          "Roof editable zinc and clerestory",
+          "Library forecourt"
+        ],
+        "dimensions": {
+          "width": 24,
+          "depth": 18,
+          "clearHeight": 4.4,
+          "doorWidth": 2.8,
+          "mainAisle": 3,
+          "units": "metres"
+        },
+        "colliders": 60,
+        "shelves": 4,
+        "seats": 8,
+        "landscape": {
+          "trees": 3,
+          "foliageInstances": 7836,
+          "sample": {
+            "tree": 623,
+            "leaves": 4480,
+            "bladeMetres": [
+              0.09,
+              0.24
+            ],
+            "clusters": 28
+          },
+          "source": "Procedural branches and leaf alpha, no external image dependency"
+        }
+      },
+      "graphicsHigh": {
+        "quality": "high",
+        "pixelRatio": 1,
+        "ambientOcclusion": true,
+        "buffer": [
+          1440,
+          960
+        ],
+        "samples": 143,
+        "fps": 53.6,
+        "mean_ms": 18.64475524467188,
+        "p95_ms": 17.80000001192093,
+        "max_ms": 214.80000001192093,
+        "drawCalls": 205,
+        "triangles": 314527,
+        "shadowUpdates": 1,
+        "submit_ms": 1.600000023841858
+      },
+      "fluid": {
+        "samples": 179,
+        "mean_ms": 16.665363128491624,
+        "p95_ms": 16.700000000000728,
+        "max_ms": 16.80000000000109,
+        "drawCalls": 136,
+        "renderedTriangles": 209684,
+        "meanSubmitMs": 1.644444446431266,
+        "model": {
+          "meshes": 98,
+          "triangles": 115986,
+          "instances": 8300,
+          "materials": [
+            "Honed grey stone",
+            "Sample east pane 12mm clear glass",
+            "Wayfinding: 知 识 图 书 馆",
+            "Wayfinding: 馆藏书架",
+            "Wayfinding: 安静阅览",
+            "Grey brick",
+            "Wayfinding: 学 无 忧  ·  阅 读 与 思 考",
+            "Clear architectural glass",
+            "Dark bronze powder coating",
+            "Cream limestone",
+            "Stone floor joints",
+            "Linear LED diffuser",
+            "Wayfinding: 考研真题卷",
+            "Clothbound book spines",
+            "White oak veneer",
+            "Wayfinding: 教材习题集",
+            "Wayfinding: 雅思备考库",
+            "Wayfinding: 专题与心得",
+            "Paper edges",
+            "Sage woven upholstery",
+            "Sample R1 longitudinal white oak",
+            "Sample R1 sage fine woven upholstery",
+            "Wayfinding: 馆 藏 检 索",
+            "Mineral plaster and acoustic ceiling",
+            "Blue grey standing seam roof",
+            "Landscape ground",
+            "Planting soil",
+            "Tree bark",
+            "Botanical leaf cutouts"
+          ],
+          "groups": [
+            "Structure stone and real window openings",
+            "Furniture bookcases and reading desks",
+            "Roof editable zinc and clerestory",
+            "Library forecourt"
+          ],
+          "dimensions": {
+            "width": 24,
+            "depth": 18,
+            "clearHeight": 4.4,
+            "doorWidth": 2.8,
+            "mainAisle": 3,
+            "units": "metres"
+          },
+          "colliders": 60,
+          "shelves": 4,
+          "seats": 8,
+          "landscape": {
+            "trees": 3,
+            "foliageInstances": 7836,
+            "sample": {
+              "tree": 623,
+              "leaves": 4480,
+              "bladeMetres": [
+                0.09,
+                0.24
+              ],
+              "clusters": 28
+            },
+            "source": "Procedural branches and leaf alpha, no external image dependency"
+          }
+        }
+      }
+    },
+    "treeFar": {
+      "model": {
+        "meshes": 98,
+        "triangles": 115986,
+        "instances": 8300,
+        "materials": [
+          "Honed grey stone",
+          "Sample east pane 12mm clear glass",
+          "Wayfinding: 知 识 图 书 馆",
+          "Wayfinding: 馆藏书架",
+          "Wayfinding: 安静阅览",
+          "Grey brick",
+          "Wayfinding: 学 无 忧  ·  阅 读 与 思 考",
+          "Clear architectural glass",
+          "Dark bronze powder coating",
+          "Cream limestone",
+          "Stone floor joints",
+          "Linear LED diffuser",
+          "Wayfinding: 考研真题卷",
+          "Clothbound book spines",
+          "White oak veneer",
+          "Wayfinding: 教材习题集",
+          "Wayfinding: 雅思备考库",
+          "Wayfinding: 专题与心得",
+          "Paper edges",
+          "Sage woven upholstery",
+          "Sample R1 longitudinal white oak",
+          "Sample R1 sage fine woven upholstery",
+          "Wayfinding: 馆 藏 检 索",
+          "Mineral plaster and acoustic ceiling",
+          "Blue grey standing seam roof",
+          "Landscape ground",
+          "Planting soil",
+          "Tree bark",
+          "Botanical leaf cutouts"
+        ],
+        "groups": [
+          "Structure stone and real window openings",
+          "Furniture bookcases and reading desks",
+          "Roof editable zinc and clerestory",
+          "Library forecourt"
+        ],
+        "dimensions": {
+          "width": 24,
+          "depth": 18,
+          "clearHeight": 4.4,
+          "doorWidth": 2.8,
+          "mainAisle": 3,
+          "units": "metres"
+        },
+        "colliders": 60,
+        "shelves": 4,
+        "seats": 8,
+        "landscape": {
+          "trees": 3,
+          "foliageInstances": 7836,
+          "sample": {
+            "tree": 623,
+            "leaves": 4480,
+            "bladeMetres": [
+              0.09,
+              0.24
+            ],
+            "clusters": 28
+          },
+          "source": "Procedural branches and leaf alpha, no external image dependency"
+        }
+      },
+      "graphicsHigh": {
+        "quality": "high",
+        "pixelRatio": 1,
+        "ambientOcclusion": true,
+        "buffer": [
+          1440,
+          960
+        ],
+        "samples": 194,
+        "fps": 55.2,
+        "mean_ms": 18.12216494839216,
+        "p95_ms": 17.899999976158142,
+        "max_ms": 214.80000001192093,
+        "drawCalls": 304,
+        "triangles": 348001,
+        "shadowUpdates": 1,
+        "submit_ms": 2.300000011920929
+      },
+      "fluid": {
+        "samples": 179,
+        "mean_ms": 16.6659217877095,
+        "p95_ms": 16.799999999999272,
+        "max_ms": 16.80000000000109,
+        "drawCalls": 202,
+        "renderedTriangles": 232000,
+        "meanSubmitMs": 2.153333334790336,
+        "model": {
+          "meshes": 98,
+          "triangles": 115986,
+          "instances": 8300,
+          "materials": [
+            "Honed grey stone",
+            "Sample east pane 12mm clear glass",
+            "Wayfinding: 知 识 图 书 馆",
+            "Wayfinding: 馆藏书架",
+            "Wayfinding: 安静阅览",
+            "Grey brick",
+            "Wayfinding: 学 无 忧  ·  阅 读 与 思 考",
+            "Clear architectural glass",
+            "Dark bronze powder coating",
+            "Cream limestone",
+            "Stone floor joints",
+            "Linear LED diffuser",
+            "Wayfinding: 考研真题卷",
+            "Clothbound book spines",
+            "White oak veneer",
+            "Wayfinding: 教材习题集",
+            "Wayfinding: 雅思备考库",
+            "Wayfinding: 专题与心得",
+            "Paper edges",
+            "Sage woven upholstery",
+            "Sample R1 longitudinal white oak",
+            "Sample R1 sage fine woven upholstery",
+            "Wayfinding: 馆 藏 检 索",
+            "Mineral plaster and acoustic ceiling",
+            "Blue grey standing seam roof",
+            "Landscape ground",
+            "Planting soil",
+            "Tree bark",
+            "Botanical leaf cutouts"
+          ],
+          "groups": [
+            "Structure stone and real window openings",
+            "Furniture bookcases and reading desks",
+            "Roof editable zinc and clerestory",
+            "Library forecourt"
+          ],
+          "dimensions": {
+            "width": 24,
+            "depth": 18,
+            "clearHeight": 4.4,
+            "doorWidth": 2.8,
+            "mainAisle": 3,
+            "units": "metres"
+          },
+          "colliders": 60,
+          "shelves": 4,
+          "seats": 8,
+          "landscape": {
+            "trees": 3,
+            "foliageInstances": 7836,
+            "sample": {
+              "tree": 623,
+              "leaves": 4480,
+              "bladeMetres": [
+                0.09,
+                0.24
+              ],
+              "clusters": 28
+            },
+            "source": "Procedural branches and leaf alpha, no external image dependency"
+          }
+        }
+      }
+    }
+  },
+  "webgl": {
+    "renderer": "ANGLE (Intel, Intel(R) Graphics (0x00007D67) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.8078.4 Safari/537.36"
+  },
+  "passed": true
+}
