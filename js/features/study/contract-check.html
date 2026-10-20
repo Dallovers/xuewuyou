@@ -154,6 +154,25 @@ try {
   check('从门内能走到房间四角', reachable(-5.5, -3.9) && reachable(5.5, -3.9) && reachable(-5.5, 3.9) && reachable(5.5, 3.9));
   check('没有与外界连通的漏洞', !reachable(-6.5, 0) && !reachable(0, 5.2));
 
+  // 每个交互点都得起作用：宿主要在 radius 内才认这个交互点。
+  // 座位点落在椅子上，如果椅子挡住了、半径又小于「最近可站位置到点的距离」，
+  // 那就永远按不到 E —— 之前的断言直接调 action()，测不出这种情况。
+  const unreachable = [];
+  const v = new THREE.Vector3();
+  district.interactions.forEach((it) => {
+    it.object.getWorldPosition(v);
+    let ok = false;
+    for (let dx = -it.radius; dx <= it.radius && !ok; dx += step / 2) {
+      for (let dz = -it.radius; dz <= it.radius && !ok; dz += step / 2) {
+        if (dx * dx + dz * dz > it.radius * it.radius) continue;
+        if (reachable(v.x + dx, v.z + dz)) ok = true;
+      }
+    }
+    if (!ok) unreachable.push(it.id + ' @(' + v.x.toFixed(2) + ',' + v.z.toFixed(2) + ') r=' + it.radius);
+  });
+  check('每个交互点都能站进判定半径', unreachable.length === 0,
+    unreachable.length ? '走不到: ' + unreachable.join(' / ') : '共 ' + district.interactions.length + ' 个');
+
   // 入口交互 + 16 个座位
   check('交互点共 17 个（1 入口 + 16 座位）', district.interactions.length === 17, '实际 ' + district.interactions.length);
   const it = district.interactions.find((i) => i.id === 'study.entry');
