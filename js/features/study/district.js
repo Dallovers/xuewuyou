@@ -135,7 +135,6 @@ export function createDistrict(opts) {
    * 负责人 2026-10-20：座位先做选择、坐下和退出反馈；
    * 后端没实现独占占座与跨用户同步之前，界面上不能说「已同步」。 */
   const seatGroup = parts.seats;
-  const seatBaseMat = seatGroup.userData.seatMaterial;
   const seatActiveMat = seatGroup.userData.seatMaterialActive;
   const seatRadius = seatGroup.userData.radius;
   const seatsById = {};
@@ -161,12 +160,16 @@ export function createDistrict(opts) {
   });
   interactions.push(...seatItems);
 
+  /* 高亮作用在**座垫**上，不再是地面上的圈。
+   * 圈删掉之后（负责人 2026-10-20 要求）如果这里也跟着失效，坐下就没有任何画面反馈了，
+   * 所以改成换座垫材质：坐垫本来就是布的，变暖色比地上一圈铁箍自然。
+   * padBaseMaterial 在 room.js 的 bindSeatPads 里存的是家具自带材质，起身时换回去。 */
   function paintSeat(id, active) {
     const node = seatGroup.getObjectByName('Seat.' + id);
     if (!node) return;
-    node.traverse((n) => {
-      if (n.isMesh) n.material = active ? seatActiveMat : seatBaseMat;
-    });
+    const pad = node.userData.pad;
+    if (!pad) return;
+    pad.material = active ? seatActiveMat : node.userData.padBaseMaterial;
   }
 
   function relabel() {
@@ -215,8 +218,7 @@ export function createDistrict(opts) {
       });
       geos.forEach((g) => g.dispose());
       if (materials.dispose) materials.dispose();
-      // 座位圈的两个材质是 room.js 现建的，不在 materials 对象里，得单独释放
-      if (seatBaseMat) seatBaseMat.dispose();
+      // 座位高亮材质是 room.js 现建的，不在 materials 对象里，得单独释放
       if (seatActiveMat) seatActiveMat.dispose();
       root.removeFromParent();
     }
