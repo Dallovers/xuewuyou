@@ -209,23 +209,33 @@ function beveledBoxGeometry(THREE, w, h, d, b, unit) {
           p[a1] = sign[a1] * (onA1Face ? outer[a1] : half[a1]);
           p[a2] = sign[a2] * (onA1Face ? half[a2] : outer[a2]);
           p[a3] = t * half[a3];
-          return [p[0], p[1], p[2], n[0], n[1], n[2], s(p[0]), s(p[1])];
+          // 沿边方向做 U、横截面做 V。
+          // 之前统一用 x/y 投影，沿 Z 延伸的边改变 z 不影响 UV，整条边会退化。
+          const along = p[a3] / unit;
+          const across = (onA1Face ? 0 : bb * Math.SQRT2) / unit;
+          return [p[0], p[1], p[2], n[0], n[1], n[2], along, across];
         };
         quad(mk(true, -1), mk(true, 1), mk(false, 1), mk(false, -1));
       }
     }
   }
 
-  // 8 个角
+  // 8 个角：取 (x+y, y+z) 这一对线性无关的投影做 UV。
+  // 单用 x/y 或 y/z 都可能让三点共线，面积归零。
   for (const sx of [1, -1]) {
     for (const sy of [1, -1]) {
       for (const sz of [1, -1]) {
         const k = 1 / Math.sqrt(3);
         const n = [sx * k, sy * k, sz * k];
+        const A = [sx * hw, sy * ih, sz * id];
+        const B = [sx * iw, sy * hh, sz * id];
+        const C = [sx * iw, sy * ih, sz * hd];
+        const cu = (p) => (p[0] + p[1]) / unit;
+        const cv = (p) => (p[1] + p[2]) / unit;
         tri(
-          [sx * hw, sy * ih, sz * id, ...n, s(sx * hw), s(sy * ih)],
-          [sx * iw, sy * hh, sz * id, ...n, s(sx * iw), s(sy * hh)],
-          [sx * iw, sy * ih, sz * hd, ...n, s(sx * iw), s(sz * hd)],
+          [...A, ...n, cu(A), cv(A)],
+          [...B, ...n, cu(B), cv(B)],
+          [...C, ...n, cu(C), cv(C)],
         );
       }
     }
