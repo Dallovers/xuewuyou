@@ -184,9 +184,81 @@
     return g;
   }
 
-  /** 入口控制点：打卡面板 + 房间状态屏，都在门右侧墙面上 */
-  function createEntryPanel(THREE, mats, parent) {
+  var SEAT = {
+    // 半径要大于椅面半宽（0.225），否则从正上方看这个圈被椅面完全挡住，
+    // 等于没做。0.32 让圈在椅子外围露出来，俯视也能看见。
+    ringRadius: 0.32,
+    ringTube: 0.014,
+    y: 0.015,
+    radius: 1.6          // 交互判定半径，交给 district 用
+  };
+
+  /**
+   * 座位的本地标记圈。16 个位置从家具 SPEC 算出来，不手抄坐标——
+   * 桌岛一挪，座位圈跟着走。
+   */
+  function createSeatRing(THREE, parent, seat) {
+    var g = global.StudyDistrict.core.group(THREE, parent, 'Seat.' + seat.id);
+    var geo = new THREE.TorusGeometry(SEAT.ringRadius, SEAT.ringTube, 6, 24);
+    var mesh = new THREE.Mesh(geo, parent.userData.seatMaterial);
+    mesh.name = 'SeatRing.' + seat.id;
+    mesh.rotation.x = -Math.PI / 2;
+    mesh.position.set(seat.x, SEAT.y, seat.z);
+    mesh.castShadow = false;
+    mesh.receiveShadow = false;
+    g.add(mesh);
+    g.userData.seat = seat;
+    return g;
+  }
+
+  /** 16 个座位的坐标：桌岛按家具 SPEC 的椅子位置算，窗边席按凳子等分算 */
+  function buildSeats() {
+    var F = global.StudyDistrict.furniture.SPEC;
+    var chairZ = F.desk.depthPerSide - F.layout.chairTuck + F.chair.seatDepth / 2;
+    var seatX = F.desk.length / 4;
+    var out = [];
+    LAYOUT.islands.forEach(function (p, i) {
+      [-1, 1].forEach(function (sz) {
+        [-1, 1].forEach(function (sx) {
+          out.push({
+            id: 'island' + (i + 1) + '.' + (sx < 0 ? 'w' : 'e') + (sz < 0 ? 'n' : 's'),
+            x: round(p.x + sx * seatX),
+            z: round(p.z + sz * chairZ),
+            kind: 'desk'
+          });
+        });
+      });
+    });
+    var C = LAYOUT.windowCounter;
+    var stoolX = -HX + C.depth + C.stoolGap + C.stoolRadius;
+    var step = C.length / (C.stoolCount + 1);
+    for (var k = 1; k <= C.stoolCount; k++) {
+      out.push({ id: 'window.' + k, x: round(stoolX), z: round(-C.length / 2 + step * k), kind: 'window' });
+    }
+    return out;
+  }
+
+  function createSeatMarkers(THREE, parent) {
     var core = global.StudyDistrict.core;
+    var g = core.group(THREE, parent, 'SeatMarkers');
+    g.userData.seatMaterial = new THREE.MeshStandardMaterial({
+      // 比地面深一档，否则水磨石上根本看不出有这个圈
+      color: 0x6f7a72, roughness: 0.6, metalness: 0.1, emissive: 0x000000
+    });
+    g.userData.seatMaterialActive = new THREE.MeshStandardMaterial({
+      color: 0xc9ad82, roughness: 0.45, metalness: 0.1, emissive: 0x6b4a1e, emissiveIntensity: 0.45
+    });
+    var seats = buildSeats();
+    seats.forEach(function (s) {
+      g.add(createSeatRing(THREE, g, s));
+    });
+    g.userData.seats = seats;
+    g.userData.radius = SEAT.radius;
+    return g;
+  }
+
+  /** 入口控制点：打卡面板 + 房间状态屏，都在门右侧墙面上 */
+  function createEntryPanel(THREE, mats, parent) {    var core = global.StudyDistrict.core;
     var E = LAYOUT.entry;
     var g = core.group(THREE, parent, 'EntryPanel');
 
@@ -284,6 +356,7 @@
     var counter = createWindowCounter(THREE, mats, g);
     var shelf = createLowShelf(THREE, mats, g);
     var entry = createEntryPanel(THREE, mats, g);
+    var seats = createSeatMarkers(THREE, g);
 
     var sets = LAYOUT.islands.map(function (p, i) {
       var s = furniture.createDeskSet(THREE, mats);
@@ -298,7 +371,8 @@
       spec: ROOM,
       layout: LAYOUT,
       lightTable: buildLightTable(),
-      parts: { counter: counter, shelf: shelf, entry: entry, islands: sets }
+      seats: seats.userData.seats,
+      parts: { counter: counter, shelf: shelf, entry: entry, seats: seats, islands: sets }
     };
     return g;
   }
@@ -343,7 +417,9 @@
   global.StudyDistrict.room = {
     ROOM: ROOM,
     LAYOUT: LAYOUT,
+    SEAT: SEAT,
     createRoom: createRoom,
+    buildSeats: buildSeats,
     buildLightTable: buildLightTable
   };
 })(typeof window !== 'undefined' ? window : globalThis);

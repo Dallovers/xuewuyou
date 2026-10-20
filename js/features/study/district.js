@@ -130,15 +130,81 @@ export function createDistrict(opts) {
     });
   }
 
+  /* —— 座位：本地选位，明确不宣称多人同步 ——
+   * 负责人 2026-10-20：座位先做选择、坐下和退出反馈；
+   * 后端没实现独占占座与跨用户同步之前，界面上不能说「已同步」。 */
+  const seatGroup = parts.seats;
+  const seatBaseMat = seatGroup.userData.seatMaterial;
+  const seatActiveMat = seatGroup.userData.seatMaterialActive;
+  const seatRadius = seatGroup.userData.radius;
+  const seatsById = {};
+  seatGroup.userData.seats.forEach((s) => {
+    seatsById[s.id] = s;
+  });
+
+  let seated = null;
+  const LABEL_FREE = '坐下（本地位 · 不同步）';
+  const LABEL_HERE = '起身';
+  const LABEL_MOVE = '换到这座（本地位）';
+
+  const seatItems = seatGroup.userData.seats.map((s) => {
+    const node = seatGroup.getObjectByName('Seat.' + s.id);
+    const item = {
+      id: 'study.seat.' + s.id,
+      object: node,
+      radius: seatRadius,
+      label: LABEL_FREE,
+      action: () => toggleSeat(s.id)
+    };
+    return item;
+  });
+  interactions.push(...seatItems);
+
+  function paintSeat(id, active) {
+    const node = seatGroup.getObjectByName('Seat.' + id);
+    if (!node) return;
+    node.traverse((n) => {
+      if (n.isMesh) n.material = active ? seatActiveMat : seatBaseMat;
+    });
+  }
+
+  function relabel() {
+    seatItems.forEach((it) => {
+      const id = it.id.slice('study.seat.'.length);
+      it.label = seated === null ? LABEL_FREE : seated === id ? LABEL_HERE : LABEL_MOVE;
+    });
+  }
+
+  function toggleSeat(id) {
+    if (!seatsById[id]) return { ok: false, message: '没有这个座位' };
+    if (seated === id) {
+      paintSeat(id, false);
+      seated = null;
+      relabel();
+      return { ok: true, seat: id, mode: 'stand' };
+    }
+    if (seated) paintSeat(seated, false);
+    seated = id;
+    paintSeat(id, true);
+    relabel();
+    return { ok: true, seat: id, mode: 'sit' };
+  }
+
+  relabel();
+
   return {
     root,
     colliders,
     interactions,
     /** dt 单位为秒，由宿主的主循环调用；本模块不自己起 RAF */
     update(dt) {
-      // 目前没有需要逐帧推进的东西：计时牌与门的开合都还没接业务。
-      // 留这个空实现是为了满足接口形状，不要在这里改材质或重建几何。
+      // 座位选中是离散事件（按 E），不需要逐帧推进。
+      // 留空实现是为了满足接口形状，不要在这里改材质或重建几何。
       void dt;
+    },
+    /** 当前本地选中的座位 id；没有就是 null。这只是本地位，不代表服务端占座。 */
+    getSeat() {
+      return seated;
     },
     dispose() {
       // 只释放本模块自己建的几何与材质；贴图归属由 materials.dispose 统一处理
@@ -148,6 +214,9 @@ export function createDistrict(opts) {
       });
       geos.forEach((g) => g.dispose());
       if (materials.dispose) materials.dispose();
+      // 座位圈的两个材质是 room.js 现建的，不在 materials 对象里，得单独释放
+      if (seatBaseMat) seatBaseMat.dispose();
+      if (seatActiveMat) seatActiveMat.dispose();
       root.removeFromParent();
     }
   };

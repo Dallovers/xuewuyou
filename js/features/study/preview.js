@@ -8,6 +8,27 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 
+/* 检查页自己的错误浮层：模块级异常会让渲染循环根本起不来，
+   画面只是一片空白，看不出原因。把异常贴到页面上，截图就能带走。 */
+function showError(msg) {
+  let box = document.getElementById('__err');
+  if (!box) {
+    box = document.createElement('pre');
+    box.id = '__err';
+    box.style.cssText =
+      'position:fixed;left:0;right:0;bottom:0;max-height:45%;overflow:auto;margin:0;padding:10px 14px;' +
+      'background:#3a1414;color:#ffd9d9;font:12px/1.5 ui-monospace,Consolas,monospace;z-index:99;white-space:pre-wrap';
+    document.body.appendChild(box);
+  }
+  box.textContent += msg + '\n';
+}
+window.addEventListener('error', (e) =>
+  showError('ERROR ' + e.message + '\n' + ((e.error && e.error.stack) || ''))
+);
+window.addEventListener('unhandledrejection', (e) =>
+  showError('REJECTION ' + ((e.reason && (e.reason.stack || e.reason.message)) || e.reason))
+);
+
 const SD = window.StudyDistrict;
 const FS = SD.furniture.SPEC;
 const SS = SD.shell.SPEC;
@@ -129,9 +150,9 @@ const views = {
   side: { pos: [4.0, 1.62, -8.35], target: [-0.9, 1.42, -10.0] },
   // 整屋：从入口一侧看向大窗，室内真实站姿视角
   room: { pos: [4.4, 1.65, ROOM_Z + 3.9], target: [-3.4, 1.15, ROOM_Z - 1.2] },
-  // 天花：贴近地面几乎垂直仰视。lookUp 必须开——OrbitControls 默认钳住
-  // 相机不能低于目标点，否则这一视角会被拽回去并算出退化矩阵，画面直接全白。
-  ceiling: { pos: [0, 0.80, ROOM_Z - 2.0], target: [0, 3.79, ROOM_Z - 2.6], lookUp: true },
+  // 天花：从房间一端斜向上看。lookUp 必须开——OrbitControls 默认钳住
+  // 相机不能低于目标点，否则这一视角会被拽回去并算出退化矩阵，画面全白。
+  ceiling: { pos: [2.6, 1.15, ROOM_Z + 3.4], target: [-0.8, 3.55, ROOM_Z - 1.6], lookUp: true },
   // 平面：高位俯视。刻意留一点倾角——相机正对下方时 up 向量与视线共线，
   // OrbitControls 会算出退化矩阵，画面直接白掉。
   plan: { pos: [0, 16.5, ROOM_Z + 2.6], target: [0, 0, ROOM_Z - 0.2], roofOff: true }
