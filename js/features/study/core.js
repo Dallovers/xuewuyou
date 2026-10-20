@@ -137,16 +137,22 @@
       bevelSegments: 1,
       curveSegments: 4
     });
+
+    /* ExtrudeGeometry 的轮廓画在 XY 平面、沿 +Z 挤出，所以挤出方向（也就是板厚）
+       一开始落在 Z 上、进深落在 Y 上。不转回水平面的话，这块板是「立着」的：
+       量出来 X=桌长、Y=进深、Z=板厚，桌面标高也会跟着错。
+       绕 X 轴 -90° 之后：X 仍是板宽，Y 变成板厚，Z 变成进深，才是水平的板。 */
+    geo.rotateX(-Math.PI / 2);
     geo.center();
 
     /* ExtrudeGeometry 自带的 UV 在薄边上会拉得很长，木纹直接糊掉。
-       板是水平的，用 XZ 平面投影；归一化到 0..1，跟原来方块单个面的贴图比例一致，
+       板已经转到水平面，用 XZ 平面投影；归一化到 0..1，跟原来方块单个面的贴图比例一致，
        否则按米单位投影会让纹理被放得过大、看着像没有木纹。
-       v 取 X，让木纹顺着长边走。 */
+       u 取 X（长边），让木纹顺着长边走。 */
     var pos = geo.attributes.position;
     var uv = geo.attributes.uv;
     for (var i = 0; i < pos.count; i++) {
-      uv.setXY(i, (pos.getZ(i) + depth / 2) / depth, (pos.getX(i) + width / 2) / width);
+      uv.setXY(i, (pos.getX(i) + width / 2) / width, (pos.getZ(i) + depth / 2) / depth);
     }
     uv.needsUpdate = true;
     geo.computeVertexNormals();
