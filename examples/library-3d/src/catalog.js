@@ -99,5 +99,8 @@ export async function initCatalog(callbacks){
  function sessionChanged(){sessionEpoch++;epoch++;privateDocs=[];$('private-results').replaceChildren();if(reader.open){reader.close();$('document-text').textContent='';}if(cat==='private'&&catalog.open)loadPrivate();}
  invalidateSession=sessionChanged;api?.onAuthChange(sessionChanged);addEventListener('storage',e=>{if(e.key==='xwy_token'||e.key==='xwy_user')sessionChanged();});
  selectCategory('exam');
- return {open(id){pause();if(!catalog.open)catalog.showModal();if(id)selectCategory(id);$('search').focus();},close(){reader.close();catalog.close();},snapshot:()=>({category:cat,results:items.length,reader:reader.open,catalog:catalog.open,pdfPages:pdf?.numPages||0,pdfPage:currentPage}),dispose(){clearPdf();epoch++;sessionEpoch++;}};
+ return {open(id){pause();if(!catalog.open)catalog.showModal();if(id)selectCategory(id);$('search').focus();},
+  recommendations(){return WG_WenkuCat.CATS.flatMap(c=>WG_WenkuCat.query({cat:c.id}).filter(i=>available(i)&&/\.(pdf|html)$/i.test(i.raw.link)).slice(0,2).map(i=>({...i,category:c.name}))).slice(0,6);},
+  read(item){const known=WG_WenkuCat.query({}).find(i=>i.raw.link===item.raw.link);if(known)return openPublic(known);},
+  close(){reader.close();catalog.close();},snapshot:()=>({category:cat,results:items.length,reader:reader.open,catalog:catalog.open,pdfPages:pdf?.numPages||0,pdfPage:currentPage}),dispose(){clearPdf();epoch++;sessionEpoch++;}};
 }
