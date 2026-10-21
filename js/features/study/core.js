@@ -20,6 +20,71 @@
   }
 
   /**
+   * 把 BoxGeometry 的 UV 从「每个面铺满 0..1」改成**世界米数**。
+   *
+   * 为什么必须改：橡木是一张米制贴图（1 UV = 1.8 m，见 materials.js），
+   * 而 BoxGeometry 每个面都铺满 0..1。实测同一张桌子上，以桌板为基准 1.00：
+   *   搁板 ×7.2、隔板 ×10.7、端板 ×14.4、凳-collar ×46、端板退让段 ×77.8。
+   * 同一屋子里的木头做出十几种密度，这是「板件拼接对不上、像塑料」最直接的原因。
+   *
+   * 取轴规则和 bevelSlab 一致 —— **u 永远取该面的水平长边，v 取竖直方向**：
+   *   · 顶/底面：u 取 X、Z 里较长的那个 → 桌面上木纹沿板长走；
+   *   · 侧面：v 固定竖直，u 沿水平 → 封边上木纹顺着边缘走。
+   * 这样盒体构件和倒角板构件读出来是同一张图、同一个方向。
+   */
+  function metricOakUV(geo, size, per) {
+    var pos = geo.attributes.position, nor = geo.attributes.normal, uv = geo.attributes.uv;
+    if (!pos || !nor || !uv) return;
+    var topAlongX = size[0] >= size[2];
+    for (var i = 0; i < pos.count; i++) {
+      var ax = Math.abs(nor.getX(i)), ay = Math.abs(nor.getY(i)), az = Math.abs(nor.getZ(i));
+      var x = pos.getX(i) / per, y = pos.getY(i) / per, z = pos.getZ(i) / per;
+      if (ay >= ax && ay >= az) {
+        if (topAlongX) uv.setXY(i, x, z);   // 顶/底，长边沿 X
+        else uv.setXY(i, z, x);             // 顶/底，长边沿 Z
+      } else if (az >= ax) {
+        uv.setXY(i, x, y);                  // 前/后（法线沿 Z）：u 沿 X
+      } else {
+        uv.setXY(i, z, y);                  // 左/右（法线沿 X）：u 沿 Z
+      }
+    }
+    uv.needsUpdate = true;
+  }
+
+  /**
+   * 圆柱 / 圆台：把默认的「一圈 0..1、高 0..1」乘成真实米数。
+   *
+   * 只做缩放、不重新投影。圆形几何的接缝那一列顶点本来就已经复制了一份
+   * （u=1 与 u=0 各一个），重投影一旦算错就会把跨缝三角形拉成 UV 面积 0；
+   * 而缩放是按三角形线性变化的，所有 UV 面积同比放大，接缝也不会被撑开。
+   */
+  function metricCylinderUV(geo, per) {
+    var pos = geo.attributes.position, nor = geo.attributes.normal, uv = geo.attributes.uv;
+    if (!pos || !uv) return;
+    var rMax = 0, yMin = Infinity, yMax = -Infinity;
+    for (var i = 0; i < pos.count; i++) {
+      var r = Math.sqrt(pos.getX(i) * pos.getX(i) + pos.getZ(i) * pos.getZ(i));
+      if (r > rMax) rMax = r;
+      var y = pos.getY(i);
+      if (y < yMin) yMin = y;
+      if (y > yMax) yMax = y;
+    }
+    var du = (2 * Math.PI * rMax) / per;
+    var dv = (yMax - yMin) / per;
+    for (i = 0; i < uv.count; i++) {
+      /* 上下端盖不能用「一圈 × 高」那套缩放：端盖的 v 会被高度除一次，
+         实测整件算出来反而稀了 2.85 倍。端盖是水平面，直接按 XZ 平面投影，
+         和长方体的顶面同一套规则，密度才真等于 1/per²。 */
+      if (nor && Math.abs(nor.getY(i)) > 0.5) {
+        uv.setXY(i, pos.getX(i) / per, pos.getZ(i) / per);
+      } else {
+        uv.setXY(i, uv.getX(i) * du, uv.getY(i) * dv);
+      }
+    }
+    uv.needsUpdate = true;
+  }
+
+  /**
    * 轴对齐方块。
    * @param {number[]} size [宽X, 高Y, 厚Z]
    * @param {number[]} pos  [x, y, z] 中心点
@@ -27,15 +92,12 @@
   function box(THREE, parent, name, size, pos, material, opts) {
     opts = opts || {};
     var geo = new THREE.BoxGeometry(size[0], size[1], size[2]);
-    // 交换 U/V：让木纹沿构件长边走，不至于桌面的纹路横着穿过 2.4 m 的桌板
-    if (opts.uvSwap) {
-      var uv = geo.attributes.uv;
-      for (var i = 0; i < uv.count; i++) {
-        var u = uv.getX(i);
-        var v = uv.getY(i);
-        uv.setXY(i, v, u);
-      }
-      uv.needsUpdate = true;
+    /* 材质上标了 metricUV（目前只有橡木）就按世界米数重写 UV。
+       旧的 opts.uvSwap（只换来让木纹沿长边）已经被这一步收编：
+       长边由 metricOakUV 按面的实际尺寸自己选，不需要调用方再声明一次。 */
+    var map = material && !Array.isArray(material) && material.map;
+    if (map && map.userData && map.userData.metricUV) {
+      metricOakUV(geo, size, map.userData.metresPerRepeat || 1.8);
     }
     var mesh = new THREE.Mesh(geo, material);
     mesh.name = name;
@@ -175,11 +237,15 @@
        U、V 用**同一个常量**归一化：世界米数 / PER（默认 1.8 m）。
 
        为什么是常量而不是这块板自己的 width：
-       橡木材质是全屋共用的一张图、repeat 固定 (1,1)（materials.js 里那个
-       fitOakUV 只是留了接口，实际没有任何地方调它），贴图本身的标称尺度是
+       橡木材质是全屋共用的一张图、repeat 固定 (1,1)，贴图本身的标称尺度是
        metresPerRepeat = 1.8 m。所以「UV 走一个 1.0 = 走 1.8 米」才对得上材质。
        换成每块板自己的 width，2.4 m 的桌板和 4.6 m 的长台就会各自铺一张图，
        木纹密度随板件尺寸变——同一张桌上顶面和侧面对得上，换件家就又不对了。
+
+       （原来 materials.js 里还有个 fitOakUV，靠调 repeat 做同样的事。它一次也没被调用过，
+       而且根本不可能对：repeat 是共享材质上的属性，改它等于把所有用这张图的构件一起改，
+       木纹密度照样不会跟着单块板走。这一轮的密度统一改在几何层做，见上面的 metricOakUV，
+       fitOakUV 已删除。）
 
        踩过两个坑：
        · V 按板厚归一化（0..1 铺满 4 cm 的边），侧边从"一条线"变成"一堆横条"，
@@ -372,6 +438,8 @@
     bevelSlab: bevelSlab,
     tubeBetween: tubeBetween,
     curvedPanel: curvedPanel,
+    metricOakUV: metricOakUV,
+    metricCylinderUV: metricCylinderUV,
     disposeTree: disposeTree
   };
 })(typeof window !== 'undefined' ? window : globalThis);
