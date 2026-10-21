@@ -14,7 +14,7 @@
     {
       "path": "js/features/social/assets/generated/provenance.json",
       "beforeBytes": 0,
-      "afterBytes": 4004
+      "afterBytes": 3969
     },
     {
       "path": "js/features/social/assets/baked/ao-manifest.json",
@@ -32,5 +32,5 @@
       "afterBytes": 1015958
     }
   ],
-  "deltaBytes": 6565594
+  "deltaBytes": 6565559
 }

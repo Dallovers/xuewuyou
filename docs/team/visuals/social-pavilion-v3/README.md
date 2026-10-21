@@ -55,7 +55,7 @@ before-* 与 after-* 均使用本版相同预览宿主、光照、分辨率及�
 
 AI 素材：OpenAI 内置 image_gen，2026-10-21，用户授权。叶片 1024×1536 RGBA、2,064,297 字节；石灰岩 1254×1254 RGB、3,407,941 字节。原始完整提示词、生成文件名、用途、哈希和权利说明见 [provenance.json](../../../../js/features/social/assets/generated/provenance.json)。两图未经人工后期修改。AI 生成资产不声称为 CC0 扫描材质；石材微凹凸由颜色推导，不是实测 PBR height。叶片是表面贴图，不是整棵树/亭廊/场景照片。
 
-原有木材、灰砖与天空沿用仓库来源记录；草坪 Poly Haven CC0，Three addons MIT，授权文件与 sources.json 保留。新增运行资产相对 v2 增加 6,565,594 字节（两张图、indirect，以及 AO/清单变化，变化见 resource-changes.json，哈希见 baking/provenance.json）；未纳入 docs 图片和复现输入。大图将来可在目标设备确认后再做 KTX2 压缩。
+原有木材、灰砖与天空沿用仓库来源记录；草坪 Poly Haven CC0，Three addons MIT，授权文件与 sources.json 保留。新增运行资产相对 v2 增加 6,565,559 字节（两张图、indirect，以及 AO/清单变化，变化见 resource-changes.json，哈希见 baking/provenance.json）；未纳入 docs 图片和复现输入。大图将来可在目标设备确认后再做 KTX2 压缩。
 
 本地 Blender 4.5.3 LTS / Cycles CPU 烘焙：AO 2048、32 samples、0.6m、8px margin；间接光 2048、64 samples、4 diffuse bounces、6 max bounces、JPEG quality90。124 个构件，精确运行几何与 uv1 图集。光源匹配本预览暖色太阳和原 sky.hdr，未借其他空间烘焙。
 

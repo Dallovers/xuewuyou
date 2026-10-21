@@ -16,8 +16,8 @@
     },
     {
       "path": "js/features/social/assets/generated/provenance.json",
-      "bytes": 4004,
-      "sha256": "f0edb98e04f23ff4eb2b997a662f10286d5c9803cb2968e419297b8b465485c1"
+      "bytes": 3969,
+      "sha256": "85ca2fbbe124fb40d3641fe1862a7e52b2094e83231aa1b3db204a1ae6fa6b29"
     },
     {
       "path": "js/features/social/assets/baked/ao-manifest.json",
