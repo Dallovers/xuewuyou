@@ -47,7 +47,7 @@
     pageColor: '#efe9dc',
     pageShade: '#d8d0bf',
     textColor: '#b9b1a0',
-    pageTitle: '寝室长是我儿子'   // 翻开后左页上印的字
+    pageTitle: '寝室长和凡越是我儿子'   // 翻开后书页上印的字（标题 + 每行反复写这一句）
   };
 
   function isDescendant(obj, maybeParent) {
@@ -285,12 +285,13 @@
       }
 
       var ink = 'rgba(52,48,42,0.92)';
+      function font(size, bold) {
+        return (bold ? '700 ' : '400 ') + size +
+          'px "Microsoft YaHei","PingFang SC","Noto Sans CJK SC","Source Han Sans SC",sans-serif';
+      }
+      var txt = SPEC.pageTitle || '';
       if (kind === 'title') {
-        var txt = SPEC.pageTitle || '';
         var fs = 64;
-        var font = function (size, bold) {
-          return (bold ? '700 ' : '400 ') + size + 'px "Microsoft YaHei","PingFang SC","Noto Sans CJK SC","Source Han Sans SC",sans-serif';
-        };
         g.font = font(fs, true);
         // 放不下就缩：中文一行 7 个字，得保证 84% 宽度内
         while (g.measureText(txt).width > W * 0.84 && fs > 18) {
@@ -307,15 +308,31 @@
         g.fillRect(W * 0.18, 104 + fs * 1.7, W * 0.64, 3);
       }
 
-      // 正文行：长短不一、末行短一截，像排过版的书页
+      // 正文：每一行都反复写同一句，写满到右边界为止（超出部分裁掉），
+      // 像抄写本里排满的一页，而不是几条灰杠
       var top = kind === 'title' ? 300 : 150;
-      var rows = Math.floor((H - top - 120) / 58);
-      g.fillStyle = 'rgba(52,48,42,0.55)';
+      var rowH = 58;
+      var rows = Math.floor((H - top - 120) / rowH);
+      var left = W * 0.12;
+      var textW = W * 0.76;
+      g.font = font(34, false);
+      g.fillStyle = 'rgba(52,48,42,0.74)';
+      g.textAlign = 'left';
+      g.textBaseline = 'top';
+
+      g.save();
+      g.beginPath();
+      g.rect(left, top - 8, textW, rows * rowH + 16);
+      g.clip();
       for (var r = 0; r < rows; r++) {
-        var fr = (r === rows - 1) ? 0.42 : (0.72 + 0.26 * (((r * 37) % 11) / 10));
-        var w = W * 0.76 * fr;
-        g.fillRect(W * 0.12, top + r * 58, w, 6);
+        var y = top + r * rowH;
+        var x = left;
+        while (x < left + textW - 6) {
+          g.fillText(SPEC.pageTitle, x, y);
+          x += g.measureText(SPEC.pageTitle).width + 6;
+        }
       }
+      g.restore();
 
       var tex = new THREE.CanvasTexture(cv);
       tex.colorSpace = THREE.SRGBColorSpace;
