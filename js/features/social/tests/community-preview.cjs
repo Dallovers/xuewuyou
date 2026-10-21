@@ -105,6 +105,14 @@ async function register(p,f,username){
   await a.locator('.social-community iframe').contentFrame().locator('html.social-community-embedded').waitFor();
   await a.getByRole('button',{name:'返回广场',exact:true}).click();
   report.checks.push({failure:'503 document detached; retry opens original main-site posts'});
+  let entered,release;
+  const blocked=new Promise(resolve=>{entered=resolve;}),gate=new Promise(resolve=>{release=resolve;});
+  await a.route(base+'/index.html',async route=>{entered();await gate;await route.fulfill({contentType:'text/html',body:'late document'}).catch(()=>{});},{times:1});
+  await a.waitForFunction(()=>__social.current?.id==='social.board');await a.keyboard.press('e');await blocked;
+  await a.getByRole('button',{name:'返回广场',exact:true}).click();release();await a.waitForTimeout(200);
+  assert.equal(await a.locator('.social-community iframe').count(),0);
+  assert.equal(await a.evaluate(()=>__social.panelOpen),false);
+  report.checks.push({lateLoad:'closed during pending document; late response cannot reopen or pause plaza'});
   const c=await launch();let cf=await walkOpen(c,base,'posts');
   await c.getByRole('button',{name:'账号与登录'}).click();
   await cf.locator('#loginUsername').press('Escape');

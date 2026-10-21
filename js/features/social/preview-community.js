@@ -2,6 +2,7 @@
 export function createPreviewCommunity({onPause, onResume, appUrl = new URL('../../../index.html', import.meta.url)}) {
   const target = new URL(appUrl, location.href);
   if (target.origin !== location.origin) throw new Error('社区面板必须与主站同源');
+  const local = document.querySelector('meta[name="social-preview-local"]')?.content === '1';
   const dialog = document.createElement('dialog');
   dialog.className = 'social-community';
   dialog.setAttribute('aria-labelledby', 'socialCommunityTitle');
@@ -62,7 +63,9 @@ export function createPreviewCommunity({onPause, onResume, appUrl = new URL('../
         function select() {
           if (version !== serial || disposed) return;
           win.WG_Community.open(activeTab);
-          status.textContent = win.WG_API.isCloudSession() ? '学无忧 · 账号与数据沿用主站' : '请使用学无忧云端账号登录';
+          status.textContent = local
+            ? (win.WG_API.isCloudSession() ? '本地体验 · 使用本地学无忧账号与数据' : '本地体验 · 与线上账号隔离，请先注册本地账号')
+            : (win.WG_API.isCloudSession() ? '学无忧 · 账号与数据沿用主站' : '请使用学无忧云端账号登录');
         }
         select();
         account.disabled = false;

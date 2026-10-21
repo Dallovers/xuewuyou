@@ -18,7 +18,7 @@ function html() {
   if (process.env.SOCIAL_CDN_CACHE) source = source
     .replace('https://unpkg.com/three@0.160.0/build/three.module.js','/js/features/social/__dev__/three.module.js')
     .replace('"three/addons/":', '"three/addons/loaders/RGBELoader.js": "/js/features/social/__dev__/RGBELoader.js",\n    "three/addons/":');
-  return source.replace('<head>', '<head>\n<base href="/js/features/social/">');
+  return source.replace('<head>', '<head>\n<base href="/js/features/social/">\n<meta name="social-preview-local" content="1">');
 }
 route('/js/features/social/preview.html','text/html; charset=utf-8',html);
 // Keep the existing shared experience URL working; no ignored preview copy can become stale.
