@@ -69,7 +69,7 @@ https://<你的域名>/xuewuyou/examples/campus-integration/preview.html
 - **主站入口**：自习室 → 多人自习 → 「进入 3D 自习空间」。保留原有「刷新房间」和普通房间入口。
 - **场景返回**：左上「返回多人自习」→ 主站 `#rooms`。
 - **深链垫片**：`js/features/campus-entry.js` 在 `#rooms` 时复用现有 `[data-nav="rooms"]` 点击，不改 `app.js`。
-- **最小接线**：`index.html` 两处 + `server/server.js` 白名单一处，精确改法见仓库根 `PATCHES.md`。
+-**最小接线**：`index.html` 两处 + `server/server.js` 白名单一处，见本文“主站入口与返回”一节。
 
 ## 本批修复（PR #28 审查）
 
