@@ -61,6 +61,17 @@
     color: #55605a; background: rgba(255,255,255,.78);
     border: 1px solid var(--line); border-radius: 5px; padding: 5px 9px;
   }
+  #crosshair {
+    position: fixed; left: 50%; top: 50%; width: 6px; height: 6px; margin: -3px 0 0 -3px;
+    border-radius: 50%; background: rgba(255,255,255,.85); box-shadow: 0 0 0 1px rgba(0,0,0,.35);
+    pointer-events: none; display: none; z-index: 40;
+  }
+  #aimHint {
+    position: fixed; left: 50%; top: calc(50% + 22px); transform: translateX(-50%);
+    font: 600 12.5px/1.6 "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
+    color: #1d2419; background: rgba(255,255,255,.9); border: 1px solid #d7d8cf;
+    border-radius: 5px; padding: 3px 9px; pointer-events: none; display: none; z-index: 40;
+  }
 </style>
 <script type="importmap">
 {
@@ -90,6 +101,12 @@
     <button data-view="edge">桌椅侧边</button>
     <button data-view="shell">门窗</button>
     <button data-view="side">侧面剖视</button>
+  </div>
+
+  <div class="group">
+    <span>漫游</span>
+    <button data-mode="walk">自由走动（第一人称）</button>
+    <button data-walk="door">回到门口</button>
   </div>
 
   <div class="group">
@@ -133,6 +150,11 @@
 </aside>
 
 <div class="tip">拖动旋转 · 滚轮缩放 · 右键平移</div>
+<div id="crosshair"></div>
+<div id="aimHint"></div>
+<div class="tip" id="walkHint" style="display:none">
+  <b>WASD / 方向键</b> 走动 · <b>按住画面拖动</b> 转头（不需要锁指针）· <b>R / F</b> 抬头/低头 · <b>← →</b> 原地转身 · <b>Shift</b> 快走 · <b>E</b> 拿起物品 / 在座位旁坐下·起身
+</div>
 
 <script src="core.js"></script>
 <script src="materials.js"></script>
@@ -140,6 +162,10 @@
 <script src="shell.js"></script>
 <script src="props.js"></script>
 <script src="room.js"></script>
+<script src="colliders.js"></script>
+<script src="walk.js"></script>
+<script src="seating.js"></script>
+<script src="pick.js"></script>
 <script type="module" src="preview.js"></script>
 </body>
 </html>
