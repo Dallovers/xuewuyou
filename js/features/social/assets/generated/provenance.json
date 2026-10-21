@@ -1,0 +1,36 @@
+{
+  "tool": "OpenAI built-in image_gen",
+  "date": "2026-10-21",
+  "purpose": "Surface colour/alpha textures for real 3D meshes. These are AI-generated textures, not photographs or finished scene screenshots.",
+  "assets": [
+    {
+      "file": "camphor-leaf-v1.png",
+      "source": "exec-6d907c60-d016-4979-a0d7-61ce9de675b8.png",
+      "prompt": "Use case: photorealistic-natural. Asset type: neutral diffuse/albedo texture for one individual curved 3D leaf, not a scene render. Create a single freshly picked mature Chinese camphor tree leaf (Cinnamomum camphora), photographed perfectly front-on as a flat botanical specimen with orthographic macro framing. One lanceolate-elliptic blade only, pointed apex, short petiole at bottom, three characteristic main veins and delicate branching secondary veins, slightly irregular natural margin, subtle tiny pores, restrained natural medium olive green, no dew, no insect holes, no autumn brown areas. Leaf upright with tip at top and stem bottom, centered, blade fills 88 percent of image height and around 58 percent of width with transparent padding all around. Soft completely uniform diffuse cross-polarized illumination, no directional shading, no cast shadow, no specular highlights. High fidelity botanical photographic surface detail, physically plausible natural colour and veins. Transparent background with real alpha, no white rectangle, no checkerboard, no ground, no hand, no other leaves, no text, no labels. The output will be used as the colour/alpha texture on many small three-dimensional leaves in an actual realtime campus scene. Do not create a tree, a reference scene, a concept render or a screenshot.",
+      "transparent_background": true,
+      "usage": "Colour/alpha and subtle albedo-derived microbump on individual curved 3D leaf surfaces. Alpha-tested at 0.65.",
+      "bytes": 2064297,
+      "sha256": "ecf7e94c1d9267a2dfe0c26acea6a7902828d9c2b1496e3ea630f6a7a9c92ea7",
+      "dimensions": [
+        1024,
+        1536
+      ],
+      "mode": "RGBA"
+    },
+    {
+      "file": "limestone-albedo-v1.png",
+      "source": "exec-b2a613fb-8755-441a-a167-eb3074a6f3ec.png",
+      "prompt": "Use case: photorealistic-natural. Asset type: seamless physically based rendering BASE COLOR / albedo texture for honed fine-grained pale grey limestone on real 3D architectural stone, not a reference scene or render. A perfectly orthographic, flat, uniformly illuminated 1.2m by 1.2m patch of contemporary Chinese university architectural limestone. Natural subtle fine calcite grains and occasional very faint small fossil specks, restrained low contrast cloudy sedimentary variation, neutral light grey with a very slight warm undertone, plausible honed matte mineral surface. A single continuous stone surface filling the whole square edge to edge; repeatable seamless tile without visible discontinuities on all four edges. Cross-polarized diffuse capture appearance: completely flat lighting, NO directional illumination, NO specular highlight, NO shadows, NO ambient occlusion, NO bevels, NO corners, NO perspective, NO joints, NO cracks, NO tile grid, NO paving lines, NO frame, NO text. Avoid marble veins, granite dots, concrete stains, strong mottling, dirty patina, orange/yellow cast and synthetic noise. This must be a restrained natural material colour map; physical edges and joints will be modelled separately. Square image.",
+      "transparent_background": false,
+      "usage": "1.2 metre base-colour repeat on volumetric stone slabs and furniture; microbump is an approximation derived from albedo, not measured PBR height.",
+      "bytes": 3407941,
+      "sha256": "e6edecccc7cd2cacac2d3ace0722731d2aff176e7232dbb70c65667bd54d9e46",
+      "dimensions": [
+        1254,
+        1254
+      ],
+      "mode": "RGB"
+    }
+  ],
+  "rights": "User-authorized generation using the built-in imagegen tool. No third-party scanned-photo or CC0 status is claimed for these generated assets."
+}

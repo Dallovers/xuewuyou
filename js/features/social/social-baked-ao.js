@@ -41,6 +41,15 @@ export async function attachSocialAO(THREE,root,owner) {
     const atlas=await new THREE.TextureLoader().loadAsync(new URL('./assets/baked/'+manifest.texture,import.meta.url).href);
     if(!owner.ownTexture(atlas))return {ok:false,disposed:true};
     atlas.flipY=true;atlas.channel=1;atlas.colorSpace=THREE.NoColorSpace;atlas.anisotropy=8;
+    let indirect=null,indirectError=null;
+    if(manifest.indirectTexture) {
+      try {
+        indirect=await new THREE.TextureLoader().loadAsync(new URL('./assets/baked/'+manifest.indirectTexture,import.meta.url).href);
+        if(!owner.ownTexture(indirect))return {ok:false,disposed:true};
+        indirect.flipY=true;indirect.channel=1;indirect.colorSpace=THREE.SRGBColorSpace;indirect.anisotropy=8;
+      } catch(error){indirectError=String(error.message);}
+    }
+    if(owner.disposed)return {ok:false,disposed:true};
     const materials=new Map();
     for(const t of matches) {
       const g=t.geometry.clone();
@@ -48,7 +57,7 @@ export async function attachSocialAO(THREE,root,owner) {
       g.userData={...g.userData,__socialCached:false,__socialDisposable:true};
       g.setAttribute('uv1',new THREE.Float32BufferAttribute(manifest.meshes[t.key].uv,2));
       let m=materials.get(t.object.material);
-      if(!m){m=t.object.material.clone();m.aoMap=atlas;m.aoMapIntensity=.72;m.needsUpdate=true;owner.ownMaterial(m);materials.set(t.object.material,m);}
+      if(!m){m=t.object.material.clone();m.aoMap=atlas;m.aoMapIntensity=indirect ? .40 : .72;if(indirect){m.lightMap=indirect;m.lightMapIntensity=Math.PI;}m.needsUpdate=true;owner.ownMaterial(m);materials.set(t.object.material,m);}
       const old=t.object.geometry;
       t.object.geometry=g;t.object.material=m;
       if(!old.userData.__socialCached) {
@@ -56,6 +65,6 @@ export async function attachSocialAO(THREE,root,owner) {
         if(!stillUsed){old.dispose();old.userData.__socialDisposable=false;}
       }
     }
-    return {ok:true,meshes:matches.length,source:manifest.source};
+    return {ok:true,meshes:matches.length,source:manifest.source,indirect:!!indirect,indirectSource:manifest.indirectSource,indirectError};
   } catch(error){ return {ok:false,reason:String(error.message)}; }
 }

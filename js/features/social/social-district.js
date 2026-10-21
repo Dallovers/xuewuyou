@@ -1,5 +1,5 @@
 import { attachSocialAO } from './social-baked-ao.js';
-import { buildCampusTree, batchSocialDetails } from './social-landscape.js';
+import { buildCampusTree, buildCampusGrass, buildCampusHedge, batchSocialDetails } from './social-landscape.js';
 import { buildPavilionRoof } from './social-architecture.js';
 
 /* 学无忧 · 社交广场（板块 A / 第一交付）
@@ -58,7 +58,7 @@ const MATERIAL_SPEC = {
   accent_amber: { color: 0xc98b3f, roughness: 0.4, metalness: 0.2, emissive: 0xc98b3f, emissiveIntensity: 0.32 },
   ground_paving: { color: 0xbdb6a6, roughness: 0.82, metalness: 0.0 },
   ground_lawn: { color: 0x7e8a71, roughness: 0.95, metalness: 0.0 },
-  leaf: { color: 0x899364, roughness: 0.92, metalness: 0.0 },
+  leaf: { color: 0x5a6a47, roughness: 0.70, metalness: 0.0 },
   soil: { color: 0x5a5045, roughness: 0.98, metalness: 0.0 },
 };
 
@@ -96,6 +96,11 @@ function createResourceOwner() {
       if (disposed) { tex.dispose(); return null; }
       textures.add(tex);
       return tex;
+    },
+    releaseTexture(tex) {
+      // Only retire textures registered by this owner, never a borrowed host map.
+      if(!textures.delete(tex))return false;
+      tex.dispose();return true;
     },
     ownMaterial(mat) {
       if (!mat) return null;
@@ -478,14 +483,42 @@ function attachTextures(THREE, lib, pavingMats, owner, lawnMat) {
     return job;
   }
 
+  function replaceMap(material,map) {
+    const old=material.map;material.map=map;
+    if(old!==map)owner.releaseTexture(old);
+  }
   const jobs = [];
+  jobs.push((async()=>{
+    const leaf=await load('camphor-leaf-v1.png',true,new URL('./assets/generated/',import.meta.url).href);
+    if(owner.disposed)return;
+    leaf.wrapS=leaf.wrapT=THREE.ClampToEdgeWrapping;
+    lib.leaf.color.setHex(0xffffff);replaceMap(lib.leaf,leaf);lib.leaf.bumpMap=leaf;lib.leaf.bumpScale=.00025;lib.leaf.alphaTest=.65;lib.leaf.alphaToCoverage=true;
+    lib.leaf.onBeforeCompile=shader=>{
+      // Cheap thin-leaf backscatter under the existing sun, not an extra realtime light.
+      shader.fragmentShader=shader.fragmentShader.replace('#include <lights_fragment_end>', `#include <lights_fragment_end>
+        #if NUM_DIR_LIGHTS > 0
+          float leafBack = pow(max(dot(-geometryNormal,directionalLights[0].direction),0.0),1.4);
+          reflectedLight.directDiffuse += diffuseColor.rgb * directionalLights[0].color * leafBack * 0.075;
+        #endif`);
+    };
+    lib.leaf.customProgramCacheKey=()=> 'social-leaf-backscatter-v3';lib.leaf.needsUpdate=true;
+  })());
+
+  jobs.push((async()=>{
+    const stone=await load('limestone-albedo-v1.png',true,new URL('./assets/generated/',import.meta.url).href);
+    if(owner.disposed)return;
+    for(const id of ['stone_light','stone_light_in']){
+      replaceMap(lib[id],stone);lib[id].bumpMap=stone;lib[id].bumpScale=.00035;
+      lib[id].color.setHex(id==='stone_light'?0xe6e4de:0xf2f1eb);lib[id].needsUpdate=true;
+    }
+  })());
 
   if (lawnMat) jobs.push((async () => {
     const base = new URL('./assets/pbr/', import.meta.url).href;
     const [map,normal,rough] = await Promise.all([load('grass-diff.jpg',true,base),load('grass-nor_gl.jpg',false,base),load('grass-rough.jpg',false,base)]);
     if(owner.disposed) return;
-    for(const tex of [map,normal,rough]) tex.repeat.set(35,35); // 70m / 2m capture
-    lawnMat.map=map;lawnMat.normalMap=normal;lawnMat.roughnessMap=rough;
+    for(const tex of [map,normal,rough]) tex.repeat.set(100,100); // 200m visual ground / 2m capture
+    replaceMap(lawnMat,map);lawnMat.normalMap=normal;lawnMat.roughnessMap=rough;
     lawnMat.color.setHex(0x8d9a7b);lawnMat.normalScale=new THREE.Vector2(.2,.2);lawnMat.needsUpdate=true;
   })());
 
@@ -501,7 +534,7 @@ function attachTextures(THREE, lib, pavingMats, owner, lawnMat) {
       ]);
       if (owner.disposed) return;
       // skipColor 的材质保留自己的程序化 albedo，不被覆盖
-      if (color) mat.map = color;
+      if (color) replaceMap(mat,color);
       if (color && id === 'brick_grey' && color.image && typeof color.image.width === 'number') {
         const canvas = document.createElement('canvas');
         canvas.width = color.image.width; canvas.height = color.image.height;
@@ -516,7 +549,7 @@ function attachTextures(THREE, lib, pavingMats, owner, lawnMat) {
           g.putImageData(pixels,0,0);
           const neutral = new THREE.CanvasTexture(canvas);
           neutral.wrapS=neutral.wrapT=THREE.RepeatWrapping;neutral.colorSpace=THREE.SRGBColorSpace;neutral.anisotropy=8;
-          if(owner.ownTexture(neutral)) mat.map=neutral;
+          if(owner.ownTexture(neutral)) replaceMap(mat,neutral);
         }
       }
 
@@ -811,7 +844,7 @@ export function createDistrict(ctx = {}) {
   function buildSite() {
     const lawnMat = makeLawnMaterial() || M.ground_lawn;
     ownedLawnMaterial = lawnMat;
-    add(new THREE.PlaneGeometry(70, 70), lawnMat, 0, -0.04, 0, {
+    add(new THREE.PlaneGeometry(200, 200), lawnMat, 0, -0.04, 0, {
       rotX: -Math.PI / 2, name: 'site:lawn', cast: false,
     });
     // 广场铺装：22 × 18，石材 3m 一个平铺循环，抬高 2cm 避免与草地 Z-fighting
@@ -837,13 +870,14 @@ export function createDistrict(ctx = {}) {
     });
   }
 
-  /* 树池：石边 + 树冠成簇，只做体量不做枝条 */
+  /* 树池：闭合石材剖面、枝条和实例化曲面叶片 */
   function buildTreePit(x, z) {
     const r = 1.1;
-    add(cylGeo(r, r, 0.38, 24, true), M.stone_light, x, 0.19, z, { name: 'green:pit-wall' });
-    add(new THREE.RingGeometry(r - 0.26, r, 24), M.stone_light, x, 0.38, z, {
-      rotX: -Math.PI / 2, name: 'green:pit-rim', cast: false,
-    });
+    const profile=[[.84,.20],[.84,.35],[.855,.38],[1.085,.38],[1.1,.365],[1.1,.035],[1.085,.02],[.855,.02],[.84,.035],[.84,.20]].reverse().map(([r,y])=>new THREE.Vector2(r,y));
+    const ring=new THREE.LatheGeometry(profile,48),ringUV=ring.attributes.uv;
+    const distances=[0];for(let j=1;j<profile.length;j++)distances[j]=distances[j-1]+profile[j].distanceTo(profile[j-1]);
+    for(let i=0;i<=48;i++)for(let j=0;j<profile.length;j++)ringUV.setXY(i*profile.length+j,i/48*2*Math.PI*profile[j].x/1.2,distances[j]/1.2);
+    add(ring,M.stone_light_in,x,0,z,{name:'green:pit-stone-ring'});
     add(new THREE.CircleGeometry(r - 0.26, 24), M.soil, x, 0.2, z, {
       rotX: -Math.PI / 2, name: 'green:soil', cast: false,
     });
@@ -860,11 +894,19 @@ export function createDistrict(ctx = {}) {
     const plinth = 0.12;
     const colH = P.height - 0.35;
 
-    // 分层台基：滴水挑边之下设置浅石材压顶和细分缝，避免单块悬浮盒体。
-    add(beveledBoxGeometry(THREE, P.width + 0.5, plinth, P.length + 0.5, 0.012, 1.15), M.stone_light, P.cx, plinth / 2, P.cz, { name: 'pavilion:plinth' });
-    add(boxGeo(P.width + 0.24, 0.035, P.length + 0.24), M.stone_light_in, P.cx, plinth - 0.018, P.cz, { name: 'pavilion:plinth-cap', cast: false });
-    add(boxGeo(2.4, plinth, 1.0), M.stone_light, P.cx + halfW + 0.25, plinth / 2, 0.65, { name: 'pavilion:step' });
-    add(boxGeo(2.4, 0.025, 1.0), M.stone_light_in, P.cx + halfW + 0.25, plinth - 0.012, 0.65, { name: 'pavilion:step-cap', cast: false });
+    // 85mm substrate + individual 35mm stone slabs, 4mm open joints; total top stays at 120mm.
+    const floorW=P.width+.5,floorD=P.length+.5;
+    add(boxGeo(floorW,.085,floorD),M.stone_light,P.cx,.0425,P.cz,{name:'pavilion:plinth'});
+    for(let ix=0;ix<4;ix++)for(let iz=0;iz<6;iz++){
+      const w=floorW/4,d=floorD/6;
+      const slab=beveledBoxGeometry(THREE,w-.004,.035,d-.004,.0015,1.2),uv=slab.attributes.uv;
+      for(let v=0;v<uv.count;v++)uv.setXY(v,uv.getX(v)+(ix*.31+iz*.47)%1,uv.getY(v)+(ix*.53+iz*.29)%1);
+      add(slab,M.stone_light_in,P.cx-floorW/2+w*(ix+.5),.1025,P.cz-floorD/2+d*(iz+.5),{name:'pavilion:floor-slab'});
+    }
+    // East landing is trimmed at the pavilion edge so coplanar slabs do not overlap.
+    const edge=P.cx+floorW/2,landingW=1.2;
+    add(boxGeo(landingW,.085,1),M.stone_light,edge+landingW/2,.0425,.65,{name:'pavilion:step'});
+    for(let i=0;i<2;i++)add(beveledBoxGeometry(THREE,.596,.035,.996,.0015,1.2),M.stone_light_in,edge+.3+i*.6,.1025,.65,{name:'pavilion:landing-slab'});
 
     // 六根有柱础的方柱，柱头用浅石包箍收口；截面由柱身向柱头递进。
     const xs = [P.cx - halfW + 0.45, P.cx + halfW - 0.45];
@@ -1121,6 +1163,7 @@ export function createDistrict(ctx = {}) {
   /* ---------- 组装 ---------- */
 
   buildSite();
+  buildCampusGrass({THREE,root,owner});
   buildFacadePlaceholder();
   buildPavilion();
   buildDesk();
@@ -1130,6 +1173,7 @@ export function createDistrict(ctx = {}) {
   buildBench(6.3, 0.9, Math.PI / 2);
   buildTreePit(-5.6, 4.4);
   buildTreePit(6.6, 4.4);
+  buildCampusHedge({THREE,root,M});
   buildFountain();
   batchSocialDetails(THREE, root);
 
