@@ -858,15 +858,38 @@ export function createDistrict(ctx = {}) {
     const roofHalf = roofW / 2;
     add(beveledBoxGeometry(THREE, roofW / 2 + 0.03, roofT, roofL, 0.012, 1), M.roof_bluegrey, P.cx - roofW / 4, roofY + roofSlope / 2, P.cz, { name: 'pavilion:roof-plane-west', rotZ: roofAngle });
     add(beveledBoxGeometry(THREE, roofW / 2 + 0.03, roofT, roofL, 0.012, 1), M.roof_bluegrey, P.cx + roofW / 4, roofY + roofSlope / 2, P.cz, { name: 'pavilion:roof-plane-east', rotZ: -roofAngle });
-    add(boxGeo(0.08, 0.08, roofL + 0.08), M.metal_frame, P.cx, roofY + roofSlope + 0.04, P.cz, { name: 'pavilion:ridge-cap' });
-    for (const z of [P.cz - roofL / 2, P.cz + roofL / 2]) {
-      add(boxGeo(roofW + 0.08, 0.075, 0.07), M.metal_frame, P.cx, roofY - 0.045, z, { name: 'pavilion:fascia' });
-      add(boxGeo(roofW - 0.22, 0.035, 0.045), M.oak_flat, P.cx, roofY - 0.105, z, { name: 'pavilion:soffit-edge', cast: false });
+    // 檩条：按屋面下皮标高逐根落到次梁顶，形成可读的承托关系。
+    const roofEaveY = roofY + roofSlope / 2 - (roofW / 4 + 0.03) * Math.sin(roofAngle) - (roofT / 2) * Math.cos(roofAngle);
+    const roofRidgeY = roofY + roofSlope / 2 + (roofW / 4 + 0.03) * Math.sin(roofAngle) - (roofT / 2) * Math.cos(roofAngle);
+    const beamTopY = plinth + colH + 0.11 + 0.085; // 次梁顶 3.165
+    for (const dx of [-roofW / 2, -roofW / 4, 0, roofW / 4, roofW / 2]) {
+      const underY = roofEaveY + (1 - Math.abs(dx) / (roofW / 2)) * (roofRidgeY - roofEaveY);
+      const h = underY - beamTopY;
+      if (h <= 0.01) continue;
+      add(boxGeo(0.09, h, roofL - 0.08), M.metal_dark, P.cx + dx, beamTopY + h / 2, P.cz, { name: 'pavilion:purlin' });
     }
-    for (const x of [P.cx - roofHalf, P.cx + roofHalf]) add(boxGeo(0.055, 0.075, roofL), M.metal_frame, x, roofY - 0.045, P.cz, { name: 'pavilion:fascia-side' });
+    add(boxGeo(0.08, 0.08, roofL + 0.08), M.metal_frame, P.cx, roofY + roofSlope + 0.04, P.cz, { name: 'pavilion:ridge-cap' });
+    // 端部封边随坡：两片斜板 + 屋脊端帽，替代原来恒定标高的横直条。
+    for (const z of [P.cz - roofL / 2, P.cz + roofL / 2]) {
+      for (const s of [-1, 1]) {
+        add(beveledBoxGeometry(THREE, roofW / 2 + 0.03, 0.10, 0.06, 0.006, 1), M.metal_frame,
+          P.cx + s * roofW / 4, roofY + roofSlope / 2 - 0.02, z,
+          { rotZ: s > 0 ? -roofAngle : roofAngle, name: 'pavilion:end-fascia' });
+      }
+      add(boxGeo(0.10, 0.12, 0.07), M.metal_frame, P.cx, roofY + roofSlope + 0.02, z, { name: 'pavilion:ridge-end' });
+    }
+    for (const x of [P.cx - roofHalf, P.cx + roofHalf]) {
+      add(boxGeo(0.055, 0.075, roofL), M.metal_frame, x, roofY - 0.045, P.cz, { name: 'pavilion:fascia-side' });
+      add(boxGeo(0.03, 0.028, roofL - 0.22), M.oak_flat, x, roofY - 0.105, P.cz, { name: 'pavilion:soffit-edge', cast: false });
+    }
+    // 木条改为吊顶：下移到梁底以下，并用吊杆接到两根通长主梁。
+    const slatY = plinth + colH - 0.11;
     const slatGap = 0.44;
     for (let z = P.cz - (P.length - 0.2) / 2; z < P.cz + P.length / 2; z += slatGap) {
-      add(boxGeo(P.width + 0.36, 0.045, 0.065), M.oak_flat, P.cx, roofY - 0.13, z, { name: 'pavilion:slat', cast: false });
+      add(boxGeo(P.width + 0.36, 0.045, 0.065), M.oak_flat, P.cx, slatY, z, { name: 'pavilion:slat', cast: false });
+      for (const hx of [P.cx - halfW + 0.45, P.cx + halfW - 0.45]) {
+        add(boxGeo(0.028, 0.05, 0.028), M.metal_dark, hx, slatY + 0.0475, z, { name: 'pavilion:slat-hanger', cast: false });
+      }
     }
 
     // 东侧矮栏只压南北两端，中段完全敞开，保证从主路能直接看到服务台
@@ -985,7 +1008,7 @@ export function createDistrict(ctx = {}) {
 
     // 双石墩和横向钢托，坐面由四根 40mm 实木板构成，净缝 6mm。
     for (const dx of [-0.54, 0.54]) add(beveledBoxGeometry(THREE, 0.22, 0.37, S.depth - 0.06, 0.008, 1.2), M.stone_light_in, dx, 0.185, 0, { parent: group, name: 'bench:base' });
-    for (const dz of [-0.13, 0.13]) add(boxGeo(S.length - 0.12, 0.04, 0.035), M.metal_dark, 0, 0.385, dz, { parent: group, name: 'bench:rail' });
+    for (const dz of [-0.13, 0.13]) add(boxGeo(S.length - 0.12, 0.04, 0.035), M.metal_dark, 0, 0.390, dz, { parent: group, name: 'bench:rail' });
     for (let i = 0; i < 4; i++) add(beveledBoxGeometry(THREE, S.length, 0.04, 0.099, 0.003, 1.8), M.oak_flat, 0, S.seat - 0.02, (i - 1.5) * 0.105, { parent: group, name: 'bench:seat' });
     const halfX = Math.abs(Math.cos(rotY || 0)) * S.length / 2 + Math.abs(Math.sin(rotY || 0)) * S.depth / 2;
     const halfZ = Math.abs(Math.sin(rotY || 0)) * S.length / 2 + Math.abs(Math.cos(rotY || 0)) * S.depth / 2;
