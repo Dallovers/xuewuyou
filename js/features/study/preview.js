@@ -218,14 +218,15 @@ function setWalk(on) {
     }
     if (picker) picker.enable();
     /* 坐下：座位数据来自 room，朝向与落脚点在 seating.js 里推。
-       E 键的优先顺序——准星上有可拿的东西时让给拾取，否则才坐下 / 起身。 */
+       E 键的优先顺序——准星上有东西、或手上拿着东西，都让给拾取；否则才坐下 / 起身。
+       只判准星不判手，会出现"坐着拿书按 E 反而站起来"。 */
     if (!seating && SD.seating) {
       seating = SD.seating.createSeating({
         THREE,
         room,
         walker,
         colliders: walkBuild ? walkBuild.colliders : SD.colliders.build(THREE, room).colliders,
-        shouldYield: () => !!(picker && picker.getAim())
+        shouldYield: () => !!(picker && (picker.getAim() || picker.isHolding()))
       });
     }
     if (seating) seating.enable();
