@@ -118,7 +118,12 @@ try {
   const d1 = district.colliders.find((c) => c.id === 'study.desk.island.1');
   const d2 = district.colliders.find((c) => c.id === 'study.desk.island.2');
   const gap = Math.abs(d2.center[2] - d1.center[2]) - d1.half[2] - d2.half[2];
-  check('桌岛净距 ≈ 1.506', Math.abs(gap - 1.5057) < 0.01, '实测 ' + gap.toFixed(4) + ' m');
+  /* 靠背改薄（42 → 34 mm）、背架改贯穿立柱之后，含椅占地进深 2.044 → 2.003，
+     实测净距 1.506 → 1.547 —— 走道是变宽，不是变窄。
+     这里守住「不少于 1.5 的主走道要求」和「别长回来」两头，不再钉死一个带四位小数的数：
+     几何一改这个数就动，钉死只会逼人去改断言而不是看几何。 */
+  check('桌岛净距 1.50~1.56（主走道要求 ≥1.5）', gap >= 1.5 && gap < 1.56,
+    '实测 ' + gap.toFixed(4) + ' m（改前 1.5057，靠背与背架变薄后变宽）');
   check('扣掉角色半径 0.25 仍可通过', gap - 0.5 > 0.9, '角色净宽 ' + (gap - 0.5).toFixed(3) + ' m');
 
   // 窗边长台（含凳子）到桌岛：这一条是实际最窄的纵向通道
