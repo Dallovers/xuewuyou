@@ -247,9 +247,77 @@ try {
       db.min.z >= -HZr - 0.01 && db.max.z <= HZr + 0.01,
       'X ' + db.min.x.toFixed(2) + '~' + db.max.x.toFixed(2) + '，Z ' + db.min.z.toFixed(2) + '~' + db.max.z.toFixed(2));
 
+    // 这条只判整组 bbox 的 Y 范围（0 ~ 层高），是粗筛：杯子整只挂到桌沿外、
+    // 底下直通地板，Y 仍在范围内照样能过。逐件的判据在下面那条。
     check('软装不悬空也不入地',
       db.min.y >= -0.005 && db.max.y <= ROOMSPEC.clearHeight,
       'Y ' + db.min.y.toFixed(3) + '~' + db.max.y.toFixed(3));
+
+    /* 逐个实例判「脚下到底有没有东西」，两条一起看：
+       ① 从底面中心往下打射线，第一个命中的必须是承托面，缝隙 ≤ 5 mm；
+       ② 包围盒的四个水平角点都得落在某块承托面的投影里。
+       为什么要 ②：细长物件（笔）可以「中心在桌上、一头伸出桌沿还悬着」，
+       只判中心的话射线照样打在桌面上，gap 还是 0，等于没判。
+       2026-10-20 就是这么漏的：7 个杯子中心全在桌沿外，4 支笔全越界 2~3 cm，
+       而当时唯一的「软装不悬空」只比较了整组 bbox 的 Y 与层高。 */
+    (function () {
+      const SUPPORT = ['DeskTop', 'ShelfBoard', 'CounterTop', 'DecorBooks'];
+      const probed = [];
+      const bad = [];
+      const ray = new THREE.Raycaster();
+      const DOWN = new THREE.Vector3(0, -1, 0);
+      const tv = new THREE.Vector3();
+      const tm = new THREE.Matrix4();
+      const meshes = [];
+      const footprints = [];
+      r.traverse((n) => {
+        if (!n.isMesh || !n.visible) return;
+        meshes.push(n);
+        if (n.name === 'DeskTop' || n.name === 'CounterTop' || n.name === 'ShelfBoard') {
+          const fb = new THREE.Box3().setFromObject(n);
+          footprints.push(fb);
+        }
+      });
+      const onSomeSurface = (x, z) =>
+        footprints.some((b) => x >= b.min.x - 0.002 && x <= b.max.x + 0.002
+          && z >= b.min.z - 0.002 && z <= b.max.z + 0.002);
+
+      ['DecorCups', 'DecorPens'].forEach((nm) => {
+        const m = decor.getObjectByName(nm);
+        if (!m || !m.isInstancedMesh) return;
+        if (!m.geometry.boundingBox) m.geometry.computeBoundingBox();
+        const gb = m.geometry.boundingBox;
+        for (let i = 0; i < m.count; i++) {
+          m.getMatrixAt(i, tm);
+          tm.premultiply(m.matrixWorld);
+          const bb = new THREE.Box3();
+          for (let c = 0; c < 8; c++) {
+            tv.set(c & 1 ? gb.max.x : gb.min.x, c & 2 ? gb.max.y : gb.min.y, c & 4 ? gb.max.z : gb.min.z);
+            bb.expandByPoint(tv.applyMatrix4(tm));
+          }
+          const cx = (bb.min.x + bb.max.x) / 2, cz = (bb.min.z + bb.max.z) / 2;
+          ray.set(new THREE.Vector3(cx, bb.min.y + 0.001, cz), DOWN);
+          ray.far = 3;
+          const hit = ray.intersectObjects(meshes, false)
+            .find((h) => !(h.object === m && h.instanceId === i));
+          probed.push(nm);
+          const gap = hit ? bb.min.y - hit.point.y : 99;
+          if (!hit) bad.push(nm + '#' + i + ' 下方无命中');
+          else if (SUPPORT.indexOf(hit.object.name) < 0) bad.push(nm + '#' + i + ' 下方是 ' + hit.object.name);
+          else if (gap > 0.005) bad.push(nm + '#' + i + ' 下方 ' + hit.object.name + ' 缝隙 ' + gap.toFixed(3) + ' m');
+          else {
+            // 四个水平角点都得在同一类承托面的投影里，否则就是一头翘在桌沿外
+            const corners = [[bb.min.x, bb.min.z], [bb.max.x, bb.min.z], [bb.min.x, bb.max.z], [bb.max.x, bb.max.z]];
+            const off = corners.filter((p) => !onSomeSurface(p[0], p[1]));
+            if (off.length) bad.push(nm + '#' + i + ' 有 ' + off.length + ' 个角在桌沿外');
+          }
+        }
+      });
+
+      check('杯/笔整个压在承托面上（缝隙 ≤5 mm、四角不出沿）',
+        probed.length > 0 && bad.length === 0,
+        probed.length + ' 个实例' + (bad.length ? '，异常 ' + bad.length + ' 个：' + bad.slice(0, 3).join(' / ') : ''));
+    })();
 
     // 桌面隔板上沿 = 桌高 + 隔板高 ≈ 1.088。桌面上的东西高过它就会挡住对面视线。
     // 墙挂件（公告板、挂钟）本来就在上面，单独判，不混在一条里。
@@ -421,6 +489,92 @@ try {
   let twiceOk = true;
   try { district2.dispose(); } catch (e) { twiceOk = false; }
   check('重复 dispose 不抛异常', twiceOk);
+
+  /* —— 板件 UV：侧面不能退化 ——
+     第三批审查的 P2：bevelSlab 曾经把所有顶点按 XZ 投影，竖直侧面上下两点的 XZ 相同，
+     UV 面积直接为 0（桌面与坐垫各有 156 片非退化三角形、其中 40 片面积为 0），
+     薄边纹理被压成一条线。现在顶/底面走 XZ 投影、侧面走「轮廓弧长 × 厚度」。
+
+     第四批审查又指出「倒角和圆角也要一起检查」。量下来确实还有两处系统性偏差：
+       · 侧面顶点在轮廓外扩 b 的位置，U 却一直取原轮廓的弧长 → 圆角段压到 r/(r+b) ≈ 0.75；
+       · 倒角带 V 用轴向高度，而 45° 面的实际宽是 b√2 → 恒低 1/√2 = 0.707。
+     现在两处都修了（见 core.js 的 sideUV）。
+
+     判据换成两个，比原来的「侧面 max 比顶面」更贴问题本身：
+       1. **面积加权**的 侧面/顶面 密度比 —— 这才是"有没有被整体拉伸"；
+       2. 侧面组内部的 max/min —— 局部均匀性，防止再退回 0.5/0.707 那种系统偏差。
+     第 2 条做不到 1.000 是有原因的：curveSegments = 4，圆角是一段 4 折的折线，
+     跨弦的小三角形面积守恒但单片会有几个百分点的差，这是弦近似本身的性质。 */
+  function slabUV(w, d, t, b, r) {
+    const geo = window.StudyDistrict.core.bevelSlab(THREE, w, d, t, b, r);
+    const pos = geo.attributes.position;
+    const uv = geo.attributes.uv;
+    const tri = pos.count / 3;
+    const A = new THREE.Vector3(), B = new THREE.Vector3(), C = new THREE.Vector3();
+    const ta = new THREE.Vector2(), tb = new THREE.Vector2(), tc = new THREE.Vector2();
+    const capR = [];
+    const sideR = [];
+    let zero = 0, nonDeg = 0;
+    let capU = 0, capA = 0, sideU = 0, sideA = 0;
+    for (let i = 0; i < tri; i++) {
+      const i0 = i * 3;
+      A.fromBufferAttribute(pos, i0); B.fromBufferAttribute(pos, i0 + 1); C.fromBufferAttribute(pos, i0 + 2);
+      const e1 = B.clone().sub(A), e2 = C.clone().sub(A);
+      const gA = e1.clone().cross(e2).length() / 2;
+      if (gA < 1e-10) continue;
+      nonDeg++;
+      ta.fromBufferAttribute(uv, i0); tb.fromBufferAttribute(uv, i0 + 1); tc.fromBufferAttribute(uv, i0 + 2);
+      const uA = Math.abs((tb.x - ta.x) * (tc.y - ta.y) - (tc.x - ta.x) * (tb.y - ta.y)) / 2;
+      if (uA < 1e-12) { zero++; continue; }
+      if (gA < 1e-7) continue;                    // 碎三角除出来是浮点噪声
+      const n = e1.clone().cross(e2).normalize();
+      if (Math.abs(n.y) > 0.9) {                  // 板已躺平，顶/底面法线沿 ±Y
+        capR.push(uA / gA); capU += uA; capA += gA;
+      } else {                                    // 竖直侧面 + 45° 倒角斜面
+        sideR.push(uA / gA); sideU += uA; sideA += gA;
+      }
+    }
+    geo.dispose();
+    const capMn = capR.length ? Math.min.apply(null, capR) : 0;
+    const capMx = capR.length ? Math.max.apply(null, capR) : 0;
+    const sideMn = sideR.length ? Math.min.apply(null, sideR) : 0;
+    const sideMx = sideR.length ? Math.max.apply(null, sideR) : 0;
+    const capMean = capA > 0 ? capU / capA : 0;
+    const sideMean = sideA > 0 ? sideU / sideA : 0;
+    return {
+      nonDeg, zero,
+      capSpread: capMn > 0 ? capMx / capMn : Infinity,
+      capMean,
+      sideVsCap: capMean > 0 ? sideMean / capMean : 0,       // 面积加权
+      sideSpread: sideMn > 0 ? sideMx / sideMn : Infinity,    // 局部 max/min
+      sideMin: sideMn, sideMax: sideMx
+    };
+  }
+  const uvDesk = slabUV(2.4, 1.16, 0.04, 0.004, 0.012);
+  const uvPad = slabUV(0.45, 0.44, 0.045, 0.004, 0.012);
+  check('桌板 UV 没有退化三角形', uvDesk.zero === 0,
+    '非退化 ' + uvDesk.nonDeg + ' 片，UV 面积为 0 的 ' + uvDesk.zero + ' 片');
+  check('坐垫 UV 没有退化三角形', uvPad.zero === 0,
+    '非退化 ' + uvPad.nonDeg + ' 片，UV 面积为 0 的 ' + uvPad.zero + ' 片');
+  check('桌板顶面 UV 密度恒定', uvDesk.capSpread < 1.02, 'max/min ' + uvDesk.capSpread.toFixed(3));
+  check('坐垫顶面 UV 密度恒定', uvPad.capSpread < 1.02, 'max/min ' + uvPad.capSpread.toFixed(3));
+  check('桌板侧面与顶面同密度', Math.abs(uvDesk.sideVsCap - 1) < 0.005,
+    '面积加权 侧面/顶面 ' + uvDesk.sideVsCap.toFixed(4));
+  check('坐垫侧面与顶面同密度', Math.abs(uvPad.sideVsCap - 1) < 0.005,
+    '面积加权 侧面/顶面 ' + uvPad.sideVsCap.toFixed(4));
+  /* 局部均匀性：倒角带与圆角段混在侧面组里，上限由 curveSegments=4 的弦近似决定。
+     修前这个值是 2.4 量级（倒角 0.707、圆角 0.5），现在实测 1.134。 */
+  check('桌板侧面局部密度均匀', uvDesk.sideSpread < 1.20,
+    'max/min ' + uvDesk.sideSpread.toFixed(3) + '（' + uvDesk.sideMin.toFixed(4) + '~' + uvDesk.sideMax.toFixed(4) + '）');
+  check('坐垫侧面局部密度均匀', uvPad.sideSpread < 1.20,
+    'max/min ' + uvPad.sideSpread.toFixed(3) + '（' + uvPad.sideMin.toFixed(4) + '~' + uvPad.sideMax.toFixed(4) + '）');
+  /* 跨板件：UV 按世界米数展开，所以 UV面积/几何面积 恒等于 1/1.8²，与板件尺寸无关。
+     2.4 m 的桌板和 0.45 m 的坐垫尺寸差 5 倍，这个比值必须一样——
+     不一样就说明分母还在用"这块板自己的尺寸"，木纹密度会随家具尺寸变。 */
+  const crossRatio = uvDesk.capMean > 0 ? uvPad.capMean / uvDesk.capMean : 0;
+  check('桌板与坐垫 UV 尺度一致', Math.abs(crossRatio - 1) < 0.02,
+    '桌板 ' + uvDesk.capMean.toFixed(4) + ' / 坐垫 ' + uvPad.capMean.toFixed(4) +
+    '（1/1.8² = ' + (1 / 3.24).toFixed(4) + '）');
 } catch (e) {
   fails++;
   log('FAIL 抛异常 → ' + (e && e.stack ? e.stack.split('\n').slice(0, 3).join(' | ') : e));

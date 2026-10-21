@@ -158,7 +158,22 @@ const views = {
   plan: { pos: [0, 16.5, ROOM_Z + 2.6], target: [0, 0, ROOM_Z - 0.2], roofOff: true },
   // 整屋 1 号岛的近景：查桌面软装、板件倒角、椅子软包。
   // 注意 `desk` 那个视角看的是独立样件（setA），不带软装——两件事别混。
-  island: { pos: [-0.80, 1.28, ROOM_Z + 0.60], target: [-2.40, 0.84, ROOM_Z - 1.60] }
+  island: { pos: [-0.80, 1.28, ROOM_Z + 0.60], target: [-2.40, 0.84, ROOM_Z - 1.60] },
+  // 桌椅侧边近景：贴 1 号岛桌板南长边、略高于桌面 0.3 m 掠视。
+  // 用途是查「桌板侧面 4 cm 那条边」的木纹有没有被压成一条线。
+  //
+  // 两个约束都是量出来的，不是估的：
+  // 1) 机位必须卡在两把椅子中间那条空当里（椅子中心 x≈-3.00 / -1.80），
+  //    否则椅背顶 0.885 会挡掉视线下半截；
+  // 2) 机位不能低于桌面太多也不能太近——桌板正中有一道 0.34 m 的 CenterDivider，
+  //    顶沿在 1.08 m。相机高于它，整幅画面上半就全是那块竖板，读不出桌面。
+  //    所以取 y=1.04、俯角约 27°，让竖板顶沿刚好出框。
+  // minDist 必须单独放宽：全局 minDistance=2 会把 0.75 m 的机位推回 2 m。
+  edge: {
+    pos: [-2.40, 1.23, ROOM_Z - 0.42],
+    target: [-2.55, 0.730, ROOM_Z - 1.02],
+    minDist: 0.4
+  }
 };
 
 // 屋面构件（顶板 / 压顶 / 梁 / 灯具）：俯视和平面视角要把它们藏起来才看得进屋里
@@ -181,6 +196,8 @@ function applyView(key) {
   });
   // 仰视视角要放开极角上限，否则相机被钳在水平线以上
   controls.maxPolarAngle = v.lookUp ? Math.PI - 0.03 : Math.PI / 2 - 0.03;
+  // 近景视角要放宽最近距离，否则 controls.update() 会把机位顶回全局的 2 m
+  controls.minDistance = v.minDist || 2;
   camera.position.set(v.pos[0], v.pos[1], v.pos[2]);
   controls.target.set(v.target[0], v.target[1], v.target[2]);
   controls.update();
@@ -219,6 +236,16 @@ document.querySelectorAll('[data-toggle]').forEach((btn) => {
     }
   });
 });
+
+// ?clean=1：关掉 1 m 网格与人体参考，出「无辅助标记」的评审截图。
+// 审查提过截图里的绿色圆圈会被误当成椅子几何——凡是给视觉评审看的图，
+// 辅助叠加一律关掉，免得把测量工具当成模型的一部分。
+if (new URLSearchParams(location.search).get('clean') === '1') {
+  ['grid', 'human'].forEach((k) => {
+    const b = document.querySelector('[data-toggle="' + k + '"]');
+    if (b && b.classList.contains('on')) b.click();
+  });
+}
 
 // —— 尺寸表：直接从 SPEC 生成，避免文档和模型各说一套 ——
 function fmt(n, digits) {
@@ -297,4 +324,4 @@ renderer.setAnimationLoop(() => {
   renderer.render(scene, camera);
 });
 
-window.__studySample = { scene, camera, renderer, mats, setA, setB, shell, human };
+window.__studySample = { THREE, scene, camera, renderer, mats, setA, setB, shell, human, controls, views, applyView, room };
