@@ -98,7 +98,7 @@ module.exports = function ({ route, authUser, sendJson, readBody, store, syncRev
         friends:Object.values(social.friends).filter(f=>f.members.includes(uid)).length,
         friendRequests:social.requests.filter(r=>r.to===uid&&r.status==='pending').length,
         ownPosts:social.posts.filter(p=>p.author===uid&&!p.deleted).length,
-        challenges:social.challenges.filter(c=>c.members.includes(uid)&&c.status==='active'&&c.expiresAt>Date.now()&&!c.sessions[uid]?.finishedAt).length,
+        challenges:social.challenges.filter(c=>c.members.includes(uid)&&(c.mode==='sync'?['invited','waiting','active'].includes(c.status)&&(c.status==='active'?c.deadlineAt:c.lobbyExpiresAt||c.expiresAt)>Date.now():c.status==='active'&&c.expiresAt>Date.now())&&!c.sessions[uid]?.finishedAt).length,
         planned:(learning.plan?.scheduled || []).filter(t=>!t.done).length, completed:(learning.plan?.scheduled || []).filter(t=>t.done).length },
       plan:learning.plan ? { scheduled:learning.plan.scheduled, unscheduled:learning.plan.unscheduled, version:learning.plan.version } : null };
   });

@@ -9,7 +9,7 @@ const fail = (message,status=400) => {throw Object.assign(new Error(message),{st
 const { muteRemainingMs, formatDuration } = require('../lib/moderation');
 const clone = value => JSON.parse(JSON.stringify(value));
 module.exports = function({route,authUser,sendJson,readBody,store,syncReviews}) {
-  let io, namespace;
+  let io, namespace, arenaTimer;
   const connections = new Map(), limits = new Map();
   const state = () => clone(store.get('community','main',{profiles:{},requests:[],friends:{},posts:[],challenges:[]}));
   const save = data => store.set('community','main',data);
@@ -20,6 +20,7 @@ module.exports = function({route,authUser,sendJson,readBody,store,syncReviews}) 
   const notify = (ids,kind) => store.afterCommit(() => {if(namespace)for(const id of new Set(ids))namespace.to('user:'+id).emit('community:changed',{kind});});
   const postNotice = () => store.afterCommit(() => namespace?.emit('community:changed',{kind:'posts'}));
   function deliverLearning(s,c,id){
+    if(c.mode==='sync')return arena.deliver(s,c,id);
     const mine=c.sessions[id];if(!mine?.records||mine.delivered)return;
     const existing=store.get('userData',id,{payload:{}}),payload=clone(existing.payload||{});payload.answers=payload.answers||[];payload.mistakes=payload.mistakes||[];
     const known=new Set(payload.answers.map(a=>a.eventId).filter(Boolean));
@@ -27,7 +28,8 @@ module.exports = function({route,authUser,sendJson,readBody,store,syncReviews}) 
     payload.answers=payload.answers.slice(-5000);payload.mistakes=payload.mistakes.slice(-500);store.set('userData',id,{...existing,payload,updatedAt:Date.now()});syncReviews(id);mine.delivered=true;save(s);
   }
   // Resume an interrupted result-to-learning delivery after a server restart.
-  function recover() { const recovery=state();for(const c of recovery.challenges)for(const id of c.members)if(c.sessions[id]?.records&&!c.sessions[id].delivered)deliverLearning(recovery,c,id); }
+  function recover() { const recovery=state();arena.settle(recovery);for(const c of recovery.challenges)for(const id of c.members)if(c.sessions[id]?.records&&!c.sessions[id].delivered)deliverLearning(recovery,c,id); }
+  const arena=require('./sync-arena')({store,save,notify,questions,person,syncReviews,fail});
   if (!store.database) recover();
   function limited(id,kind,max) {
     const k=id+':'+kind,now=Date.now(),hits=(limits.get(k)||[]).filter(t=>now-t<60000);
@@ -53,14 +55,14 @@ module.exports = function({route,authUser,sendJson,readBody,store,syncReviews}) 
     });
   }
   own('GET','home',(user,query)=>{
-    const s=state(), subject=query.get('subject')||'',term=(query.get('search')||'').slice(0,40).toLowerCase(),self=profile(s,user.id);
+    const s=state();arena.settle(s);const subject=query.get('subject')||'',term=(query.get('search')||'').slice(0,40).toLowerCase(),self=profile(s,user.id);
     const directory=Object.keys(s.profiles).filter(id=>id!==user.id&&s.profiles[id].visible).map(id=>({...person(s,id),isFriend:friendship(s,id,user.id)}))
       .filter(p=>(!subject||p.subjects.includes(subject))&&(!term||p.nick.toLowerCase().includes(term)))
       .sort((a,b)=>b.subjects.filter(x=>self.subjects.includes(x)).length-a.subjects.filter(x=>self.subjects.includes(x)).length||a.nick.localeCompare(b.nick)).slice(0,50);
     const friends=Object.values(s.friends).filter(f=>f.members.includes(user.id)).map(f=>person(s,f.members.find(id=>id!==user.id)));
     const requests=s.requests.filter(r=>r.status==='pending'&&(r.from===user.id||r.to===user.id)).map(r=>({...r,person:person(s,r.from===user.id?r.to:r.from)}));
     const challenges=s.challenges.filter(c=>c.members.includes(user.id));
-    return {uid:user.id,profile:self,directory,friends,requests,subjects:SUBJECTS,topics:topicOptions,stats:{friends:friends.length,requests:requests.filter(r=>r.to===user.id).length,challenges:challenges.filter(c=>c.status==='active'&&c.expiresAt>Date.now()&&!c.sessions[user.id]?.finishedAt).length,posts:s.posts.filter(p=>p.author===user.id&&!p.deleted).length}};
+    return {uid:user.id,profile:self,directory,friends,requests,subjects:SUBJECTS,topics:topicOptions,stats:{friends:friends.length,requests:requests.filter(r=>r.to===user.id).length,challenges:challenges.filter(c=>arena.pending(c)&&(c.mode==='sync'||c.expiresAt>Date.now())&&!c.sessions[user.id]?.finishedAt).length,posts:s.posts.filter(p=>p.author===user.id&&!p.deleted).length}};
   });
   own('PUT','profile',(user,_,body)=>{
     if(typeof body.visible!=='boolean'||!Array.isArray(body.subjects)||body.subjects.length>5||body.subjects.some(x=>!SUBJECTS.includes(x)))fail('请选择有效课程与公开设置');
@@ -120,6 +122,7 @@ module.exports = function({route,authUser,sendJson,readBody,store,syncReviews}) 
   });
   const duel = (s,id,user) => {const c=s.challenges.find(c=>c.id===id);if(!c||!c.members.includes(user.id))fail('挑战不存在',404);return c;};
   function summary(s,c,user,detail=false) {
+    if(c.mode==='sync')return arena.summary(s,c,user,detail);
     const complete=c.status==='completed',mine=c.sessions[user.id]||{},peer=c.members.find(id=>id!==user.id),other=c.sessions[peer]||{};
     const result={id:c.id,topic:c.topic,count:c.qids.length,creator:c.creator,status:c.status==='active'&&Date.now()>c.expiresAt?'expired':c.status,createdAt:c.createdAt,expiresAt:c.expiresAt,peer:person(s,peer),mine:{startedAt:mine.startedAt||null,finishedAt:mine.finishedAt||null,score:mine.finishedAt?mine.score:null,elapsedMs:mine.finishedAt?mine.elapsedMs:null},opponent:{submitted:!!other.finishedAt,...(complete?{score:other.score,elapsedMs:other.elapsedMs}:{})},maxMinutes:15};
     if(complete){result.winner=c.members.slice().sort((a,b)=>c.sessions[b].score-c.sessions[a].score||c.sessions[a].elapsedMs-c.sessions[b].elapsedMs)[0];if(mine.score===other.score&&mine.elapsedMs===other.elapsedMs)result.winner=null;}
@@ -128,23 +131,30 @@ module.exports = function({route,authUser,sendJson,readBody,store,syncReviews}) 
     if(detail&&mine.startedAt&&!mine.finishedAt&&result.status==='active')result.questions=c.qids.map(id=>{const q=questions.get(id);return {qid:id,topic:q.topic,question:q.question,options:q.options};});
     return result;
   }
-  own('GET','challenges',user=>{const s=state();return {challenges:s.challenges.filter(c=>c.members.includes(user.id)).slice(-50).reverse().map(c=>summary(s,c,user))};});
+  own('GET','challenges',user=>{const s=state();arena.settle(s);return {challenges:s.challenges.filter(c=>c.members.includes(user.id)).slice(-50).reverse().map(c=>summary(s,c,user))};});
   own('POST','challenges',(user,_,body)=>{
-    limited(user.id,'challenges',10);const s=state(),target=String(body.to||'');if(!friendship(s,user.id,target))fail('请先添加并确认学习搭子',403);
+    const s=state(),target=String(body.to||'');if(!friendship(s,user.id,target))fail('请先添加并确认学习搭子',403);
+    if(body.mode!==undefined&&!['sync','async'].includes(body.mode))fail('挑战模式无效');
+    if(body.mode==='sync'&&s.challenges.some(c=>c.creator===user.id&&c.requestId===body.requestId&&typeof body.requestId==='string'))return {challenge:summary(s,arena.create(s,user,body,[]),user)};
+    limited(user.id,'challenges',10);
     const bank=objective.filter(q=>q.topic===body.topic);if(bank.length<5)fail('请选择至少有五道客观题的主题');
     if(s.challenges.length>=2000)fail('挑战记录已达到当前容量，请联系网站维护者');
-    if(s.challenges.filter(c=>c.status==='active'&&c.expiresAt>Date.now()&&c.members.includes(user.id)).length>=10)fail('请先完成或取消已有挑战');
+    arena.settle(s);
+    if(s.challenges.filter(c=>arena.pending(c)&&(c.mode==='sync'||c.expiresAt>Date.now())&&c.members.includes(user.id)).length>=10)fail('请先完成或取消已有挑战');
     for(let i=bank.length-1;i>0;i--){const j=crypto.randomInt(i+1);[bank[i],bank[j]]=[bank[j],bank[i]];}
+    if(body.mode==='sync')return {challenge:summary(s,arena.create(s,user,body,bank),user)};
     const c={id:crypto.randomUUID(),creator:user.id,members:[user.id,target],topic:body.topic,qids:bank.slice(0,5).map(q=>q.id),sessions:{},status:'active',createdAt:Date.now(),expiresAt:Date.now()+86400000};s.challenges.push(c);save(s);notify(c.members,'challenges');return {challenge:summary(s,c,user)};
   });
-  own('GET','challenge',(user,query)=>{const s=state();return {challenge:summary(s,duel(s,query.get('id'),user),user,true)};});
+  own('GET','challenge',(user,query)=>{const s=state();arena.settle(s);return {challenge:summary(s,duel(s,query.get('id'),user),user,true)};});
   own('POST','challenge/start',(user,_,body)=>{
-    const s=state(),c=duel(s,body.id,user);if(c.status!=='active'||Date.now()>c.expiresAt)fail('挑战已结束或过期',409);
+    const s=state(),c=duel(s,body.id,user);if(c.mode==='sync')fail('同步比赛需要双方接受并准备，不能单独开始',409);if(c.status!=='active'||Date.now()>c.expiresAt)fail('挑战已结束或过期',409);
     if(!c.sessions[user.id]){c.sessions[user.id]={startedAt:Date.now(),finishedAt:null};save(s);notify(c.members,'challenges');}
     return {challenge:summary(s,c,user,true)};
   });
   own('POST','challenge/submit',(user,_,body)=>{
-    const s=state(),c=duel(s,body.id,user),mine=c.sessions[user.id];
+    const s=state();arena.settle(s);const c=duel(s,body.id,user);
+    if(c.mode==='sync'){const result=arena.submit(s,c,user,body);return {...result,challenge:summary(s,c,user,true)};}
+    const mine=c.sessions[user.id];
     if(mine?.finishedAt){deliverLearning(s,c,user.id);return {challenge:summary(s,c,user,true),recorded:0};}
     if(c.status!=='active'||Date.now()>c.expiresAt||!mine)fail('请先开始有效挑战',409);
     if(!body.answers||typeof body.answers!=='object'||Array.isArray(body.answers)||Object.keys(body.answers).some(id=>!c.qids.includes(id))||Object.values(body.answers).some(a=>!['A','B','C','D'].includes(a)))fail('答案格式错误');
@@ -161,10 +171,16 @@ module.exports = function({route,authUser,sendJson,readBody,store,syncReviews}) 
     save(s);deliverLearning(s,c,user.id);notify(c.members,'challenges');return {challenge:summary(s,c,user,true),recorded:c.qids.length};
   });
   own('PUT','challenge/cancel',(user,_,body)=>{
-    const s=state(),c=duel(s,body.id,user);if(c.status!=='active')fail('挑战已结束',409);if(c.members.some(id=>c.sessions[id]?.finishedAt))fail('已有同学完成作答，请完成挑战后查看结果',409);
+    const s=state();arena.settle(s);const c=duel(s,body.id,user);if(c.mode==='sync'){arena.cancel(s,c);return {challenge:summary(s,c,user,true)};}if(c.status!=='active')fail('挑战已结束',409);if(c.members.some(id=>c.sessions[id]?.finishedAt))fail('已有同学完成作答，请完成挑战后查看结果',409);
     c.status='cancelled';save(s);notify(c.members,'challenges');return {};
   });
+  for(const [method,path,fn] of [
+    ['POST','challenge/accept',(s,c,u)=>arena.accept(s,c,u)],
+    ['POST','challenge/ready',(s,c,u,b)=>arena.ready(s,c,u,b.ready)],
+    ['PUT','challenge/answers',(s,c,u,b)=>arena.answers(s,c,u,b)],
+  ])own(method,path,(user,_,body)=>{const s=state();arena.settle(s);const c=duel(s,body.id,user);if(c.mode!=='sync')fail('此操作仅适用于同步竞技',409);fn(s,c,user,body);return {challenge:summary(s,c,user,true)};});
   function attach(server) {
+    arenaTimer=setInterval(()=>{store.run(()=>arena.settle(state())).catch(()=>console.error('同步竞技超时结算暂不可用，下一次请求将重试'));},1000);arenaTimer.unref();
     io=new Server(server,{serveClient:false,maxHttpBufferSize:10000,cors:{origin:process.env.FRONTEND_ORIGIN || 'https://dallovers.github.io',methods:['GET','POST']}});namespace=io.of('/community');
     namespace.use((socket,next)=>{store.run(()=>{const user=authUser({headers:{authorization:'Bearer '+(socket.handshake.auth?.token||'')}});if(!user)return next(new Error('请登录云端账号'));socket.data.uid=user.id;next();},{readOnly:true}).catch(()=>next(new Error('账号验证暂不可用，请重试')));});
     namespace.on('connection',socket=>{
@@ -174,5 +190,5 @@ module.exports = function({route,authUser,sendJson,readBody,store,syncReviews}) 
     });
     return namespace;
   }
-  return {attach,recover,close:()=>new Promise(resolve=>{if(io)io.close(resolve);else resolve();})};
+  return {attach,recover,close:()=>new Promise(resolve=>{clearInterval(arenaTimer);if(io)io.close(resolve);else resolve();})};
 };

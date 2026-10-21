@@ -1,0 +1,63 @@
+{
+  "scope": "Two independent Chromium processes; original main-site WG_API and WG_Community; isolated real JSON backend. Public 3D host not integrated.",
+  "checks": [
+    {
+      "name": "UI invitation, acceptance and both friend lists",
+      "ok": true
+    },
+    {
+      "name": "A publishes, B reads/replies, A sees reply via original UI",
+      "ok": true
+    },
+    {
+      "name": "Owner deletes note and peer sees the tombstone with reply retained",
+      "ok": true
+    },
+    {
+      "name": "Both real clicks lock one future server start",
+      "startsAt": 1792578678523,
+      "deadlineAt": 1792579578523
+    },
+    {
+      "name": "Refresh restores selected challenge and server-saved choices",
+      "count": 5
+    },
+    {
+      "name": "Offline choice retries after reconnect; timer never restarts",
+      "ok": true
+    },
+    {
+      "name": "Both submit; score/review and exactly five learning records open only after both finish",
+      "ok": true
+    },
+    {
+      "name": "Both offline: backend timer settles saved/blank choices without client submit",
+      "note": "Controlled isolated-store start/deadline advance, NOT a real 15-minute wait",
+      "reply": 2,
+      "status": "completed",
+      "timedOut": [
+        true,
+        true
+      ]
+    },
+    {
+      "name": "Real backend process restart restores result and keeps learning events deduplicated",
+      "ok": true
+    },
+    {
+      "name": "Public openArena preselection and explicit not-friend failure",
+      "ok": true
+    }
+  ],
+  "pageErrors": [],
+  "browser": "156.0.8078.4",
+  "conditions": {
+    "headless": true,
+    "viewport": [
+      1536,
+      1024
+    ],
+    "dpr": 1,
+    "independentBrowserProcesses": 2
+  }
+}

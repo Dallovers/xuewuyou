@@ -1,0 +1,6 @@
+
+> xuewuyou-server@1.0.0 check
+> node --check server.js && node --check integrations/index.js && node --check integrations/question-audit.js && node --check integrations/question-detail.js && node --check integrations/question-imports.js && node --check admin/index.js && node --check lib/moderation.js && node --check lib/rate-limit.js && node --check lib/store.js && node --check lib/store-postgres.js && node --check scripts/grant-admin.js && node --check scripts/import-questions.js && node --check scripts/rollback-import.js && node --check learning/index.js && node --check community/index.js && node --check community/sync-arena.js && node --check scripts/social-sync-dev.cjs && node --check scripts/social-sync-browser-e2e.cjs && node --check study-rooms/index.js && node --check practice/index.js && node --check campus/index.js && node --check questions/index.js && node --check scripts/smoke.js && node --check scripts/check-frontend-syntax.js && node scripts/check-frontend-syntax.js && node --check scripts/check-frontend-refs.js && node scripts/check-frontend-refs.js
+
+前端语法检查通过：34 个文件。
+前端引用体检通过：412 个 id，10 处取出即存（不取成员），6 处同行已判空，37 处指向运行时创建的节点。
