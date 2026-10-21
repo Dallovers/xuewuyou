@@ -828,7 +828,8 @@ export function createDistrict(ctx = {}) {
         add(beveledBoxGeometry(THREE, P.column, colH - 0.12, P.column, 0.01, 1), M.metal_dark, x, plinth + 0.12 + (colH - 0.12) / 2, z, { name: 'pavilion:column' });
         add(beveledBoxGeometry(THREE, P.column + 0.08, 0.09, P.column + 0.08, 0.008, 1), M.stone_light_in, x, plinth + colH - 0.045, z, { name: 'pavilion:capital' });
         add(boxGeo(P.column + 0.14, 0.018, P.column + 0.14), M.metal_dark, x, plinth + 0.009, z, { name: 'pavilion:column-base' });
-        blockBox(P.column, colH, P.column, x, z, 'pavilion:column');
+        // Cover the 360mm base plate as well as the shaft; prevent feet clipping the plinth.
+        blockBox(P.column + 0.14, colH + plinth, P.column + 0.14, x, z, 'pavilion:column');
       }
     }
 

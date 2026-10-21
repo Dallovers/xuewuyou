@@ -1,0 +1,373 @@
+
+> xuewuyou-server@1.0.0 test
+> node --test test/*.test.js
+
+✖ 掌握度接口显式标明这是模型估计 (114.9429ms)
+✖ 样本不足时降级置信度并给出提示，而不是给一个看起来很确定的百分比 (8.5851ms)
+✖ 没有作答记录的章节不出现在结果里，而不是显示成 0 掌握度 (3.054ms)
+✖ 样本累积后置信度随之提升 (21.8849ms)
+✖ 学习孪生里的掌握度同样带估计标识 (15.3918ms)
+✔ 未登录 401、普通用户 403：管理接口一个都不能漏 (310.2695ms)
+✔ 总览能看账号数、在线数与留言数 (12.9906ms)
+✔ 账号列表能看到状态，但绝不能带出 passHash (13.6931ms)
+✔ 禁言：发留言被 403 挡住，解禁后恢复 (81.7727ms)
+✔ 禁言时长有下限和上限，乱传被拒 (57.4924ms)
+✔ 封号：已签发的 token 立刻失效，登录也进不来 (226.56ms)
+✔ 不能封自己、不能封另一个管理员、不能撤掉最后一个管理员 (59.1419ms)
+✔ 留言可以下架与恢复，作者自删的不能恢复 (76.625ms)
+✔ 管理员登录：正确密码换 token，错密码与普通账号一律同码同文案 (746.5838ms)
+✔ 管理员登录的失败限流：连续失败后短暂锁定 (1147.2516ms)
+✔ ADMIN_USERNAMES 引导：只提升已存在的账号，且幂等 (60.1976ms)
+✔ 每次处罚都写审计：谁、对谁、做了什么 (15.7351ms)
+✔ 统一显示名：只改与用户名不同的账号，可重复执行，并留审计 (156.7926ms)
+✔ 统一显示名要有管理员权限 (77.7921ms)
+✔ 未登录不能写也不能读 (203.4269ms)
+✔ 三类通用产出可以公开，别人能看到且带上昵称 (30.1518ms)
+✔ 不在白名单里的类型一律拒绝（自由提问、按错题生成都不上墙） (31.3514ms)
+✔ 空问题或空回答拒绝，超长内容被截断而不是撑爆存储 (36.5694ms)
+✔ 列表按时间倒序，limit 生效 (10.8356ms)
+✔ 只保留最近 200 条，不会无限增长 (2893.6411ms)
+✔ 管理员可以把它下架，审计留痕 (57.5914ms)
+✔ 后台能列出公开回答：匿名 401、普通用户 403、管理员能按内容搜到并看到作者 (47.6426ms)
+✔ 下架后审计只留 id 与类型，不抄被撤的正文 (47.1878ms)
+✔ 完全一致与常见书写差异都算对 (0.8852ms)
+✔ LaTeX 包装与可读写法等价 (0.1215ms)
+✔ 数值等价：多余的零不应导致判错（回归） (0.7421ms)
+✔ 数值容差保持收紧，不会把明显不同的数判成相等 (0.1136ms)
+✔ 不把非数字当成数字（避免 2x 被当成 2） (0.1211ms)
+✔ 空值一律判错，不会因为"都为空"而算对 (0.0687ms)
+✔ 数字类型与字符串可以互比 (0.0753ms)
+✔ 已知限制：分数与小数不互相换算 (0.0671ms)
+✔ 冷启动慢响应：先提示 waking，恢复后发 ready，且全程只请求一次 (89.5938ms)
+✔ 网关 502（HTML 错误页）后自动退避重试成功 (13.3662ms)
+✔ 401 属确定性错误：不重试并抛 AUTH_FAILED (1.5672ms)
+✔ 持续不可达：重试次数有上限，最终抛 NET_UNREACHABLE (91.8392ms)
+✔ 请求挂起超时归类为 COLD_START_TIMEOUT，而不是普通断网 (619.9456ms)
+✔ noRetry 选项：只请求一次 (0.9809ms)
+✔ isBackendDown 口径：403 / 404 不再算"后端不可达" (0.8645ms)
+✔ isBackendDown 口径：网络失败 / 冷启动超时 / 5xx 仍算"后端不可达" (0.5713ms)
+✔ pullMerge：/api/data 返回 403 时不再静默吞错（权限问题应暴露） (1.5165ms)
+✔ pullMerge：/api/data 返回 503 时保留本地数据并照常返回 (197.0522ms)
+✔ 注册时昵称等于密码被拒绝，且不会建出账号 (100.0657ms)
+✔ 昵称留空时回落为用户名，正常昵称原样保存 (161.307ms)
+✔ 改昵称时设成密码被拒绝，正常昵称可以改 (173.3628ms)
+✔ 已存成密码的脏数据：登录时自动改回用户名并回传 nickReset (153.408ms)
+✔ 超长密码整串当昵称也要被拒（先截断再比较会漏掉前缀） (2.7506ms)
+✔ 正常登录不会被误伤 (106.0226ms)
+✔ 改密码：成功后旧 token 立刻失效，新密码可用、旧密码不可用 (336.7953ms)
+✔ 当前密码不对时拒绝，且原密码仍然有效 (113.7548ms)
+✔ 新密码的合法性：太短、与原密码相同、与昵称相同都拒绝 (211.2038ms)
+✔ 未登录不能改密码 (9.8744ms)
+✔ 管理员重置：用户旧 token 失效，新密码可登录，审计里不出现密码 (104.4594ms)
+✔ 管理员重置密码也要校验长度，且不能重置自己 (31.9445ms)
+✔ 连续 5 次密码错误后锁定，锁定期间即使密码正确也进不去 (456.5708ms)
+✔ 锁按账号隔离：一个账号被锁不影响别人 (38.1294ms)
+✔ 输对一次会清空之前的失败记录 (418.162ms)
+✔ 来自不同来源的尝试分开计数（反向代理下不会互相牵连） (29.7353ms)
+✔ 注册按来源限流：超过上限后 429，换个来源又能继续 (142.9019ms)
+✔ 注册被限流时不会写出半个账号 (28.3543ms)
+✔ 路由表可读取，规模符合预期 (0.64ms)
+✔ 除登记在案的公开接口外，所有接口匿名访问一律 401 (1118.4353ms)
+✔ 公开接口只暴露应有的内容 (30.9249ms)
+✔ 公开接口以外的每个接口都需要有效身份，不能只靠请求体里的 uid (183.5138ms)
+  - 管理员引导:  已提升 引导同学
+✔ require 阶段不碰存储：加载完还没被提升 (2.7657ms)
+✔ start() 之后完成提升（如果这里没过，说明引导没挂进启动流程） (67.4327ms)
+✔ 未登录不能读取校园状态或位置存档 (170.166ms)
+✔ 校园状态覆盖八个地点，初始为空状态 (13.0997ms)
+✔ 校园状态是当前用户的真实计数，且不跨账号串数据 (34.6948ms)
+✔ 位置存档：初次为 null，保存后可读回 (33.1835ms)
+✔ 位置存档：版本不一致返回 409 且不覆盖 (23.3186ms)
+✔ 换 worldVersion 视为新世界：旧位置失效并返回 reset (19.2889ms)
+✔ 位置存档：非法坐标被拒绝 (77.2057ms)
+✔ 位置存档不公开给其他用户，也不影响学习统计 (57.8357ms)
+✔ campus profiles are opt-in, authenticated and exclude private records (285.0293ms)
+✔ Socket.IO rejects anonymous connections and routes invitations only to participants (109.3583ms)
+✔ only the recipient accepts requests and accepted buddies can be challenged (87.6969ms)
+✔ question discussions support scoped replies, owner deletion and safe Markdown (119.2652ms)
+✔ challenge questions are identical, private and do not reveal solutions before completion (20.4683ms)
+✖ server grades once, retains learning records and waits for both submissions before review (30.2146ms)
+✔ late submissions time out on the server and started challenges survive refresh (90.1307ms)
+✔ restart repairs interrupted learning delivery without duplicate records (261.1033ms)
+✔ cloud authentication and static private-file boundary (215.5503ms)
+✔ existing sync enrols real bundled questions without revealing answers (15.8253ms)
+✔ objective answers use FSRS and duplicate concurrent submissions are idempotent (56.2699ms)
+✔ subjective answer is explicit self-assessment and another user cannot reveal it (39.0083ms)
+✔ file type, bytes, empty text, UTF-8 and ask scope are validated (40.228ms)
+✔ UTF-8 upload parses and indexes privately; text access is owner-only (202.7119ms)
+✔ RAG retrieval rejects foreign document IDs and filters foreign citations (30.584ms)
+✔ upstream failure is sanitized; empty results and AI failure preserve truthful status (58.0871ms)
+✔ MinerU V1 upload, polling and text output integrate; Office uses flash tier (290.4829ms)
+✔ failed index is retryable without duplicate uploads (186.0315ms)
+✔ delete removes both remote index and local source and enforces ownership (46.2047ms)
+✔ pending records after restart become retryable and saved state is durable (12.5286ms)
+✔ unconfigured clients fail explicitly and MinerU rejects third-party upload URLs (5.281ms)
+✖ real pyBKT posterior matches Bayesian update and missing probe does not add an answer (110.2494ms)
+✖ map uses bundled bank; mastery rejects self-assessed and duplicate FSRS mirror records (48.1506ms)
+✔ boards are separated by user and question, preserve images, and reject stale saves (95.8081ms)
+✔ experiments store snapshots without executing code and stay private (66.8204ms)
+✖ a real FSRS answer counts once and future reviews are excluded from planning (70.9843ms)
+✖ campus twin reflects private records, board saves and focus time and follows new answers (33.3022ms)
+✖ real OR-Tools chooses urgent tasks, handles zero capacity, and has no overlaps (0.5585ms)
+✖ plan skips busy intervals, preserves completed work, and enforces optimistic concurrency (3.2916ms)
+✔ KaTeX 不认的简写命令会被修正后重试一次 (8.0097ms)
+✔ \ds 这类简写也会被展开成完整命令 (2.1288ms)
+✔ 集合里多出来的右括号会被去掉，修完能正常渲染 (1.3371ms)
+✔ 修正不产生变化时不白重试，修不好降级也不抛错 (0.8906ms)
+✔ 重置计数后 repaired 归零，且对外读得到这个键 (1.2396ms)
+﹣ PostgreSQL rolls back failed writes and serializes competing read-modify-write operations (0.5118ms) # SKIP
+﹣ Accounts, social activity, experiments, boards and uploaded source files survive a backend restart (0.1287ms) # SKIP
+﹣ 断点续学会话在 PostgreSQL 下持久化、按用户隔离并保持版本冲突语义 (0.0899ms) # SKIP
+﹣ 管理员后台在 PostgreSQL 下可用：处罚生效、审计落库、重启后仍在 (0.0886ms) # SKIP
+✔ 本地模式/未登录时整体降级，不发起任何请求 (1.6136ms)
+✔ 创建时带上 clientRequestId，刷新后复用同一个键（幂等） (2.5255ms)
+✔ 保存只走 practice 接口，不写作答记录（不会重复计分） (2.0907ms)
+✔ 409 冲突：重新拉取最新版本并合并草稿后重试一次 (1.2513ms)
+✔ 保存节流：连续调度多次只发一次请求 (127.6441ms)
+✔ 切换账号后清空本地会话，不再拿旧进度发请求 (1.2112ms)
+✔ 结束会话：先 flush 再调用 finish，并清空本地状态 (5.6418ms)
+✔ 未登录不能创建会话 (117.3583ms)
+✔ 题号必须真实存在；超量报错而不是静默截断 (21.2601ms)
+✔ 创建会话返回固定题序与初始进度 (19.2157ms)
+✔ 同一 clientRequestId 重试返回原会话，不重复建档 (27.2929ms)
+✔ 会话按用户隔离：他人既读不到指定会话，也看不到进行中会话 (29.9061ms)
+✔ 版本不一致返回 409，且不覆盖已有进度 (61.1756ms)
+✔ 保存草稿不产生作答记录、错题或复习卡片 (46.4384ms)
+✔ submittedQids 只接受真实作答过的题号，伪造被过滤 (64.2204ms)
+✔ currentIndex 越界与草稿越界题号被拒绝 (43.5342ms)
+✔ 结束会话只改状态，请求体里的分数不被接受 (62.7301ms)
+✔ 元信息可匿名读取，只有统计量，不含题目内容或答案 (68.5661ms)
+✔ 题目列表需要登录，且默认不下发答案与解析 (29.7302ms)
+✔ 分页稳定且不重复：同一偏移两次请求结果一致 (25.3633ms)
+✔ limit 上限生效，超限被压到 50 (10.973ms)
+✔ include=answer 需要登录，登录后可取到答案与解析 (5.1789ms)
+✔ 按章节与难度筛选，结果都符合条件 (21.0457ms)
+✔ 关键词搜索只命中题干包含该词的题目 (13.3119ms)
+✔ 组卷：返回指定数量、题号不重复、且不含答案 (3.277ms)
+✔ 组卷：数量超过可用题量时，shortfall 说明差多少而不是报错 (6.4262ms)
+✔ 组卷：筛选无结果时返回 404 而不是空卷 (15.7306ms)
+✔ 版本号在多次请求间保持一致 (13.9556ms)
+✔ 题库可加载，总量与题号数自洽 (0.845ms)
+✔ 题号跨章节复用属综合复用：题面必须一致，数量不得增长 (0.6264ms)
+✔ 有选项的选择题必须有 A–D 答案，且不得出现未登记缺陷 (0.1432ms)
+✔ 同一道题的选项不得重复，且不得出现未登记缺陷 (0.1107ms)
+✔ 登记表本身完整：每条缺陷都要写明严重程度与原因 (0.1957ms)
+✔ 登记表不得腐化：已修复的题号必须从登记表移除 (0.172ms)
+✔ 基础字段完整：题号为数字、题干与章节非空、选项非空串 (0.1217ms)
+✔ broken 题不进题目池，cosmetic 题保留，池内数量与登记表自洽 (38.6214ms)
+✔ 合法批次通过校验 (78.6485ms)
+✔ 题号与现有题库冲突时整批拒绝 (0.3075ms)
+✔ 批内题号重复被拒绝 (0.1346ms)
+✔ 章节不在现有章节里被拒绝（避免新增章节绕过课程配置） (0.1579ms)
+✔ 有选项但答案不是 A–D、或超出选项范围，都被拒绝 (0.1723ms)
+✔ 选项内容重复被拒绝（这正是现有题库里那几道坏题的问题） (0.1246ms)
+✔ 主观题给结构化答案被拒绝 (0.1075ms)
+✔ 题干为空、题号非数字被拒绝 (0.1379ms)
+✔ 单批超过 500 题被拒绝 (0.751ms)
+✔ 缺少元信息只报警告，不阻断导入 (0.3153ms)
+✔ 不合法批次被跳过并记录，不影响其他批次 (22.0172ms)
+✔ 批次题目真的进入题目池，并能通过接口取到 (14.6599ms)
+✔ 删掉批次文件即完成回滚，题目从题目池消失 (10.613ms)
+✔ 仓库内 content/question-imports 的每个批次都必须合法 (1.8629ms)
+✔ 主章节 + 别名章节，恰好等于该题号在题库里出现过的全部章节 (93.2654ms)
+✔ 别名章节一定不同于主章节，且没有重复别名 (1.1031ms)
+✔ 各章节题数之和等于题目总数（不重复计数） (0.4361ms)
+✔ 存在跨章节复用的题号，且数量与题库一致 (21.3009ms)
+✔ 按别名章节默认查不到，includeAliases=1 能查到 (9.4512ms)
+✔ 题目条目返回别名章节，前端可提示「本章也收录」 (2.8366ms)
+✔ 伪造 X-Forwarded-For 的最左段，换不掉限流的桶 (330.0409ms)
+✔ 换来源也不能让同一账号无限试：账号维度有兜底上限 (260.1142ms)
+✔ 换到未用过的来源时，正确密码仍然放行（不冤枉人） (25.6493ms)
+✔ 加载并 init 之后没有任何常驻定时器 (2.4935ms)
+✔ 进入房间页后只有一条兜底轮询，重复进入不叠加 (2.1061ms)
+✔ 没有进行中房间时离开板块，轮询与秒针都归零 (0.8012ms)
+✔ 没有房间时，离开再回来仍然是干净的 (0.8741ms)
+✔ 房间列表已加入人数与近期在线人数分开渲染 (1.0726ms)
+✔ rooms require authentication and validate limits before creation (356.4834ms)
+✔ private invites reach only the friend and require explicit join; socket watches are authorized (170.948ms)
+✔ only the host starts the timer after all participants are online and ready (188.5511ms)
+✔ server credit handles background tabs, multiple windows, heartbeat gaps and pauses without trusting client elapsed time (355.5337ms)
+✔ a complete session persists exact focus, goal completion, history and one statistics credit (662.3376ms)
+✔ host departure transfers control and a final departure closes the room; simultaneous joins respect capacity (182.2393ms)
+✔ room membership, paused time and personal goals survive a server restart (490.9124ms)
+✔ 未登录不能写入自习统计 (111.9352ms)
+✔ 正常上报可保存，且只升不降（避免回退已累计的专注时间） (32.4808ms)
+✔ 单日专注时长有上限：1440 允许，1441 拒绝 (11.8687ms)
+✔ 离谱的上报被拒绝，而不是写进统计 (45.7081ms)
+✔ 负数与非数字被拒绝 (46.9824ms)
+✔ 日期格式非法被拒绝 (31.4262ms)
+✔ 统计按账号隔离 (13.6827ms)
+ℹ tests 194
+ℹ suites 0
+ℹ pass 178
+ℹ fail 12
+ℹ cancelled 0
+ℹ skipped 4
+ℹ todo 0
+ℹ duration_ms 3997.5642
+
+✖ failing tests:
+
+test at test\ability-state.test.js:53:1
+✖ 掌握度接口显式标明这是模型估计 (114.9429ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  503 !== 200
+  
+      at TestContext.<anonymous> (D:\文档\xuewuyou-项目资料\Codex工作区\2026-10-18\3d-pbr-v-ray-corona-unreal\work\social-visual-dev\server\test\ability-state.test.js:56:10)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1313:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:385:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 503,
+    expected: 200,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at test\ability-state.test.js:62:1
+✖ 样本不足时降级置信度并给出提示，而不是给一个看起来很确定的百分比 (8.5851ms)
+  TypeError: Cannot read properties of undefined (reading '函数与极限')
+      at TestContext.<anonymous> (D:\文档\xuewuyou-项目资料\Codex工作区\2026-10-18\3d-pbr-v-ray-corona-unreal\work\social-visual-dev\server\test\ability-state.test.js:64:21)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1313:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:897:7)
+
+test at test\ability-state.test.js:73:1
+✖ 没有作答记录的章节不出现在结果里，而不是显示成 0 掌握度 (3.054ms)
+  TypeError: Cannot convert undefined or null to object
+      at Object.keys (<anonymous>)
+      at TestContext.<anonymous> (D:\文档\xuewuyou-项目资料\Codex工作区\2026-10-18\3d-pbr-v-ray-corona-unreal\work\social-visual-dev\server\test\ability-state.test.js:75:23)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1313:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:897:7)
+
+test at test\ability-state.test.js:81:1
+✖ 样本累积后置信度随之提升 (21.8849ms)
+  TypeError: Cannot read properties of undefined (reading '函数与极限')
+      at TestContext.<anonymous> (D:\文档\xuewuyou-项目资料\Codex工作区\2026-10-18\3d-pbr-v-ray-corona-unreal\work\social-visual-dev\server\test\ability-state.test.js:93:21)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1313:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:897:7)
+
+test at test\ability-state.test.js:98:1
+✖ 学习孪生里的掌握度同样带估计标识 (15.3918ms)
+  AssertionError [ERR_ASSERTION]: 孪生应携带掌握度
+      at TestContext.<anonymous> (D:\文档\xuewuyou-项目资料\Codex工作区\2026-10-18\3d-pbr-v-ray-corona-unreal\work\social-visual-dev\server\test\ability-state.test.js:101:10)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1313:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:897:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: null,
+    expected: true,
+    operator: '==',
+    diff: 'simple'
+  }
+
+test at test\community.test.js:49:1
+✖ server grades once, retains learning records and waits for both submissions before review (30.2146ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  undefined !== 5
+  
+      at TestContext.<anonymous> (D:\文档\xuewuyou-项目资料\Codex工作区\2026-10-18\3d-pbr-v-ray-corona-unreal\work\social-visual-dev\server\test\community.test.js:53:78)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1313:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:897:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    expected: 5,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at test\learning.test.js:20:1
+✖ real pyBKT posterior matches Bayesian update and missing probe does not add an answer (110.2494ms)
+  Error: 请先运行 services/Setup-Learning.ps1 安装学习引擎
+      at run (D:\文档\xuewuyou-项目资料\Codex工作区\2026-10-18\3d-pbr-v-ray-corona-unreal\work\social-visual-dev\server\learning\engine.js:9:67)
+      at TestContext.<anonymous> (D:\文档\xuewuyou-项目资料\Codex工作区\2026-10-18\3d-pbr-v-ray-corona-unreal\work\social-visual-dev\server\test\learning.test.js:21:17)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1306:25)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:385:3) {
+    status: 503
+  }
+
+test at test\learning.test.js:26:1
+✖ map uses bundled bank; mastery rejects self-assessed and duplicate FSRS mirror records (48.1506ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + undefined
+  - 'pyBKT'
+  
+      at TestContext.<anonymous> (D:\文档\xuewuyou-项目资料\Codex工作区\2026-10-18\3d-pbr-v-ray-corona-unreal\work\social-visual-dev\server\test\learning.test.js:35:39)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1313:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:897:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    expected: 'pyBKT',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at test\learning.test.js:53:1
+✖ a real FSRS answer counts once and future reviews are excluded from planning (70.9843ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  undefined !== 2
+  
+      at TestContext.<anonymous> (D:\文档\xuewuyou-项目资料\Codex工作区\2026-10-18\3d-pbr-v-ray-corona-unreal\work\social-visual-dev\server\test\learning.test.js:59:39)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1313:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:897:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    expected: 2,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at test\learning.test.js:61:1
+✖ campus twin reflects private records, board saves and focus time and follows new answers (33.3022ms)
+  TypeError: Cannot read properties of null (reading 'count')
+      at TestContext.<anonymous> (D:\文档\xuewuyou-项目资料\Codex工作区\2026-10-18\3d-pbr-v-ray-corona-unreal\work\social-visual-dev\server\test\learning.test.js:65:179)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1313:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:897:7)
+
+test at test\learning.test.js:72:1
+✖ real OR-Tools chooses urgent tasks, handles zero capacity, and has no overlaps (0.5585ms)
+  Error: 请先运行 services/Setup-Learning.ps1 安装学习引擎
+      at run (D:\文档\xuewuyou-项目资料\Codex工作区\2026-10-18\3d-pbr-v-ray-corona-unreal\work\social-visual-dev\server\learning\engine.js:9:67)
+      at TestContext.<anonymous> (D:\文档\xuewuyou-项目资料\Codex工作区\2026-10-18\3d-pbr-v-ray-corona-unreal\work\social-visual-dev\server\test\learning.test.js:74:17)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1306:25)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:897:7) {
+    status: 503
+  }
+
+test at test\learning.test.js:77:1
+✖ plan skips busy intervals, preserves completed work, and enforces optimistic concurrency (3.2916ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  503 !== 200
+  
+      at TestContext.<anonymous> (D:\文档\xuewuyou-项目资料\Codex工作区\2026-10-18\3d-pbr-v-ray-corona-unreal\work\social-visual-dev\server\test\learning.test.js:80:62)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1313:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:897:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 503,
+    expected: 200,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
