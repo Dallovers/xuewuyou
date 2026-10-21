@@ -132,6 +132,9 @@ sun.position.set(-7.2 + 16, 24, -1.0 + 13);
 // 跨度从 52m 收到 20m，2048 贴图下每像素从 2.5cm 变成 1cm，近景接触阴影才有细节
 sun.target.position.set(-7.2, 1.6, -1.0);
 sun.castShadow = true;
+// All district geometry is static: render its shadow map once, not again for the AO pass.
+sun.shadow.autoUpdate = false;
+sun.shadow.needsUpdate = true;
 sun.shadow.mapSize.set(2048, 2048);
 sun.shadow.camera.near = 1;
 sun.shadow.camera.far = 60;
@@ -149,6 +152,16 @@ scene.add(sun);
 const fill = new THREE.DirectionalLight(0xdce8ef, envState.ok ? 0.16 : 0.6);
 fill.position.set(-14, 9, -10);
 scene.add(fill);
+
+/* Preview rendering only: no business/UI changes. Exposure remains 0.86. */
+let previewRendering = null;
+if (qs.get('ao') !== '0') {
+  try {
+    const { createSocialPreviewRendering } = await import('./preview-rendering.js');
+    previewRendering = createSocialPreviewRendering(renderer,scene,camera);
+  } catch (err) { console.warn('[social] 接触阴影不可用，回退标准渲染',err); }
+}
+function renderPreview() { if (previewRendering) previewRendering.render(); else renderer.render(scene,camera); }
 
 /* ---------- 空间 ---------- */
 
@@ -379,6 +392,7 @@ function resize() {
   const w = window.innerWidth;
   const h = window.innerHeight;
   renderer.setSize(w, h, false);
+  if (previewRendering) previewRendering.resize(w,h);
   camera.aspect = w / h;
   camera.updateProjectionMatrix();
 }
@@ -442,7 +456,7 @@ function tick(now) {
       '\n' + (LIVE ? '真实模块在线' : '预览替身（未接主站）');
   }
 
-  renderer.render(scene, camera);
+  renderPreview();
   rafId = requestAnimationFrame(tick);
 }
 
@@ -450,7 +464,7 @@ function tick(now) {
 camera.position.set(PLAYER.x, PLAYER.y, PLAYER.z);
 camera.rotation.set(pitch, yaw, 0, 'YXZ');
 district.update(0);
-renderer.render(scene, camera);
+renderPreview();
 
 ui.hidden = false;
 // 截图用：?hud=0 隐藏所有覆盖层，不改交互与入口
@@ -475,6 +489,7 @@ window.__social = {
 window.addEventListener('beforeunload', () => {
   cancelAnimationFrame(rafId);
   district.dispose();
+  if (previewRendering) previewRendering.dispose();
   renderer.dispose();
 });
 </script>
