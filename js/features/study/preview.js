@@ -147,6 +147,14 @@ const aimHint = document.getElementById('aimHint');
    所以每帧算一次，而不是靠回调——两个来源各自回调会互相覆盖。 */
 function updateHint() {
   if (!aimHint) return;
+  // 手上拿着东西时，最要紧的是"怎么放/怎么翻"，优先于准星提示
+  if (picker && picker.isHolding()) {
+    const isBook = picker.getHeldLabel() === '书';
+    aimHint.textContent = '按 E 放下' +
+      (isBook ? (picker.isBookOpen() ? '　·　按 Q 合上' : '　·　按 Q 翻开') : '');
+    aimHint.style.display = 'block';
+    return;
+  }
   const aimed = picker && picker.getAim();
   if (aimed) {
     aimHint.textContent = '按 E 拿起 ' + aimed.label + '　·　' + aimed.distance.toFixed(1) + ' m';
