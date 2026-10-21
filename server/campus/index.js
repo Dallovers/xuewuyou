@@ -95,8 +95,8 @@ module.exports = function ({ route, authUser, sendJson, readBody, store, studyRo
 
     const friends = Object.values(social.friends || {}).filter((f) => f && (f.members || []).includes(uid)).length;
     const challenges = (social.challenges || []).filter((c) =>
-      c && (c.members || []).includes(uid) && c.status === 'active' &&
-      (!c.expiresAt || c.expiresAt > now) && !(c.sessions && c.sessions[uid] && c.sessions[uid].finishedAt)).length;
+      c && (c.members || []).includes(uid) &&
+      (c.mode==='sync' ? ['invited','waiting','active'].includes(c.status) && (c.status==='active'?c.deadlineAt:c.lobbyExpiresAt||c.expiresAt)>now : c.status==='active'&&(!c.expiresAt||c.expiresAt>now)) && !(c.sessions && c.sessions[uid] && c.sessions[uid].finishedAt)).length;
 
     let studyingNow = 0;
     try { studyingNow = (studyRooms && studyRooms.snapshot) ? (studyRooms.snapshot(uid).online || 0) : 0; } catch (e) { studyingNow = 0; }
