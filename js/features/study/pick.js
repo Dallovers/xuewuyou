@@ -437,8 +437,11 @@
           qOpen.multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(SPEC.holdTilt * 0.6, 0, 0)));
           held.group.quaternion.copy(qOpen);
         } else if (held.baseQuat) {
-          // 顺序：立起来（组内已归零偏航）→ 后仰 → 跟着相机转
-          var qYaw = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, cameraYaw() - held.pickYaw, 0));
+          /* 朝 yaw 要用**当前的绝对朝向**，不是"相对捡起时转了多少"。
+             baseQuat 已经把封面法线转到 −Z（相机前向），所以这里只要再绕 Y 转到
+             相机此刻的朝向，封面就正对着人。用差值的话，捡起时朝哪、书就一直朝世界 −Z，
+             走到别的方向就变成侧着看书脊了。 */
+          var qYaw = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, cameraYaw(), 0));
           var qTilt = new THREE.Quaternion().setFromEuler(
             new THREE.Euler(SPEC.holdTilt - 0.10 * inspectW, 0, 0)
           );
