@@ -326,18 +326,56 @@ const PANEL_COPY = {
   },
 };
 
-/* ---------- 真实业务直连 ----------
- * 独立预览没有主站的社区 DOM，WG_Community 在这里只会返回 no-bridge。
- * 为了让服务台/公告栏能验证真实业务，这里直连同一套 /api/community/*：
- * 只做「读 + 一条写」，不复制主站业务逻辑，也不伪造数据。
- * 未登录、接口不可用都会显式说明原因。 */
+/* ---------- 真实业务直连（修复版） ----------
+ * 替换 preview.html 中从本注释到 closePanel() 结束的整段。
+ * 修复：收到邀请可接受/拒绝、发出邀请可取消、目录逐个邀请；
+ *       401 清失效会话并重登；面板/账号版本 + AbortController 防串页。
+ */
 const API_BASE = qs.get('api') || 'http://127.0.0.1:3000';
 let authToken = localStorage.getItem('social.preview.token') || '';
 let authName = localStorage.getItem('social.preview.name') || '';
 
-async function apiCall(method, path, body) {
+let panelVersion = 0;
+let currentKind = null;
+let authVersion = 0;
+let panelAbort = null;
+const panelTimers = new Set();
+
+function beginPanelScope(kind) {
+  panelVersion++;
+  currentKind = kind;
+  if (panelAbort) panelAbort.abort();
+  panelAbort = new AbortController();
+  for (const id of panelTimers) clearTimeout(id);
+  panelTimers.clear();
+}
+
+function endPanelScope() {
+  panelVersion++;
+  currentKind = null;
+  if (panelAbort) { panelAbort.abort(); panelAbort = null; }
+  for (const id of panelTimers) clearTimeout(id);
+  panelTimers.clear();
+}
+
+function later(fn, ms) {
+  const id = setTimeout(() => { panelTimers.delete(id); fn(); }, ms);
+  panelTimers.add(id);
+  return id;
+}
+
+function dropSession() {
+  authToken = '';
+  authName = '';
+  localStorage.removeItem('social.preview.token');
+  localStorage.removeItem('social.preview.name');
+  authVersion++;
+}
+
+async function apiCall(method, path, body, signal) {
   const res = await fetch(API_BASE + '/api/community/' + path, {
     method,
+    signal,
     headers: Object.assign(
       { 'Content-Type': 'application/json' },
       authToken ? { Authorization: 'Bearer ' + authToken } : {},
@@ -346,7 +384,12 @@ async function apiCall(method, path, body) {
   });
   let data = null;
   try { data = await res.json(); } catch (_) {}
-  if (!res.ok) throw new Error((data && data.error) || ('HTTP ' + res.status));
+  if (!res.ok) {
+    const err = new Error((data && data.error) || ('HTTP ' + res.status));
+    err.status = res.status;
+    err.code = data && data.code;
+    throw err;
+  }
   return data;
 }
 
@@ -357,119 +400,221 @@ function escHtml(value) {
 const REAL_STYLE = 'margin-top:10px;padding:10px;border:1px solid rgba(0,0,0,.14);border-radius:6px;background:rgba(255,255,255,.5)';
 const REAL_INPUT = 'flex:1;min-width:0;padding:4px 6px;border:1px solid rgba(0,0,0,.2);border-radius:4px;font:inherit';
 
+function renderLogin(box, note) {
+  const myVersion = panelVersion;
+  box.innerHTML =
+    '<div class="social-ui__note">' + escHtml(note || '未登录：直连接口需要云端账号，登录后才能读真实好友与留言。') + '</div>' +
+    '<div style="display:flex;gap:6px;margin-top:6px">' +
+    '<input id="realUser" placeholder="账号" autocomplete="username" style="' + REAL_INPUT + '">' +
+    '<input id="realPass" type="password" placeholder="密码" autocomplete="current-password" style="' + REAL_INPUT + '">' +
+    '<button id="realLogin" type="button">登录</button></div>' +
+    '<div id="realMsg" style="margin-top:6px;font-size:12px"></div>';
+
+  document.getElementById('realLogin').onclick = async () => {
+    const u = document.getElementById('realUser').value.trim();
+    const p = document.getElementById('realPass').value;
+    const msg = document.getElementById('realMsg');
+    msg.textContent = '登录中…';
+    try {
+      const res = await fetch(API_BASE + '/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: u, password: p }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data || !data.token) throw new Error((data && data.error) || ('HTTP ' + res.status));
+      if (myVersion !== panelVersion || !box.isConnected) return;
+      authToken = data.token;
+      authName = u;
+      authVersion++;
+      localStorage.setItem('social.preview.token', authToken);
+      localStorage.setItem('social.preview.name', authName);
+      renderReal(currentKind || 'friends');
+    } catch (e) {
+      msg.textContent = '登录失败：' + e.message;
+    }
+  };
+}
+
 async function renderReal(kind) {
   const box = document.getElementById('realPanel');
   if (!box) return;
+
+  const myVersion = panelVersion;
+  const myKind = currentKind;
+  const myAuth = authVersion;
+  const myToken = authToken;
+  const signal = panelAbort ? panelAbort.signal : undefined;
+  const alive = () => myVersion === panelVersion && myKind === currentKind &&
+    myAuth === authVersion && myToken === authToken && box.isConnected;
+
   box.setAttribute('style', REAL_STYLE);
 
   if (!authToken) {
-    box.innerHTML = '<div class="social-ui__note">未登录：直连接口需要云端账号，登录后才能读真实好友与留言。</div>' +
-      '<div style="display:flex;gap:6px;margin-top:6px">' +
-      '<input id="realUser" placeholder="账号" autocomplete="username" style="' + REAL_INPUT + '">' +
-      '<input id="realPass" type="password" placeholder="密码" autocomplete="current-password" style="' + REAL_INPUT + '">' +
-      '<button id="realLogin" type="button">登录</button></div>' +
-      '<div id="realMsg" style="margin-top:6px;font-size:12px"></div>';
-    document.getElementById('realLogin').onclick = async () => {
-      const u = document.getElementById('realUser').value.trim();
-      const p = document.getElementById('realPass').value;
-      const msg = document.getElementById('realMsg');
-      msg.textContent = '登录中…';
-      try {
-        const res = await fetch(API_BASE + '/api/auth/login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username: u, password: p }),
-        });
-        const data = await res.json().catch(() => null);
-        if (!res.ok || !data || !data.token) throw new Error((data && data.error) || '登录失败');
-        authToken = data.token;
-        authName = u;
-        localStorage.setItem('social.preview.token', authToken);
-        localStorage.setItem('social.preview.name', authName);
-        renderReal(kind);
-      } catch (e) {
-        msg.textContent = '登录失败：' + e.message;
-      }
-    };
+    renderLogin(box);
     return;
   }
 
   box.innerHTML = '<div class="social-ui__note">读取中…</div>';
   try {
     if (kind === 'friends') {
-      const home = await apiCall('GET', 'home');
+      const home = await apiCall('GET', 'home', undefined, signal);
+      if (!alive()) return;
+
       const friends = home.friends || [];
       const requests = home.requests || [];
-      const directory = (home.directory || []).slice(0, 4);
-      const canInvite = directory.filter((p) => !p.isFriend);
-      box.innerHTML =
-        '<div><b>已登录 ' + escHtml(authName) + '</b> · 学习搭子 ' + friends.length + ' · 待处理 ' + requests.length + '</div>' +
-        '<div style="margin-top:4px">' + (friends.length
-          ? friends.map((p) => '<span style="margin-right:6px">· ' + escHtml(p.nick) + '</span>').join('')
-          : '<em>还没有学习搭子</em>') + '</div>' +
-        (requests.length ? '<div class="social-ui__note">待处理：' + requests.map((r) => escHtml(r.person.nick) + (r.to === home.uid ? '（邀请你）' : '（等待对方）')).join('、') + '</div>' : '') +
-        (directory.length ? '<div class="social-ui__note">目录：' + directory.map((p) => escHtml(p.nick) + (p.isFriend ? '（已是搭子）' : '')).join('、') + '</div>' : '<div class="social-ui__note">目录为空</div>') +
-        (canInvite.length ? '<button id="realInvite" type="button" style="margin-top:6px">邀请 ' + escHtml(canInvite[0].nick) + '</button>' : '') +
+      const incoming = requests.filter((r) => r.to === home.uid);
+      const outgoing = requests.filter((r) => r.from === home.uid);
+      const pending = new Set(requests.map((r) => r.person.id));
+      const directory = (home.directory || []).filter((p) => !p.isFriend && !pending.has(p.id));
+
+      let html = '<div><b>已登录 ' + escHtml(authName) + '</b> · 学习搭子 ' + friends.length +
+        ' · 待处理 ' + requests.length +
+        ' <button id="realLogout" type="button" style="float:right">退出</button></div>';
+
+      html += '<div style="margin-top:4px">' + (friends.length
+        ? friends.map((p) => '<span style="margin-right:6px">· ' + escHtml(p.nick) + '</span>').join('')
+        : '<em>还没有学习搭子</em>') + '</div>';
+
+      if (incoming.length) {
+        html += '<div class="social-ui__note">收到的邀请：</div>';
+        html += incoming.map((r) =>
+          '<div style="margin:4px 0">' + escHtml(r.person.nick) +
+          ' <button data-req="' + escHtml(r.id) + '" data-act="accept" type="button">接受</button>' +
+          ' <button data-req="' + escHtml(r.id) + '" data-act="reject" type="button">拒绝</button></div>'
+        ).join('');
+      }
+
+      if (outgoing.length) {
+        html += '<div class="social-ui__note">发出的邀请：</div>';
+        html += outgoing.map((r) =>
+          '<div style="margin:4px 0">等待 ' + escHtml(r.person.nick) +
+          ' <button data-req="' + escHtml(r.id) + '" data-act="cancel" type="button">取消</button></div>'
+        ).join('');
+      }
+
+      html += '<div class="social-ui__note">目录（可逐个邀请）：</div>';
+      html += directory.length
+        ? directory.map((p) =>
+          '<div style="margin:4px 0">' + escHtml(p.nick) +
+          ' <button data-invite="' + escHtml(p.id) + '" type="button">邀请</button></div>'
+        ).join('')
+        : '<div class="social-ui__note">暂无可邀请的同学</div>';
+
+      html += '<div style="margin-top:6px"><button id="realRefresh" type="button">刷新列表</button></div>' +
         '<div id="realMsg" style="margin-top:6px;font-size:12px"></div>';
 
-      const btn = document.getElementById('realInvite');
-      if (btn) {
+      box.innerHTML = html;
+
+      const msg = () => document.getElementById('realMsg');
+
+      document.getElementById('realLogout').onclick = () => {
+        dropSession();
+        renderLogin(box, '已退出，请重新登录。');
+      };
+      document.getElementById('realRefresh').onclick = () => renderReal('friends');
+
+      box.querySelectorAll('[data-req]').forEach((btn) => {
         btn.onclick = async () => {
-          const target = canInvite[0];
-          const msg = document.getElementById('realMsg');
+          const id = btn.getAttribute('data-req');
+          const act = btn.getAttribute('data-act');
           btn.disabled = true;
-          msg.textContent = '发送中…';
+          if (msg()) msg().textContent = act === 'accept' ? '接受中…' : act === 'reject' ? '拒绝中…' : '取消中…';
           try {
-            await apiCall('POST', 'request', { to: target.id, message: '一起学习吧' });
-            msg.textContent = '已向 ' + target.nick + ' 发送邀请（真实写入）';
-            setTimeout(() => renderReal('friends'), 700);
+            await apiCall('PUT', 'request', { id: id, action: act }, signal);
+            if (alive()) renderReal('friends');
           } catch (e) {
-            msg.textContent = '发送失败：' + e.message;
+            if (!alive()) return;
+            if (e.status === 401) { dropSession(); renderLogin(box, '登录已失效，请重新登录。'); return; }
+            if (msg()) msg().textContent = '操作失败：' + e.message;
             btn.disabled = false;
           }
         };
-      }
+      });
+
+      box.querySelectorAll('[data-invite]').forEach((btn) => {
+        btn.onclick = async () => {
+          const to = btn.getAttribute('data-invite');
+          btn.disabled = true;
+          if (msg()) msg().textContent = '发送中…';
+          try {
+            await apiCall('POST', 'request', { to: to, message: '一起学习吧' }, signal);
+            if (alive()) renderReal('friends');
+          } catch (e) {
+            if (!alive()) return;
+            if (e.status === 401) { dropSession(); renderLogin(box, '登录已失效，请重新登录。'); return; }
+            if (msg()) msg().textContent = '发送失败：' + e.message;
+            btn.disabled = false;
+          }
+        };
+      });
     } else {
-      const r = await apiCall('GET', 'posts?mode=all');
+      const r = await apiCall('GET', 'posts?mode=all', undefined, signal);
+      if (!alive()) return;
+
       const all = r.posts || [];
       const recent = all.slice(-3).reverse();
+
       box.innerHTML =
-        '<div><b>已登录 ' + escHtml(authName) + '</b> · 公告栏 ' + all.length + ' 条</div>' +
+        '<div><b>已登录 ' + escHtml(authName) + '</b> · 公告栏 ' + all.length + ' 条' +
+        ' <button id="realLogout" type="button" style="float:right">退出</button></div>' +
         '<div style="margin-top:4px">' + (recent.length
-          ? recent.map((p) => '<div style="margin:2px 0"><b>' + escHtml(p.author.nick) + '</b> ' + escHtml((p.text || '').slice(0, 50)) + '</div>').join('')
+          ? recent.map((p) => '<div style="margin:2px 0"><b>' + escHtml(p.author.nick) + '</b> ' +
+              escHtml((p.text || '').slice(0, 50)) + '</div>').join('')
           : '<em>还没有留言</em>') + '</div>' +
         '<div style="display:flex;gap:6px;margin-top:6px">' +
         '<input id="realPost" placeholder="写一条真留言" maxlength="200" style="' + REAL_INPUT + '">' +
         '<button id="realSend" type="button">发布</button></div>' +
+        '<div style="margin-top:6px"><button id="realRefresh" type="button">刷新留言</button></div>' +
         '<div id="realMsg" style="margin-top:6px;font-size:12px"></div>';
+
+      const msg = () => document.getElementById('realMsg');
+
+      document.getElementById('realLogout').onclick = () => {
+        dropSession();
+        renderLogin(box, '已退出，请重新登录。');
+      };
+      document.getElementById('realRefresh').onclick = () => renderReal('posts');
 
       document.getElementById('realSend').onclick = async () => {
         const input = document.getElementById('realPost');
-        const msg = document.getElementById('realMsg');
         const text = input.value.trim();
-        if (!text) { msg.textContent = '请先写点什么'; return; }
-        msg.textContent = '发布中…';
+        if (!text) { if (msg()) msg().textContent = '请先写点什么'; return; }
+        if (msg()) msg().textContent = '发布中…';
         try {
-          await apiCall('POST', 'posts', { text });
+          await apiCall('POST', 'posts', { text: text }, signal);
           input.value = '';
-          msg.textContent = '已发布（真实写入）';
-          setTimeout(() => renderReal('posts'), 600);
+          if (msg()) msg().textContent = '已发布（真实写入）';
+          later(() => { if (alive()) renderReal('posts'); }, 600);
         } catch (e) {
-          msg.textContent = '发布失败：' + e.message;
+          if (!alive()) return;
+          if (e.status === 401) { dropSession(); renderLogin(box, '登录已失效，请重新登录。'); return; }
+          if (msg()) msg().textContent = '发布失败：' + e.message;
         }
       };
     }
   } catch (e) {
+    if (!alive()) return;
+    if (e.status === 401) {
+      dropSession();
+      renderLogin(box, '登录已失效，请重新登录。');
+      return;
+    }
     box.innerHTML = '<div class="social-ui__note">读取失败：' + escHtml(e.message) +
-      '<br>接口：' + escHtml(API_BASE) + '（后端未启动或跨域被拒时会这样）</div>';
+      '<br>接口：' + escHtml(API_BASE) +
+      (e.status ? '<br>HTTP ' + e.status : '（网络异常或后端未启动）') + '</div>';
   }
 }
 
 function openPanel(it, result) {
+  const kind = it.id === 'social.desk' ? 'friends' : it.id === 'social.board' ? 'posts' : null;
+  beginPanelScope(kind);
+
   const copy = PANEL_COPY[it.id] || { title: it.label, sub: '', body: () => '' };
   panelTitle.textContent = copy.title;
   panelSub.textContent = copy.sub;
   panelBody.innerHTML = copy.body();
+
   if (it.id === 'social.fountain' && result && typeof result.on === 'boolean') {
     const el = document.getElementById('fountainState');
     if (el) {
@@ -477,26 +622,25 @@ function openPanel(it, result) {
         (result.on ? '开启（水面效果未实现）' : '关闭');
     }
   }
+
   panelEl.hidden = false;
   panelOpen = true;
   hintEl.classList.remove('is-on');
-  // 服务台/公告栏额外挂真实数据视图（不影响上面的调用意图说明）
-  if (it.id === 'social.desk') renderReal('friends');
-  else if (it.id === 'social.board') renderReal('posts');
+
+  if (kind) renderReal(kind);
 }
 
 function closePanel() {
+  endPanelScope();
   panelEl.hidden = true;
   panelOpen = false;
   current = null;
-  // 必须清掉提示缓存：否则下一帧算出的 key 与缓存相同，提示不会重新出现
-  // （E → Esc → 原地不动时会停在"面板关了但提示也没了"的状态）
   hintShown = undefined;
-  // 关闭后恢复行走：清空按键并交回指针
   for (const k of Object.keys(keys)) keys[k] = false;
   dragging = false;
   canvas.focus && canvas.focus();
 }
+
 
 document.getElementById('panelClose').addEventListener('click', closePanel);
 panelEl.addEventListener('pointerdown', (e) => e.stopPropagation());
