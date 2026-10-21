@@ -21,25 +21,79 @@ const pos = new T.Vector3(-4, 0, 7);
 const camOffset = new T.Vector3(0, 1.6, 0);
 let yaw = 0, drag = null, paused = false, current = null, appReady = null, disposed = false;
 
-// ── iframe 内 Esc 关闭协议（同源；尊重业务内层弹窗）──
+// ── iframe 内 Esc 关闭协议（同源；业务内层优先）──
 function iframeDoc(win) {
   try {
     if (!win || win.location.origin !== location.origin) return null;
     return win.document;
   } catch (e) { return null; }
 }
+
+function isVisible(el) {
+  if (!el) return false;
+  const win = el.ownerDocument.defaultView;
+  const cs = win.getComputedStyle(el);
+  if (cs.display === 'none' || cs.visibility === 'hidden' || Number(cs.opacity) === 0) return false;
+  const r = el.getBoundingClientRect();
+  return r.width > 0 && r.height > 0;
+}
+
+/**
+ * 找最上层可见的业务弹层。
+ * 主站有原生 <dialog>，也有 role=dialog/aria-modal 的自定义 div（如 #studyModalMask），
+ * 不能只查 dialog[open]。
+ */
+function topBusinessModal(doc) {
+  const nativeOpen = doc.querySelector('dialog[open]');
+  if (isVisible(nativeOpen)) return { el: nativeOpen, native: true };
+
+  const nodes = doc.querySelectorAll('[role="dialog"][aria-modal="true"], .modal-mask');
+  let top = null;
+  for (const el of nodes) if (isVisible(el)) top = el;
+  return top ? { el: top, native: false } : null;
+}
+
+function closeBusinessModal(doc, modal) {
+  // 1) 优先点业务自己的关闭/取消按钮
+  const closer = modal.querySelector(
+    '#studySetupClose, #studySetupCancel, .ssc-close, .modal-close, ' +
+    '[data-close], [aria-label="关闭"], [aria-label="Close"]'
+  );
+  if (closer && isVisible(closer)) {
+    closer.click();
+    return true;
+  }
+  // 2) 没有明确关闭按钮：把 Esc 交给内层当前焦点/弹层，让它自己处理
+  const target = doc.activeElement || modal;
+  target.dispatchEvent(new KeyboardEvent('keydown', {
+    key: 'Escape', code: 'Escape', keyCode: 27, which: 27, bubbles: true, cancelable: true,
+  }));
+  return true;
+}
+
 function bindIframeEsc(win) {
   const doc = iframeDoc(win);
   if (!doc || doc.__campusEscBound) return;
   doc.__campusEscBound = true;
+
   doc.addEventListener('keydown', (ev) => {
     if (ev.key !== 'Escape') return;
-    // 业务内层弹窗优先自己处理，不越级关外层
-    if (doc.querySelector('dialog[open]')) return;
+
+    const modal = topBusinessModal(doc);
+    if (modal) {
+      // 原生 dialog 让内层自己关；自定义模态层由我们点关闭/派发 Esc
+      if (modal.native) return;
+      ev.preventDefault();
+      ev.stopPropagation();
+      closeBusinessModal(doc, modal.el);
+      return; // 内层存在时，绝不越级关外层
+    }
+
     ev.preventDefault();
     if ($('panel').open) $('panel').close();
   }, true);
 }
+
 // iframe 每次重载都重新绑定；桥接未就绪时清掉缓存的 Promise，下次重新等待
 $('app').addEventListener('load', () => {
   const w = $('app').contentWindow;
@@ -187,7 +241,6 @@ function cleanup() {
 }
 addEventListener('pagehide', (e) => {
   if (e.persisted) {
-    // 进入 BFCache：只暂停，保留 renderer / 模块，等恢复
     stopLoop();
     keys.clear();
     drag = null;
@@ -197,7 +250,6 @@ addEventListener('pagehide', (e) => {
 });
 addEventListener('pageshow', (e) => {
   if (!e.persisted) return;
-  // 从 BFCache 恢复：重置时间基准，避免隐藏期间的时间被当成移动增量
   clock.stop();
   clock.start();
   keys.clear();
