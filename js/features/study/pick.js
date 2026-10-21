@@ -48,7 +48,13 @@
     pageShade: '#d8d0bf',
     textColor: '#b9b1a0',
     pageTitle: '寝室长和凡越是我儿子',   // 翻开后书页上印的字（标题 + 每行反复写这一句）
-    pageAuthor: '作者刘福超'            // 右页右下角落款
+    pageAuthor: '作者刘福超',           // 右页右下角落款
+    /* 彩蛋：散列命中的那几本书，翻开是另一段文字。
+       用实例 id 做固定散列——同一本书每次翻开都必须是同一本，
+       不能"每次随机"，否则你会以为书自己在换内容。 */
+    eggEvery: 6,                        // 大约每 6 本里有 1 本
+    eggTitle: '寝室长和凡越欠我三顿饭',
+    eggAuthor: '作者刘福超'
   };
 
   function isDescendant(obj, maybeParent) {
@@ -269,8 +275,14 @@
        （Windows 有微软雅黑，macOS 有苹方，Linux 走 Noto）。
        一张"标题页"、一张"纯正文"，两页各一张，摊开时左右分开。 */
     var pageTexCache = {};
-    function pageTexture(kind) {
-      if (pageTexCache[kind]) return pageTexCache[kind];
+    /** 这本书是不是"彩蛋书"：同一个 id 永远同一个结果（乘散列再取模，相邻 id 不扎堆） */
+    function isEggBook(id) {
+      return (((id * 2654435761) >>> 0) % SPEC.eggEvery) === 0;
+    }
+
+    function pageTexture(kind, title, author) {
+      var key = kind + '|' + title + '|' + (author || '');
+      if (pageTexCache[key]) return pageTexCache[key];
       var W = 512, H = 1280;                       // 页高比页宽约 2.5:1
       var cv = document.createElement('canvas');
       cv.width = W;
@@ -290,7 +302,7 @@
         return (bold ? '700 ' : '400 ') + size +
           'px "Microsoft YaHei","PingFang SC","Noto Sans CJK SC","Source Han Sans SC",sans-serif';
       }
-      var txt = SPEC.pageTitle || '';
+      var txt = title || '';
       if (kind === 'title') {
         var fs = 64;
         g.font = font(fs, true);
@@ -329,25 +341,25 @@
         var y = top + r * rowH;
         var x = left;
         while (x < left + textW - 6) {
-          g.fillText(SPEC.pageTitle, x, y);
-          x += g.measureText(SPEC.pageTitle).width + 6;
+          g.fillText(txt, x, y);
+          x += g.measureText(txt).width + 6;
         }
       }
       g.restore();
 
       // 右页右下角落款
-      if (kind === 'body' && SPEC.pageAuthor) {
+      if (kind === 'body' && author) {
         g.font = font(30, false);
         g.fillStyle = 'rgba(52,48,42,0.82)';
         g.textAlign = 'right';
         g.textBaseline = 'bottom';
-        g.fillText(SPEC.pageAuthor, W * 0.88, H - 72);
+        g.fillText(author, W * 0.88, H - 72);
       }
 
       var tex = new THREE.CanvasTexture(cv);
       tex.colorSpace = THREE.SRGBColorSpace;
       tex.anisotropy = 4;
-      pageTexCache[kind] = tex;
+      pageTexCache[key] = tex;
       return tex;
     }
 
@@ -368,14 +380,20 @@
       var paper = new THREE.MeshStandardMaterial({ color: SPEC.pageColor, roughness: 0.86, metalness: 0 });
       var shade = new THREE.MeshStandardMaterial({ color: SPEC.pageShade, roughness: 0.9, metalness: 0 });
 
+      // 彩蛋书：命中散列的这几本，翻开是另一段文字
+      var egg = isEggBook(held.ids[0]);
+      held.egg = egg;
+      var titleTxt = egg ? SPEC.eggTitle : SPEC.pageTitle;
+      var authorTxt = egg ? SPEC.eggAuthor : SPEC.pageAuthor;
+
       [1, -1].forEach(function (sign) {
         var half = new THREE.Group();
         half.position.x = sign * halfW * 0.5;
 
-        /* 左页印标题（"寝室长是我儿子"），右页纯正文。
+        /* 左页印标题，右页纯正文。
            贴图是 canvas 现画的，字形来自系统字体，不额外带字体文件。 */
         var mat = new THREE.MeshStandardMaterial({
-          map: pageTexture(sign < 0 ? 'title' : 'body'),
+          map: pageTexture(sign < 0 ? 'title' : 'body', titleTxt, authorTxt),
           roughness: 0.9,
           metalness: 0
         });
@@ -619,6 +637,7 @@
           x: +held.size.x.toFixed(4), y: +held.size.y.toFixed(4), z: +held.size.z.toFixed(4),
           upright: held.baseQuat ? (held.baseQuat.w !== 1 ? 'rotated' : 'none') : 'not-book',
           axis: held.baseAxis,
+          egg: !!held.egg,
           open: !!openBook
         };
       },
