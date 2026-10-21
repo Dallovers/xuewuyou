@@ -1,0 +1,44 @@
+{
+  "base": "b625413",
+  "main": {
+    "tests": 194,
+    "pass": 178,
+    "fail": 12,
+    "skipped": 4,
+    "failures": [
+      "a real FSRS answer counts once and future reviews are excluded from planning",
+      "campus twin reflects private records, board saves and focus time and follows new answers",
+      "map uses bundled bank; mastery rejects self-assessed and duplicate FSRS mirror records",
+      "plan skips busy intervals, preserves completed work, and enforces optimistic concurrency",
+      "real OR-Tools chooses urgent tasks, handles zero capacity, and has no overlaps",
+      "real pyBKT posterior matches Bayesian update and missing probe does not add an answer",
+      "server grades once, retains learning records and waits for both submissions before review",
+      "学习孪生里的掌握度同样带估计标识",
+      "掌握度接口显式标明这是模型估计",
+      "样本不足时降级置信度并给出提示，而不是给一个看起来很确定的百分比",
+      "样本累积后置信度随之提升",
+      "没有作答记录的章节不出现在结果里，而不是显示成 0 掌握度"
+    ]
+  },
+  "branch": {
+    "tests": 201,
+    "pass": 185,
+    "fail": 12,
+    "skipped": 4,
+    "failures": [
+      "a real FSRS answer counts once and future reviews are excluded from planning",
+      "campus twin reflects private records, board saves and focus time and follows new answers",
+      "map uses bundled bank; mastery rejects self-assessed and duplicate FSRS mirror records",
+      "plan skips busy intervals, preserves completed work, and enforces optimistic concurrency",
+      "real OR-Tools chooses urgent tasks, handles zero capacity, and has no overlaps",
+      "real pyBKT posterior matches Bayesian update and missing probe does not add an answer",
+      "server grades once, retains learning records and waits for both submissions before review",
+      "学习孪生里的掌握度同样带估计标识",
+      "掌握度接口显式标明这是模型估计",
+      "样本不足时降级置信度并给出提示，而不是给一个看起来很确定的百分比",
+      "样本累积后置信度随之提升",
+      "没有作答记录的章节不出现在结果里，而不是显示成 0 掌握度"
+    ]
+  },
+  "sameFailureNames": true
+}
