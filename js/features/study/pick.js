@@ -38,7 +38,12 @@
     inspectDown: 0.055,
     inspectRight: 0.0,
     inspectTilt: -0.30,
-    inspectLerp: 10.0
+    inspectLerp: 10.0,
+    /* 翻书：拿着书按 Q，封面藏起来换成一页纸（只做一页） */
+    openKey: 'q',
+    pageColor: '#efe9dc',
+    pageShade: '#d8d0bf',
+    textColor: '#b9b1a0'
   };
 
   function isDescendant(obj, maybeParent) {
@@ -84,6 +89,13 @@
     var enabled = false;
     var inspecting = false;
     var inspectW = 0;     // 0..1，举到眼前的过渡权重
+
+    /* ── 翻书 ──
+       书拿在手里时按 Q：封面三块板藏起来，换成一页纸。
+       只做**一页**，不做左右对开——两页要处理书脊、页弧、左右页朝向，
+       而在这个观看距离上，一页平整的纸已经能读出"书翻开了"。
+       合回去的时候把封面重新显出来，纸扔掉。 */
+    var openBook = null;  // 翻开时临时加的 Group
 
     var tmpM = new THREE.Matrix4();
     var tmpP = new THREE.Vector3();
@@ -181,8 +193,84 @@
         label: target.label,
         saved: hideInstances(src, ids),
         pickYaw: cameraYaw(),
+        parts: parts.slice(),                       // 封面/书页那几块，翻开时要藏
+        size: { x: box.max.x - box.min.x, y: box.max.y - box.min.y, z: box.max.z - box.min.z },
         baseMinY: box.min.y - group.position.y     // 最低点相对质心的偏移
       };
+    }
+
+    /** 合上：扔掉那页纸，把封面显回来 */
+    function closeBook() {
+      if (!openBook) return false;
+      openBook.traverse(function (n) {
+        if (n.isMesh) {
+          n.geometry.dispose();
+          if (n.material && n.material.dispose) n.material.dispose();
+        }
+      });
+      openBook.removeFromParent();
+      openBook = null;
+      if (held && held.parts) held.parts.forEach(function (p) { p.visible = true; });
+      return true;
+    }
+
+    /** 翻开：藏起封面三块板，换成一张平铺的纸 */
+    function openBookNow() {
+      if (!held || openBook) return false;
+      var s = held.size;
+      if (!s || !s.x) return false;
+      var g = new THREE.Group();
+      g.name = 'OpenPage';
+      var paper = new THREE.MeshStandardMaterial({ color: SPEC.pageColor, roughness: 0.86, metalness: 0 });
+      var shade = new THREE.MeshStandardMaterial({ color: SPEC.pageShade, roughness: 0.9, metalness: 0 });
+      // 一页纸：比封面小一圈，四周留出书口
+      var page = new THREE.Mesh(new THREE.BoxGeometry(s.x * 0.94, 0.0018, s.z * 0.90), paper);
+      page.position.y = s.y / 2 + 0.0015;
+      g.add(page);
+      // 装订边：贴着一侧而不是落在正中——落在正中会读成"摊开的对页"，
+      // 而这里只要一页，书脊应该在边上。
+      var gutter = new THREE.Mesh(new THREE.BoxGeometry(s.x * 0.06, 0.0022, s.z * 0.84), shade);
+      gutter.position.set(-s.x * 0.45, s.y / 2 + 0.0022, 0);
+      g.add(gutter);
+
+      /* 文字行：没有它就是一整块奶白色的板，看不出是"页"。
+         用一个 InstancedMesh 铺 12 行、每行宽度不同（模拟段落的换行），
+         draw call 只多 1 个。 */
+      /* 文字行：没有它就是一整块奶白色的板，看不出是"页"。
+         一个 InstancedMesh 铺 12 行、每行长短不一（像段落换行），draw call 只多 1 个。
+         方向按"沿书的长边排"来放——中文书本来也常竖排，读得通。 */
+      var LINE = 12;
+      var lineGeo = new THREE.BoxGeometry(1, 0.0012, 0.0045);
+      var lineMat = new THREE.MeshStandardMaterial({ color: SPEC.textColor, roughness: 0.95, metalness: 0 });
+      var lines = new THREE.InstancedMesh(lineGeo, lineMat, LINE);
+      var dm = new THREE.Object3D();
+      var zStart = -s.z * 0.36;
+      var zStep = (s.z * 0.74) / (LINE - 1);
+      for (var i = 0; i < LINE; i++) {
+        // 每行长短不一，最后一行短一截，像段落收尾
+        var wFrac = (i === LINE - 1) ? 0.42 : (0.72 + 0.26 * (((i * 37) % 11) / 10));
+        var len = s.x * 0.84 * wFrac;
+        dm.position.set(-s.x * 0.45 + s.x * 0.06 + len / 2,
+                        s.y / 2 + 0.0030, zStart + zStep * i);
+        dm.scale.set(len, 1, 1);
+        dm.rotation.set(0, 0, 0);
+        dm.updateMatrix();
+        lines.setMatrixAt(i, dm.matrix);
+      }
+      lines.instanceMatrix.needsUpdate = true;
+      g.add(lines);
+      held.group.add(g);
+      held.parts.forEach(function (p) { p.visible = false; });
+      openBook = g;
+      return true;
+    }
+
+    /** 开 / 合。只有书能翻，杯子笔不行。 */
+    function toggleOpen() {
+      if (!held) return { ok: false, reason: 'nothing' };
+      if (held.label !== '书') return { ok: false, reason: 'not-book' };
+      if (openBook) { closeBook(); return { ok: true, opened: false }; }
+      return openBookNow() ? { ok: true, opened: true } : { ok: false, reason: 'no-size' };
     }
 
     function disposeHeld(h, restore) {
@@ -202,6 +290,8 @@
     /* 放下：先找落面高度，再把 Group 的世界矩阵反算回每个实例的局部矩阵 */
     function drop() {
       if (!held) return { ok: false };
+      // 必须先合上：那页纸没有 instanceId，落下时写矩阵会把它也算进去
+      closeBook();
       var h = held;
       held = null;
       inspecting = false;
@@ -302,7 +392,16 @@
 
     function onKey(e) {
       if (!enabled) return;
-      if (e.key && e.key.toLowerCase() === SPEC.key) {
+      if (!e.key) return;
+      var k = e.key.toLowerCase();
+      if (k === SPEC.openKey) {
+        if (!held) return;
+        e.preventDefault();
+        var r = toggleOpen();
+        if (o.onChange) o.onChange(held, r);
+        return;
+      }
+      if (k === SPEC.key) {
         e.preventDefault();
         take();
         if (o.onChange) o.onChange(held);
@@ -347,6 +446,7 @@
         if (o.dom) o.dom.removeEventListener('contextmenu', onContextMenu);
         inspecting = false;
         inspectW = 0;
+        closeBook();
         if (held) { disposeHeld(held, true); held = null; }
         aim = null;
         onAim(null);
@@ -362,6 +462,8 @@
       setInspect: function (on) { inspecting = !!on && !!held; },
       isInspecting: function () { return inspecting; },
       getInspectWeight: function () { return +inspectW.toFixed(3); },
+      toggleOpen: toggleOpen,
+      isBookOpen: function () { return !!openBook; },
       sourceCount: function () { return sources.length; }
     };
     return picker;
