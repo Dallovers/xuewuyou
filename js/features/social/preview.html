@@ -4,6 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>社交广场 · 板块 A 预览</title>
+<link rel="stylesheet" href="./preview-activities.css" />
 <link rel="stylesheet" href="../../../css/feature-social.css" />
 <style>
   html, body { margin: 0; height: 100%; background: #1d2320; overflow: hidden; }
@@ -17,7 +18,7 @@
 <div class="social-ui" id="ui" hidden>
   <div class="social-ui__badge">
     <b>社交广场 · 板块 A</b>
-    <span>第一交付：简化空间 + 三个业务交互点。背景立面为占位体量。</span>
+    <span>WASD 移动 · 拖动环顾 · 靠近坐凳或喷泉按 E 互动</span>
   </div>
 
   <div class="social-ui__crosshair"></div>
@@ -62,9 +63,10 @@ function fail(err) {
   console.error(err);
 }
 
-let THREE, createDistrict, SOCIAL_LAYOUT;
+let THREE, createDistrict, SOCIAL_LAYOUT, createPreviewActivities;
 try {
   THREE = await import('three');
+  ({createPreviewActivities}=await import('./preview-activities.js'));
   ({ createDistrict, SOCIAL_LAYOUT } = await import('./social-district.js'));
 } catch (err) {
   fail(err);
@@ -197,6 +199,7 @@ const keys = Object.create(null);
 let dragging = false;
 let lastX = 0, lastY = 0;
 let panelOpen = false;
+let activities=null;
 
 canvas.addEventListener('pointerdown', (e) => {
   if (panelOpen) return;
@@ -220,6 +223,9 @@ canvas.addEventListener('pointerup', (e) => {
 canvas.addEventListener('pointercancel', () => { dragging = false; });
 
 window.addEventListener('keydown', (e) => {
+  if(e.repeat && e.code==='KeyE')return;
+  if(activities?.seated && (e.code==='KeyE'||e.code==='Escape')){e.preventDefault();activities.stand();return;}
+  if(activities?.seated)return;
   if (e.code === 'Escape') {
     if (panelOpen) closePanel();
     return;
@@ -292,6 +298,10 @@ const panelEl = document.getElementById('panel');
 const panelTitle = document.getElementById('panelTitle');
 const panelSub = document.getElementById('panelSub');
 const panelBody = document.getElementById('panelBody');
+activities=createPreviewActivities({player:PLAYER,ui,onStand(){
+  for(const k of Object.keys(keys))keys[k]=false;
+  current=findNearest();hintShown=undefined;canvas.focus();
+}});
 
 let current = null;
 let hintShown = null;
@@ -341,16 +351,6 @@ const PANEL_COPY = {
       <p><span class="social-ui__tag">验收闭环</span> 查看留言 → 发布留言 → 另一账号可见</p>
       <div class="social-ui__note">留言面板的样式仍由主站现有 CSS 提供，本板块不改 .sticky-note / .note-thread。</div>`,
   },
-  'social.fountain': {
-    title: '广场喷泉',
-    sub: '场景设施 → 水流开关',
-    body: () => `
-      <p>池体几何是独立模块：外壁 / 内壁 / 顶环 / 池底 / 喷嘴，水面目前是静态占位片
-      （<b>fountain:water-placeholder</b>）。</p>
-      <p>按统一风格约定，<b>水面与水流效果尚未实现</b>，本板块只提交开关状态，不写水面 shader 或粒子。</p>
-      <p id="fountainState"><span class="social-ui__tag">当前状态</span> 水流：关闭</p>
-      <div class="social-ui__note">喷泉状态与好友业务完成度无关，不复用同一套状态字段。</div>`,
-  },
 };
 
 function openPanel(it, result) {
@@ -358,13 +358,6 @@ function openPanel(it, result) {
   panelTitle.textContent = copy.title;
   panelSub.textContent = copy.sub;
   panelBody.innerHTML = copy.body();
-  if (it.id === 'social.fountain' && result && typeof result.on === 'boolean') {
-    const el = document.getElementById('fountainState');
-    if (el) {
-      el.innerHTML = '<span class="social-ui__tag' + (result.on ? '' : ' is-warn') + '">当前状态</span> 水流：' +
-        (result.on ? '开启（水面效果未实现）' : '关闭');
-    }
-  }
   panelEl.hidden = false;
   panelOpen = true;
   hintEl.classList.remove('is-on');
@@ -393,6 +386,12 @@ function trigger(it) {
   } catch (err) {
     result = { ok: false, message: String(err && err.message || err) };
   }
+  if(result?.ok && result.kind==='seat'){
+    for(const k of Object.keys(keys))keys[k]=false;
+    const facing=activities.sit(result);if(facing!==null){yaw=facing;pitch=-.08;}
+    current=null;hintShown=undefined;hintEl.classList.remove('is-on');return;
+  }
+  if(result?.ok && result.kind==='fountain'){activities.notify(result.message);hintShown=undefined;return;}
   openPanel(it, result);
 }
 
@@ -419,7 +418,7 @@ function tick(now) {
   const dt = Math.min((now - last) / 1000, 0.1);
   last = now;
 
-  if (!panelOpen) {
+  if (!panelOpen && !activities.seated) {
     let f = 0, r = 0;
     if (keys.KeyW || keys.ArrowUp) f += 1;
     if (keys.KeyS || keys.ArrowDown) f -= 1;
@@ -437,12 +436,13 @@ function tick(now) {
     if (keys.KeyL) yaw -= dt * 1.6;
   }
 
+  activities.update(dt);
   camera.position.set(PLAYER.x, PLAYER.y, PLAYER.z);
   camera.rotation.set(pitch, yaw, 0, 'YXZ');
 
   district.update(dt);
 
-  if (!panelOpen) {
+  if (!panelOpen && !activities.seated) {
     const near = findNearest();
     current = near;
     const key = near ? near.id : null;
@@ -495,6 +495,7 @@ window.__social = {
   camera,
   get current() { return current; },
   get panelOpen() { return panelOpen; },
+  get seated() { return activities.seated; },
   get fov() { return CAMERA_FOV; },
   get env() { return envState; },
   interact() { if (current) trigger(current); return current ? current.id : null; },
@@ -505,6 +506,7 @@ window.__social = {
 window.addEventListener('beforeunload', () => {
   previewDisposed=true;
   cancelAnimationFrame(rafId);
+  activities.dispose();
   district.dispose();
   if (previewRendering) previewRendering.dispose();
   if(previewEnvironmentTarget)previewEnvironmentTarget.dispose();

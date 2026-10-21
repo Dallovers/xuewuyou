@@ -6,8 +6,8 @@
 <script type="importmap">
 {
   "imports": {
-    "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
-    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+    "three": "../../../vendor/three/three.module.js",
+    "three/addons/": "../../../vendor/three/addons/"
   }
 }
 </script>
@@ -28,6 +28,7 @@ window.addEventListener('unhandledrejection', function (e) {
   if (el) el.textContent += '\nREJECTION ' + ((r && (r.stack || r.message)) || r) + '\n';
 });
 </script>
+<script src="walk.js"></script>
 <script type="module">
 import * as THREE from 'three';
 import { createDistrict } from './district.js';
@@ -580,6 +581,133 @@ try {
   check('桌板与坐垫 UV 尺度一致', Math.abs(crossRatio - 1) < 0.02,
     '桌板 ' + uvDesk.capMean.toFixed(4) + ' / 坐垫 ' + uvPad.capMean.toFixed(4) +
     '（1/1.8² = ' + (1 / 3.24).toFixed(4) + '）');
+  /* ── 第 81 条：接地暗角（任务二第 3 步「接触阴影」） ──────────────────
+   * 判据不看"画面上有没有影子"，只看四件可核的事：
+   *   ① 它是**独立的一个网格**，父节点是 room 组——不能挂进桌岛/椅子组。
+   *      家具占地是 Box3.setFromObject 量的，往椅子组里塞一片东西，
+   *      「含椅占地进深」和主走道净距会被一起改掉，那是拿美术改动动通道尺寸。
+   *   ② 乘性混合 + 不写深度 + 不吃 tone mapping（乘数被 ACES 重新映射过一次就偏了）。
+   *   ③ 不投影、不受影，免得和阴影贴图叠两遍。
+   *   ④ 所有贴片都在离地 0~5 mm，贴在地砖上而不是浮着或陷进去。
+   * 桌岛进深拿它自己记录的 footprint 比，不写死 2.003：
+   * 几何一改，钉死的数字只会逼人去改断言，判不出问题。
+   */
+  const parts = r.userData.parts || {};
+  const contact = parts.contact;
+  const cMat = contact && contact.material;
+  let cY = { min: Infinity, max: -Infinity };
+  if (contact && contact.geometry && contact.geometry.attributes.position) {
+    const cp = contact.geometry.attributes.position;
+    for (let i = 0; i < cp.count; i++) {
+      const y = cp.getY(i);
+      if (y < cY.min) cY.min = y;
+      if (y > cY.max) cY.max = y;
+    }
+  }
+  const island0 = parts.islands && parts.islands[0];
+  const islandDepth = island0
+    ? new THREE.Box3().setFromObject(island0).getSize(new THREE.Vector3()).z
+    : null;
+  const islandRec = island0 && island0.userData.footprint ? island0.userData.footprint.depth : null;
+  check('接地暗角独立成网格且不改家具占地',
+    !!contact &&
+      contact.isMesh === true &&
+      contact.parent === r &&
+      contact.castShadow === false &&
+      contact.receiveShadow === false &&
+      !!cMat &&
+      cMat.blending === THREE.MultiplyBlending &&
+      cMat.depthWrite === false &&
+      cMat.toneMapped === false &&
+      cY.min >= 0 && cY.max <= 0.005 &&
+      islandDepth !== null && islandRec !== null && Math.abs(islandDepth - islandRec) < 1e-6,
+    (contact
+      ? '贴片 ' + contact.userData.patches + ' 片 / 三角形 ' + contact.geometry.index.count / 3
+      : '缺失') +
+      '；父节点 ' + (contact && contact.parent ? contact.parent.name : '-') +
+      '；混合 ' + (cMat ? cMat.blending : '-') +
+      '；离地 ' + (cY.min * 1000).toFixed(2) + '~' + (cY.max * 1000).toFixed(2) + ' mm' +
+      '；桌岛进深 ' + (islandDepth === null ? '-' : islandDepth.toFixed(4)) +
+      '（记录 ' + (islandRec === null ? '-' : islandRec.toFixed(4)) + '）'
+  );
+  /* ── 第 82 / 83 条：第一人称漫游 ────────────────────────────────────
+   * 漫游（walk.js）自己也要判「这点能不能站」。它的判据必须和这里逐字一致，
+   * 否则会出现「契约说走得到、真进去却卡住」——那种 bug 光看画面查不出来。
+   * 所以第 82 条干脆逐格比一遍：同一张 0.20 m 网格上，两套判定的结果不许有一格不同。
+   */
+  const WALK = window.StudyDistrict && window.StudyDistrict.walk;
+  if (WALK) {
+    let mismatch = 0, gridTested = 0;
+    const samples = [];
+    for (let gx = -6.6; gx <= 6.6; gx += 0.2) {
+      for (let gz = -5.0; gz <= 5.0; gz += 0.2) {
+        gridTested++;
+        const a = blocked(district.colliders, gx, gz);
+        const b = !WALK.canStand(district.colliders, gx, gz);
+        if (a !== b) {
+          mismatch++;
+          if (samples.length < 4) samples.push('(' + gx.toFixed(1) + ',' + gz.toFixed(1) + ')');
+        }
+      }
+    }
+    check('漫游判定与契约判定逐格一致', mismatch === 0,
+      gridTested + ' 格，不一致 ' + mismatch + (samples.length ? '：' + samples.join(' ') : ''));
+
+    /* 起点在门内一步。门洞本身要能过（南墙是分段的），墙体本身要挡住。
+       注 1：墙只有 0.24 m 厚，所以"站在墙外 0.6 m 处"按碰撞模型是空的——
+             碰撞体只描述"挡不挡人"，不描述"外面有没有地"。判墙要判在墙体上。
+       注 2：colliders 本身允许从门洞走出去（门外没有碰撞体），
+             预览页是用 bounds 把可站范围兜在墙内皮以内，这条写在 walk.js 的注释里。 */
+    const RD = district.root.userData.spec;
+    const DC = window.StudyDistrict.colliders.DOOR;
+    const startX = DC.centerX - 0.55;
+    const startZ = RD.depth / 2 - 0.90;
+    check('漫游起点能站、门洞能过、墙体挡住',
+      WALK.canStand(district.colliders, startX, startZ) === true &&
+      WALK.canStand(district.colliders, DC.centerX, RD.depth / 2 - 0.30) === true &&
+      WALK.canStand(district.colliders, -(RD.width / 2 + 0.35), 0) === false &&
+      WALK.canStand(district.colliders, 0, RD.depth / 2 + 0.05) === false,
+      '起点(' + startX.toFixed(2) + ',' + startZ.toFixed(2) + ') ' +
+      '眼高 ' + WALK.SPEC.eyeHeight + ' m / 步速 ' + WALK.SPEC.walkSpeed + ' m·s⁻¹ / 半径 ' + WALK.SPEC.radius + ' m'
+    );
+  } else {
+    check('漫游模块已加载', false, 'window.StudyDistrict.walk 缺失');
+  }
+  /* ── 第 84 条：可交互物件的分组必须自洽 ──────────────────────────────
+   * 合着的书是**三个实例**（上封面 / 书页 / 下封面），拿起来要一起收。
+   * 分组写在 props.js 的 userData.pickables.groups 里，这里验它自洽：
+   * 不重叠、不越界、不漏（每个实例都归属某一件东西）。
+   * 漏一个实例的表现是"拿起来的书只剩一块板"——只有上手才发现，所以要在这里钉住。
+   */
+  const pickMeshes = [];
+  r.traverse((n) => {
+    if (n.isInstancedMesh && n.userData && n.userData.pickables) pickMeshes.push(n);
+  });
+  const groupErr = [];
+  let covered = 0, totalInst = 0;
+  pickMeshes.forEach((m) => {
+    const gs = m.userData.pickables.groups || [];
+    const seen = new Set();
+    let bad = 0;
+    gs.forEach((g) => {
+      if (!g.length) bad++;
+      g.forEach((id) => {
+        if (id < 0 || id >= m.count) bad++;
+        if (seen.has(id)) bad++;
+        seen.add(id);
+      });
+    });
+    totalInst += m.count;
+    covered += seen.size;
+    if (bad) groupErr.push(m.name + ' 异常 ' + bad);
+  });
+  check('可交互物件分组完整（一本书三块板算一件）',
+    pickMeshes.length >= 3 && groupErr.length === 0 && covered === totalInst,
+    pickMeshes.length
+      ? pickMeshes.map((m) => m.name + ' ' + m.userData.pickables.groups.length + ' 件 / ' + m.count + ' 实例').join('，') +
+        '；总覆盖 ' + covered + ' / ' + totalInst + (groupErr.length ? '；' + groupErr.join('；') : '')
+      : '没有找到任何可交互件'
+  );
 } catch (e) {
   fails++;
   log('FAIL 抛异常 → ' + (e && e.stack ? e.stack.split('\n').slice(0, 3).join(' | ') : e));

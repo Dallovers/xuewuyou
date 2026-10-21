@@ -1,0 +1,372 @@
+/**
+ * 物品交互（拿起 / 放下）。
+ *
+ * 只在"看得见、够得着"的范围内生效：从相机中心打一条 2.4 m 的射线，
+ * 命中带 `userData.pickables` 的实例化网格才算数。
+ *
+ * 两个必须写清楚的点：
+ *
+ * 1）**按组拿，不按实例拿。**
+ *    合着的书是三个实例（上封面 / 书页 / 下封面），杯子是一本书之外的单实例。
+ *    分组信息由 props.js 写在 `userData.pickables.groups` 里，这里只读、不猜。
+ *    早期想过用 "i*3 起连续三个" 推算——配方一改就静默错位，
+ *    而错误表现是"拿起来的书只剩一块板"，只有上手才发现。
+ *
+ * 2）**不自己造一套场景管理。**
+ *    拿起来的东西是一个临时 Group（按实例的世界矩阵还原），原件用零缩放矩阵藏起来；
+ *    放回去时把 Group 的世界矩阵反算回实例局部矩阵写回去。全程只碰 instanceMatrix，
+ *    不增删景深里的对象，所以 draw call 在放下之后回到原样。
+ *
+ * 立场与 walk.js 一致：不建渲染器、不起 RAF，只提供 update(dt)。
+ */
+(function (global) {
+  'use strict';
+
+  var SPEC = {
+    reach: 2.40,          // 能拿多远（m）
+    key: 'e',             // 拿起 / 放下
+    holdDistance: 0.50,   // 拿在手里时离眼睛多远
+    holdDown: 0.12,       // 往下沉一点，像端在手上
+    holdRight: 0.06,      // 略偏右手
+    follow: 14.0,         // 跟随速度（越大越"黏手"）
+    dropForward: 0.62,    // 放下时往视线前方多远找落点
+    dropProbeUp: 0.34,    // 从视线上方起算，保证桌沿也能落上去
+    dropFar: 3.0,
+    /* 举到眼前（按住鼠标右键）：东西收到近处、居中、稍微朝自己翻一点，
+       手也跟着抬上来。不是放大 FOV——那会连着整个房间一起变焦，看着像镜头在推。 */
+    inspectDistance: 0.30,
+    inspectDown: 0.055,
+    inspectRight: 0.0,
+    inspectTilt: -0.30,
+    inspectLerp: 10.0
+  };
+
+  function isDescendant(obj, maybeParent) {
+    for (var n = obj; n; n = n.parent) if (n === maybeParent) return true;
+    return false;
+  }
+
+  /**
+   * @param {object} o
+   * @param {object} o.THREE
+   * @param {object} o.camera
+   * @param {object} o.root      整屋 Group（可交互件在它下面找）
+   * @param {object} o.scene     用来加临时 Group、做落点射线
+   * @param {function} [o.onAim] 指向变化时回调 (aim | null)，给界面显示提示
+   */
+  function createPicker(o) {
+    o = o || {};
+    var THREE = o.THREE;
+    var camera = o.camera;
+    var root = o.root;
+    var scene = o.scene;
+    var onAim = o.onAim || function () {};
+
+    // —— 收集可交互件：instanceId → {组, label} 的映射先建好，避免每帧线性找 ——
+    var sources = [];
+    root.traverse(function (n) {
+      if (!n.isInstancedMesh || !n.userData || !n.userData.pickables) return;
+      var info = n.userData.pickables;
+      var byId = {};
+      info.groups.forEach(function (g, gi) {
+        g.forEach(function (id) { byId[id] = gi; });
+      });
+      sources.push({ mesh: n, label: info.label || '物件', groups: info.groups, byId: byId });
+    });
+    if (!sources.length) return null;
+
+    var ray = new THREE.Raycaster();
+    var CENTER = new THREE.Vector2(0, 0);
+    var ZERO = new THREE.Matrix4().makeScale(0, 0, 0);
+
+    var held = null;      // { group, src, ids, saved:[{id, matrix}], label }
+    var aim = null;       // { label, src, ids, distance }
+    var enabled = false;
+    var inspecting = false;
+    var inspectW = 0;     // 0..1，举到眼前的过渡权重
+
+    var tmpM = new THREE.Matrix4();
+    var tmpP = new THREE.Vector3();
+    var tmpQ = new THREE.Quaternion();
+    var tmpS = new THREE.Vector3();
+    var vDir = new THREE.Vector3();
+    var vRight = new THREE.Vector3();
+    var eul = new THREE.Euler();
+
+    function cameraYaw() {
+      eul.setFromQuaternion(camera.quaternion, 'YXZ');
+      return eul.y;
+    }
+
+    /* 从相机中心射线找可拿的东西 */
+    function probe() {
+      /* 必须自己更新相机矩阵：setFromCamera 读的是 camera.matrixWorld，
+         而它在渲染时才会被刷新。如果这一帧先 probe 再 render（或者主循环里
+         probe 排在渲染前面），拿到的就是**上一帧的相机矩阵**——
+         表现是"明明对着书，却提示拿不到"。 */
+      camera.updateMatrixWorld(true);
+      ray.setFromCamera(CENTER, camera);
+      ray.far = SPEC.reach;
+      var meshes = sources.map(function (s) { return s.mesh; });
+      var hits = ray.intersectObjects(meshes, false);
+      if (!hits.length) return null;
+      var h = hits[0];
+      if (h.instanceId === undefined) return null;
+      var src = null;
+      for (var i = 0; i < sources.length; i++) if (sources[i].mesh === h.object) { src = sources[i]; break; }
+      if (!src) return null;
+      var gi = src.byId[h.instanceId];
+      if (gi === undefined) return null;
+      return { label: src.label, src: src, ids: src.groups[gi], distance: +h.distance.toFixed(3) };
+    }
+
+    function hideInstances(src, ids) {
+      var saved = [];
+      ids.forEach(function (id) {
+        var m = new THREE.Matrix4();
+        src.mesh.getMatrixAt(id, m);
+        saved.push({ id: id, matrix: m.clone() });
+        src.mesh.setMatrixAt(id, ZERO);
+      });
+      src.mesh.instanceMatrix.needsUpdate = true;
+      return saved;
+    }
+
+    /* 按实例的世界矩阵还原成一个临时 Group（每一块单独一个 Mesh，材质克隆以带上实例色） */
+    function buildHeld(target) {
+      var src = target.src;
+      var ids = target.ids;
+      src.mesh.updateMatrixWorld(true);
+      var parts = [];
+      var centroid = new THREE.Vector3();
+      var box = new THREE.Box3();
+
+      ids.forEach(function (id) {
+        src.mesh.getMatrixAt(id, tmpM);
+        tmpM.premultiply(src.mesh.matrixWorld);      // 世界矩阵
+        tmpM.decompose(tmpP, tmpQ, tmpS);
+        centroid.add(tmpP);
+
+        var mat = src.mesh.material.clone();
+        if (src.mesh.instanceColor) {
+          var c = new THREE.Color();
+          src.mesh.getColorAt(id, c);
+          mat.color.copy(c);
+        }
+        var mesh = new THREE.Mesh(src.mesh.geometry, mat);
+        mesh.position.copy(tmpP);
+        mesh.quaternion.copy(tmpQ);
+        mesh.scale.copy(tmpS);
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+        parts.push(mesh);
+      });
+
+      centroid.divideScalar(ids.length);
+      var group = new THREE.Group();
+      group.name = 'HeldObject';
+      parts.forEach(function (p) {
+        p.position.sub(centroid);                    // 变成相对质心
+        group.add(p);
+      });
+      group.position.copy(centroid);
+      scene.add(group);
+      group.updateMatrixWorld(true);
+      box.setFromObject(group);
+
+      return {
+        group: group,
+        src: src,
+        ids: ids,
+        label: target.label,
+        saved: hideInstances(src, ids),
+        pickYaw: cameraYaw(),
+        baseMinY: box.min.y - group.position.y     // 最低点相对质心的偏移
+      };
+    }
+
+    function disposeHeld(h, restore) {
+      if (!h) return;
+      if (restore) {
+        h.saved.forEach(function (s) { h.src.mesh.setMatrixAt(s.id, s.matrix); });
+        h.src.mesh.instanceMatrix.needsUpdate = true;
+      }
+      h.group.traverse(function (n) {
+        if (n.isMesh) {
+          if (n.material && n.material.dispose) n.material.dispose();
+        }
+      });
+      h.group.removeFromParent();
+    }
+
+    /* 放下：先找落面高度，再把 Group 的世界矩阵反算回每个实例的局部矩阵 */
+    function drop() {
+      if (!held) return { ok: false };
+      var h = held;
+      held = null;
+      inspecting = false;
+      inspectW = 0;
+
+      var fwd = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+      var origin = camera.position.clone()
+        .addScaledVector(fwd, SPEC.dropForward)
+        .add(new THREE.Vector3(0, SPEC.dropProbeUp, 0));
+
+      ray.set(origin, new THREE.Vector3(0, -1, 0));
+      ray.far = SPEC.dropProbeUp + 2.6;
+      var hits = ray.intersectObject(scene, true).filter(function (hit) {
+        var name = hit.object.name;
+        if (name === 'ContactShadows' || name === 'HeldObject') return false;
+        if (isDescendant(hit.object, h.group)) return false;
+        return true;
+      });
+      var surfaceY = hits.length ? hits[0].point.y : 0;
+
+      // 先让贴着的面正好落在落面上（用包围盒最低点，不用质心）
+      var box = new THREE.Box3().setFromObject(h.group);
+      h.group.position.y += surfaceY - box.min.y;
+      // 随手转的角度收敛成 90° 的整数倍，放下的东西别歪着
+      var yaw = cameraYaw();
+      h.group.rotation.y = yaw - h.pickYaw;
+      h.group.updateMatrixWorld(true);
+
+      var inv = new THREE.Matrix4().copy(h.src.mesh.matrixWorld).invert();
+      var write = new THREE.Matrix4();
+      h.group.traverse(function (n) {
+        if (!n.isMesh) return;
+        var idx = n.userData.instanceId;
+        write.copy(n.matrixWorld).premultiply(inv);
+        h.src.mesh.setMatrixAt(idx, write);
+      });
+      h.src.mesh.instanceMatrix.needsUpdate = true;
+
+      var label = h.label;
+      h.group.traverse(function (n) {
+        if (n.isMesh && n.material && n.material.dispose) n.material.dispose();
+      });
+      h.group.removeFromParent();
+      return { ok: true, label: label, surfaceY: +surfaceY.toFixed(3) };
+    }
+
+    function take() {
+      if (held) return drop();
+      var t = probe();
+      if (!t) return { ok: false, reason: 'nothing' };
+      held = buildHeld(t);
+      // instanceId 记到每一块上，放回时才知道写哪一条
+      var k = 0;
+      held.group.traverse(function (n) {
+        if (n.isMesh) n.userData.instanceId = held.ids[k++];
+      });
+      aim = null;
+      onAim(null);
+      return { ok: true, label: held.label, parts: held.ids.length };
+    }
+
+    function update(dt) {
+      if (!enabled) return;
+
+      if (held) {
+        var fwd = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+        var rightV = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion);
+
+        // 举到眼前的权重（按住右键才升起）
+        var wantW = (inspecting ? 1 : 0);
+        var kk = 1 - Math.exp(-SPEC.inspectLerp * Math.min(dt || 0, 0.05));
+        inspectW += (wantW - inspectW) * kk;
+
+        var dist = SPEC.holdDistance + (SPEC.inspectDistance - SPEC.holdDistance) * inspectW;
+        var down = SPEC.holdDown + (SPEC.inspectDown - SPEC.holdDown) * inspectW;
+        var side = SPEC.holdRight + (SPEC.inspectRight - SPEC.holdRight) * inspectW;
+
+        var want = camera.position.clone()
+          .addScaledVector(fwd, dist)
+          .addScaledVector(rightV, side)
+          .add(new THREE.Vector3(0, -down, 0));
+        var k = 1 - Math.exp(-SPEC.follow * Math.min(dt || 0, 0.05));
+        held.group.position.lerp(want, k);
+        // 只绕 Y 跟着转身：书保持"平放"的姿态，转身时跟着走而不是翻个面
+        held.group.rotation.y = cameraYaw() - held.pickYaw + (held.group.userData.baseYaw || 0);
+        // 举到眼前时朝自己翻一点，看得见封面
+        held.group.rotation.x = SPEC.inspectTilt * inspectW;
+        held.group.updateMatrixWorld(true);
+        return;
+      }
+
+      var t = probe();
+      var next = t ? { label: t.label, distance: t.distance } : null;
+      var changed = (!aim && next) || (aim && !next) || (aim && next && (aim.label !== next.label || Math.abs(aim.distance - next.distance) > 0.25));
+      aim = next;
+      if (changed) onAim(next);
+    }
+
+    function onKey(e) {
+      if (!enabled) return;
+      if (e.key && e.key.toLowerCase() === SPEC.key) {
+        e.preventDefault();
+        take();
+        if (o.onChange) o.onChange(held);
+      }
+    }
+
+    /* 按住鼠标右键 = 举到眼前。右键在漫游状态下是空闲的（OrbitControls 已停用），
+       但浏览器会弹右键菜单，所以 contextmenu 要吃掉。 */
+    function onMouseDown(e) {
+      if (!enabled || e.button !== 2) return;
+      if (!held) return;
+      e.preventDefault();
+      inspecting = true;
+    }
+
+    function onMouseUp(e) {
+      if (e.button !== 2) return;
+      inspecting = false;
+    }
+
+    function onContextMenu(e) {
+      if (!enabled || !held) return;
+      e.preventDefault();
+    }
+
+    var picker = {
+      SPEC: SPEC,
+      enable: function () {
+        if (enabled) return;
+        enabled = true;
+        window.addEventListener('keydown', onKey);
+        window.addEventListener('mousedown', onMouseDown);
+        window.addEventListener('mouseup', onMouseUp);
+        if (o.dom) o.dom.addEventListener('contextmenu', onContextMenu);
+      },
+      disable: function () {
+        if (!enabled) return;
+        enabled = false;
+        window.removeEventListener('keydown', onKey);
+        window.removeEventListener('mousedown', onMouseDown);
+        window.removeEventListener('mouseup', onMouseUp);
+        if (o.dom) o.dom.removeEventListener('contextmenu', onContextMenu);
+        inspecting = false;
+        inspectW = 0;
+        if (held) { disposeHeld(held, true); held = null; }
+        aim = null;
+        onAim(null);
+      },
+      update: update,
+      take: take,
+      drop: drop,
+      probe: probe,
+      getAim: function () { return aim; },
+      isHolding: function () { return !!held; },
+      getHeldLabel: function () { return held ? held.label : null; },
+      getHeldPartCount: function () { return held ? held.ids.length : 0; },
+      setInspect: function (on) { inspecting = !!on && !!held; },
+      isInspecting: function () { return inspecting; },
+      getInspectWeight: function () { return +inspectW.toFixed(3); },
+      sourceCount: function () { return sources.length; }
+    };
+    return picker;
+  }
+
+  global.StudyDistrict = global.StudyDistrict || {};
+  global.StudyDistrict.pick = { SPEC: SPEC, createPicker: createPicker };
+})(typeof window !== 'undefined' ? window : globalThis);

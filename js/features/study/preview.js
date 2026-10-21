@@ -126,6 +126,134 @@ const room = SD.room.createRoom(THREE, mats);
 room.position.set(0, 0, ROOM_Z);
 scene.add(room);
 
+/* —— 第一人称漫游 ——
+ * 业务页里相机与主循环归宿主，这里只是让检查页能"自己进去走一圈"。
+ * 碰撞体用的是 colliders.js 那一份（和宿主、契约完全同一套），
+ * 不在这里另判一次挡不挡人——两套判定一定会漂移。
+ *
+ * 走动时 OrbitControls 必须停掉：它也每帧写 camera.position，
+ * 两个都写就会互相打架，表现为"一走就被拽回原处"。 */
+let walker = null;
+let picker = null;
+let seating = null;
+let walkBuild = null;
+let orbitSaved = null;
+const walkBtn = document.querySelector('[data-mode="walk"]');
+const walkHint = document.getElementById('walkHint');
+const crosshair = document.getElementById('crosshair');
+const aimHint = document.getElementById('aimHint');
+
+/* 提示条要同时照顾三件事：准星上能拿的东西、旁边的座位、已经坐着。
+   所以每帧算一次，而不是靠回调——两个来源各自回调会互相覆盖。 */
+function updateHint() {
+  if (!aimHint) return;
+  const aimed = picker && picker.getAim();
+  if (aimed) {
+    aimHint.textContent = '按 E 拿起 ' + aimed.label + '　·　' + aimed.distance.toFixed(1) + ' m';
+    aimHint.style.display = 'block';
+    return;
+  }
+  if (seating && seating.isSeated()) {
+    aimHint.textContent = '按 E 起身';
+    aimHint.style.display = 'block';
+    return;
+  }
+  if (seating && seating.getNearby()) {
+    aimHint.textContent = '按 E 坐下';
+    aimHint.style.display = 'block';
+    return;
+  }
+  aimHint.style.display = 'none';
+}
+
+// 起点：门口内侧一步，面朝屋里（yaw 0 = 朝 −Z）
+function doorPose() {
+  return {
+    x: SD.colliders.DOOR.centerX - 0.55,
+    z: SD.room.ROOM.depth / 2 - 0.90,
+    yawDeg: 0
+  };
+}
+
+function setWalk(on) {
+  if (on) {
+    if (!walker) {
+      const built = SD.colliders.build(THREE, room);
+      walkBuild = built;        // 坐下模块也要这一份，别重复建
+      walker = SD.walk.createWalker({
+        THREE,
+        camera,
+        dom: canvas,
+        colliders: built.colliders,
+        bounds: built.bounds,
+        // 碰撞体是整屋局部坐标，整屋在预览场景里摆在 z=−26；不带这个偏移会"走到屋外"
+        origin: room.position.toArray(),
+        pose: doorPose()
+      });
+      walker.onLockChange((locked) => {
+        if (walkHint) walkHint.classList.toggle('locked', locked);
+      });
+    }
+    orbitSaved = { pos: camera.position.toArray(), target: controls.target.toArray() };
+    controls.enabled = false;
+    walker.enable();
+    walker.setPose(doorPose());
+    if (!picker && SD.pick) {
+      picker = SD.pick.createPicker({
+        THREE,
+        camera,
+        dom: canvas,
+        root: room,
+        scene,
+        onAim: () => {}
+      });
+    }
+    if (picker) picker.enable();
+    /* 坐下：座位数据来自 room，朝向与落脚点在 seating.js 里推。
+       E 键的优先顺序——准星上有可拿的东西时让给拾取，否则才坐下 / 起身。 */
+    if (!seating && SD.seating) {
+      seating = SD.seating.createSeating({
+        THREE,
+        room,
+        walker,
+        colliders: walkBuild ? walkBuild.colliders : SD.colliders.build(THREE, room).colliders,
+        shouldYield: () => !!(picker && picker.getAim())
+      });
+    }
+    if (seating) seating.enable();
+    if (crosshair) crosshair.style.display = 'block';
+    if (walkBtn) walkBtn.classList.add('on');
+    if (walkHint) walkHint.style.display = 'block';
+    document.querySelectorAll('[data-view]').forEach((b) => b.classList.remove('on'));
+  } else {
+    if (walker) walker.disable();
+    if (picker) picker.disable();
+    if (seating) seating.disable();
+    if (crosshair) crosshair.style.display = 'none';
+    if (aimHint) aimHint.style.display = 'none';
+    controls.enabled = true;
+    camera.rotation.order = 'XYZ';
+    if (orbitSaved) {
+      camera.position.fromArray(orbitSaved.pos);
+      controls.target.fromArray(orbitSaved.target);
+      controls.update();
+    }
+    if (walkBtn) walkBtn.classList.remove('on');
+    if (walkHint) walkHint.style.display = 'none';
+  }
+}
+
+if (walkBtn) {
+  walkBtn.addEventListener('click', () => setWalk(!(walker && walker.isEnabled())));
+}
+document.querySelectorAll('[data-walk="door"]').forEach((b) =>
+  b.addEventListener('click', () => {
+    if (!walker) return;
+    walker.setPose(doorPose());
+    if (!walker.isEnabled()) setWalk(true);
+  })
+);
+
 // 人体参考：1.72 m
 const human = new THREE.Group();
 human.name = 'HumanReference';
@@ -189,6 +317,8 @@ function setRoofVisible(on) {
   });
 }
 function applyView(key) {
+  // 走动状态下切视角：先退出漫游，否则相机被两处同时写，切过去会立刻弹回来
+  if (walker && walker.isEnabled()) setWalk(false);
   const v = views[key] || views.all;
   setRoofVisible(!v.roofOff);
   document.querySelectorAll('[data-toggle="roof"]').forEach((b) => {
@@ -308,20 +438,52 @@ document.getElementById('lightBody').innerHTML = LT.fixtures
   )
   .join('');
 
+/* 尺寸变化时重设画布。
+   两个必要的约束，否则会刷出满屏 "ResizeObserver loop completed with undelivered notifications"：
+   1）尺寸没变就不再 setSize——每次 setSize 都会改 canvas 的宽高属性，
+      哪怕 CSS 尺寸没变，也可能再触发一次观察回调，于是转圈；
+   2）真正要改的时候放到 rAF 里做，不占着观察回调的投递周期。 */
+let lastW = 0, lastH = 0;
 function resize() {
   const w = canvas.clientWidth;
   const h = canvas.clientHeight;
   if (!w || !h) return;
+  if (w === lastW && h === lastH) return;
+  lastW = w;
+  lastH = h;
   renderer.setSize(w, h, false);
   camera.aspect = w / h;
   camera.updateProjectionMatrix();
 }
-new ResizeObserver(resize).observe(canvas);
+new ResizeObserver(() => requestAnimationFrame(resize)).observe(canvas);
 resize();
 
+let lastFrameAt = 0;
 renderer.setAnimationLoop(() => {
-  controls.update();
+  const now = performance.now();
+  const dt = lastFrameAt ? (now - lastFrameAt) / 1000 : 0;
+  lastFrameAt = now;
+  if (walker && walker.isEnabled()) {
+    // 漫游接管相机：这里绝不能再调 controls.update()，它会把机位拽回轨道上
+    walker.update(dt);
+    if (picker) picker.update(dt);
+    if (seating) seating.update(dt);
+    updateHint();
+  } else {
+    controls.update();
+  }
   renderer.render(scene, camera);
 });
 
-window.__studySample = { THREE, scene, camera, renderer, mats, setA, setB, shell, human, controls, views, applyView, room };
+// ?walk=1 直接进漫游（截图与远程核对用）
+if (new URLSearchParams(location.search).get('walk') === '1') {
+  setWalk(true);
+}
+
+window.__studySample = {
+  THREE, scene, camera, renderer, mats, setA, setB, shell, human, controls, views, applyView, room,
+  getWalker: () => walker,
+  getPicker: () => picker,
+  getSeating: () => seating,
+  setWalk
+};
