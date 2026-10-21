@@ -1,0 +1,12 @@
+{
+  "parentPR": 46,
+  "parentSHA": "cb3a7b5098a0b0f7955dfe19a464844a017ed59c",
+  "checkedMain": "de7924e091b9a47f7223e819ef652cdc2de18b2e",
+  "originalAssetSHA256": {
+    "examples/library-3d/assets/wenku-library.glb": "9bbcd6676913ec6e43a5d02dfc99dde332664624a49e41b3432bbfd8c7ba73e1",
+    "examples/library-3d/Library_Editable.blend": "bb10a6b0029285bd7c37142dbfa15e929acc2d06222790d38250227618f55093"
+  },
+  "R1AtlasSHA256": "dcc8cbb9546218b2420d6c084305d0bf3caa97745f28e919cdce760d5b1f2755",
+  "bundleSHA256": "7187ab3877e8f497e49170624346cbb49801ed32f9e82a05ad7f8f1bdd85386b",
+  "scope": "C library interactions only; original model, bake, server, A/B/D and #41 test unchanged"
+}

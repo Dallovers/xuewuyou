@@ -1,0 +1,166 @@
+{
+  "date": "2026-10-21T13:47:44.732Z",
+  "base": "http://127.0.0.1:5196",
+  "checks": [
+    {
+      "name": "真实场景 16 个互动点，样板导读书和座位可见，最多六个标记",
+      "passed": true,
+      "data": {
+        "shown": true,
+        "disposed": false,
+        "selected": null,
+        "visible": [
+          "book-R1",
+          "seat-R1-N1",
+          "seat-R1-S1",
+          "seat-R1-N2"
+        ],
+        "targets": 16
+      }
+    },
+    {
+      "name": "标记不互相叠压，也不覆盖固定界面",
+      "passed": true
+    },
+    {
+      "name": "点击真实桌上导读书，推荐来自现有馆藏并打开实际 PDF，关闭后恢复场景",
+      "passed": true
+    },
+    {
+      "name": "直接点击书架标记打开对应真实分类",
+      "passed": true
+    },
+    {
+      "name": "外观视角可找到入口，室内标记被墙和屋顶遮挡",
+      "passed": true,
+      "data": {
+        "shown": true,
+        "disposed": false,
+        "selected": null,
+        "visible": [
+          "door"
+        ],
+        "targets": 16
+      }
+    },
+    {
+      "name": "入口标记实际开门",
+      "passed": true
+    },
+    {
+      "name": "探索清单可用键盘访问，模态暂停移动，选目标有方向提示且可取消",
+      "passed": true
+    },
+    {
+      "name": "漫游时远处点击只标记方向，不能隔空打开书",
+      "passed": true
+    },
+    {
+      "name": "检索台新增实际目录交互",
+      "passed": true
+    },
+    {
+      "name": "已选择的近处目标优先响应 E，不会误坐旁边的椅子",
+      "passed": true
+    },
+    {
+      "name": "可关闭／开启标记，原 E 键操作仍可用",
+      "passed": true
+    },
+    {
+      "name": "点击座位入座，选择真实阅读时长，开始／暂停计时",
+      "passed": true,
+      "data": {
+        "running": false,
+        "elapsedMs": 1427,
+        "durationMs": 1200000,
+        "book": false
+      }
+    },
+    {
+      "name": "座位资料入口复用目录，弹窗不遮挡，关闭仍在原座",
+      "passed": true
+    },
+    {
+      "name": "390×844 窄屏标记最多三个，座位面板与触控／E 操作不重叠",
+      "passed": true
+    },
+    {
+      "name": "844×390 横屏可用，无横向溢出",
+      "passed": true
+    },
+    {
+      "name": "焦点在计时按钮时 Esc 也能安全站起，离座计时暂停",
+      "passed": true
+    },
+    {
+      "name": "虚拟时钟验证十分钟到时停止，页面没有伪造完成任务或上传记录",
+      "passed": true
+    },
+    {
+      "name": "释放后提示对象和计时器停止，重复释放安全",
+      "passed": true
+    },
+    {
+      "name": "实际后端及 BFCache 往返保留同一座位／atlas／标记，后台时段不计时",
+      "passed": true,
+      "data": {
+        "before": {
+          "token": 0.45568011298140987,
+          "timer": {
+            "running": true,
+            "elapsedMs": 711,
+            "durationMs": 600000,
+            "book": false
+          }
+        },
+        "after": {
+          "token": 0.45568011298140987,
+          "restored": true,
+          "timer": {
+            "running": true,
+            "elapsedMs": 994,
+            "durationMs": 600000,
+            "book": false
+          },
+          "guide": {
+            "shown": true,
+            "disposed": false,
+            "selected": null,
+            "visible": [],
+            "targets": 16
+          },
+          "bake": {
+            "ready": true,
+            "enabled": true,
+            "disposed": false,
+            "error": null,
+            "receivers": 47,
+            "meshes": 50,
+            "materials": 8,
+            "atlasSize": [
+              2048,
+              2048
+            ],
+            "atlasChannel": 1,
+            "irradianceScale": 3.141592653589793,
+            "encoding": "linear-srgb-white-diffuse-radiance",
+            "released": {
+              "geometries": 0,
+              "materials": 0,
+              "textures": 0
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "原生计时器明确释放后不再运行",
+      "passed": true
+    }
+  ],
+  "errors": [],
+  "consoleErrors": [],
+  "failedResources": [],
+  "passed": true
+}
