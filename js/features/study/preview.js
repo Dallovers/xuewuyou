@@ -438,15 +438,24 @@ document.getElementById('lightBody').innerHTML = LT.fixtures
   )
   .join('');
 
+/* 尺寸变化时重设画布。
+   两个必要的约束，否则会刷出满屏 "ResizeObserver loop completed with undelivered notifications"：
+   1）尺寸没变就不再 setSize——每次 setSize 都会改 canvas 的宽高属性，
+      哪怕 CSS 尺寸没变，也可能再触发一次观察回调，于是转圈；
+   2）真正要改的时候放到 rAF 里做，不占着观察回调的投递周期。 */
+let lastW = 0, lastH = 0;
 function resize() {
   const w = canvas.clientWidth;
   const h = canvas.clientHeight;
   if (!w || !h) return;
+  if (w === lastW && h === lastH) return;
+  lastW = w;
+  lastH = h;
   renderer.setSize(w, h, false);
   camera.aspect = w / h;
   camera.updateProjectionMatrix();
 }
-new ResizeObserver(resize).observe(canvas);
+new ResizeObserver(() => requestAnimationFrame(resize)).observe(canvas);
 resize();
 
 let lastFrameAt = 0;
