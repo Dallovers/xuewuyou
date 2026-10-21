@@ -1,0 +1,99 @@
+{
+  "checks": [
+    {
+      "id": "social.challenge",
+      "from": {
+        "x": 0,
+        "z": 3,
+        "y": 1.6,
+        "speed": 4.2,
+        "run": 6.6,
+        "radius": 0.35
+      },
+      "to": {
+        "x": 2.012639999999999,
+        "z": 3,
+        "y": 1.6,
+        "speed": 4.2,
+        "run": 6.6,
+        "radius": 0.35
+      },
+      "keyboard": "W then E",
+      "call": {
+        "name": "community",
+        "params": {
+          "tab": "arena",
+          "from": "social.challenge"
+        }
+      }
+    },
+    {
+      "id": "social.board",
+      "from": {
+        "x": 0,
+        "z": -5.8,
+        "y": 1.6,
+        "speed": 4.2,
+        "run": 6.6,
+        "radius": 0.35
+      },
+      "to": {
+        "x": -1.9076399999999991,
+        "z": -5.8,
+        "y": 1.6,
+        "speed": 4.2,
+        "run": 6.6,
+        "radius": 0.35
+      },
+      "keyboard": "W then E",
+      "call": {
+        "name": "community",
+        "params": {
+          "tab": "posts",
+          "from": "social.board"
+        }
+      }
+    },
+    {
+      "id": "social.desk",
+      "from": {
+        "x": 0,
+        "z": 0.65,
+        "y": 1.6,
+        "speed": 4.2,
+        "run": 6.6,
+        "radius": 0.35
+      },
+      "to": {
+        "x": -4.200419999999992,
+        "z": 0.65,
+        "y": 1.6,
+        "speed": 4.2,
+        "run": 6.6,
+        "radius": 0.35
+      },
+      "keyboard": "W then E",
+      "call": {
+        "name": "community",
+        "params": {
+          "tab": "friends",
+          "from": "social.desk"
+        }
+      }
+    }
+  ],
+  "errors": [],
+  "tableCollisionStop": 3,
+  "browser": "156.0.8078.4",
+  "conditions": {
+    "viewport": [
+      1536,
+      1024
+    ],
+    "dpr": 1,
+    "eye": 1.6,
+    "mm": 35,
+    "exposure": 0.86,
+    "headless": true
+  }
+}
