@@ -20,9 +20,9 @@
     radius: 0.25,         // 与契约 / 宿主的角色半径一致，不要改
     bandLow: 0.10,
     bandHigh: 1.70,
-    walkSpeed: 2.60,      // m/s，正常步速（第一版 1.45 在屋里走太拖，按用户要求提上来）
-    runSpeed: 4.20,       // 按住 Shift
-    accel: 14.0,          // 速度趋近目标的时间常数（越大越"跟手"）
+    walkSpeed: 3.60,      // m/s，正常步速（1.45 → 2.60 → 3.60，按用户要求逐轮提上来）
+    runSpeed: 6.00,       // 按住 Shift
+    accel: 18.0,          // 速度趋近目标的时间常数（越大越"跟手"）
     lookSpeed: 0.0022,    // 弧度 / 像素（鼠标）
     dragLookSpeed: 0.0038, // 弧度 / 像素（按住拖动）——拖动行程短，给大一点才顺手
     keyTurnSpeed: 2.0,    // 弧度 / 秒（←→ 转身）
@@ -30,7 +30,8 @@
     pitchLimit: 1.32,     // ±75.6°
     seatedEyeHeight: 1.18, // 坐面 0.45 m + 上半身约 0.73 m
     sitLerp: 7.0,         // 坐下 / 起身的过渡速度
-    dtClamp: 0.05         // 切标签页回来时 dt 会很大，钳住免得穿墙
+    dtClamp: 0.05,        // 切标签页回来时 dt 会很大，钳住免得穿墙
+    maxStep: 0.08         // 单次碰撞采样的最大步长（m），超过就切片，防高速穿墙
   };
 
   /**
@@ -122,11 +123,20 @@
 
     function move(dx, dz) {
       /* 轴向分离：先试 X 再试 Z。整段一起试的话，斜着蹭到桌角会整体停住；
-         分开试就能顺着桌边滑过去——这是第一人称"手感"里最容易被忽略的一条。 */
-      var nx = pose.x + dx;
-      if (canStand(colliders, nx, pose.z)) pose.x = nx;
-      var nz = pose.z + dz;
-      if (canStand(colliders, pose.x, nz)) pose.z = nz;
+         分开试就能顺着桌边滑过去——这是第一人称"手感"里最容易被忽略的一条。
+
+         步长切分：这一版步速提到 3.60 / 6.00 m/s，切标签页回来 dt 被钳到 0.05 s 时
+         单帧位移可达 0.30 m。canStand 是"落点采样"，一次跨过整个盒子就穿墙了。
+         所以按 maxStep 切片，每片都重新判一次（片数上限兜住异常大的 dt）。 */
+      var dist = Math.sqrt(dx * dx + dz * dz);
+      var n = dist > SPEC.maxStep ? Math.min(16, Math.ceil(dist / SPEC.maxStep)) : 1;
+      var sx = dx / n, sz = dz / n;
+      for (var i = 0; i < n; i++) {
+        var nx = pose.x + sx;
+        if (canStand(colliders, nx, pose.z)) pose.x = nx;
+        var nz = pose.z + sz;
+        if (canStand(colliders, pose.x, nz)) pose.z = nz;
+      }
       clampBounds();
     }
 
