@@ -47,7 +47,8 @@
     pageColor: '#efe9dc',
     pageShade: '#d8d0bf',
     textColor: '#b9b1a0',
-    pageTitle: '寝室长和凡越是我儿子'   // 翻开后书页上印的字（标题 + 每行反复写这一句）
+    pageTitle: '寝室长和凡越是我儿子',   // 翻开后书页上印的字（标题 + 每行反复写这一句）
+    pageAuthor: '作者刘福超'            // 右页右下角落款
   };
 
   function isDescendant(obj, maybeParent) {
@@ -333,6 +334,15 @@
         }
       }
       g.restore();
+
+      // 右页右下角落款
+      if (kind === 'body' && SPEC.pageAuthor) {
+        g.font = font(30, false);
+        g.fillStyle = 'rgba(52,48,42,0.82)';
+        g.textAlign = 'right';
+        g.textBaseline = 'bottom';
+        g.fillText(SPEC.pageAuthor, W * 0.88, H - 72);
+      }
 
       var tex = new THREE.CanvasTexture(cv);
       tex.colorSpace = THREE.SRGBColorSpace;
