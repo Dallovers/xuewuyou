@@ -1,0 +1,135 @@
+{
+  "checks": [
+    {
+      "id": "social.challenge",
+      "from": {
+        "x": 0,
+        "z": 3,
+        "y": 1.6,
+        "speed": 4.2,
+        "run": 6.6,
+        "radius": 0.35
+      },
+      "to": {
+        "x": 2.0122199999999983,
+        "z": 3,
+        "y": 1.6,
+        "speed": 4.2,
+        "run": 6.6,
+        "radius": 0.35
+      },
+      "keyboard": "W then E",
+      "call": {
+        "name": "community",
+        "params": {
+          "tab": "arena",
+          "from": "social.challenge"
+        }
+      }
+    },
+    {
+      "id": "social.board",
+      "from": {
+        "x": 0,
+        "z": 2.6,
+        "y": 1.6,
+        "speed": 4.2,
+        "run": 6.6,
+        "radius": 0.35
+      },
+      "to": {
+        "x": -1.6085999999999996,
+        "z": 2.6,
+        "y": 1.6,
+        "speed": 4.2,
+        "run": 6.6,
+        "radius": 0.35
+      },
+      "keyboard": "W then E",
+      "call": {
+        "name": "community",
+        "params": {
+          "tab": "posts",
+          "from": "social.board"
+        }
+      }
+    },
+    {
+      "id": "social.desk",
+      "from": {
+        "x": 0,
+        "z": 0.65,
+        "y": 1.6,
+        "speed": 4.2,
+        "run": 6.6,
+        "radius": 0.35
+      },
+      "to": {
+        "x": -5.07318,
+        "z": 0.65,
+        "y": 1.6,
+        "speed": 4.2,
+        "run": 6.6,
+        "radius": 0.35
+      },
+      "keyboard": "W then E",
+      "call": {
+        "name": "community",
+        "params": {
+          "tab": "friends",
+          "from": "social.desk"
+        }
+      }
+    }
+  ],
+  "errors": [],
+  "tableCollisionStop": 3,
+  "cycles": [
+    {
+      "loaded": {
+        "geometries": 112,
+        "textures": 31
+      },
+      "after": {
+        "geometries": 48,
+        "textures": 16
+      },
+      "detached": true
+    },
+    {
+      "loaded": {
+        "geometries": 112,
+        "textures": 31
+      },
+      "after": {
+        "geometries": 48,
+        "textures": 16
+      },
+      "detached": true
+    },
+    {
+      "loaded": {
+        "geometries": 112,
+        "textures": 31
+      },
+      "after": {
+        "geometries": 48,
+        "textures": 16
+      },
+      "detached": true
+    }
+  ],
+  "visualRef": "main",
+  "browser": "156.0.8078.4",
+  "conditions": {
+    "viewport": [
+      1536,
+      1024
+    ],
+    "dpr": 1,
+    "eye": 1.6,
+    "mm": 35,
+    "exposure": 0.86,
+    "headless": true
+  }
+}

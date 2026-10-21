@@ -1,6 +1,7 @@
 import { attachSocialAO } from './social-baked-ao.js';
 import { buildCampusTree, buildCampusGrass, buildCampusHedge, batchSocialDetails } from './social-landscape.js';
 import { buildPavilionRoof } from './social-architecture.js';
+import { buildChallengeTable } from './social-challenge-table.js';
 
 /* 学无忧 · 社交广场（板块 A / 第一交付）
  *
@@ -21,7 +22,7 @@ export const SOCIAL_LAYOUT = {
   path: { width: 4.5, branchWidth: 3.0 },
   pavilion: { cx: -7.2, cz: -1.0, width: 3.6, length: 7.0, height: 3.2, column: 0.22 },
   desk: { x: -7.2, z: 0.65, w: 1.8, h: 1.05, d: 0.7 },
-  board: { x: 7.6, z: -0.6, width: 2.4, height: 2.2 },
+  board: { x: -4.2, z: 2.6, width: 2.4, height: 2.2 },
   fountain: { x: 5.6, z: -5.0, diameter: 4.0, rim: 0.4, wall: 0.25 },
   bench: { seat: 0.45, length: 1.6, depth: 0.42 },
   facade: { z: -12.6, width: 30, height: 8, thickness: 0.5 },
@@ -1168,6 +1169,7 @@ export function createDistrict(ctx = {}) {
   buildPavilion();
   buildDesk();
   buildBoard();
+  buildChallengeTable({ THREE, root, add, boxGeo, blockBox, M, interactions, openFeature });
   buildBench(3.1, -5.0, Math.PI / 2);
   buildBench(5.9, -1.9, 0);
   buildBench(6.3, 0.9, Math.PI / 2);

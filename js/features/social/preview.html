@@ -17,7 +17,7 @@
 <div class="social-ui" id="ui" hidden>
   <div class="social-ui__badge">
     <b>社交广场 · 板块 A</b>
-    <span>第一交付：简化空间 + 三个实物交互点。背景立面为占位体量。</span>
+    <span>第一交付：简化空间 + 三个业务交互点。背景立面为占位体量。</span>
   </div>
 
   <div class="social-ui__crosshair"></div>
@@ -315,6 +315,11 @@ function findNearest() {
 const LIVE = typeof window.WG_Community !== 'undefined' && typeof window.WG_Community.open === 'function';
 
 const PANEL_COPY = {
+  'social.challenge': {
+    title: '双人竞技桌',
+    sub: 'community / arena · 预览说明，尚未接公共宿主',
+    body: () => `<p>竞技桌对应主站已有的好友竞技页。</p><p>调用 <code>openFeature('community', { tab: 'arena', from: 'social.challenge' })</code>。</p><p>邀请、接受、准备与答题由真实社区模块处理；此预览不重新实现账号或比赛。</p>`,
+  },
   'social.desk': {
     title: '学习搭子',
     sub: '服务台 → 真实搭子列表',
