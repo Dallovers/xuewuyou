@@ -1,0 +1,135 @@
+'use strict';
+// Real main-site UI in two independent browsers, backed by an isolated JSON server.
+const fs=require('node:fs/promises'), path=require('node:path'), cp=require('node:child_process');
+const assert=require('node:assert/strict'), {chromium}=require('playwright');
+const repo=path.resolve(__dirname,'../../../..');
+const out=path.resolve(process.env.SOCIAL_OUTPUT||path.join(repo,'previews/community-evidence'));
+const report={checks:[],errors:[],requests:[],conditions:{viewport:[1536,1024],dpr:1,headless:true}};
+let child, browsers=[];
+async function launch(){
+  const browser=await chromium.launch({headless:true,executablePath:process.env.SOCIAL_BROWSER_PATH}); browsers.push(browser);
+  const p=await browser.newPage({viewport:{width:1536,height:1024},deviceScaleFactor:1});
+  p.on('pageerror',e=>report.errors.push(e.message));
+  p.on('request',r=>{const u=new URL(r.url());if(u.pathname.startsWith('/api/community/'))report.requests.push({method:r.method(),path:u.pathname});});
+  p.on('dialog',d=>d.accept());
+  return p;
+}
+async function walkOpen(p,base,kind){
+  const z=kind==='friends'?.65:2.6, id=kind==='friends'?'social.desk':'social.board';
+  await p.goto(base+'/js/features/social/preview.html?x=0&z='+z+'&yaw=90&pitch=-10&mm=35');
+  await p.waitForFunction(()=>window.__social);
+  const start=await p.evaluate(()=>({...__social.player}));
+  await p.keyboard.down('w'); await p.waitForFunction(id=>__social.current?.id===id,id); await p.keyboard.up('w');
+  const reached=await p.evaluate(()=>({...__social.player})); assert.ok(Math.abs(reached.x-start.x)>.1);
+  await p.keyboard.press('e');
+  await p.locator('.social-community iframe').waitFor();
+  const f=await p.locator('.social-community iframe').contentFrame();
+  await f.locator('html.social-community-embedded').waitFor({timeout:30000});
+  await f.locator('[data-community-tab='+kind+'][aria-selected=true]').waitFor();
+  report.checks.push({kind,keyboard:'W → E',start,reached});
+  return f;
+}
+async function register(p,f,username){
+  await p.getByRole('button',{name:'账号与登录'}).click();
+  await f.locator('#loginTabReg').click();
+  await f.locator('#loginUsername').fill(username); await f.locator('#loginPassword').fill('LocalReview739!');
+  await f.locator('#loginSubmit').click();
+  await f.locator('#loginModalMask.hidden').waitFor({state:'attached'});
+  await p.waitForFunction(()=>document.querySelector('.social-community iframe').contentWindow.WG_API.isCloudSession());
+  await f.locator('#buddySubjects input').first().waitFor();
+  await f.locator('#buddyNick').fill(username);
+  await f.locator('#buddyVisible').check();
+  await f.locator('#buddySubjects input').first().check();
+  await f.locator('#buddyProfileForm button[type=submit]').click();
+  await f.locator('#communityMessage').filter({hasText:'搭子名片已保存'}).waitFor();
+}
+(async()=>{
+  await fs.mkdir(out,{recursive:true});
+  child=cp.fork('-e',[`const a=require(${JSON.stringify(path.join(repo,'server/scripts/social-preview-dev.cjs'))});a.start(0,'127.0.0.1').then(()=>process.send({port:a.server.address().port}));`],{cwd:repo,env:{...process.env,DATA_DIR:path.join(out,'test-data-'+Date.now()),DATABASE_URL:'',JWT_SECRET:'local-community-review-only'},silent:true,windowsHide:true});
+  let log='';child.stderr.on('data',v=>log+=v);
+  const port=await new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(Error('server startup: '+log)),20000);child.once('message',m=>{clearTimeout(timer);resolve(m.port);});child.once('exit',()=>reject(Error('server exited: '+log)));});
+  const base='http://127.0.0.1:'+port;
+  const a=await launch(),b=await launch(),suffix=String(Date.now()).slice(-7),an='广场甲'+suffix,bn='广场乙'+suffix;
+  let af=await walkOpen(a,base,'friends'),bf=await walkOpen(b,base,'friends');
+  await register(a,af,an); await register(b,bf,bn);
+  await af.locator('#buddySearch').click();
+  const card=af.locator('#buddyDirectory .buddy-person').filter({hasText:bn});
+  await card.getByRole('button',{name:'邀请成为搭子'}).click();
+  const request=bf.locator('#buddyRequests .buddy-request').filter({hasText:an});
+  await request.getByRole('button',{name:'接受',exact:true}).click();
+  await af.locator('#buddyFriends').filter({hasText:bn}).waitFor();
+  await bf.locator('#buddyFriends').filter({hasText:an}).waitFor();
+  assert.equal(await af.getByRole('button',{name:'发起挑战',exact:true}).count(),0);
+  await a.screenshot({path:path.join(out,'friends-main-site.png')});
+  report.checks.push({friends:'A UI invite → B UI accept → both real friend lists updated'});
+  // Typing and held movement keys inside the business frame cannot move the player.
+  const before=await a.evaluate(()=>({...__social.player}));
+  await af.locator('#buddyGoal').fill('WASD E 输入不会移动');
+  await af.locator('#buddyGoal').press('w'); await a.waitForTimeout(250);
+  assert.deepEqual(await a.evaluate(()=>({...__social.player})),before);
+  await af.locator('#buddyGoal').press('Escape');
+  await a.locator('.social-community[open]').waitFor({state:'hidden'});
+  assert.equal(await a.locator('.social-community iframe').count(),0);
+  await a.keyboard.down('s');await a.waitForTimeout(200);await a.keyboard.up('s');
+  assert.notDeepEqual(await a.evaluate(()=>({...__social.player})),before);
+  af=await walkOpen(a,base,'posts'); bf=await walkOpen(b,base,'posts');
+  const note='广场实物留言验证 '+suffix;
+  await af.locator('#postWrite').click();await af.locator('#postText').fill(note);
+  await af.locator('#postForm button[type=submit]').click();
+  const bnote=bf.locator('.sticky-note').filter({hasText:note});await bnote.waitFor();
+  await bnote.getByRole('button',{name:'回复',exact:true}).click();await bf.locator('#postText').fill('乙从广场留言板回复 '+suffix);
+  await bf.locator('#postForm button[type=submit]').click();
+  const anote=af.locator('.sticky-note').filter({hasText:note});
+  await anote.locator('.note-thread summary').waitFor();await anote.locator('.note-thread summary').click();
+  await anote.locator('.community-reply').filter({hasText:'乙从广场留言板回复'}).waitFor();
+  await a.screenshot({path:path.join(out,'posts-and-reply-main-site.png')});
+  report.checks.push({posts:'A UI post → B sees/replies → A sees reply'});
+  await anote.locator(':scope > .note-actions').getByRole('button',{name:'删除',exact:true}).click();
+  await bf.getByText('这张便签已由作者收回。',{exact:true}).waitFor();
+  report.checks.push({deletion:'author deletes, B sees tombstone with reply retained'});
+  await a.getByRole('button',{name:'返回广场',exact:true}).click();
+  for(let i=0;i<5;i++){
+    await a.waitForFunction(()=>__social.current?.id==='social.board');
+    await a.keyboard.press('e');await a.locator('.social-community iframe').contentFrame().locator('html.social-community-embedded').waitFor();
+    await a.getByRole('button',{name:'返回广场',exact:true}).click();
+    assert.equal(await a.locator('.social-community iframe').count(),0);
+    assert.equal(await a.evaluate(()=>__social.panelOpen),false);
+  }
+  report.checks.push({cycles:5,framesAfterClose:0,pausedAfterClose:false});
+  // A malformed main-site response must detach the frame and support a clean retry.
+  await a.route(base+'/index.html',route=>route.fulfill({status:503,contentType:'text/html',body:'Temporarily unavailable'}),{times:1});
+  await a.waitForFunction(()=>__social.current?.id==='social.board');await a.keyboard.press('e');
+  await a.locator('#socialCommunityStatus').filter({hasText:'接入失败'}).waitFor();
+  assert.equal(await a.locator('.social-community iframe').count(),0);
+  await a.getByRole('button',{name:'重新加载',exact:true}).click();
+  await a.locator('.social-community iframe').contentFrame().locator('html.social-community-embedded').waitFor();
+  await a.getByRole('button',{name:'返回广场',exact:true}).click();
+  report.checks.push({failure:'503 document detached; retry opens original main-site posts'});
+  const c=await launch();let cf=await walkOpen(c,base,'posts');
+  await c.getByRole('button',{name:'账号与登录'}).click();
+  await cf.locator('#loginUsername').press('Escape');
+  await cf.locator('#loginModalMask.hidden').waitFor({state:'attached'});
+  assert.equal(await c.locator('.social-community[open]').count(),1);
+  await c.getByRole('button',{name:'账号与登录'}).click();
+  await cf.locator('#loginUsername').fill(an);await cf.locator('#loginPassword').fill('LocalReview739!');
+  await cf.locator('#loginSubmit').click();
+  await cf.locator('#loginModalMask.hidden').waitFor({state:'attached'});
+  await cf.locator('[data-community-tab=posts][aria-selected=true]').waitFor();
+  await c.waitForFunction(()=>document.querySelector('.social-community iframe').contentWindow.WG_API.isCloudSession());
+  cf=await walkOpen(c,base,'posts');
+  assert.equal(await c.evaluate(()=>document.querySelector('.social-community iframe').contentWindow.WG_API.isCloudSession()),true);
+  await c.setViewportSize({width:390,height:844});
+  assert.equal(await c.evaluate(()=>document.querySelector('.social-community').scrollWidth>innerWidth),false);
+  await c.screenshot({path:path.join(out,'posts-mobile-layout.png')});
+  report.checks.push({login:'inner Escape preserves plaza dialog; original login returns to posts; refresh retains session',smallViewport:[390,844]});
+  await a.goto(base+'/js/features/social/preview.html?x=0&z=3&yaw=-90');await a.waitForFunction(()=>window.__social);
+  await a.keyboard.down('w');await a.waitForFunction(()=>__social.current?.id==='social.challenge');await a.keyboard.up('w');await a.keyboard.press('e');
+  await a.getByText('竞技功能暂不接入',{exact:true}).waitFor();assert.equal(await a.locator('.social-community iframe').count(),0);
+  assert.equal(report.requests.some(r=>/challenge/.test(r.path)),false);
+  report.checks.push({arena:'walked to table, no business iframe or challenge request'});
+  report.browser=browsers[0].version(); assert.deepEqual(report.errors,[]);
+  console.log(JSON.stringify({checks:report.checks,errors:report.errors}));
+})().catch(async error=>{report.failure=error.stack;process.exitCode=1;console.error(error);for(let i=0;i<browsers.length;i++)await browsers[i].contexts()[0]?.pages()[0]?.screenshot({path:path.join(out,'failure-'+i+'.png')}).catch(()=>{});}).finally(async()=>{
+  await fs.writeFile(path.join(out,'validation.json'),JSON.stringify(report,null,2));
+  await Promise.allSettled(browsers.map(b=>b.close()));child?.kill();
+});

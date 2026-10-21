@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>社交广场 · 板块 A 预览</title>
 <link rel="stylesheet" href="./preview-activities.css" />
+<link rel="stylesheet" href="./preview-community.css" />
 <link rel="stylesheet" href="../../../css/feature-social.css" />
 <style>
   html, body { margin: 0; height: 100%; background: #1d2320; overflow: hidden; }
@@ -13,12 +14,12 @@
 </style>
 </head>
 <body>
-<canvas id="view"></canvas>
+<canvas id="view" tabindex="0" aria-label="社交广场，WASD 行走，E 互动"></canvas>
 
 <div class="social-ui" id="ui" hidden>
   <div class="social-ui__badge">
     <b>社交广场 · 板块 A</b>
-    <span>WASD 移动 · 拖动环顾 · 靠近坐凳或喷泉按 E 互动</span>
+    <span>WASD 移动 · 拖动环顾 · 服务台找搭子，留言板贴便签 · 靠近按 E</span>
   </div>
 
   <div class="social-ui__crosshair"></div>
@@ -54,6 +55,7 @@
 </script>
 
 <script type="module">
+import {createPreviewCommunity} from './preview-community.js';
 const fatal = document.getElementById('fatal');
 function fail(err) {
   fatal.hidden = false;
@@ -170,7 +172,17 @@ function renderPreview() { if (previewRendering) previewRendering.render(); else
 
 /* ---------- 空间 ---------- */
 
-const district = createDistrict({ THREE, mode: 'preview' });
+// This adapter belongs to this standalone preview; D's public host supplies its own openFeature.
+const communityPreview = createPreviewCommunity({
+  onPause() {
+    panelOpen=true; dragging=false;
+    for(const k of Object.keys(keys)) keys[k]=false;
+    hintEl.classList.remove('is-on');
+  },
+  onResume() { closePanel(); },
+});
+const openPreviewFeature = (name, options) => communityPreview.openFeature(name, options);
+const district = createDistrict({ THREE, mode: 'preview', openFeature: openPreviewFeature });
 scene.add(district.root);
 let previewDisposed=false;
 const districtAssetsReady=district.ready;
@@ -223,6 +235,8 @@ canvas.addEventListener('pointerup', (e) => {
 canvas.addEventListener('pointercancel', () => { dragging = false; });
 
 window.addEventListener('keydown', (e) => {
+  if(e.code==='Escape' && panelOpen && !communityPreview.opened){e.preventDefault();closePanel();return;}
+  if(e.target.closest?.('input,textarea,select,button,dialog'))return;
   if(e.repeat && e.code==='KeyE')return;
   if(activities?.seated && (e.code==='KeyE'||e.code==='Escape')){e.preventDefault();activities.stand();return;}
   if(activities?.seated)return;
@@ -322,35 +336,15 @@ function findNearest() {
   return best;
 }
 
-const LIVE = typeof window.WG_Community !== 'undefined' && typeof window.WG_Community.open === 'function';
+const LIVE = true; // Main-site iframe adapter; the backend may still require login or retry.
 
 const PANEL_COPY = {
   'social.challenge': {
     title: '双人竞技桌',
-    sub: 'community / arena · 预览说明，尚未接公共宿主',
-    body: () => `<p>竞技桌对应主站已有的好友竞技页。</p><p>调用 <code>openFeature('community', { tab: 'arena', from: 'social.challenge' })</code>。</p><p>邀请、接受、准备与答题由真实社区模块处理；此预览不重新实现账号或比赛。</p>`,
+    sub: '竞技功能暂不接入',
+    body: () => `<p>这里保留竞技桌，本轮先开放学习搭子和校园留言。</p>`,
   },
-  'social.desk': {
-    title: '学习搭子',
-    sub: '服务台 → 真实搭子列表',
-    body: () => `
-      <p>在主站中，这里会调用：</p>
-      <code>WG_Community.open('friends')</code>
-      <p>它内部会依次执行 <b>tab('friends')</b> → <b>StudyAppBridge.navTo('community')</b> → <b>WG_Community.load()</b>，
-      这条链路已在 main 分支确认存在，不需要等公共 openFeature 落地。</p>
-      <p><span class="social-ui__tag">验收闭环</span> 搭子列表 → 发申请 → 另一账号接受 → 好友列表更新</p>
-      <div class="social-ui__note">本页是独立预览，没有主站的社区 DOM，因此只显示调用意图，不渲染真实列表。</div>`,
-  },
-  'social.board': {
-    title: '校园留言',
-    sub: '公告栏 → 真实留言板',
-    body: () => `
-      <p>在主站中，这里会调用：</p>
-      <code>WG_Community.open('posts')</code>
-      <p>展板是独立可替换件（<b>board:panel</b>），文字不烘进墙体贴图；贴纸、便签由 <b>js/community.js</b> 渲染，3D 侧只负责打开。</p>
-      <p><span class="social-ui__tag">验收闭环</span> 查看留言 → 发布留言 → 另一账号可见</p>
-      <div class="social-ui__note">留言面板的样式仍由主站现有 CSS 提供，本板块不改 .sticky-note / .note-thread。</div>`,
-  },
+
 };
 
 function openPanel(it, result) {
@@ -364,6 +358,7 @@ function openPanel(it, result) {
 }
 
 function closePanel() {
+  if(communityPreview.opened){communityPreview.close();return;}
   panelEl.hidden = true;
   panelOpen = false;
   current = null;
@@ -379,10 +374,11 @@ function closePanel() {
 document.getElementById('panelClose').addEventListener('click', closePanel);
 panelEl.addEventListener('pointerdown', (e) => e.stopPropagation());
 
-function trigger(it) {
+async function trigger(it) {
+  if(it.id==='social.challenge'){openPanel(it);return;}
   let result;
   try {
-    result = it.action();
+    result = await it.action();
   } catch (err) {
     result = { ok: false, message: String(err && err.message || err) };
   }
@@ -392,6 +388,11 @@ function trigger(it) {
     current=null;hintShown=undefined;hintEl.classList.remove('is-on');return;
   }
   if(result?.ok && result.kind==='fountain'){activities.notify(result.message);hintShown=undefined;return;}
+  if(it.id==='social.desk'||it.id==='social.board'){
+    // The real panel owns its loading/error state. A close during load is cancellation.
+    if(!result?.ok && !['closed','already-open','main-site-unavailable'].includes(result?.reason)) activities.notify(result?.message||'暂时无法打开社区');
+    return;
+  }
   openPanel(it, result);
 }
 
@@ -469,7 +470,7 @@ function tick(now) {
       '\nyaw ' + (yaw * 180 / Math.PI).toFixed(1) + '°  pitch ' + (pitch * 180 / Math.PI).toFixed(1) + '°' +
       '\nfov ' + CAMERA_FOV.toFixed(1) + '° ≈' + EQUIV_MM + 'mm  fps ' + fps +
       '\n碰撞体 ' + district.colliders.length + '  交互点 ' + district.interactions.length +
-      '\n' + (LIVE ? '真实模块在线' : '预览替身（未接主站）');
+      '\n' + (LIVE ? '主站好友 / 留言面板 · 竞技暂未接入' : '预览替身（未接主站）');
   }
 
   renderPreview();
@@ -506,6 +507,7 @@ window.__social = {
 window.addEventListener('beforeunload', () => {
   previewDisposed=true;
   cancelAnimationFrame(rafId);
+  communityPreview.dispose();
   activities.dispose();
   district.dispose();
   if (previewRendering) previewRendering.dispose();
