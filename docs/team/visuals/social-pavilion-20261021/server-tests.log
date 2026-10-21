@@ -211,9 +211,9 @@
 test at test\ability-state.test.js:53:1
 ✖ 掌握度接口显式标明这是模型估计 (114.9429ms)
   AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
-  
+
   503 !== 200
-  
+
       at TestContext.<anonymous> (D:\文档\xuewuyou-项目资料\Codex工作区\2026-10-18\3d-pbr-v-ray-corona-unreal\work\social-visual-dev\server\test\ability-state.test.js:56:10)
       at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
       at async Test.run (node:internal/test_runner/test:1313:7)
@@ -269,9 +269,9 @@ test at test\ability-state.test.js:98:1
 test at test\community.test.js:49:1
 ✖ server grades once, retains learning records and waits for both submissions before review (30.2146ms)
   AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
-  
+
   undefined !== 5
-  
+
       at TestContext.<anonymous> (D:\文档\xuewuyou-项目资料\Codex工作区\2026-10-18\3d-pbr-v-ray-corona-unreal\work\social-visual-dev\server\test\community.test.js:53:78)
       at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
       at async Test.run (node:internal/test_runner/test:1313:7)
@@ -300,10 +300,10 @@ test at test\learning.test.js:26:1
 ✖ map uses bundled bank; mastery rejects self-assessed and duplicate FSRS mirror records (48.1506ms)
   AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
   + actual - expected
-  
+
   + undefined
   - 'pyBKT'
-  
+
       at TestContext.<anonymous> (D:\文档\xuewuyou-项目资料\Codex工作区\2026-10-18\3d-pbr-v-ray-corona-unreal\work\social-visual-dev\server\test\learning.test.js:35:39)
       at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
       at async Test.run (node:internal/test_runner/test:1313:7)
@@ -319,9 +319,9 @@ test at test\learning.test.js:26:1
 test at test\learning.test.js:53:1
 ✖ a real FSRS answer counts once and future reviews are excluded from planning (70.9843ms)
   AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
-  
+
   undefined !== 2
-  
+
       at TestContext.<anonymous> (D:\文档\xuewuyou-项目资料\Codex工作区\2026-10-18\3d-pbr-v-ray-corona-unreal\work\social-visual-dev\server\test\learning.test.js:59:39)
       at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
       at async Test.run (node:internal/test_runner/test:1313:7)
@@ -357,9 +357,9 @@ test at test\learning.test.js:72:1
 test at test\learning.test.js:77:1
 ✖ plan skips busy intervals, preserves completed work, and enforces optimistic concurrency (3.2916ms)
   AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
-  
+
   503 !== 200
-  
+
       at TestContext.<anonymous> (D:\文档\xuewuyou-项目资料\Codex工作区\2026-10-18\3d-pbr-v-ray-corona-unreal\work\social-visual-dev\server\test\learning.test.js:80:62)
       at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
       at async Test.run (node:internal/test_runner/test:1313:7)
