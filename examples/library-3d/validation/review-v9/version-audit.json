@@ -1,0 +1,29 @@
+{
+  "parentPR": 52,
+  "parentSHA": "a635136255a9d5d5ab3ad1e0a9a1e3ef40b15b70",
+  "checkedMain": "7256f9274ff9269b903254acd0b7ed3a7bda1030",
+  "mainComparedTo": "de7924e091b9a47f7223e819ef652cdc2de18b2e",
+  "changedCInputsInMain": [],
+  "originalAssetSHA256": {
+    "examples/library-3d/assets/wenku-library.glb": "9bbcd6676913ec6e43a5d02dfc99dde332664624a49e41b3432bbfd8c7ba73e1",
+    "examples/library-3d/Library_Editable.blend": "bb10a6b0029285bd7c37142dbfa15e929acc2d06222790d38250227618f55093"
+  },
+  "R1AtlasSHA256": "dcc8cbb9546218b2420d6c084305d0bf3caa97745f28e919cdce760d5b1f2755",
+  "bundleSHA256": "450ae6bf41c5d9af112dd13dbc9ff88fb7bfbc52d81b56c8afe8bdd8ed5397f7",
+  "sourceSHA256": {
+    "app.js": "1cc2987fa7eab2f483276eb6518e887d5054e0dcd403b98c698d2a22adb1e494",
+    "catalog.js": "5dbb82afa24f1dd4bfd4e1952f4208c7b393f9b2665f05cc97bda25a916425f4",
+    "interaction-guide.js": "bd5717af52e21d45305bbe9a609320469c06f626d23ab5921d46073ceae35dd7",
+    "reading-activities.js": "44ad6148c530df06ff5eb8d80e365f2622a6806e6f56fc51bf109420d76febcd",
+    "reading-shelf.js": "a4997c37fbc8317ec633159f7514d823c166230a3c17b9c3b967c2e2b2c5300f"
+  },
+  "stylesheetSHA256": "b7c04ec442de4356b23ec9afd5eed6da1e8ee3442543c866bf40aa8e20824cd3",
+  "scope": "C library quiet defaults and public reading shelf only; no model/bake/server/A/B/D or #41 test changes",
+  "testSummary": {
+    "reading-shelf-results.json": 15,
+    "interaction-results.json": 21,
+    "acceptance-results.json": 23,
+    "r1-lighting-results.json": 11
+  },
+  "newEvidenceOnly": true
+}
