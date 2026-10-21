@@ -4,11 +4,12 @@ const path = require('node:path');
 const http = require('node:http');
 const cp = require('node:child_process');
 const assert = require('node:assert/strict');
+const crypto = require('node:crypto');
 const {chromium} = require('playwright');
 const repo = path.resolve(__dirname, '../../../..');
 const out = path.resolve(process.env.SOCIAL_OUTPUT || path.join(repo, '.tmp/social-visual'));
 const cache = process.env.SOCIAL_CDN_CACHE;
-const oldHead = 'f9fb94767d2d1e924d0adc160b53d0d61a0a3873';
+const oldHead = '3378257';
 let browser;
 const mime = {'.html':'text/html','.js':'text/javascript','.css':'text/css','.jpg':'image/jpeg','.png':'image/png'};
 const server = http.createServer(async(req,res) => {
@@ -32,6 +33,8 @@ const server = http.createServer(async(req,res) => {
   } catch { res.writeHead(404);res.end(); }
 });
 (async()=>{
+  const manifest=JSON.parse(await fs.readFile(path.join(repo,'js/features/social/assets/baked/ao-manifest.json'),'utf8'));
+  for(const [file,hash]of [[manifest.texture,manifest.textureHash],[manifest.indirectTexture,manifest.indirectTextureHash]]){assert.ok(hash,'Bake manifest needs an image hash');assert.equal(crypto.createHash('sha256').update(await fs.readFile(path.join(repo,'js/features/social/assets/baked',file))).digest('hex'),hash,'Atlas image must match the actual bake, not a previous atlas');}
   await fs.mkdir(out,{recursive:true});await new Promise(r=>server.listen(0,'127.0.0.1',r));
   const origin='http://127.0.0.1:'+server.address().port;
   browser=await chromium.launch({headless:process.env.SOCIAL_HEADED!=='1',...(process.env.SOCIAL_BROWSER_PATH?{executablePath:process.env.SOCIAL_BROWSER_PATH}:{})});
@@ -83,6 +86,10 @@ const server = http.createServer(async(req,res) => {
     const T=await import('three'),{createDistrict}=await import('./social-district.js');
     const calls=[],d=createDistrict({THREE:T,openFeature:(...args)=>{calls.push(args);return {ok:true};}});
     const ready=await d.ready;d.root.updateMatrixWorld(true);
+    const detailCounts={};d.root.traverse(o=>{if(o.name.startsWith('detail:')||o.name.startsWith('challenge:')||o.name.startsWith('garden:'))detailCounts[o.name]=(detailCounts[o.name]||0)+(o.isInstancedMesh?o.count:1);});
+    const facadeBounds=new T.Box3();d.root.traverse(o=>{if(o.isMesh&&o.name.startsWith('facade:'))facadeBounds.union(new T.Box3().setFromObject(o));});
+    const wall=d.colliders.find(c=>c.name==='placeholder:facade'),wallBox=new T.Box3(new T.Vector3(...wall.center).sub(new T.Vector3(...wall.half)),new T.Vector3(...wall.center).add(new T.Vector3(...wall.half))).expandByScalar(.00001);
+    const facadeColliderContainsModel=wallBox.containsBox(facadeBounds);
     const dimensions=d.root.userData.roofDimensions,boxes=[],invalid=[],geometries=new Set();
     d.root.traverse(o=>{
       if(!o.isMesh)return;
@@ -99,6 +106,8 @@ const server = http.createServer(async(req,res) => {
     const outer=[],top=[];for(let i=0;i<p.count;i++){const radius=Math.hypot(p.getX(i),p.getZ(i));if(radius>1.099)outer.push((p.getX(i)*n.getX(i)+p.getZ(i)*n.getZ(i))/radius);if(Math.abs(p.getY(i)-.38)<1e-5)top.push(n.getY(i));}
     const stoneGeometry={slabs:slabs.length,slabOverlaps,outerNormalMin:Math.min(...outer),topNormalMin:Math.min(...top)};
     const deck=boxes.find(b=>b.name==='pavilion:bearing-deck');
+    const plinth=boxes.find(b=>b.name==='pavilion:column-plinth'),baseplate=boxes.find(b=>b.name==='pavilion:column-base'),shaft=boxes.find(b=>b.name==='pavilion:column');
+    const baseConnections={stoneToPlate:baseplate.min[1]-plinth.max[1],plateToShaft:shaft.min[1]-baseplate.max[1]};
     const connections={beamToDeck:Math.max(...boxes.filter(b=>b.name==='pavilion:beam-cross').map(b=>Math.abs(b.max[1]-deck.min[1]))),rafterToDeck:Math.max(...boxes.filter(b=>b.name==='pavilion:tapered-rafter').map(b=>Math.abs(b.min[1]-deck.max[1]))),soffitToDeck:Math.max(...boxes.filter(b=>b.name==='pavilion:soffit-batten').map(b=>Math.abs(b.max[1]-deck.min[1])))};
     let roofGap=0;
     d.root.traverse(o=>{if(o.name!=='pavilion:tapered-rafter')return;const p=o.geometry.attributes.position;for(let i=0;i<p.count;i++) {const v=new T.Vector3().fromBufferAttribute(p,i).applyMatrix4(o.matrixWorld);if(v.y>dimensions.deckTop+.001)roofGap=Math.max(roofGap,Math.abs(v.y-(dimensions.eaveUnderside+.16*(1-Math.abs(v.x+7.2)/dimensions.half))));}});
@@ -144,14 +153,18 @@ const server = http.createServer(async(req,res) => {
     hostMat.addEventListener('dispose',()=>hostMaterialDisposes++);hostMap.addEventListener('dispose',()=>hostTextureDisposes++);
     const borrowed=createDistrict({THREE:T,materials:{stone_light:hostMat}});await borrowed.ready;borrowed.dispose();
     const shared={hostMaterialDisposes,hostTextureDisposes,mapUnchanged:hostMat.map===hostMap,color:hostMat.color.getHex()};hostMat.dispose();hostMap.dispose();
-    return {stoneGeometry,ready,rejectedBake,lateAO,lateGI,dimensions,connections,boxes,invalid,uniqueGeometry:geometries.size,calls,colliders,cycles,late:lateResult,shared};
+    return {baseConnections,facadeColliderContainsModel,detailCounts,stoneGeometry,ready,rejectedBake,lateAO,lateGI,dimensions,connections,boxes,invalid,uniqueGeometry:geometries.size,calls,colliders,cycles,late:lateResult,shared};
   });
   await fs.writeFile(path.join(out,'diagnostic-audit.json'),JSON.stringify(audit,null,2));
-  assert.equal(audit.invalid.length,0);
+  assert.equal(audit.invalid.length,0);assert.equal(audit.facadeColliderContainsModel,true);
+  assert.equal(audit.detailCounts['detail:anchor-nut'],24);assert.equal(audit.detailCounts['detail:anchor-washer'],24);assert.equal(audit.detailCounts['detail:board-instruction'],4);assert.equal(audit.detailCounts['challenge:top-board'],6);
+  assert.equal(audit.ready.bakedAO.meshes,165);
+  assert.ok(audit.colliders.some(c=>c.name==='detail:downpipe'));
   assert.equal(audit.stoneGeometry.slabs,26);assert.equal(audit.stoneGeometry.slabOverlaps,0);assert.ok(audit.stoneGeometry.outerNormalMin>0&&audit.stoneGeometry.topNormalMin>0);
   assert.equal(audit.rejectedBake.reason,'scene-mismatch');
   assert.ok(audit.lateGI.result.disposed&&audit.lateGI.unchanged&&audit.lateGI.textures.length===2&&audit.lateGI.textures.every(t=>t.disposals===1));
   assert.ok(audit.lateAO.geometryUnchanged&&audit.lateAO.disposals===1&&audit.lateAO.result.disposed);
+  for(const gap of Object.values(audit.baseConnections))assert.ok(Math.abs(gap)<.000001,'Column base connections must touch');
   for(const [name,gap]of Object.entries(audit.connections))assert.ok(Math.abs(gap)<.00001,name+': '+gap);
   assert.ok(audit.cycles.every(c=>c.detached&&c.after.geometries===audit.cycles[0].after.geometries&&c.after.textures===audit.cycles[0].after.textures),'GPU allocations must return to baseline');
   assert.ok(audit.late.unchanged&&audit.late.textures.every(t=>t.disposals===1),'late textures must dispose once without writing');
@@ -172,9 +185,12 @@ const server = http.createServer(async(req,res) => {
   const sample=page.evaluate(()=>new Promise(resolve=>{const times=[],start=performance.now();let last=start;function tick(now){times.push(now-last);last=now;if(now-start<6000)requestAnimationFrame(tick);else {times.shift();times.sort((a,b)=>a-b);resolve({samples:times.length,p50:times[Math.floor(times.length*.5)],p95:times[Math.floor(times.length*.95)],max:times.at(-1),seconds:(now-start)/1000});}}requestAnimationFrame(tick);}));
   const route=[];for(const code of ['KeyW','KeyS','KeyW']){await page.keyboard.down(code);await page.waitForTimeout(2000);await page.keyboard.up(code);route.push(await page.evaluate(()=>({...__social.player})));}
   const moving=await sample;moving.route=route;
+  await open('x=-9.51&z=-6.2&yaw=180&pitch=0');await page.keyboard.down('KeyW');await page.waitForTimeout(1200);await page.keyboard.up('KeyW');
+  const pipeStop=await page.evaluate(()=>({...__social.player}));assert.ok(pipeStop.z<-5.10&&pipeStop.z>-5.16,'downpipe collider must stop the player');
+
   assert.deepEqual(errors,[]);assert.deepEqual(consoleErrors,[]);assert.deepEqual(network,[]);
   const gpu=await page.evaluate(()=>{const g=__audit.renderer.getContext(),e=g.getExtension('WEBGL_debug_renderer_info');return e?g.getParameter(e.UNMASKED_RENDERER_WEBGL):'unavailable';});
-  const result={gpu,base:oldHead,browser:await browser.version(),conditions:{headless:process.env.SOCIAL_HEADED!=='1',viewport:[1536,1024],dpr:1,exposure:.86,mm:35,eye:1.6,sun:3.2,hemisphere:.24,fill:.08,fogNear:30,fogFar:70},screens,audit,pipelineCycles,walking:{from,to,deskStop,panelPauses:true,escapeRestoresHint:true},movingFrames: moving,errors,consoleErrors,network};
-  await fs.writeFile(path.join(out,'validation-v3.json'),JSON.stringify(result,null,2));
+  const result={gpu,base:oldHead,browser:await browser.version(),conditions:{headless:process.env.SOCIAL_HEADED!=='1',viewport:[1536,1024],dpr:1,exposure:.86,mm:35,eye:1.6,sun:3.2,hemisphere:.24,fill:.08,fogNear:30,fogFar:70},screens,audit,pipelineCycles,walking:{from,to,deskStop,pipeStop,panelPauses:true,escapeRestoresHint:true},movingFrames: moving,errors,consoleErrors,network};
+  await fs.writeFile(path.join(out,'validation-v4.json'),JSON.stringify(result,null,2));
   console.log(JSON.stringify({out,connections:audit.connections,cycles:audit.cycles,moving,errors}));
 })().catch(e=>{console.error(e);process.exitCode=1;}).finally(async()=>{if(browser)await browser.close();server.close();});

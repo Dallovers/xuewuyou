@@ -1,26 +1,32 @@
 /** Deterministic, geometry-based foliage; no billboard tree or image backdrop. */
-export function buildCampusTree({THREE,root,add,cylGeo,M,x,z}) {
-  let seed = (Math.round((x+32)*1000)^Math.round((z+20)*900))>>>0;
+export function buildCampusTree({THREE,root,add,cylGeo,M,x,z,leafCount=3600,seedOffset=0}) {
+  let seed = (Math.round((x+32)*1000)^Math.round((z+20)*900)^seedOffset)>>>0;
   const rnd=()=>((seed=(1664525*seed+1013904223)>>>0)/4294967296);
   const branchMeshes=[];
-  function branch(a,b,r0,r1) {
-    const from=new THREE.Vector3(...a),to=new THREE.Vector3(...b),delta=to.clone().sub(from);
-    const mid=from.clone().add(to).multiplyScalar(.5);
-    const mesh=add(cylGeo(r1,r0,delta.length(),7,false),M.soil,x+mid.x,mid.y,z+mid.z,{name:'green:branch'});
-    mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),delta.normalize());
-    branchMeshes.push(mesh);
+  function branch(points,r0,r1) {
+    const curve=new THREE.CatmullRomCurve3(points.map(p=>new THREE.Vector3(...p))),segments=r0>.035?7:3,radial=r0>.035?10:5;
+    const g=new THREE.TubeGeometry(curve,segments,1,radial,false),pos=g.attributes.position,uv=g.attributes.uv;
+    for(let row=0;row<=segments;row++)for(let col=0;col<=radial;col++){
+      const i=row*(radial+1)+col,t=row/segments,centre=curve.getPointAt(t),v=new THREE.Vector3().fromBufferAttribute(pos,i).sub(centre),r=r0*(1-t)+r1*t;
+      v.multiplyScalar(r*(1+.035*Math.sin(col/radial*Math.PI*6+t*7))).add(centre);
+      if(x<0&&v.z<0)v.z*=.65; // Pruned north side beside the existing pavilion roof.
+      pos.setXYZ(i,v.x,v.y,v.z);uv.setXY(i,col/radial*2*Math.PI*r/.6,t*curve.getLength()/.9);
+    }
+    g.computeVertexNormals();
+    const mesh=add(g,M.bark||M.soil,x,0,z,{name:'green:branch'});branchMeshes.push(mesh);return curve;
   }
-  branch([0,.2,0],[.04,2.3,0],.13,.055);
-  const tips=[];
-  for(let i=0;i<12;i++) {
-    const angle=i*2.39996+rnd()*.35, spread=.5+rnd()*.5;
-    const base=[.04,1.55+rnd()*.65,0];
-    const end=[Math.cos(angle)*spread,2.7+rnd()*.85,Math.sin(angle)*spread];
-    branch(base,end,.044,.017);
-    for(let j=0;j<5;j++) {
-      const a=angle+j*1.7, r=.28+rnd()*.5;
-      const tip=[end[0]+Math.cos(a)*r,end[1]+(rnd()-.25)*.65,end[2]+Math.sin(a)*r];
-      branch(end,tip,.014,.004);tips.push(tip);
+  const trunk=branch([[0,.2,0],[.045,1.0,.02],[-.025,1.9,.045],[.14,2.75,.03],[.08,3.45,-.08]],.13,.021),tips=[];
+  for(let i=0;i<6;i++){
+    const angle=i*2.39996+(rnd()-.5)*.7,base=trunk.getPoint(.43+rnd()*.30),spread=.95+rnd()*.45;
+    const end=new THREE.Vector3(Math.cos(angle)*spread,2.7+rnd()*.75,Math.sin(angle)*spread);
+    const middle=base.clone().lerp(end,.48);middle.y-=.12;
+    const primary=branch([base.toArray(),middle.toArray(),end.toArray()],.044,.009);
+    for(let j=0;j<6;j++){
+      const from=primary.getPoint(.30+j*.115),a=angle+(j%2?1:-1)*(.45+rnd()*.8),length=.30+rnd()*.45;
+      const to=from.clone().add(new THREE.Vector3(Math.cos(a)*length,.10+rnd()*.44,Math.sin(a)*length));
+      const mid=from.clone().lerp(to,.5);mid.y-=.035;
+      const twig=branch([from.toArray(),mid.toArray(),to.toArray()],.011,.0022);
+      for(let k=0;k<4;k++)tips.push(twig.getPoint(.4+k*.2).toArray());
     }
   }
   // Bake the branch transforms into one mesh per tree; cached sources remain owner-managed.
@@ -28,11 +34,11 @@ export function buildCampusTree({THREE,root,add,cylGeo,M,x,z}) {
   for(const mesh of branchMeshes) {
     mesh.updateMatrix();const source=mesh.geometry.toNonIndexed();source.applyMatrix4(mesh.matrix);
     positions.push(...source.attributes.position.array);normals.push(...source.attributes.normal.array);uvs.push(...source.attributes.uv.array);
-    source.dispose();root.remove(mesh);
+    source.dispose();if(!mesh.geometry.userData.__socialCached)mesh.geometry.dispose();root.remove(mesh);
   }
   const branches=new THREE.BufferGeometry();
   branches.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));branches.setAttribute('normal',new THREE.Float32BufferAttribute(normals,3));branches.setAttribute('uv',new THREE.Float32BufferAttribute(uvs,2));
-  add(branches,M.soil,0,0,0,{name:'green:branches'});
+  add(branches,M.bark||M.soil,0,0,0,{name:'green:branches'});
   // One gently curved surface per leaf; generated botanical albedo/alpha supplies veins and outline.
   const verts=[],uv=[],indices=[];
   for(let row=0;row<3;row++)for(let col=0;col<3;col++){
@@ -42,12 +48,12 @@ export function buildCampusTree({THREE,root,add,cylGeo,M,x,z}) {
     const a=row*3+col,b=a+1,c=a+3,d=c+1;indices.push(a,b,d,a,d,c);
   }
   const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.Float32BufferAttribute(verts,3));geo.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));geo.setIndex(indices);geo.computeVertexNormals();geo.userData.__socialDisposable=true;
-  const count=2400,leaves=new THREE.InstancedMesh(geo,M.leaf,count),dummy=new THREE.Object3D();leaves.name='green:leaves';leaves.userData.bakeOccluder=false;
+  const count=leafCount,leaves=new THREE.InstancedMesh(geo,M.leaf,count),dummy=new THREE.Object3D();leaves.name='green:leaves';leaves.userData.bakeOccluder=false;
   const colour=new THREE.Color();
   for(let i=0;i<count;i++) {
     const tip=tips[i%tips.length];
-    const a=rnd()*Math.PI*2,v=rnd()*2-1,r=Math.cbrt(rnd())*.46,s=Math.sqrt(1-v*v);
-    dummy.position.set(x+tip[0]+Math.cos(a)*s*r,tip[1]+v*r*.8,z+tip[2]+Math.sin(a)*s*r);
+    const a=rnd()*Math.PI*2,v=rnd()*2-1,r=Math.cbrt(rnd())*.26,s=Math.sqrt(1-v*v);
+    const pz=tip[2]+Math.sin(a)*s*r;dummy.position.set(x+tip[0]+Math.cos(a)*s*r,tip[1]+v*r*.8,z+(x<0&&pz<0?pz*.65:pz));
     dummy.rotation.set(rnd()*Math.PI,rnd()*Math.PI*2,rnd()*Math.PI*2);
     const scale=.085+rnd()*.06;dummy.scale.set(scale*2/3,scale,scale);dummy.updateMatrix();leaves.setMatrixAt(i,dummy.matrix);
     const tint=.76+rnd()*.24;colour.setRGB(tint*.96,tint,tint*.88);leaves.setColorAt(i,colour);
@@ -57,7 +63,7 @@ export function buildCampusTree({THREE,root,add,cylGeo,M,x,z}) {
 
 /** Batch repeated boxes once after assembly. Interaction objects stay unbatched. */
 export function batchSocialDetails(THREE,root) {
-  const names=new Set(['pavilion:soffit-batten','pavilion:standing-seam','placeholder:facade-pier','placeholder:facade-spandrel','placeholder:window-frame','placeholder:window-sill','placeholder:facade-glazing','placeholder:window-interior']);
+  const names=new Set(['pavilion:soffit-batten','pavilion:standing-seam','placeholder:facade-pier','placeholder:facade-spandrel','placeholder:window-frame','placeholder:window-sill','placeholder:facade-glazing','placeholder:window-interior','facade:frame','facade:glass','facade:pier','facade:gasket','facade:sill','detail:beam-cleat','detail:desk-pull-fixing','detail:pipe-clip']);
   const groups=new Map();
   for(const mesh of root.children) if(mesh.isMesh&&!mesh.isInstancedMesh&&names.has(mesh.name)) {
     const key=mesh.geometry.uuid+'/'+mesh.material.uuid;
@@ -106,4 +112,25 @@ export function buildCampusHedge({THREE,root,M}) {
     const t=.65+random()*.25;colour.setRGB(t*.95,t,t*.85);hedge.setColorAt(i,colour);
   }
   hedge.castShadow=true;hedge.receiveShadow=true;hedge.instanceMatrix.needsUpdate=true;root.add(hedge);
+}
+
+/** A small western garden edge, outside gameplay: three young trees and a low seat wall. */
+export function buildSocialGardenEdge({THREE,root,add,boxGeo,cylGeo,M}) {
+  add(boxGeo(.32,.60,28),M.brick_grey,-13.55,.30,0,{name:'garden:seat-wall'});
+  add(boxGeo(.43,.055,28.08),M.stone_light_in,-13.55,.6275,0,{name:'garden:wall-cap'});
+  for(let i=0;i<3;i++) {
+    const group=new THREE.Group();group.name='garden:tree';root.add(group);
+    const localAdd=(g,m,x,y,z,opts={})=>add(g,m,x,y,z,{...opts,parent:group});
+    buildCampusTree({THREE,root:group,add:localAdd,cylGeo,M,x:0,z:0,leafCount:1900,seedOffset:i*311});
+    group.position.set(-16.5-(i%2)*1.2,0,-9+i*9.3);group.scale.setScalar([1.5,1.65,1.42][i]);
+    group.traverse(o=>{if(o.isMesh)o.castShadow=false;});
+  }
+}
+
+export function mergeSocialCurtains(THREE,root) {
+  const items=root.children.filter(o=>o.isMesh&&o.name==='facade:curtain');if(!items.length)return;
+  const positions=[],normals=[],uv=[];
+  for(const o of items){o.updateMatrix();const g=o.geometry.index?o.geometry.toNonIndexed():o.geometry.clone();g.applyMatrix4(o.matrix);positions.push(...g.attributes.position.array);normals.push(...g.attributes.normal.array);uv.push(...g.attributes.uv.array);g.dispose();o.geometry.dispose();root.remove(o);}
+  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));g.setAttribute('normal',new THREE.Float32BufferAttribute(normals,3));g.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));g.userData.__socialDisposable=true;
+  const mesh=new THREE.Mesh(g,items[0].material);mesh.name='facade:curtains';mesh.castShadow=true;mesh.receiveShadow=true;root.add(mesh);
 }

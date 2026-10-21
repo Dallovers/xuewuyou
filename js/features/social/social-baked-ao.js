@@ -4,7 +4,7 @@ export function socialBakeTargets(THREE, root) {
   const counts=new Map(),out=[],inverse=root.matrixWorld.clone().invert();
   root.traverse(o=>{
     if(!o.isMesh||o.isInstancedMesh||Array.isArray(o.material))return;
-    if(!(/^(pavilion:|social:desk-|bench:)/.test(o.name)||['site:paving','path:main','path:branch'].includes(o.name)))return;
+    if(!(/^(pavilion:|social:desk-|bench:|challenge:|facade:room-|facade:curtains)/.test(o.name)||['site:paving','path:main','path:branch'].includes(o.name)))return;
     const index=counts.get(o.name)||0;counts.set(o.name,index+1);
     const matrix=inverse.clone().multiply(o.matrixWorld),g=o.geometry.index?o.geometry.toNonIndexed():o.geometry;
     let hash=2166136261;
@@ -32,19 +32,21 @@ export async function attachSocialAO(THREE,root,owner) {
   if(typeof fetch!=='function'||typeof document==='undefined')return {ok:false,reason:'no-browser'};
   if(owner.disposed)return {ok:false,disposed:true};
   try {
-    const manifest=await (await fetch(new URL('./assets/baked/ao-manifest.json',import.meta.url))).json();
+    const manifest=await (await fetch(new URL('./assets/baked/ao-manifest.json',import.meta.url),{cache:'no-cache'})).json();
     if(owner.disposed)return {ok:false,disposed:true};
     if(manifest.sceneSignature!==socialSceneSignature(THREE,root))return {ok:false,reason:'scene-mismatch'};
     const candidates=socialBakeTargets(THREE,root),matches=candidates.filter(t=>manifest.meshes[t.key]?.signature===t.signature);
     // Treat atlas as one versioned scene: an incomplete match skips all baking.
     if(matches.length!==Object.keys(manifest.meshes).length||matches.length!==candidates.length)return {ok:false,reason:'geometry-mismatch'};
-    const atlas=await new THREE.TextureLoader().loadAsync(new URL('./assets/baked/'+manifest.texture,import.meta.url).href);
+    const atlasURL=new URL('./assets/baked/'+manifest.texture,import.meta.url);atlasURL.searchParams.set('v',manifest.textureHash||manifest.sceneSignature);
+    const atlas=await new THREE.TextureLoader().loadAsync(atlasURL.href);
     if(!owner.ownTexture(atlas))return {ok:false,disposed:true};
     atlas.flipY=true;atlas.channel=1;atlas.colorSpace=THREE.NoColorSpace;atlas.anisotropy=8;
     let indirect=null,indirectError=null;
     if(manifest.indirectTexture) {
       try {
-        indirect=await new THREE.TextureLoader().loadAsync(new URL('./assets/baked/'+manifest.indirectTexture,import.meta.url).href);
+        const indirectURL=new URL('./assets/baked/'+manifest.indirectTexture,import.meta.url);indirectURL.searchParams.set('v',manifest.indirectTextureHash||manifest.sceneSignature);
+        indirect=await new THREE.TextureLoader().loadAsync(indirectURL.href);
         if(!owner.ownTexture(indirect))return {ok:false,disposed:true};
         indirect.flipY=true;indirect.channel=1;indirect.colorSpace=THREE.SRGBColorSpace;indirect.anisotropy=8;
       } catch(error){indirectError=String(error.message);}

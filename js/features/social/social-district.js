@@ -1,14 +1,17 @@
+import { detailSocialConstruction } from './social-detailing.js';
+import { buildSocialFacade } from './social-facade.js';
+import { prepareSocialSurfaces } from './social-surfaces.js';
 import { attachSocialAO } from './social-baked-ao.js';
-import { buildCampusTree, buildCampusGrass, buildCampusHedge, batchSocialDetails } from './social-landscape.js';
+import { buildCampusTree, buildCampusGrass, buildCampusHedge, buildSocialGardenEdge, mergeSocialCurtains, batchSocialDetails } from './social-landscape.js';
 import { buildPavilionRoof } from './social-architecture.js';
 import { buildChallengeTable } from './social-challenge-table.js';
 
 /* 学无忧 · 社交广场（板块 A / 第一交付）
  *
- * 内容：场地铺装、主通路、亭廊、搭子服务台、公告栏、坐凳、喷泉池体，以及三个实物交互点。
+ * 内容：场地铺装、主通路、亭廊、搭子服务台、公告栏、坐凳、喷泉池体，以及三个业务交互点和喷泉演示。
  * 边界：
  *   - 只产出本板块的 THREE.Group，不自建 renderer、不启动 RAF、不改公共相机与输入。
- *   - 背景教学楼是占位体量（userData.placeholder = true），由公共宿主接入时替换（D 负责宿主，本批不重建立面）。
+ *   - 背景教学楼是占位体量（userData.placeholder = true），由公共宿主接入时替换（本批补真实窗洞与浅室内，D 负责宿主）。
  *   - 喷泉水面只是静态占位片，水流效果尚未实现，列入后续批次。
  *   - 接口按 docs/team/three-person-feature-plan.md 第 7 节的拟定 createDistrict 编写；
  *     该接口尚未在统一基线中实现，故 openFeature 缺失时回退到现有 window.WG_Community。
@@ -56,7 +59,7 @@ const MATERIAL_SPEC = {
     color: 0x86adb8, roughness: 0.12, metalness: 0.05, transparent: true, opacity: 0.72,
     physical: true, envMapIntensity: 1.3,
   },
-  accent_amber: { color: 0xc98b3f, roughness: 0.4, metalness: 0.2, emissive: 0xc98b3f, emissiveIntensity: 0.32 },
+  accent_amber: { color: 0xf0e7d4, roughness: 0.62, metalness: 0, emissive: 0xffead0, emissiveIntensity: 0.15 },
   ground_paving: { color: 0xbdb6a6, roughness: 0.82, metalness: 0.0 },
   ground_lawn: { color: 0x7e8a71, roughness: 0.95, metalness: 0.0 },
   leaf: { color: 0x5a6a47, roughness: 0.70, metalness: 0.0 },
@@ -64,7 +67,7 @@ const MATERIAL_SPEC = {
 };
 
 /* 材质 ID → 贴图组。尺度与 v5 architecture.js 的 unit 对齐：brick 1.7m、wood 1.8m 一个循环。
-   stone 不在这里：台面与台基改用程序化细石材，不走那张强斑驳的混凝土地坪贴图。 */
+   stone 不在这里：台面与台基使用细石材颜色图，程序纹理只作异步回退，不走那张强斑驳的混凝土地坪贴图。 */
 const PBR_GROUPS = {
   brick_grey: { set: 'brick', normalScale: 0.08 },
   // 白橡木扫描三件套保持同源；平板方向通过自有纹理副本旋转。
@@ -569,21 +572,6 @@ function attachTextures(THREE, lib, pavingMats, owner, lawnMat) {
     })());
   }
 
-  // 地面铺装：保留程序化石板做颜色，只借 stone-normal 提供凹凸；
-  // 换成天然石纹贴图反而会丢掉板缝，重复感也更重
-  for (const item of pavingMats) {
-    jobs.push((async () => {
-      const normal = await load('stone-normal.jpg', false);
-      if (owner.disposed) return;
-      const n = normal.clone();
-      n.repeat.set(item.repeat[0], item.repeat[1]);
-      n.needsUpdate = true;
-      if (!owner.ownTexture(n)) return;
-      item.mat.normalMap = n;
-      item.mat.normalScale = new THREE.Vector2(0.09, 0.09);
-      item.mat.needsUpdate = true;
-    })());
-  }
 
   return Promise.allSettled(jobs).then((results) => {
     const rejected = results.filter((r) => r.status === 'rejected');
@@ -610,6 +598,7 @@ export function createDistrict(ctx = {}) {
   const L = SOCIAL_LAYOUT;
   const owner = createResourceOwner();
   const M = resolveMaterials(THREE, ctx.materials, owner);
+  prepareSocialSurfaces({THREE,M,owner});
   const root = new THREE.Group();
   root.name = 'district:social';
   root.userData = { districtId: 'social', stage: 'a-first-delivery' };
@@ -719,7 +708,8 @@ export function createDistrict(ctx = {}) {
 
   /* 程序化石板铺装：1024 的错缝石板图，每块有独立亮度与斑驳。
      单张天然石纹贴图平铺后重复感很强、也看不出"铺装"这件事，
-     所以这里自己画石板，法线再借 v5 的 stone-normal 做凹凸。 */
+     所以板缝颜色、凹凸和粗糙度使用同源程序图。 */
+  let pavingHeightSource=null,pavingRoughnessSource=null;
   function makePavingMaterial(baseColor, width, depth, unit) {
     const random = seededRandom(3911);
     const repX = width / unit;
@@ -770,6 +760,20 @@ export function createDistrict(ctx = {}) {
     // 只登记材质会每轮漏一张
     if (!owner.ownTexture(tex)) return null;
     const mat = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.8, metalness: 0.0, color: baseColor });
+    if(!pavingHeightSource){
+      const h=document.createElement('canvas'),r=document.createElement('canvas');h.width=h.height=r.width=r.height=1024;
+      const hg=h.getContext('2d'),rg=r.getContext('2d');hg.fillStyle='#505050';hg.fillRect(0,0,1024,1024);rg.fillStyle='#ededed';rg.fillRect(0,0,1024,1024);
+      for(let row=0;row<4;row++)for(let col=-1;col<=4;col++){
+        const x=col*256+(row%2)*128,y=row*256;hg.fillStyle='#a7a7a7';hg.fillRect(x+1.6,y+1.6,252.8,252.8);hg.fillStyle='#c8c8c8';hg.fillRect(x+3,y+3,250,250);
+        const v=216+(row*11+col*7+30)%17;rg.fillStyle='rgb('+v+','+v+','+v+')';rg.fillRect(x+2,y+2,252,252);
+      }
+      pavingHeightSource=new THREE.CanvasTexture(h);pavingRoughnessSource=new THREE.CanvasTexture(r);
+      owner.ownTexture(pavingHeightSource);owner.ownTexture(pavingRoughnessSource);
+      for(const t of [pavingHeightSource,pavingRoughnessSource]){t.wrapS=t.wrapT=THREE.RepeatWrapping;t.colorSpace=THREE.NoColorSpace;t.anisotropy=8;}
+    }
+    const height=pavingHeightSource.clone(),rough=pavingRoughnessSource.clone();
+    for(const t of [height,rough]){owner.ownTexture(t);t.repeat.set(repX,repY);t.needsUpdate=true;}
+    mat.bumpMap=height;mat.bumpScale=.008;mat.roughnessMap=rough;mat.roughness=.96;
     mat.name = 'paving:' + baseColor;
     owner.ownMaterial(mat);
     pavingMaterials.push({ mat, repeat: [repX, repY] });
@@ -804,7 +808,7 @@ export function createDistrict(ctx = {}) {
     return mat;
   }
 
-  /* 草地：仓库里没有草地贴图，用程序化颗粒噪点 + 颜色着色，
+  /* 草地：异步实拍PBR未就绪时使用程序颗粒回退，
      避免 70×70 的底面上出现一整片死平的绿。 */
   function makeLawnMaterial() {
     const random = seededRandom(4903);
@@ -914,12 +918,12 @@ export function createDistrict(ctx = {}) {
     const zs = [P.cz - halfL + 0.75, P.cz, P.cz + halfL - 0.75];
     for (const x of xs) {
       for (const z of zs) {
-        add(beveledBoxGeometry(THREE, 0.29, 0.12, 0.29, 0.014, 1), M.stone_light_in, x, plinth + 0.06, z, { name: 'pavilion:column-plinth' });
-        add(beveledBoxGeometry(THREE, P.column, colH - 0.12, P.column, 0.002, 1), M.metal_dark, x, plinth + 0.12 + (colH - 0.12) / 2, z, { name: 'pavilion:column' });
+        add(beveledBoxGeometry(THREE, 0.42, 0.12, 0.42, 0.014, 1.2), M.stone_light_in, x, plinth + 0.06, z, { name: 'pavilion:column-plinth' });
+        add(beveledBoxGeometry(THREE, P.column, colH - 0.138, P.column, 0.002, 1), M.metal_dark, x, plinth + 0.138 + (colH - 0.138) / 2, z, { name: 'pavilion:column' });
         add(beveledBoxGeometry(THREE, P.column + 0.08, 0.09, P.column + 0.08, 0.008, 1), M.stone_light_in, x, plinth + colH - 0.045, z, { name: 'pavilion:capital' });
-        add(boxGeo(P.column + 0.14, 0.018, P.column + 0.14), M.metal_dark, x, plinth + 0.009, z, { name: 'pavilion:column-base' });
-        // Cover the 360mm base plate as well as the shaft; prevent feet clipping the plinth.
-        blockBox(P.column + 0.14, colH + plinth, P.column + 0.14, x, z, 'pavilion:column');
+        add(boxGeo(P.column + 0.14, 0.018, P.column + 0.14), M.metal_dark, x, plinth + 0.129, z, { name: 'pavilion:column-base' });
+        // 420mm stone pedestal carries the 360mm plate; 440mm collision includes its bevel.
+        blockBox(.44, colH + plinth, .44, x, z, 'pavilion:column');
       }
     }
 
@@ -1107,36 +1111,10 @@ export function createDistrict(ctx = {}) {
     });
   }
 
-  /* ---------- 背景立面占位（D 接入公共宿主时替换，本批不重建） ---------- */
+  /* ---------- 背景立面占位（补窗洞与浅室内，D 接入公共宿主时可替换） ---------- */
 
   function buildFacadePlaceholder() {
-    const F = L.facade;
-    // Same background envelope, rebuilt as real piers/spandrels around recessed openings.
-    const front = F.z + F.thickness / 2;
-    for (const [lo,hi] of [[0,1.25],[2.75,3.65],[5.15,6.05],[7.55,8]]) {
-      add(boxGeo(F.width,hi-lo,F.thickness),M.brick_grey,0,(lo+hi)/2,F.z,{name:'placeholder:facade-spandrel',placeholder:true});
-    }
-    for(let i=-6;i<=6;i++) {
-      const x=i*2.3;
-      for(let floor=0;floor<3;floor++) {
-        const y=2+floor*2.4;
-        if(i<6) add(boxGeo(.9,1.5,F.thickness),M.brick_grey,x+1.15,y,F.z,{name:'placeholder:facade-pier',placeholder:true});
-        // Window back plane is 360mm behind masonry face; jambs are the actual wall sides.
-        add(boxGeo(1.4,1.5,.035),M.window_dark,x,y,front-.405,{name:'placeholder:window-interior',placeholder:true,cast:false});
-        add(boxGeo(1.30,1.40,.018),M.glass,x,y,front-.32,{name:'placeholder:facade-glazing',placeholder:true,cast:false});
-        for(const dx of [-.68,0,.68]) add(boxGeo(.04,1.50,.075),M.metal_frame,x+dx,y,front-.26,{name:'placeholder:window-frame',placeholder:true});
-        for(const dy of [-.73,.73]) add(boxGeo(1.4,.04,.075),M.metal_frame,x,y+dy,front-.26,{name:'placeholder:window-frame',placeholder:true});
-        add(boxGeo(1.53,.065,.58),M.stone_light_in,x,y-.77,front-.20,{name:'placeholder:window-sill',placeholder:true});
-      }
-    }
-    for(const sx of [-1,1]) add(boxGeo(.5,F.height,F.thickness),M.brick_grey,sx*14.75,F.height/2,F.z,{name:'placeholder:facade-pier',placeholder:true});
-    add(boxGeo(F.width+.12,.16,F.thickness+.20),M.stone_light_in,0,F.height+.08,F.z,{name:'placeholder:facade-cap',placeholder:true});
-    colliders.push({
-      name: 'placeholder:facade',
-      type: 'box',
-      center: [0, F.height / 2, F.z],
-      half: [F.width / 2, F.height / 2, F.thickness / 2],
-    });
+    buildSocialFacade({THREE,L,M,add,boxGeo,bevel:beveledBoxGeometry,colliders,owner});
   }
 
   /* ---------- 交互桥接 ---------- */
@@ -1169,7 +1147,7 @@ export function createDistrict(ctx = {}) {
   buildPavilion();
   buildDesk();
   buildBoard();
-  buildChallengeTable({ THREE, root, add, boxGeo, blockBox, M, interactions, openFeature });
+  buildChallengeTable({ THREE, root, add, boxGeo, blockBox, M, interactions, openFeature, bevel:beveledBoxGeometry });
   buildBench(3.1, -5.0, Math.PI / 2);
   buildBench(5.9, -1.9, 0);
   buildBench(6.3, 0.9, Math.PI / 2);
@@ -1177,6 +1155,9 @@ export function createDistrict(ctx = {}) {
   buildTreePit(6.6, 4.4);
   buildCampusHedge({THREE,root,M});
   buildFountain();
+  detailSocialConstruction({THREE,root,add,boxGeo,cylGeo,bevel:beveledBoxGeometry,M,L,owner,colliders});
+  buildSocialGardenEdge({THREE,root,add,boxGeo,cylGeo,M});
+  mergeSocialCurtains(THREE,root);
   batchSocialDetails(THREE, root);
 
   /* 贴图异步补挂：不阻塞 createDistrict 的同步返回。
@@ -1186,7 +1167,7 @@ export function createDistrict(ctx = {}) {
 
   if (deskLampMaterial) {
     animated.push((t) => {
-      deskLampMaterial.emissiveIntensity = 0.26 + 0.1 * Math.sin(t * 1.6);
+      deskLampMaterial.emissiveIntensity = 0.15;
     });
   }
 

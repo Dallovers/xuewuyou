@@ -1,39 +1,33 @@
-# 社交广场：当前状态（视觉优化 v3）
+# 社交广场：视觉细化 v4
 
-本页描述当前可运行状态；此前各轮进度以 Git 历史和 docs/team/visuals/social-pavilion-20261021 中的 v1 审查包为准，旧记录不作为当前验收结论。
+基于视觉 PR43 433ab8c，合入三个交互点 PR45 3cdd46f；工作分支 feature/social-visual-detail-v4。未接入 PR47 的同步竞技业务，未修改D公共宿主。main核对为b625413。旧交付分别保留，当前证据见 docs/team/visuals/social-pavilion-v4/README.md。
 
-## 运行
+## 运行与契约
 
-仓库根目录运行 `python -m http.server 8099`，打开 `http://127.0.0.1:8099/js/features/social/preview.html`。WASD 行走、拖动看向、E 打开入口、Esc 返回。截图参数可用 `?x=.5&z=6&yaw=47.7&pitch=0&mm=35&hud=0`，视高默认 1.6m，曝光 0.86。
+根目录 `python -m http.server 8099`，打开 `/js/features/social/preview.html?x=.5&z=6&yaw=47.7&pitch=0&mm=35&hud=0`。WASD移动、拖动看向、E触发、Esc关闭。视高1.6m，曝光.86。预览只显示说明，不重新实现登录/好友/留言/竞技；真实业务与主站接入见PR47及D交接。
 
-本预览用于空间与入口验证，不是完整社区业务宿主；好友/留言面板、会话恢复和公共桥接由 D 集成。HTTP 脚本通过不代表 UI 通过，再次 GET 也不足以单独证明跨进程持久化。本视觉分支不包含 A 的后续预览直连业务提交。
+createDistrict保持root/colliders/interactions/ready/update(dt)/dispose()，不另建renderer/相机/RAF。social.desk→community/friends；social.board→community/posts（PR45坐标-4.2,2.6）；social.challenge→community/arena（4.2,3）。原from、radius、站位和主路不改。新增落水管box碰撞；背景外壳按实际深度扩大碰撞，但在可行走广场之外。
 
-## 空间和实现
+## 本轮细化
 
-- 保持 22×18m 场地、4.5m 主路、3m 支路；亭廊 3.6×7m，原服务台/公告栏/喷泉坐标和交互 ID 保留。
-- 亭廊柱头→主次梁→35mm 承板→渐变高托架→45mm 屋面，端部为随坡封边。木条为非承重檐底饰面，固定于承板底面。近景倒角 UV 保留。
-- 坐凳的金属托条与木坐板实际接触；柱脚碰撞宽 0.36m，覆盖底板。
-- 白橡木使用仓库现有同源 PBR 三件套，平板方向用自有纹理副本旋转；灰砖由原扫描 albedo 去色，法线/粗糙度仍对应原扫描。石材采用 GPT 生成的中性石灰岩 albedo，1.2m 纹理尺度；微凹凸由 albedo 近似，非实测高度。程序铺装保留固定随机种子。亭廊采用 85mm 基层加 35mm 独立倒角石板，4mm 板缝，顶标高仍为 0.12m。
-- 原背景立面局部改为真实窗洞、窗框与后退玻璃，仍是供宿主替换的背景包络，不是整栋教学楼。原两处树池保留，枝条合并、叶片实例化；树数未增加。每棵 2400 个八三角曲面叶片，共享生成叶片 RGBA；西侧低灌木及入口外短草位于原可通行边界外，没有新增通路障碍。
+- social-detailing.js：24组锚栓/垫圈、梁端连接板、双门拉手、槽内乳白灯罩、真实檐沟/落水管/管箍、齐平排水格栅。四张纸牌是永久交流说明，不伪造真实用户帖子。
+- social-challenge-table.js：桌面六块40mm木板，坐面分板及倒角，外包尺寸、碰撞和交互位置不变；object仍为桌面实体组。
+- social-facade.js：原30m立面改为两层3.65m层高，窗洞、窗框、密封条、窗台、真实窗后地面/顶面/背墙/局部隔墙和褶皱窗帘。仅补可替换背景，不是可进入教学楼，也不接管图书馆。
+- social-landscape.js：树干/枝条弯曲渐细，不再直杆放射；近树每棵3600片曲面叶。西侧原通路外三棵背景树（各1900片）及低矮景墙。枝条合并、叶片/重复小件实例化、窗帘合并；没有新增实时灯；背景树不投射实时阴影。
+- social-surfaces.js：确定性树皮与涂装微表面；铺装缝线与凹凸同源，停止借用不对应板缝的混凝土法线。这些程序贴图是近似，不声称实测扫描PBR。
 
-## 文件与资源
+原木/砖/草/HDR授权记录和既有生成叶片/石材provenance保留。本批未调用生图、未新增第三方资源。已有倒角米制UV保留。
 
-`social-district.js` 管理模块与所有权；`social-architecture.js` 构造屋面；`social-landscape.js` 负责实例化枝叶和重复构件；`social-baked-ao.js` 对当前几何签名核验后补挂本场景 AO。以上均不自建 renderer、相机控制器或 RAF。
+## 光照和释放
 
-`preview-rendering.js` 是独立预览宿主的可选 SSAO 管线（`?ao=0` 可关闭），16 采样、AO 宽度上限 1024px、WebGL2 下 4×MSAA。它依赖本目录 assets/vendor/three-r160 的 MIT 授权 Three.js addons，与宿主注入的同一份 three r160 配合。主站不自动接入这些预览效果；D 需要在公共宿主统一决定后处理。preview.html 的本轮差异集中在自然光参数、HDR 雾、异步贴图完成后刷新静态阴影，以及释放 HDR/PMREM；业务、输入、面板区域没有改动。preview-fog.js 只供预览使用；公共宿主自行决定雾和日光，须与静态间接光匹配。
+Blender4.5.3 Cycles从当前精确模型重烘焙165构件的AO及低频静态间接光；2048图集，AO32样本/.6m/8px，GI64样本/4次漫反射反弹。近景、竞技桌及窗后空间使用uv1。没有借别处烘焙。平均表面色、薄玻璃及透明枝叶不作离线遮挡仍属近似，不是完整材质路径追踪。
 
-本场景由精确运行几何在 Blender 4.5.3 Cycles 中烘焙 AO（2048、32 samples、0.6m）及静态 diffuse indirect（2048、64 samples、4 次漫反射反弹）。绑定 124 个构件，uv1 保存光照 UV，场景或网格签名不匹配时整组跳过。间接光采用平均表面色，未离线计算透明叶片及草，不包含直接阳光；是低频近似而非完整材质路径追踪。`ctx.bakedAO=false` 同时禁用二者；ready.bakedAO.indirect 报告间接光加载。改变几何、日光、HDR 或材质主色时应重新烘焙。复现输入与脚本见 docs/team/visuals/social-pavilion-v3/baking/。
+几何签名不匹配即整组拒绝；manifest每次重新验证，图集URL带实际图片哈希，防新UV配旧缓存。ctx.bakedAO=false同时关闭AO/GI。宿主改变布局、日光/HDR或材质主色后须重烘焙。ready.bakedAO报告是否绑定及indirect状态。
 
-新增草地 PBR 为 Poly Haven Leafy Grass，CC0，原始来源、体积、哈希见 assets/pbr/sources.json。原有木材、灰砖和 HDR 来源仍见 examples/campus-3d-v5/assets/sources.json。新增两张 AI 叶片/石材颜色图由用户授权，完整提示词、来源、尺寸、字节及哈希见 assets/generated/provenance.json。它们是曲面和体积几何的贴图；实际截图均由 WebGL 运行取得。未借用其他场景烘焙。
+借入宿主材质/纹理只读，修改前clone，所有新资源登记释放；重复dispose幂等，晚到PBR/AO/GI不回写。预览后处理与HDR由预览宿主释放，不属于场景资源。
 
-## 宿主契约
+## 验证与差距
 
-`createDistrict({THREE,materials?,openFeature?,mode?})` 同步返回 `root / colliders / interactions / ready / update(dt) / dispose()`。服务台调用 `community/{tab:'friends',from:'social.desk'}`，公告栏调用 `community/{tab:'posts',from:'social.board'}`。宿主负责面板期间停止输入及关闭后恢复提示。
+tests/visual-regression.cjs覆盖同条件截图、图集哈希、连接尺寸、外壳碰撞包络、165构件绑定、晚到资源、五轮全网格释放、共享材质、真实移动/面板暂停/落水管碰撞及移动采样。tests/three-points.cjs真实走到三个点按E；外部Playwright通过NODE_PATH，SOCIAL_CDN_CACHE为原r160缓存，SOCIAL_BROWSER_PATH为Chromium，SOCIAL_OUTPUT优先D盘。
 
-共享材质先 clone，宿主原件和贴图只读。模块登记自己的材质/纹理/几何及实例缓冲，dispose 幂等；晚到纹理释放而不回写；真实贴图替换程序回退图时立即退役模块自有回退资源，宿主借入纹理不释放。ready 包含本模块新增草地贴图，失败保持回退。
-
-## 检查与已知差距
-
-可复跑 `tests/visual-regression.cjs`；需要外部安装 Playwright 和 Chromium，不增加产品运行依赖。通过环境变量 SOCIAL_CDN_CACHE 指向已有 r160 缓存目录，SOCIAL_BROWSER_PATH 指向浏览器，SOCIAL_OUTPUT 指向 D 盘输出目录。测试覆盖同条件截图、几何连接、五轮全部网格渲染/卸载、晚到纹理、宿主材质、预览管线释放和实际按键。
-
-完整本轮证据与数值见 docs/team/visuals/social-pavilion-v3/README.md。照片级仍需总策划看实际画面验收：背景立面重复、缺完整室内和环境纵深，叶片背散射与石材微凹凸仍为近似，静态低频间接光不能覆盖动态布局。水流、无障碍坡道、公共宿主完整漫游和物理显示设备帧率不在本轮完成范围。
+照片级整体仍需审查：近景施工关系更完整，但树冠/叶片透射、程序微表面、远景与背景室内仍简化；喷泉水流、无障碍坡道、公共宿主整合未完成。实际图均为WebGL，不用生成图当完成效果。详见本轮证据与给D说明。
