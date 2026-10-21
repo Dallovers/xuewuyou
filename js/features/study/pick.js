@@ -39,8 +39,11 @@
     inspectRight: 0.0,
     inspectTilt: -0.30,
     inspectLerp: 10.0,
-    /* 翻书：拿着书按 Q，封面藏起来换成一页纸（只做一页） */
+    /* 翻书：拿着书按 Q，封面藏起来换成摊开的两页 */
     openKey: 'q',
+    holdTilt: -0.22,      // 书立起来后稍微后仰，像捧在胸前看
+    spreadFold: 0.07,     // 摊开时两页沿书脊折的角度
+    openExtra: 0.10,      // 摊开比合上宽一倍，拿远一点才看得全
     pageColor: '#efe9dc',
     pageShade: '#d8d0bf',
     textColor: '#b9b1a0'
@@ -175,16 +178,58 @@
       });
 
       centroid.divideScalar(ids.length);
+
+      /* 书的偏航归零：书在桌上常常是斜着摆的，不归零的话
+         ① 量到的是**外接盒**（0.237×0.271），不是书本身的宽深，立起来就"高比宽还大"；
+         ② 摊开时"沿局部 X 劈两半"会劈在斜边上。
+         所以在组里先把每一块绕质心转 −bookYaw，之后这个组的局部坐标就是书的坐标系。 */
+      var undoYaw = null;
+      if (target.label === '书') {
+        src.mesh.getMatrixAt(ids[0], tmpM);
+        tmpM.premultiply(src.mesh.matrixWorld);
+        tmpM.decompose(tmpP, tmpQ, tmpS);
+        var bookYaw = new THREE.Euler().setFromQuaternion(tmpQ, 'YXZ').y;
+        undoYaw = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, -bookYaw, 0));
+      }
+
       var group = new THREE.Group();
       group.name = 'HeldObject';
       parts.forEach(function (p) {
         p.position.sub(centroid);                    // 变成相对质心
+        if (undoYaw) {
+          p.position.applyQuaternion(undoYaw);
+          p.quaternion.premultiply(undoYaw);
+        }
         group.add(p);
       });
       group.position.copy(centroid);
       scene.add(group);
       group.updateMatrixWorld(true);
       box.setFromObject(group);
+
+      /* 拿起来的姿态：**封面朝向自己、书立起来**。
+         书在桌上多半是平放的，直接跟着相机走就成了"托着一块板"。
+         按最薄的那条轴判断"封面法线"，把这根轴转到 +Z（相机朝向）。 */
+      var sx = box.max.x - box.min.x;
+      var sy = box.max.y - box.min.y;
+      var sz = box.max.z - box.min.z;
+      /* 相机朝 **−Z**，所以封面法线要转到 −Z 才是"朝我"。
+         第一版写成 +90°（+Y→+Z，指到背后去了），看到的是书的侧边——
+         窄窄一条、几乎侧对着镜头。 */
+      var baseQuat = null;
+      var baseAxis = '-';
+      if (target.label === '书') {
+        baseQuat = new THREE.Quaternion();
+        if (sy <= sx && sy <= sz) {
+          baseAxis = 'y';
+          baseQuat.setFromEuler(new THREE.Euler(-Math.PI / 2, 0, 0));     // 厚度沿 Y：平放在桌上，+Y→−Z
+        } else if (sx <= sz) {
+          baseAxis = 'x';
+          baseQuat.setFromEuler(new THREE.Euler(0, Math.PI / 2, 0));      // 厚度沿 X：+X→−Z
+        } else {
+          baseAxis = 'z';
+        }
+      }
 
       return {
         group: group,
@@ -193,8 +238,10 @@
         label: target.label,
         saved: hideInstances(src, ids),
         pickYaw: cameraYaw(),
+        baseQuat: baseQuat,
+        baseAxis: baseAxis,
         parts: parts.slice(),                       // 封面/书页那几块，翻开时要藏
-        size: { x: box.max.x - box.min.x, y: box.max.y - box.min.y, z: box.max.z - box.min.z },
+        size: { x: sx, y: sy, z: sz },
         baseMinY: box.min.y - group.position.y     // 最低点相对质心的偏移
       };
     }
@@ -214,51 +261,59 @@
       return true;
     }
 
-    /** 翻开：藏起封面三块板，换成一张平铺的纸 */
+    /** 翻开：藏起封面三块板，换成摊开的两页
+     *  **在"正对镜头"的坐标里搭**：页面躺在 XY 平面、法线指向 −Z（镜头方向）。
+     *  不去继承书在桌面上的朝向——那要绕一堆 baseQuat，稍错一个符号就变成侧着看。 */
     function openBookNow() {
       if (!held || openBook) return false;
       var s = held.size;
       if (!s || !s.x) return false;
+
+      var totalW = Math.max(s.x, s.z) * 0.96;   // 摊开总宽
+      var pageH = Math.min(s.x, s.z) * 0.98;    // 页高（书的短边）
+      var halfW = totalW / 2;
+
       var g = new THREE.Group();
-      g.name = 'OpenPage';
+      g.name = 'OpenSpread';
       var paper = new THREE.MeshStandardMaterial({ color: SPEC.pageColor, roughness: 0.86, metalness: 0 });
       var shade = new THREE.MeshStandardMaterial({ color: SPEC.pageShade, roughness: 0.9, metalness: 0 });
-      // 一页纸：比封面小一圈，四周留出书口
-      var page = new THREE.Mesh(new THREE.BoxGeometry(s.x * 0.94, 0.0018, s.z * 0.90), paper);
-      page.position.y = s.y / 2 + 0.0015;
-      g.add(page);
-      // 装订边：贴着一侧而不是落在正中——落在正中会读成"摊开的对页"，
-      // 而这里只要一页，书脊应该在边上。
-      var gutter = new THREE.Mesh(new THREE.BoxGeometry(s.x * 0.06, 0.0022, s.z * 0.84), shade);
-      gutter.position.set(-s.x * 0.45, s.y / 2 + 0.0022, 0);
-      g.add(gutter);
-
-      /* 文字行：没有它就是一整块奶白色的板，看不出是"页"。
-         用一个 InstancedMesh 铺 12 行、每行宽度不同（模拟段落的换行），
-         draw call 只多 1 个。 */
-      /* 文字行：没有它就是一整块奶白色的板，看不出是"页"。
-         一个 InstancedMesh 铺 12 行、每行长短不一（像段落换行），draw call 只多 1 个。
-         方向按"沿书的长边排"来放——中文书本来也常竖排，读得通。 */
-      var LINE = 12;
-      var lineGeo = new THREE.BoxGeometry(1, 0.0012, 0.0045);
       var lineMat = new THREE.MeshStandardMaterial({ color: SPEC.textColor, roughness: 0.95, metalness: 0 });
-      var lines = new THREE.InstancedMesh(lineGeo, lineMat, LINE);
-      var dm = new THREE.Object3D();
-      var zStart = -s.z * 0.36;
-      var zStep = (s.z * 0.74) / (LINE - 1);
-      for (var i = 0; i < LINE; i++) {
-        // 每行长短不一，最后一行短一截，像段落收尾
-        var wFrac = (i === LINE - 1) ? 0.42 : (0.72 + 0.26 * (((i * 37) % 11) / 10));
-        var len = s.x * 0.84 * wFrac;
-        dm.position.set(-s.x * 0.45 + s.x * 0.06 + len / 2,
-                        s.y / 2 + 0.0030, zStart + zStep * i);
-        dm.scale.set(len, 1, 1);
-        dm.rotation.set(0, 0, 0);
-        dm.updateMatrix();
-        lines.setMatrixAt(i, dm.matrix);
-      }
-      lines.instanceMatrix.needsUpdate = true;
-      g.add(lines);
+
+      [1, -1].forEach(function (sign) {
+        var half = new THREE.Group();
+        half.position.x = sign * halfW * 0.5;
+
+        var page = new THREE.Mesh(new THREE.BoxGeometry(halfW * 0.96, pageH, 0.0016), paper);
+        half.add(page);
+
+        // 每页 9 行横排文字：靠书脊留白，行末参差
+        var LN = 9;
+        var im = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 0.0045, 0.0012), lineMat, LN);
+        var dm = new THREE.Object3D();
+        var yStart = pageH * 0.34;
+        var yStep = (pageH * 0.68) / (LN - 1);
+        for (var i = 0; i < LN; i++) {
+          var fr = (i === LN - 1) ? 0.42 : (0.72 + 0.26 * (((i * 37 + 5) % 11) / 10));
+          var len = halfW * 0.78 * fr;
+          // 靠书脊 10% 留白，外边对齐
+          var xInner = -sign * halfW * 0.5 + sign * halfW * 0.10;
+          dm.position.set(xInner + sign * len / 2, yStart - yStep * i, 0.0016);
+          dm.scale.set(len, 1, 1);
+          dm.rotation.set(0, 0, 0);
+          dm.updateMatrix();
+          im.setMatrixAt(i, dm.matrix);
+        }
+        im.instanceMatrix.needsUpdate = true;
+        half.add(im);
+
+        half.rotation.y = sign * SPEC.spreadFold;   // 沿书脊折一点，外侧往后让
+        g.add(half);
+      });
+
+      // 书脊：中间一条窄暗带
+      var spine = new THREE.Mesh(new THREE.BoxGeometry(totalW * 0.02, pageH * 0.97, 0.0022), shade);
+      g.add(spine);
+
       held.group.add(g);
       held.parts.forEach(function (p) { p.visible = false; });
       openBook = g;
@@ -365,7 +420,8 @@
         var kk = 1 - Math.exp(-SPEC.inspectLerp * Math.min(dt || 0, 0.05));
         inspectW += (wantW - inspectW) * kk;
 
-        var dist = SPEC.holdDistance + (SPEC.inspectDistance - SPEC.holdDistance) * inspectW;
+        var dist = SPEC.holdDistance + (SPEC.inspectDistance - SPEC.holdDistance) * inspectW
+                 + (openBook ? SPEC.openExtra : 0);
         var down = SPEC.holdDown + (SPEC.inspectDown - SPEC.holdDown) * inspectW;
         var side = SPEC.holdRight + (SPEC.inspectRight - SPEC.holdRight) * inspectW;
 
@@ -375,10 +431,26 @@
           .add(new THREE.Vector3(0, -down, 0));
         var k = 1 - Math.exp(-SPEC.follow * Math.min(dt || 0, 0.05));
         held.group.position.lerp(want, k);
-        // 只绕 Y 跟着转身：书保持"平放"的姿态，转身时跟着走而不是翻个面
-        held.group.rotation.y = cameraYaw() - held.pickYaw + (held.group.userData.baseYaw || 0);
-        // 举到眼前时朝自己翻一点，看得见封面
-        held.group.rotation.x = SPEC.inspectTilt * inspectW;
+        if (openBook) {
+          // 摊开的书是在"正对镜头"的坐标里搭的，所以直接跟相机同向，再稍微后仰
+          var qOpen = new THREE.Quaternion().copy(camera.quaternion);
+          qOpen.multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(SPEC.holdTilt * 0.6, 0, 0)));
+          held.group.quaternion.copy(qOpen);
+        } else if (held.baseQuat) {
+          /* 朝 yaw 要用**当前的绝对朝向**，不是"相对捡起时转了多少"。
+             baseQuat 已经把封面法线转到 −Z（相机前向），所以这里只要再绕 Y 转到
+             相机此刻的朝向，封面就正对着人。用差值的话，捡起时朝哪、书就一直朝世界 −Z，
+             走到别的方向就变成侧着看书脊了。 */
+          var qYaw = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, cameraYaw(), 0));
+          var qTilt = new THREE.Quaternion().setFromEuler(
+            new THREE.Euler(SPEC.holdTilt - 0.10 * inspectW, 0, 0)
+          );
+          held.group.quaternion.copy(qYaw.multiply(qTilt).multiply(held.baseQuat));
+        } else {
+          // 杯 / 笔：保持原来的拿法（只跟着转身，举到眼前时翻一点）
+          held.group.rotation.y = cameraYaw() - held.pickYaw;
+          held.group.rotation.x = SPEC.inspectTilt * inspectW;
+        }
         held.group.updateMatrixWorld(true);
         return;
       }
@@ -464,6 +536,16 @@
       getInspectWeight: function () { return +inspectW.toFixed(3); },
       toggleOpen: toggleOpen,
       isBookOpen: function () { return !!openBook; },
+      /** 取证用：手上这本书的包围盒尺寸与朝向判定 */
+      getHeldSize: function () {
+        if (!held) return null;
+        return {
+          x: +held.size.x.toFixed(4), y: +held.size.y.toFixed(4), z: +held.size.z.toFixed(4),
+          upright: held.baseQuat ? (held.baseQuat.w !== 1 ? 'rotated' : 'none') : 'not-book',
+          axis: held.baseAxis,
+          open: !!openBook
+        };
+      },
       sourceCount: function () { return sources.length; }
     };
     return picker;
