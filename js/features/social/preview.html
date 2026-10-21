@@ -90,20 +90,23 @@ renderer.toneMappingExposure = 0.86;
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0xc6dae4);
-scene.fog = new THREE.Fog(0xc6dae4, 46, 112);
+scene.fog = new THREE.Fog(0xc6dae4, 30, 70);
 
 /* 天空 HDR → 环境反射（IBL）。
    没有环境贴图时，metalness 偏高的材质（亭廊立柱、窗框、栏杆）只能渲染成死黑，
    这是之前"塑料/发灰"最直接的来源。加载失败就退回纯色背景，预览照常跑。 */
 let envState = { ok: false, reason: 'not-started' };
+let previewHDR=null,previewEnvironmentTarget=null;
 try {
   const { RGBELoader } = await import('three/addons/loaders/RGBELoader.js');
   const hdr = await new RGBELoader().loadAsync('../../../examples/campus-3d-v5/assets/sky.hdr');
+  previewHDR=hdr;
   hdr.mapping = THREE.EquirectangularReflectionMapping;
   scene.background = hdr;
   const pmrem = new THREE.PMREMGenerator(renderer);
   pmrem.compileEquirectangularShader();
-  scene.environment = pmrem.fromEquirectangular(hdr).texture;
+  previewEnvironmentTarget=pmrem.fromEquirectangular(hdr);
+  scene.environment=previewEnvironmentTarget.texture;
   pmrem.dispose();
   envState = { ok: true, source: 'sky.hdr' };
 } catch (err) {
@@ -123,10 +126,10 @@ const camera = new THREE.PerspectiveCamera(CAMERA_FOV, 1, 0.1, 240);
 camera.rotation.order = 'YXZ';
 
 // 有 IBL 之后半球光要压下来，否则整体过曝、阴影细节被冲掉
-const hemi = new THREE.HemisphereLight(0xdfeaf2, 0x6f7564, envState.ok ? 0.42 : 1.05);
+const hemi = new THREE.HemisphereLight(0xdfeaf2, 0x6f7564, envState.ok ? 0.24 : 1.05);
 scene.add(hemi);
 
-const sun = new THREE.DirectionalLight(0xfff3de, envState.ok ? 2.2 : 2.1);
+const sun = new THREE.DirectionalLight(0xfff3de, envState.ok ? 3.2 : 2.1);
 sun.position.set(-7.2 + 16, 24, -1.0 + 13);
 // 主光指向亭廊样板中心，阴影相机只覆盖样板范围：
 // 跨度从 52m 收到 20m，2048 贴图下每像素从 2.5cm 变成 1cm，近景接触阴影才有细节
@@ -149,7 +152,7 @@ sun.shadow.radius = 2;
 scene.add(sun.target);
 scene.add(sun);
 
-const fill = new THREE.DirectionalLight(0xdce8ef, envState.ok ? 0.16 : 0.6);
+const fill = new THREE.DirectionalLight(0xdce8ef, envState.ok ? 0.08 : 0.6);
 fill.position.set(-14, 9, -10);
 scene.add(fill);
 
@@ -167,7 +170,15 @@ function renderPreview() { if (previewRendering) previewRendering.render(); else
 
 const district = createDistrict({ THREE, mode: 'preview' });
 scene.add(district.root);
-district.ready.then((r) => console.log('[preview] PBR 贴图', r, '环境', envState));
+let previewDisposed=false;
+const districtAssetsReady=district.ready;
+district.ready=districtAssetsReady.then(async r=>{
+  const {installSocialSkyFog}=await import('./preview-fog.js');
+  if(previewDisposed)return r;
+  installSocialSkyFog(district.root,scene.background);
+  sun.shadow.needsUpdate=true;
+  console.log('[preview] PBR 贴图',r,'环境',envState);return r;
+});
 
 /* ---------- 第一人称行走（预览自用） ---------- */
 
@@ -487,10 +498,15 @@ window.__social = {
 
 /* 离开页面时清理，避免预览页反复热重载后堆积定时器与 WebGL 上下文 */
 window.addEventListener('beforeunload', () => {
+  previewDisposed=true;
   cancelAnimationFrame(rafId);
   district.dispose();
   if (previewRendering) previewRendering.dispose();
+  if(previewEnvironmentTarget)previewEnvironmentTarget.dispose();
+  if(previewHDR)previewHDR.dispose();
+  scene.environment=null;scene.background=null;
   renderer.dispose();
+  renderer.forceContextLoss();
 });
 </script>
 </body>
