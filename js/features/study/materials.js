@@ -35,18 +35,86 @@
     return typeof document !== 'undefined' && !!document.createElement;
   }
 
-  /** 水磨石：0.9 m 一块的浅色分区 + 极细骨料点，避免地面读成一张纯色贴图。 */
+  /**
+   * 接地暗角（contact shadow）乘子图：白 = 不改变底色，越黑压得越暗。
+   *
+   * 为什么不用阴影贴图来做这件事：
+   *   预览页的太阳阴影相机横跨 36 m、贴图 2048，一个 texel ≈ 25 mm；
+   *   椅腿直径 22 mm，比一个 texel 还小，于是腿脚下什么都投不出来
+   *   （实测脚边 0~50 mm 与 300~450 mm 的地面亮度比 0.996）。
+   *   而业务页的 renderer 是宿主建的，宿主没开 shadowMap 的话连大件阴影都没有。
+   *   所以接地这一层必须做成**与 renderer 无关**的贴片，任何宿主都能显示。
+   *
+   * 用乘性混合而不是黑色 + alpha：乘性不管底下地砖是什么颜色，
+   * 都是「按比例压暗」，接近真实接触遮蔽；半透明黑会把浅色地面糊成一片灰。
+   */
+  function makeContactShadowTexture(THREE) {
+    if (!hasDOM()) return null;
+    var S = 256;
+    var canvas = document.createElement('canvas');
+    canvas.width = canvas.height = S;
+    var c = canvas.getContext('2d');
+    c.fillStyle = '#ffffff';
+    c.fillRect(0, 0, S, S);
+
+    var img = c.getImageData(0, 0, S, S);
+    var d = img.data;
+    for (var y = 0; y < S; y++) {
+      for (var x = 0; x < S; x++) {
+        var nx = ((x + 0.5) / S) * 2 - 1;
+        var ny = ((y + 0.5) / S) * 2 - 1;
+        var r = Math.sqrt(nx * nx + ny * ny);
+        if (r >= 1) continue;                    // 圆外保持纯白 = 不作用
+        /* 中心最深、边缘归零。指数 1.7 让暗区集中在内圈：
+           线性衰减会在贴片外缘留一圈灰雾，看着像脏印子。 */
+        var k = Math.pow(1 - r, 1.7);
+        var v = 1 - 0.46 * k;                    // 最深处压到 0.54
+        var g = Math.round(v * 255);
+        var i = (y * S + x) * 4;
+        d[i] = d[i + 1] = d[i + 2] = g;
+      }
+    }
+    c.putImageData(img, 0, 0);
+
+    var tex = new THREE.CanvasTexture(canvas);
+    /* 这张图必须标 sRGB，理由是实测出来的，不是照抄习惯：
+       混合发生在**已经编码成 sRGB 的帧缓冲**里，所以乘子的数值就是画布上的 0..255。
+       只写着色器：贴图标 sRGB → 采样时 sRGB 解码成线性值 → 输出时再编码回 sRGB，
+       两步互相抵消，写进去多少就乘多少。
+       第一版刻意「不标 sRGB」（以为乘数不该被解码），结果是 0.82 的乘子被
+       sRGB 编码抬成 0.92，脚边只暗了 1.2%——量出来才发现的，肉眼基本看不出来。 */
+    if (THREE.SRGBColorSpace) tex.colorSpace = THREE.SRGBColorSpace;
+    tex.wrapS = tex.wrapT = THREE.ClampToEdgeWrapping;
+    tex.anisotropy = 4;
+    tex.needsUpdate = true;
+    return tex;
+  }
+
+  /**
+   * 水磨石地面。
+   *
+   * 改这一轮的原因（量出来的，不是觉得）：
+   *   原来 512²、2600 颗骨料、半径 1.2~3.6 px，1.8 m 一铺 → 1 px = 3.5 mm。
+   *   单看贴图是细的，但铺到 12×9 m 的屋里之后：骨料覆盖只有约 19%，
+   *   放大后读成「白底上几团灰」，近景还能看到 10 cm 级的软斑——
+   *   这是整间屋子最便宜的一块，比桌椅更影响第一眼。
+   *
+   * 现在：1024²（1 px = 1.76 mm），三档骨料合计约 23% 覆盖，
+   * 直径大致对齐真实水磨石（4~8 mm / 8~14 mm / 14~24 mm），
+   * 各向异性提到 16，掠视时不糊成一片。
+   */
   function makeTerrazzoTexture(THREE, tileMetres) {
     if (!hasDOM()) return null;
-    var size = 512;
+    var size = 1024;
     var canvas = document.createElement('canvas');
     canvas.width = canvas.height = size;
     var c = canvas.getContext('2d');
-    c.fillStyle = '#eceae2';
+    c.fillStyle = '#e6e3d9';
     c.fillRect(0, 0, size, size);
 
-    // 2×2 块，每块略有色差
-    var shades = ['#f2f0e9', '#eeede5', '#f4f2eb', '#efeee6'];
+    /* 2×2 分区只做 ±1~2 级的色差：原来差到 6 级，远看会出现一张 0.9 m 的棋盘格。
+       墙地交界与灯下最容易看出来，宁可不做也不要露格子。 */
+    var shades = ['#e7e4da', '#e8e5db', '#e5e2d8', '#e7e4d9'];
     for (var i = 0; i < 4; i++) {
       c.fillStyle = shades[i];
       var x = (i % 2) * (size / 2);
@@ -54,25 +122,33 @@
       c.fillRect(x + 1, y + 1, size / 2 - 2, size / 2 - 2);
     }
 
-    // 骨料
-    var seed = 20261019;
+    var seed = 20261021;
     function rnd() {
       seed = (seed * 1103515245 + 12345) & 0x7fffffff;
       return seed / 0x7fffffff;
     }
-    var grains = ['#c9c6ba', '#d6d2c4', '#b9b6aa', '#dedad0'];
-    for (var g = 0; g < 2600; g++) {
-      c.fillStyle = grains[Math.floor(rnd() * grains.length)];
-      var r = 1.2 + rnd() * 2.4;
-      c.beginPath();
-      c.arc(rnd() * size, rnd() * size, r, 0, Math.PI * 2);
-      c.fill();
-    }
+    // 颜色刻意压在同一明度带里：骨料是"石粒"，不是"脏点"，反差大了会显脏
+    var grains = ['#cdc9be', '#c7c3b7', '#d3cfc4', '#c1bdb1', '#cac6bb'];
+    var tiers = [
+      { n: 14000, r0: 1.2, r1: 2.3 },   // 直径约 4~8 mm
+      { n: 3500, r0: 2.3, r1: 3.9 },    // 直径约 8~14 mm
+      { n: 420, r0: 3.9, r1: 6.8 }      // 直径约 14~24 mm，少量，打破均匀感
+    ];
+    tiers.forEach(function (t) {
+      for (var g = 0; g < t.n; g++) {
+        c.fillStyle = grains[Math.floor(rnd() * grains.length)];
+        var r = t.r0 + rnd() * (t.r1 - t.r0);
+        c.beginPath();
+        // 压扁一点：真实骨料是碎石，不是正圆
+        c.ellipse(rnd() * size, rnd() * size, r, r * (0.62 + rnd() * 0.5), rnd() * Math.PI, 0, Math.PI * 2);
+        c.fill();
+      }
+    });
 
     var tex = new THREE.CanvasTexture(canvas);
     if (THREE.SRGBColorSpace) tex.colorSpace = THREE.SRGBColorSpace;
     tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
-    tex.anisotropy = 8;
+    tex.anisotropy = 16;
     tex.userData = { metresPerRepeat: (tileMetres || 0.9) * 2 };
     return tex;
   }
@@ -380,6 +456,23 @@
       roughness: 0.45,
       metalness: 0.0
     });
+
+    /* 接地暗角贴片：乘性混合、不写深度、不投影也不受影。
+       一张乘子图给所有贴片共用，贴片几何在 room.js 里按落地构件自动生成。
+       toneMapped 必须关：开了的话 ACES 会把这张「乘数」当成颜色重新映射，
+       白色边缘就不再是 1.0，整块地面会被无声地压暗一点。 */
+    var contactMap = wantTextures ? makeContactShadowTexture(THREE) : null;
+    out.contact_shadow = new THREE.MeshBasicMaterial({
+      name: 'contact_shadow',
+      color: new THREE.Color(0xffffff),
+      map: contactMap,
+      transparent: true,
+      depthWrite: false,
+      blending: THREE.MultiplyBlending,
+      toneMapped: false,
+      side: THREE.DoubleSide
+    });
+    if (contactMap) out.contact_shadow.userData = { ownsMap: true };
 
     // 地面一次生成、按块平铺：给平面几何设置 repeat
     out.fitFloorUV = function (width, depth) {

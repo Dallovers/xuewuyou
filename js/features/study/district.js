@@ -21,23 +21,11 @@ import './furniture.js';
 import './shell.js';
 import './props.js';
 import './room.js';
+import './colliders.js';
 
-const DOOR = {
-  centerX: 3.30,      // 入口门洞中心（世界 X）
-  width: 2.40,
-  leafWidth: 1.15,
-  leafThickness: 0.045,
-  leafHeight: 2.55,
-  openDeg: 88
-};
-
-function box3Of(THREE, object) {
-  const b = new THREE.Box3().setFromObject(object);
-  if (b.isEmpty()) return null;
-  const center = b.getCenter(new THREE.Vector3());
-  const half = b.getSize(new THREE.Vector3()).multiplyScalar(0.5);
-  return { center: [center.x, center.y, center.z], half: [half.x, half.y, half.z] };
-}
+/* 碰撞体只在 colliders.js 里生成一份：宿主、预览页的走动、契约检查都引用它，
+   避免出现「契约说走得到、真进去却卡住」的两套判定。 */
+const DOOR = (typeof window !== 'undefined' ? window : globalThis).StudyDistrict.colliders.DOOR;
 
 /**
  * @param {object} opts
@@ -63,56 +51,11 @@ export function createDistrict(opts) {
   root.rotation.set(0, 0, 0);
   root.scale.set(1, 1, 1);
 
-  const ROOM = S.room.ROOM;
-  const HX = ROOM.width / 2;
-  const HZ = ROOM.depth / 2;
-  const T = ROOM.wallThickness / 2;   // 墙中心线到墙内皮的距离
-
-  /* —— 碰撞体：root 局部坐标，轴向对齐盒 —— */
-  const colliders = [];
-  const push = (id, center, half) =>
-    colliders.push({ id: 'study.' + id, type: 'box', center, half, enabled: true });
-
-  // 四面墙。窗洞不单独开洞：窗台只有 0.05 m，人不该从窗户穿出去，
-  // 所以整面西墙按实墙处理，这是保守方向。
-  push('wall.north', [0, ROOM.clearHeight / 2, -(HZ + T)], [HX + ROOM.wallThickness, ROOM.clearHeight / 2, T]);
-  push('wall.east', [HX + T, ROOM.clearHeight / 2, 0], [T, ROOM.clearHeight / 2, HZ]);
-  push('wall.west', [-(HX + T), ROOM.clearHeight / 2, 0], [T, ROOM.clearHeight / 2, HZ]);
-
-  // 南墙按门洞分成两段，中间必须真的能走过去
-  const doorL = DOOR.centerX - DOOR.width / 2;   // 2.10
-  const doorR = DOOR.centerX + DOOR.width / 2;   // 4.50
-  const outerL = -(HX + ROOM.wallThickness);     // −6.24
-  const outerR = HX + ROOM.wallThickness;        // +6.24
-  push('wall.south.left',
-    [(outerL + doorL) / 2, ROOM.clearHeight / 2, HZ + T],
-    [(doorL - outerL) / 2, ROOM.clearHeight / 2, T]);
-  push('wall.south.right',
-    [(doorR + outerR) / 2, ROOM.clearHeight / 2, HZ + T],
-    [(outerR - doorR) / 2, ROOM.clearHeight / 2, T]);
-
-  // 两扇开着的门扇。宿主只支持 AABB，旋转件按保守外接盒处理（样例说明允许这么做）。
-  const swing = Math.sin((DOOR.openDeg * Math.PI) / 180) * DOOR.leafWidth;
-  [-1, 1].forEach((s, i) => {
-    const hingeX = DOOR.centerX + s * (DOOR.width / 2 + 0.002);
-    push('door.leaf.' + (i + 1),
-      [hingeX, DOOR.leafHeight / 2, HZ - swing / 2],
-      [0.05, DOOR.leafHeight / 2, swing / 2]);
-  });
-
-  // 家具：直接从实际几何量包围盒，不手抄尺寸——布局一改这里自动跟上
+  /* —— 碰撞体：root 局部坐标，轴向对齐盒 ——
+     生成逻辑在 colliders.js，这里只取结果；预览页的「自由走动」读的是同一份。 */
+  const built = S.colliders.build(THREE, root);
+  const colliders = built.colliders;
   const parts = root.userData.parts;
-  const furniture = [
-    ['desk.island.1', parts.islands[0]],
-    ['desk.island.2', parts.islands[1]],
-    ['desk.island.3', parts.islands[2]],
-    ['window.counter', parts.counter],
-    ['wall.shelf', parts.shelf]
-  ];
-  furniture.forEach(([id, obj]) => {
-    const b = box3Of(THREE, obj);
-    if (b) push(id, b.center, b.half);
-  });
 
   /* —— 交互点 —— */
   const interactions = [];
