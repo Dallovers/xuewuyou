@@ -1,0 +1,45 @@
+{
+  "baseCommit": "38de7b5d12a08e0b333769075f5f49b3f944a6c5",
+  "files": [
+    {
+      "file": "examples/library-3d/app.bundle.js",
+      "sha256": "904bdb96d41f04978c5636e8152e2915bd2a2fbd87eca3adacc558590a2f043d",
+      "identicalToMain": true
+    },
+    {
+      "file": "examples/library-3d/src/app.js",
+      "sha256": "79153455de458d858e0b055c7ffab9d6f424ee42def5e1d904a20e45fcafd11a",
+      "identicalToMain": true
+    },
+    {
+      "file": "examples/library-3d/validation/review-v5/baseline-sample.png",
+      "sha256": "f3fdf1ddc22f281a281c920f249e32326f3034041e9ab0196b91d1b0629d41c6",
+      "identicalToMain": true
+    },
+    {
+      "file": "examples/library-3d/validation/review-v5/baseline-chair.png",
+      "sha256": "cf54c6eceea62b6cf18c3ee9980a2f82d158c9dc69fdc93723d213f8f54d27b2",
+      "identicalToMain": true
+    },
+    {
+      "file": "examples/library-3d/validation/review-v5/contact-sample.png",
+      "sha256": "6fcce7648e1fbec2c977b0dc29e4a3db549cf1185c87b951a91add452fde59fe",
+      "identicalToMain": true
+    },
+    {
+      "file": "examples/library-3d/validation/review-v5/contact-chair.png",
+      "sha256": "cfa00ef5168b3c089f814965c15683cd3748f3595ec556304bcd291b80dfc9e9",
+      "identicalToMain": true
+    },
+    {
+      "file": "examples/library-3d/validation/review-v5/final-sample.png",
+      "sha256": "f4c4eec6ba4b2247157ea22c43678d0a993138ca7d1ca03ded3f7e855deece62",
+      "identicalToMain": true
+    },
+    {
+      "file": "examples/library-3d/validation/review-v5/final-chair.png",
+      "sha256": "0e0111819b8924414622b66cc62c19673050ffb3544f95dfdcefa9d7768c003e",
+      "identicalToMain": true
+    }
+  ]
+}
