@@ -1,3 +1,5 @@
+import { createSocialFountain } from './social-fountain.js';
+import { registerSocialSeat } from './social-seating.js';
 import { detailSocialConstruction } from './social-detailing.js';
 import { buildSocialFacade } from './social-facade.js';
 import { prepareSocialSurfaces } from './social-surfaces.js';
@@ -12,7 +14,7 @@ import { buildChallengeTable } from './social-challenge-table.js';
  * 边界：
  *   - 只产出本板块的 THREE.Group，不自建 renderer、不启动 RAF、不改公共相机与输入。
  *   - 背景教学楼是占位体量（userData.placeholder = true），由公共宿主接入时替换（本批补真实窗洞与浅室内，D 负责宿主）。
- *   - 喷泉水面只是静态占位片，水流效果尚未实现，列入后续批次。
+ *   - 喷泉采用透明粒子和水面法线微波纹，非流体模拟，不影响静态遮挡烘焙。
  *   - 接口按 docs/team/three-person-feature-plan.md 第 7 节的拟定 createDistrict 编写；
  *     该接口尚未在统一基线中实现，故 openFeature 缺失时回退到现有 window.WG_Community。
  *
@@ -1043,6 +1045,7 @@ export function createDistrict(ctx = {}) {
 
   /* ---------- 坐凳 ---------- */
 
+  let benchIndex=0;
   function buildBench(x, z, rotY) {
     const S = L.bench;
     const group = new THREE.Group();
@@ -1058,12 +1061,14 @@ export function createDistrict(ctx = {}) {
     const halfX = Math.abs(Math.cos(rotY || 0)) * S.length / 2 + Math.abs(Math.sin(rotY || 0)) * S.depth / 2;
     const halfZ = Math.abs(Math.sin(rotY || 0)) * S.length / 2 + Math.abs(Math.cos(rotY || 0)) * S.depth / 2;
     colliders.push({ name: 'social:bench', type: 'box', center: [x, 0.22, z], half: [halfX, 0.22, halfZ] });
+    registerSocialSeat({THREE,object:group,interactions,owner,id:`social.bench.${++benchIndex}`,label:`广场坐凳 ${benchIndex}`});
     return group;
   }
 
-  /* ---------- 喷泉（池体只做几何，水面与水流效果未实现） ---------- */
+  /* ---------- 喷泉（池体保持静态，透明水粒子由update驱动） ---------- */
 
   let waterMesh = null;
+  let fountainEffect = null;
 
   function buildFountain() {
     const F = L.fountain;
@@ -1085,7 +1090,7 @@ export function createDistrict(ctx = {}) {
     waterMesh = add(new THREE.CircleGeometry(innerR - 0.03, 48), M.water_placeholder, F.x, 0.36, F.z, {
       rotX: -Math.PI / 2, name: 'fountain:water-placeholder', cast: false,
     });
-    waterMesh.userData.note = '静态占位，水面效果未实现';
+    waterMesh.userData.note = '水面微波纹与装饰喷流，非流体模拟';
     // 中心喷嘴
     add(cylGeo(0.14, 0.22, 0.55, 20), M.stone_light, F.x, 0.32, F.z, { name: 'fountain:nozzle' });
 
@@ -1097,18 +1102,13 @@ export function createDistrict(ctx = {}) {
       height: F.rim,
     });
 
-    let on = false;
-    interactions.push({
-      id: 'social.fountain',
-      label: '广场喷泉',
-      prompt: '按 E 开启水流',
-      object: waterMesh,
-      radius: 3.0,
-      action() {
-        on = !on;
-        return { ok: true, kind: 'fountain', on, message: on ? '水流已开启（水面效果未实现）' : '水流已关闭' };
-      },
-    });
+    fountainEffect=createSocialFountain({THREE,root,owner,waterMesh,layout:F});
+    animated.push(time=>fountainEffect.update(time));
+    const interaction={
+      id:'social.fountain',label:'广场喷泉',prompt:'按 E 开启水流',object:waterMesh,radius:3.0,
+      action(){const result=fountainEffect.toggle();if(result.ok)interaction.prompt=result.on?'按 E 关闭水流':'按 E 开启水流';return result;},
+    };
+    interactions.push(interaction);
   }
 
   /* ---------- 背景立面占位（补窗洞与浅室内，D 接入公共宿主时可替换） ---------- */
@@ -1188,6 +1188,7 @@ export function createDistrict(ctx = {}) {
     dispose() {
       // 幂等：重复调用直接返回，避免把已释放的几何再 dispose 一次
       if (!owner.dispose()) return;
+      if(fountainEffect)fountainEffect.dispose();
       root.traverse((o) => {
         if (o.isInstancedMesh) o.dispose();
         if (o.isMesh && o.geometry && o.geometry.userData && o.geometry.userData.__socialDisposable) {

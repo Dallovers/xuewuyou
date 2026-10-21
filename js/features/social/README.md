@@ -1,5 +1,7 @@
 # 社交广场：视觉细化 v4
 
+当前增量：三张广场坐凳可坐下/起身，喷泉有实际动态水粒子和微波纹。坐凳按E坐下、E/Esc或按钮起身，坐下时可拖动环顾。喷泉靠近按E反复开关，不弹说明面板。详细契约和本轮验证见 [互动交付](../../../docs/team/visuals/social-activities-v1/README.md)。下文v4视觉批次的“喷泉水流未完成”为历史状态；当前水流是装饰粒子近似，并非流体模拟。
+
 基于视觉 PR43 433ab8c，合入三个交互点 PR45 3cdd46f；工作分支 feature/social-visual-detail-v4。未接入 PR47 的同步竞技业务，未修改D公共宿主。main核对为b625413。旧交付分别保留，当前证据见 docs/team/visuals/social-pavilion-v4/README.md。
 
 ## 运行与契约

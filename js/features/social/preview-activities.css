@@ -1,0 +1,13 @@
+.social-activity {
+  position:absolute;bottom:110px;left:50%;transform:translateX(-50%);
+  display:flex;align-items:center;gap:16px;max-width:calc(100vw - 32px);
+  padding:12px 16px;border:1px solid #778675;border-radius:12px;
+  background:rgba(28,39,33,.94);color:#f2efe6;font-size:14px;
+}
+.social-activity[hidden]{display:none;}
+.social-activity button {
+  flex-shrink:0;min-height:44px;padding:8px 14px;border:1px solid #c9b994;
+  border-radius:8px;background:#e6d6b6;color:#253529;font:inherit;cursor:pointer;pointer-events:auto;
+}
+.social-activity button:focus-visible{outline:3px solid white;outline-offset:3px;}
+@media(max-width:640px){.social-activity{width:calc(100vw - 64px);flex-wrap:wrap;bottom:100px;}}
