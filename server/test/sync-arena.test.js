@@ -3,14 +3,14 @@ const {test,before,after}=require('node:test'),assert=require('node:assert/stric
 const temp=fs.mkdtempSync(path.join(os.tmpdir(),'xwy-sync-arena-'));delete process.env.DATABASE_URL;process.env.DATA_DIR=temp;process.env.JWT_SECRET='sync-arena-isolated-test';
 const {questions}=require('../integrations/questions');let app,store,base,a,b,outsider,id;
 async function req(user,p,method='GET',body,prefix='/api/community/'){const r=await fetch(base+prefix+p,{method,headers:{'Content-Type':'application/json',...(user?{Authorization:'Bearer '+user.token}:{})},...(body?{body:JSON.stringify(body)}:{})});return {http:r.status,...await r.json()};}
-async function create(requestId='request-'+crypto.randomUUID()){return req(a,'challenges','POST',{to:b.user.id,topic:'函数与极限',requestId});}
+async function create(requestId='request-'+crypto.randomUUID()){return req(a,'challenges','POST',{to:b.user.id,topic:'函数与极限',mode:'sync',requestId});}
 async function data(u){return (await req(u,'data','GET',null,'/api/')).data;}
 function mutate(id,fn){const s=store.get('community','main');fn(s.challenges.find(c=>c.id===id));store.set('community','main',s);}
 function running(id){mutate(id,c=>{c.startsAt=Date.now()-100;c.deadlineAt=c.startsAt+15*60000;for(const m of c.members)c.sessions[m].startedAt=c.startsAt;});}
 async function startNew(){const r=await create(),id=r.challenge.id;await req(b,'challenge/accept','POST',{id});await req(a,'challenge/ready','POST',{id,ready:true});await req(b,'challenge/ready','POST',{id,ready:true});running(id);return id;}
 before(async()=>{app=require('../server');store=require('../lib/store');await app.start(0,'127.0.0.1');base='http://127.0.0.1:'+app.server.address().port;[a,b,outsider]=await Promise.all(['同步甲','同步乙','旁观丙'].map(username=>req(null,'register','POST',{username,password:'Test123456'},'/api/auth/')));for(const u of [a,b])await req(u,'profile','PUT',{nick:u.user.username,visible:true,subjects:['高等数学'],goal:'',availability:''});const invite=await req(a,'request','POST',{to:b.user.id});await req(b,'request','PUT',{id:invite.request.id,action:'accept'});});
 after(async()=>{await app.studyRooms.close();await app.integrations.close();await app.community.close();await store.close();fs.rmSync(temp,{recursive:true,force:true});});
-test('default sync invitation is deduplicated, membership protected and answers concealed',async()=>{
+test('sync invitation is deduplicated, membership protected and answers concealed',async()=>{
  const r=await create('stable-invitation-1');assert.equal(r.http,200);id=r.challenge.id;assert.equal((await req(a,'state','GET',null,'/api/campus/')).locations.find(l=>l.id==='arena').value,1);assert.equal(r.challenge.mode,'sync');assert.equal(r.challenge.status,'invited');
  const duplicate=await create('stable-invitation-1');assert.equal(duplicate.challenge.id,id);
  assert.equal((await req(outsider,'challenge?id='+id)).http,404);assert.equal((await req(null,'challenge?id='+id)).http,401);

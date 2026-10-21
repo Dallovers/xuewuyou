@@ -134,14 +134,15 @@ module.exports = function({route,authUser,sendJson,readBody,store,syncReviews}) 
   own('GET','challenges',user=>{const s=state();arena.settle(s);return {challenges:s.challenges.filter(c=>c.members.includes(user.id)).slice(-50).reverse().map(c=>summary(s,c,user))};});
   own('POST','challenges',(user,_,body)=>{
     const s=state(),target=String(body.to||'');if(!friendship(s,user.id,target))fail('请先添加并确认学习搭子',403);
-    if(body.mode!=='async'&&s.challenges.some(c=>c.creator===user.id&&c.requestId===body.requestId&&typeof body.requestId==='string'))return {challenge:summary(s,arena.create(s,user,body,[]),user)};
+    if(body.mode!==undefined&&!['sync','async'].includes(body.mode))fail('挑战模式无效');
+    if(body.mode==='sync'&&s.challenges.some(c=>c.creator===user.id&&c.requestId===body.requestId&&typeof body.requestId==='string'))return {challenge:summary(s,arena.create(s,user,body,[]),user)};
     limited(user.id,'challenges',10);
     const bank=objective.filter(q=>q.topic===body.topic);if(bank.length<5)fail('请选择至少有五道客观题的主题');
     if(s.challenges.length>=2000)fail('挑战记录已达到当前容量，请联系网站维护者');
     arena.settle(s);
     if(s.challenges.filter(c=>arena.pending(c)&&(c.mode==='sync'||c.expiresAt>Date.now())&&c.members.includes(user.id)).length>=10)fail('请先完成或取消已有挑战');
     for(let i=bank.length-1;i>0;i--){const j=crypto.randomInt(i+1);[bank[i],bank[j]]=[bank[j],bank[i]];}
-    if(body.mode!=='async')return {challenge:summary(s,arena.create(s,user,body,bank),user)};
+    if(body.mode==='sync')return {challenge:summary(s,arena.create(s,user,body,bank),user)};
     const c={id:crypto.randomUUID(),creator:user.id,members:[user.id,target],topic:body.topic,qids:bank.slice(0,5).map(q=>q.id),sessions:{},status:'active',createdAt:Date.now(),expiresAt:Date.now()+86400000};s.challenges.push(c);save(s);notify(c.members,'challenges');return {challenge:summary(s,c,user)};
   });
   own('GET','challenge',(user,query)=>{const s=state();arena.settle(s);return {challenge:summary(s,duel(s,query.get('id'),user),user,true)};});

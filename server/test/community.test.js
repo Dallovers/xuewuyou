@@ -28,7 +28,7 @@ test('only the recipient accepts requests and accepted buddies can be challenged
   assert.equal((await req(c,'request','PUT',{id:invitation.id,action:'accept'})).status,404);assert.equal((await req(a,'request','PUT',{id:invitation.id,action:'accept'})).status,403);
   assert.equal((await req(b,'request','PUT',{id:invitation.id,action:'accept'})).status,'accepted');
   assert.equal((await req(a,'home')).friends[0].id,b.user.id);assert.equal((await req(b,'home')).friends[0].id,a.user.id);
-  assert.equal((await req(a,'challenges','POST',{to:c.user.id,topic:'函数与极限',mode:'async'})).status,403);
+  assert.equal((await req(a,'challenges','POST',{to:c.user.id,topic:'函数与极限'})).status,403);
 });
 test('question discussions support scoped replies, owner deletion and safe Markdown',async()=>{
   const saved=await req(a,'posts','POST',{qid:'7036',text:'**先求极限**\n<script>alert(1)</script>\n[坏链接](javascript:alert(1))'});assert.equal(saved.status,200);
@@ -40,7 +40,7 @@ test('question discussions support scoped replies, owner deletion and safe Markd
   await req(a,'posts','DELETE',{id:saved.post.id});const all=await req(b,'posts?qid=7036');assert.equal(all.posts[0].deleted,true);assert.equal(all.posts[0].text,'');assert.equal(all.posts[1].text,'我补充一个方法');
 });
 test('challenge questions are identical, private and do not reveal solutions before completion',async()=>{
-  const created=await req(a,'challenges','POST',{to:b.user.id,topic:'函数与极限',mode:'async'});assert.equal(created.status,200);duel=created.challenge.id;
+  const created=await req(a,'challenges','POST',{to:b.user.id,topic:'函数与极限'});assert.equal(created.status,200);duel=created.challenge.id;
   assert.equal((await req(c,'challenge?id='+duel)).status,404);assert.equal((await req(a,'challenge?id='+duel)).challenge.questions,undefined);
   qa=(await req(a,'challenge/start','POST',{id:duel})).challenge;qb=(await req(b,'challenge/start','POST',{id:duel})).challenge;
   assert.equal(qa.questions.length,5);assert.deepEqual(qa.questions,qb.questions);qa.questions.forEach(q=>{assert.equal(q.answer,undefined);assert.equal(q.analysis,undefined);});
@@ -56,7 +56,7 @@ test('server grades once, retains learning records and waits for both submission
   const twin=await req(a,'twin','GET',undefined,'/api/learning/');assert.equal(twin.activity.friends,1);assert.equal(twin.activity.challenges,0);assert.equal(twin.activity.due,2);
 });
 test('late submissions time out on the server and started challenges survive refresh',async()=>{
-  const created=await req(a,'challenges','POST',{to:b.user.id,topic:'函数与极限',mode:'async'}),id=created.challenge.id;
+  const created=await req(a,'challenges','POST',{to:b.user.id,topic:'函数与极限'}),id=created.challenge.id;
   const started=await req(a,'challenge/start','POST',{id});const reloaded=await req(a,'challenge/start','POST',{id});assert.equal(started.challenge.mine.startedAt,reloaded.challenge.mine.startedAt);
   const store=require('../lib/store'),s=store.get('community','main');s.challenges.find(x=>x.id===id).sessions[a.user.id].startedAt=Date.now()-16*60000;store.set('community','main',s);
   const answers=Object.fromEntries(started.challenge.questions.map(q=>[q.qid,questions.get(q.qid).answer]));const late=await req(a,'challenge/submit','POST',{id,answers});assert.equal(late.challenge.mine.score,0);assert.equal(late.challenge.mine.elapsedMs,15*60000);
