@@ -1,0 +1,22 @@
+{
+  "stats": {
+    "memory": {
+      "geometries": 99,
+      "textures": 19
+    },
+    "render": {
+      "frame": 124,
+      "calls": 171,
+      "triangles": 3612,
+      "points": 0,
+      "lines": 0
+    },
+    "environment": {
+      "ok": true,
+      "source": "sky.hdr"
+    },
+    "gpu": "ANGLE (Intel, Intel(R) Graphics (0x00007D67) Direct3D11 vs_5_0 ps_5_0, D3D11)"
+  },
+  "errors": [],
+  "browser": "156.0.8078.4"
+}
