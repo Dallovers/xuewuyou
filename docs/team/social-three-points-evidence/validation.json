@@ -11,7 +11,7 @@
         "radius": 0.35
       },
       "to": {
-        "x": 2.012639999999999,
+        "x": 2.0122199999999983,
         "z": 3,
         "y": 1.6,
         "speed": 4.2,
@@ -31,15 +31,15 @@
       "id": "social.board",
       "from": {
         "x": 0,
-        "z": -5.8,
+        "z": 2.6,
         "y": 1.6,
         "speed": 4.2,
         "run": 6.6,
         "radius": 0.35
       },
       "to": {
-        "x": -1.9076399999999991,
-        "z": -5.8,
+        "x": -1.6085999999999996,
+        "z": 2.6,
         "y": 1.6,
         "speed": 4.2,
         "run": 6.6,
@@ -65,7 +65,7 @@
         "radius": 0.35
       },
       "to": {
-        "x": -4.200419999999992,
+        "x": -5.07318,
         "z": 0.65,
         "y": 1.6,
         "speed": 4.2,
@@ -84,6 +84,42 @@
   ],
   "errors": [],
   "tableCollisionStop": 3,
+  "cycles": [
+    {
+      "loaded": {
+        "geometries": 112,
+        "textures": 31
+      },
+      "after": {
+        "geometries": 48,
+        "textures": 16
+      },
+      "detached": true
+    },
+    {
+      "loaded": {
+        "geometries": 112,
+        "textures": 31
+      },
+      "after": {
+        "geometries": 48,
+        "textures": 16
+      },
+      "detached": true
+    },
+    {
+      "loaded": {
+        "geometries": 112,
+        "textures": 31
+      },
+      "after": {
+        "geometries": 48,
+        "textures": 16
+      },
+      "detached": true
+    }
+  ],
+  "visualRef": "main",
   "browser": "156.0.8078.4",
   "conditions": {
     "viewport": [

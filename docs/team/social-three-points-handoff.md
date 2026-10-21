@@ -5,7 +5,7 @@
 | 实物/ID | 调用 | 坐标与可站位置 |
 |---|---|---|
 | 亭廊服务台 social.desk | openFeature('community',{tab:'friends',from:'social.desk'}) | 原 x=-7.2 z=.65；东侧 x=-5.4 z=.65 |
-| 留言板 social.board | openFeature('community',{tab:'posts',from:'social.board'}) | 从东侧 x=7.6 z=-.6 移到亭廊北侧 x=-4.5 z=-5.8；东侧 x=-3.4 z=-5.8；碰撞随同移动 |
+| 留言板 social.board | openFeature('community',{tab:'posts',from:'social.board'}) | 从东侧 x=7.6 z=-.6 移到亭廊东侧、服务台邻近 x=-4.2 z=2.6；东侧 x=-3.1 z=2.6；碰撞随同移动 |
 | 双人竞技桌 social.challenge | openFeature('community',{tab:'arena',from:'social.challenge'}) | x=4.2 z=3；站 x=2.85/5.55 z=3；radius=2.2 |
 
 桌面1.70×.80m、顶高.75m、40mm板；坐面高.45m，双侧凳距桌心1.05m。桌/凳实体都有 box 碰撞，西侧站位不侵入4.5m主路。object 为实际桌面。label/prompt 已提供，桌面 E 由现有预览验证；触屏可点击按钮由 D 宿主实现。没有新 renderer、相机、RAF、登录或请求。
@@ -21,3 +21,7 @@ PR43 集成注意：本笔一个 import、board坐标与一次装配调用即可
 待 D：主站广场入口、挂载、真实面板、移动暂停恢复、触屏按钮、返回主站与生命周期；本笔只证明可走到触发和正确业务调用，不宣称公共宿主已集成。同步开局属于第二笔，现有分别开始模式不称同步竞技。
 
 验证：tests/three-points.cjs 使用真实 W 行走至三个点并按 E，记录调用为 friends/posts/arena；竞技桌碰撞停在 x=3.0，未直接调用 action。浏览器 Chromium156、1536×1024 DPR1；无 pageerror。实际截图与原始 JSON 见 social-three-points-evidence/。npm run check 通过。本笔未把说明弹层计为真实社区业务；双账号主站验收将在第二笔一同记录。
+
+补充验证 PR43 兼容：测试在 HTTP 层读取 433ab8c 完整视觉树，仅叠加本笔 import/坐标/装配调用及新桌模块，没有修改 PR43 分支。三点 W→E 通过；实际 ready.bakedAO 为 {ok:false,reason:scene-mismatch}，证明旧烘焙确实被拒绝。三轮全网格渲染/两次卸载，281/42→135/26（geometries/textures）每轮稳定。兼容截图单独在证据 pr43/ 子目录，不冒充 main 已含 PR43。preview.html 只补竞技点说明文案，没有加业务、请求或宿主逻辑。
+
+main版新增桌凳资源验证：三轮112/31→48/16（geometries/textures）稳定，无新外部资源。SOCIAL_VISUAL_REF=433ab8c可复跑PR43覆盖测试；SOCIAL_CDN_CACHE指向three-r160-review.module.js与RGBELoader-r160-review.js缓存目录，SOCIAL_BROWSER_PATH指定Chromium，NODE_PATH提供外部Playwright；未修改产品依赖。

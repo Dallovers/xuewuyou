@@ -18,7 +18,7 @@ export const SOCIAL_LAYOUT = {
   path: { width: 4.5, branchWidth: 3.0 },
   pavilion: { cx: -7.2, cz: -1.0, width: 3.6, length: 7.0, height: 3.2, column: 0.22 },
   desk: { x: -7.2, z: 0.65, w: 1.8, h: 1.05, d: 0.7 },
-  board: { x: -4.5, z: -5.8, width: 2.4, height: 2.2 },
+  board: { x: -4.2, z: 2.6, width: 2.4, height: 2.2 },
   fountain: { x: 5.6, z: -5.0, diameter: 4.0, rim: 0.4, wall: 0.25 },
   bench: { seat: 0.45, length: 1.6, depth: 0.42 },
   facade: { z: -12.6, width: 30, height: 8, thickness: 0.5 },
