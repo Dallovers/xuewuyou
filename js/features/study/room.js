@@ -96,9 +96,8 @@
 
   function wood(THREE, parent, name, size, pos, mats, opts) {
     var core = global.StudyDistrict.core;
-    var o = opts || {};
-    o.uvSwap = true;
-    return core.box(THREE, parent, name, size, pos, mats.oak_light, o);
+    // 木纹方向改由 core.metricOakUV 按每个面的实际长边自动选，这里不再需要 uvSwap
+    return core.box(THREE, parent, name, size, pos, mats.oak_light, opts || {});
   }
 
   /** 窗边长台：台面 + 前挡板 + 四个凳子 */
@@ -158,10 +157,14 @@
       g.add(seat);
 
       // 橡木托圈：把软包和钢腿接起来，顺带和橡木台面呼应
-      var collar = new THREE.Mesh(
-        new THREE.CylinderGeometry(SR - 0.007, SR - 0.020, 0.024, 24),
-        mats.oak_light
-      );
+      // 圆柱默认 UV 是「一圈 0..1、高 0..1」，按 24 mm 高铺满一整张 1.8 m 的图，
+      // 实测比桌面木纹密 46 倍。按真实弧长与高度重标一次。
+      var collarGeo = new THREE.CylinderGeometry(SR - 0.007, SR - 0.020, 0.024, 24);
+      var oakMap = mats.oak_light && mats.oak_light.map;
+      if (oakMap && oakMap.userData && oakMap.userData.metricUV) {
+        core.metricCylinderUV(collarGeo, oakMap.userData.metresPerRepeat || 1.8);
+      }
+      var collar = new THREE.Mesh(collarGeo, mats.oak_light);
       collar.name = 'StoolCollar';
       collar.position.set(sx, seatBot - 0.012, z);
       collar.castShadow = true;
