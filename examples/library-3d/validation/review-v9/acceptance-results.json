@@ -1,0 +1,461 @@
+{
+  "startedAt": "2026-10-21T14:29:47.044Z",
+  "base": "http://127.0.0.1:5296",
+  "backend": "http://127.0.0.1:5297",
+  "checks": [
+    {
+      "name": "主站资料入口、wenku 地点与返回深链",
+      "passed": true
+    },
+    {
+      "name": "真实几何、独立屋顶和八个阅览位",
+      "passed": true,
+      "detail": {
+        "meshes": 123,
+        "triangles": 86988,
+        "instances": 6060,
+        "materials": [
+          "Sample east pane 12mm clear glass",
+          "Wayfinding: 知 识 图 书 馆",
+          "Wayfinding: 馆藏书架",
+          "Wayfinding: 安静阅览",
+          "Grey brick",
+          "Wayfinding: 学 无 忧  ·  阅 读 与 思 考",
+          "Clear architectural glass",
+          "Dark bronze powder coating",
+          "Stone floor joints",
+          "Linear LED diffuser",
+          "Wayfinding: 考研真题卷",
+          "Clothbound book spines",
+          "White oak veneer",
+          "Wayfinding: 教材习题集",
+          "Wayfinding: 雅思备考库",
+          "Wayfinding: 专题与心得",
+          "Paper edges",
+          "Sage woven upholstery",
+          "Cream limestone",
+          "Wayfinding: 馆 藏 检 索",
+          "Mineral plaster and acoustic ceiling",
+          "Blue grey standing seam roof",
+          "Honed grey stone",
+          "Landscape ground",
+          "Planting soil",
+          "Tree bark",
+          "Botanical leaf cutouts",
+          "Sample R1 longitudinal white oak [R1 indirect]",
+          "Dark bronze powder coating [R1 indirect]",
+          "Pale bent oak chair veneer [R1 indirect]",
+          "Sample R1 sage fine woven upholstery [R1 indirect]",
+          "Sage woven upholstery [R1 indirect]",
+          "Cream limestone [R1 indirect]",
+          "Honed grey stone [R1 indirect]"
+        ],
+        "groups": [
+          "Structure stone and real window openings",
+          "Furniture bookcases and reading desks",
+          "Roof editable zinc and clerestory",
+          "Library forecourt",
+          "R1 bounded daylight fill",
+          "R1 baked diffuse sky and bounce"
+        ],
+        "dimensions": {
+          "width": 24,
+          "depth": 18,
+          "clearHeight": 4.4,
+          "doorWidth": 2.8,
+          "mainAisle": 3,
+          "units": "metres"
+        },
+        "colliders": 60,
+        "shelves": 4,
+        "seats": 8,
+        "landscape": {
+          "trees": 3,
+          "foliageInstances": 5596,
+          "sample": {
+            "tree": 623,
+            "leaves": 4480,
+            "bladeMetres": [
+              0.09,
+              0.24
+            ],
+            "clusters": 28,
+            "detail": {
+              "policy": "auto",
+              "level": "far",
+              "nearLeaves": 4480,
+              "farLeaves": 2240,
+              "nearLeafTriangles": 17920,
+              "farLeafTriangles": 4480,
+              "farAfterMetres": 30,
+              "nearBeforeMetres": 26
+            }
+          },
+          "source": "Procedural branches and leaf alpha, no external image dependency",
+          "allocatedFoliageInstances": 7836
+        },
+        "glbBytes": 27073520
+      }
+    },
+    {
+      "name": "关门时阻挡连续移动与大步长穿越",
+      "passed": true
+    },
+    {
+      "name": "打开实体滑门后从前庭走入门厅",
+      "passed": true
+    },
+    {
+      "name": "后墙与窗洞保持碰撞",
+      "passed": true
+    },
+    {
+      "name": "书架接近距离与碰撞",
+      "passed": true
+    },
+    {
+      "name": "实体书架打开真实对应分类",
+      "passed": true
+    },
+    {
+      "name": "搜索输入暂停角色，空状态清楚",
+      "passed": true
+    },
+    {
+      "name": "真实 PDF 页内渲染与翻页",
+      "passed": true,
+      "detail": {
+        "pages": 13
+      }
+    },
+    {
+      "name": "关闭阅读与目录后恢复行走",
+      "passed": true
+    },
+    {
+      "name": "真实目录遇到文件 404 时不会冒充阅读成功",
+      "passed": true
+    },
+    {
+      "name": "坐下与站起重复三次，恢复到无碰撞通道",
+      "passed": true
+    },
+    {
+      "name": "入座阅读与关闭目录后保留座位，支持按钮站起",
+      "passed": true
+    },
+    {
+      "name": "私有资料真实账号鉴权与服务未配置状态",
+      "passed": true
+    },
+    {
+      "name": "真实后端上传 → 处理状态 → 正文阅读",
+      "passed": true
+    },
+    {
+      "name": "退出账号立即清除私有正文",
+      "passed": true
+    },
+    {
+      "name": "桌面移动转向实测与静态阴影缓存",
+      "passed": true,
+      "detail": {
+        "device": "Desktop Chromium",
+        "viewport": [
+          1440,
+          960
+        ],
+        "quality": "fluid",
+        "exposure": 1,
+        "pixelRatio": 0.85,
+        "ambientOcclusion": false,
+        "buffer": [
+          1224,
+          816
+        ],
+        "samples": 101,
+        "fps": 59.4,
+        "mean_ms": 16.838613860677963,
+        "p95_ms": 18.09999990463257,
+        "max_ms": 31.100000023841858,
+        "drawCalls": 27,
+        "triangles": 42812,
+        "shadowUpdates": 2,
+        "submit_ms": 0.8000000715255737
+      }
+    },
+    {
+      "name": "390px 窄屏触控入口、检索和布局无横向溢出",
+      "passed": true
+    },
+    {
+      "name": "窄屏横向与减少动态效果布局",
+      "passed": true
+    },
+    {
+      "name": "窄屏实际 PDF 正文、200% 放大与翻页入口",
+      "passed": true
+    },
+    {
+      "name": "生产子目录下模型材质、馆藏路径与本地 PDF Worker",
+      "passed": true
+    },
+    {
+      "name": "现有后端只开放必要图书馆静态资源与 Worker",
+      "passed": true
+    },
+    {
+      "name": "实际运行场景导出可编辑 GLB",
+      "passed": true
+    }
+  ],
+  "errors": [],
+  "performance": [
+    {
+      "device": "Desktop Chromium",
+      "viewport": [
+        1440,
+        960
+      ],
+      "quality": "fluid",
+      "exposure": 1,
+      "pixelRatio": 0.85,
+      "ambientOcclusion": false,
+      "buffer": [
+        1224,
+        816
+      ],
+      "samples": 101,
+      "fps": 59.4,
+      "mean_ms": 16.838613860677963,
+      "p95_ms": 18.09999990463257,
+      "max_ms": 31.100000023841858,
+      "drawCalls": 27,
+      "triangles": 42812,
+      "shadowUpdates": 2,
+      "submit_ms": 0.8000000715255737
+    },
+    {
+      "device": "390px narrow Chromium emulation",
+      "viewport": [
+        390,
+        844
+      ],
+      "quality": "fluid",
+      "exposure": 1,
+      "pixelRatio": 0.85,
+      "ambientOcclusion": false,
+      "buffer": [
+        331,
+        717
+      ],
+      "samples": 90,
+      "fps": 60,
+      "mean_ms": 16.665555555290645,
+      "p95_ms": 17.800000071525574,
+      "max_ms": 18.799999952316284,
+      "drawCalls": 29,
+      "triangles": 42924,
+      "shadowUpdates": 2,
+      "submit_ms": 1.1999999284744263
+    }
+  ],
+  "network": {
+    "responses": 111,
+    "bytes": 44323115
+  },
+  "screenshots": [
+    "library-exterior.png",
+    "library-shelves.png",
+    "library-reading-area.png",
+    "library-catalog.png",
+    "library-pdf-reading.png",
+    "library-seated.png",
+    "library-mobile.png",
+    "library-mobile-search.png",
+    "library-mobile-reading.png"
+  ],
+  "model": {
+    "meshes": 123,
+    "triangles": 86988,
+    "instances": 6060,
+    "materials": [
+      "Sample east pane 12mm clear glass",
+      "Wayfinding: 知 识 图 书 馆",
+      "Wayfinding: 馆藏书架",
+      "Wayfinding: 安静阅览",
+      "Grey brick",
+      "Wayfinding: 学 无 忧  ·  阅 读 与 思 考",
+      "Clear architectural glass",
+      "Dark bronze powder coating",
+      "Stone floor joints",
+      "Linear LED diffuser",
+      "Wayfinding: 考研真题卷",
+      "Clothbound book spines",
+      "White oak veneer",
+      "Wayfinding: 教材习题集",
+      "Wayfinding: 雅思备考库",
+      "Wayfinding: 专题与心得",
+      "Paper edges",
+      "Sage woven upholstery",
+      "Cream limestone",
+      "Wayfinding: 馆 藏 检 索",
+      "Mineral plaster and acoustic ceiling",
+      "Blue grey standing seam roof",
+      "Honed grey stone",
+      "Landscape ground",
+      "Planting soil",
+      "Tree bark",
+      "Botanical leaf cutouts",
+      "Sample R1 longitudinal white oak [R1 indirect]",
+      "Dark bronze powder coating [R1 indirect]",
+      "Pale bent oak chair veneer [R1 indirect]",
+      "Sample R1 sage fine woven upholstery [R1 indirect]",
+      "Sage woven upholstery [R1 indirect]",
+      "Cream limestone [R1 indirect]",
+      "Honed grey stone [R1 indirect]"
+    ],
+    "groups": [
+      "Structure stone and real window openings",
+      "Furniture bookcases and reading desks",
+      "Roof editable zinc and clerestory",
+      "Library forecourt",
+      "R1 bounded daylight fill",
+      "R1 baked diffuse sky and bounce"
+    ],
+    "dimensions": {
+      "width": 24,
+      "depth": 18,
+      "clearHeight": 4.4,
+      "doorWidth": 2.8,
+      "mainAisle": 3,
+      "units": "metres"
+    },
+    "colliders": 60,
+    "shelves": 4,
+    "seats": 8,
+    "landscape": {
+      "trees": 3,
+      "foliageInstances": 5596,
+      "sample": {
+        "tree": 623,
+        "leaves": 4480,
+        "bladeMetres": [
+          0.09,
+          0.24
+        ],
+        "clusters": 28,
+        "detail": {
+          "policy": "auto",
+          "level": "far",
+          "nearLeaves": 4480,
+          "farLeaves": 2240,
+          "nearLeafTriangles": 17920,
+          "farLeafTriangles": 4480,
+          "farAfterMetres": 30,
+          "nearBeforeMetres": 26
+        }
+      },
+      "source": "Procedural branches and leaf alpha, no external image dependency",
+      "allocatedFoliageInstances": 7836
+    },
+    "glbBytes": 27073520
+  },
+  "webgl": {
+    "vendor": "Google Inc. (Intel)",
+    "renderer": "ANGLE (Intel, Intel(R) Graphics (0x00007D67) Direct3D11 vs_5_0 ps_5_0, D3D11)"
+  },
+  "initialResources": {
+    "count": 21,
+    "encodedBytes": 18557660,
+    "transferredBytes": 18563960,
+    "urls": [
+      {
+        "url": "http://127.0.0.1:5296/examples/library-3d/library.css",
+        "bytes": 15500
+      },
+      {
+        "url": "http://127.0.0.1:5296/js/deploy-config.js",
+        "bytes": 204
+      },
+      {
+        "url": "http://127.0.0.1:5296/js/runtime.js",
+        "bytes": 243
+      },
+      {
+        "url": "http://127.0.0.1:5296/js/api.js",
+        "bytes": 15526
+      },
+      {
+        "url": "http://127.0.0.1:5296/js/wenku.js",
+        "bytes": 236506
+      },
+      {
+        "url": "http://127.0.0.1:5296/js/wenku_cat.js",
+        "bytes": 7781
+      },
+      {
+        "url": "http://127.0.0.1:5296/examples/library-3d/vendor/pdfjs/pdf.min.js",
+        "bytes": 320004
+      },
+      {
+        "url": "http://127.0.0.1:5296/examples/library-3d/app.bundle.js?v=reading-shelf-20261021",
+        "bytes": 855674
+      },
+      {
+        "url": "http://127.0.0.1:5296/examples/campus-3d-v5/assets/wood-color.jpg",
+        "bytes": 595257
+      },
+      {
+        "url": "http://127.0.0.1:5296/examples/campus-3d-v5/assets/wood-normal.jpg",
+        "bytes": 623607
+      },
+      {
+        "url": "http://127.0.0.1:5296/examples/campus-3d-v5/assets/wood-roughness.jpg",
+        "bytes": 520649
+      },
+      {
+        "url": "http://127.0.0.1:5296/examples/campus-3d-v5/assets/stone-normal.jpg",
+        "bytes": 192757
+      },
+      {
+        "url": "http://127.0.0.1:5296/examples/campus-3d-v5/assets/stone-roughness.jpg",
+        "bytes": 318550
+      },
+      {
+        "url": "http://127.0.0.1:5296/examples/campus-3d-v5/assets/brick-color.jpg",
+        "bytes": 722173
+      },
+      {
+        "url": "http://127.0.0.1:5296/examples/campus-3d-v5/assets/brick-normal.jpg",
+        "bytes": 1068884
+      },
+      {
+        "url": "http://127.0.0.1:5296/examples/campus-3d-v5/assets/brick-roughness.jpg",
+        "bytes": 477096
+      },
+      {
+        "url": "http://127.0.0.1:5296/examples/campus-3d-v5/assets/sky.hdr",
+        "bytes": 1435119
+      },
+      {
+        "url": "http://127.0.0.1:5296/examples/library-3d/assets/r1-lighting/r1-bake.json",
+        "bytes": 659
+      },
+      {
+        "url": "http://127.0.0.1:5296/examples/library-3d/assets/r1-lighting/r1-receivers-30704e41.glb",
+        "bytes": 2734836
+      },
+      {
+        "url": "http://127.0.0.1:5296/examples/library-3d/assets/r1-lighting/r1-indirect-dcc8cbb9.exr",
+        "bytes": 8408146
+      },
+      {
+        "url": "http://127.0.0.1:5296/examples/library-3d/assets/catalog-availability.json",
+        "bytes": 8489
+      }
+    ]
+  },
+  "passed": true,
+  "finishedAt": "2026-10-21T14:30:07.836Z"
+}
