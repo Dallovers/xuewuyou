@@ -1,0 +1,12 @@
+{
+  "receiversWithUV1": 47,
+  "packedImages": 29,
+  "unpackedExternalImages": [],
+  "skyGain": 3.5,
+  "camera": "Window sample",
+  "resolution": [
+    1440,
+    960
+  ],
+  "blendSHA256": "354fb60ec2fd621aef181cf4547d3c6230d54d2a2eb2ea00cd746358a0c71a9f"
+}

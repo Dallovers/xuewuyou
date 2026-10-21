@@ -593,7 +593,7 @@ const MIME = {
   '.svg': 'image/svg+xml', '.ico': 'image/x-icon', '.wav': 'audio/wav', '.mp3': 'audio/mpeg',
   '.pdf': 'application/pdf', '.woff': 'font/woff', '.woff2': 'font/woff2',
   '.wasm': 'application/wasm', '.mjs': 'application/javascript', '.ttf': 'font/ttf',
-  '.hdr': 'application/octet-stream', '.glb': 'model/gltf-binary'
+  '.hdr': 'application/octet-stream', '.exr': 'application/octet-stream', '.glb': 'model/gltf-binary'
 };
 
 function serveStatic(req, res) {
@@ -609,7 +609,7 @@ function serveStatic(req, res) {
    * 但仍然不放进目录里扩散，避免以后有人把备份、日志之类的东西丢进来就被伺服出去。 */
   const ALLOWED_ROOTS = ['index.html', 'admin.html', 'js', 'css', 'audio', 'data', 'vendor'];
   const publicPath = parts.join('/');
-  const libraryAsset = /^examples\/library-3d\/(?:index\.html|library\.css|app\.bundle\.js|assets\/(?:catalog-availability\.json|wenku-library\.glb)|vendor\/pdfjs\/(?:pdf\.min\.js|pdf\.worker\.min\.js))$/.test(publicPath);
+  const libraryAsset = /^examples\/library-3d\/(?:index\.html|library\.css|app\.bundle\.js|assets\/(?:catalog-availability\.json|wenku-library\.glb|r1-lighting\/(?:r1-bake\.json|r1-receivers-[a-f0-9]{8}\.glb|r1-indirect-[a-f0-9]{8}\.exr))|vendor\/pdfjs\/(?:pdf\.min\.js|pdf\.worker\.min\.js))$/.test(publicPath);
   const libraryMaterial = /^examples\/campus-3d-v5\/assets\/(?:[a-z]+-(?:color|normal|roughness)\.jpg|sky\.hdr)$/.test(publicPath);
   if (relative.startsWith('..') || path.isAbsolute(relative) || parts.some(p => p.startsWith('.')) || !(ALLOWED_ROOTS.includes(parts[0]) || libraryAsset || libraryMaterial)) return sendError(res, 403, '禁止访问');
   fs.readFile(filePath, (err, buf) => {

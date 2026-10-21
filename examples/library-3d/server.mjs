@@ -7,6 +7,7 @@ import {fileURLToPath} from 'node:url';
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'../..');
 const port=Number(process.env.PORT||4196);
 const mime={'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.json':'application/json; charset=utf-8','.jpg':'image/jpeg','.png':'image/png','.svg':'image/svg+xml','.hdr':'application/octet-stream','.pdf':'application/pdf','.docx':'application/vnd.openxmlformats-officedocument.wordprocessingml.document','.xlsx':'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet','.woff2':'font/woff2','.woff':'font/woff','.mp3':'audio/mpeg','.glb':'model/gltf-binary'};
+mime['.exr']='application/octet-stream';
 const allowed=p=>p==='index.html'||/^(js|css|vendor|audio|data\/pdf|examples\/library-3d|examples\/campus-3d-v5\/assets)\//.test(p);
 const server=http.createServer(async(req,res)=>{
  if(!['GET','HEAD'].includes(req.method)){res.writeHead(405);res.end();return;}
