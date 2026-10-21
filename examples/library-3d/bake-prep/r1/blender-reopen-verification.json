@@ -1,0 +1,41 @@
+{
+  "passed": true,
+  "cameras": [
+    {
+      "name": "R1 overall",
+      "eyeGLB": [
+        2.700000047683716,
+        1.7000000476837158,
+        -5.199999809265137
+      ],
+      "verticalFOVDegrees": 55.00000302371818,
+      "near": 0.07999999821186066,
+      "far": 180.0
+    },
+    {
+      "name": "R1 chair-close",
+      "eyeGLB": [
+        4.550000190734863,
+        1.0,
+        -7.099999904632568
+      ],
+      "verticalFOVDegrees": 55.00000302371818,
+      "near": 0.07999999821186066,
+      "far": 180.0
+    },
+    {
+      "name": "R1 backlit",
+      "eyeGLB": [
+        4.199999809265137,
+        1.649999976158142,
+        -3.0999999046325684
+      ],
+      "verticalFOVDegrees": 55.00000302371818,
+      "near": 0.07999999821186066,
+      "far": 180.0
+    }
+  ],
+  "weaveBumpRestoredAndPacked": true,
+  "worldAndLightsAbsent": true,
+  "baked": false
+}
