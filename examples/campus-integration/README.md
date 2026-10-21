@@ -77,7 +77,7 @@ https://<你的域名>/xuewuyou/examples/campus-integration/preview.html
 2. **iframe 内 Esc**：同源子文档监听 Escape，尊重业务内层 `dialog[open]`，关闭外层并清理输入/焦点；iframe 每次重载重新绑定。
 3. **BFCache**：`pagehide.persisted=true` 只暂停并保留 renderer/模块；`pageshow.persisted=true` 重置时钟、清输入并恢复循环；真正卸载才幂等 `dispose()`。
 
-> `validation.json` 仍是下发参考包的旧结果，不作为本批实测证据；本批需要按 `PATCHES.md` 的清单实跑并另存记录。
+> `validation.json` 仍是下发参考包的旧结果，不作为本批实测证据；本批需要按本 README 的验收清单实跑并另存记录。
 
 ## 接口约定（A/B 可挂载模块）
 
