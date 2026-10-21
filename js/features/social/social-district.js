@@ -1,3 +1,7 @@
+import { attachSocialAO } from './social-baked-ao.js';
+import { buildCampusTree, batchSocialDetails } from './social-landscape.js';
+import { buildPavilionRoof } from './social-architecture.js';
+
 /* 学无忧 · 社交广场（板块 A / 第一交付）
  *
  * 内容：场地铺装、主通路、亭廊、搭子服务台、公告栏、坐凳、喷泉池体，以及三个实物交互点。
@@ -29,9 +33,9 @@ export const SOCIAL_LAYOUT = {
 const MATERIAL_SPEC = {
   // 浅色石材：细磨石灰岩，低对比、无方向性。尺度由 uvUnit 控制（1.2m 一个循环）。
   // 不再复用 v5 那张 concrete_floor_02 强斑驳地坪——它当台面和台基用会显脏。
-  stone_light: { color: 0xcfc8ba, roughness: 0.74, metalness: 0.0, envMapIntensity: 0.55, uvUnit: 1.2 },
-  stone_light_in: { color: 0xd2cbbd, roughness: 0.62, metalness: 0.0, envMapIntensity: 0.5, uvUnit: 1.2 },
-  brick_grey: { color: 0x9a9f9b, roughness: 0.86, metalness: 0.0, envMapIntensity: 0.5, uvUnit: 1.7 },
+  stone_light: { color: 0xe1e0d9, roughness: 0.74, metalness: 0.0, envMapIntensity: 0.55, uvUnit: 1.2 },
+  stone_light_in: { color: 0xe8e6e0, roughness: 0.62, metalness: 0.0, envMapIntensity: 0.5, uvUnit: 1.2 },
+  brick_grey: { color: 0xd2d1c9, roughness: 0.86, metalness: 0.0, envMapIntensity: 0.5, uvUnit: 1.7 },
   // 深灰构件是涂装面（柱、梁、栏杆、公告栏框）：低金属度、中等粗糙，保留转折与边缘
   metal_dark: { color: 0x454b47, roughness: 0.54, metalness: 0.04, envMapIntensity: 0.52 },
   // 裸金属/深铝框：真正带金属反射，用在窗框
@@ -46,7 +50,7 @@ const MATERIAL_SPEC = {
     color: 0xcddfe4, roughness: 0.08, metalness: 0.05, transparent: true, opacity: 0.22,
     physical: true, depthWrite: false, envMapIntensity: 1.2,
   },
-  window_dark: { color: 0x2f3a3d, roughness: 0.3, metalness: 0.5, envMapIntensity: 0.9 },
+  window_dark: { color: 0x303936, roughness: 0.82, metalness: 0.0, envMapIntensity: 0.9 },
   water_placeholder: {
     color: 0x86adb8, roughness: 0.12, metalness: 0.05, transparent: true, opacity: 0.72,
     physical: true, envMapIntensity: 1.3,
@@ -54,7 +58,7 @@ const MATERIAL_SPEC = {
   accent_amber: { color: 0xc98b3f, roughness: 0.4, metalness: 0.2, emissive: 0xc98b3f, emissiveIntensity: 0.32 },
   ground_paving: { color: 0xbdb6a6, roughness: 0.82, metalness: 0.0 },
   ground_lawn: { color: 0x7e8a71, roughness: 0.95, metalness: 0.0 },
-  leaf: { color: 0x5a6a47, roughness: 0.92, metalness: 0.0 },
+  leaf: { color: 0x899364, roughness: 0.92, metalness: 0.0 },
   soil: { color: 0x5a5045, roughness: 0.98, metalness: 0.0 },
 };
 
@@ -62,9 +66,9 @@ const MATERIAL_SPEC = {
    stone 不在这里：台面与台基改用程序化细石材，不走那张强斑驳的混凝土地坪贴图。 */
 const PBR_GROUPS = {
   brick_grey: { set: 'brick', normalScale: 0.08 },
-  // 木色由程序化 albedo 决定，这里只借 wood 的法线与粗糙度
-  oak_light: { set: 'wood', normalScale: 0.035, skipColor: true },
-  oak_flat: { set: 'wood', normalScale: 0.035, skipColor: true },
+  // 白橡木扫描三件套保持同源；平板方向通过自有纹理副本旋转。
+  oak_light: { set: 'wood', normalScale: 0.10 },
+  oak_flat: { set: 'wood', normalScale: 0.10 },
 };
 
 /* 素材目录：js/features/social/ → 仓库根 → examples/campus-3d-v5/assets/ */
@@ -238,6 +242,10 @@ function beveledBoxGeometry(THREE, w, h, d, b, unit) {
   return g;
 }
 
+function seededRandom(seed) {
+  return () => { seed = (1664525 * seed + 1013904223) >>> 0; return seed / 4294967296; };
+}
+
 /**
  * 细磨浅石材：低频云纹 + 细颗粒，无方向性，512 图同步生成。
  * 不复用 v5 的 stone-color.jpg —— 那张实际是 concrete_floor_02 强斑驳地坪，
@@ -245,6 +253,7 @@ function beveledBoxGeometry(THREE, w, h, d, b, unit) {
  * withSeam：台基与台阶需要分格缝来读尺度；台面是整块石材，不做地砖式分缝。
  */
 function makeFineStoneTexture(THREE, owner, withSeam) {
+  const random = seededRandom(1701);
   if (typeof document === 'undefined') return null;
   const size = 512;
   const canvas = document.createElement('canvas');
@@ -253,16 +262,16 @@ function makeFineStoneTexture(THREE, owner, withSeam) {
   const g = canvas.getContext('2d');
   if (!g) return null;
 
-  g.fillStyle = '#d8d1c3';
+  g.fillStyle = '#d2d0c9';
   g.fillRect(0, 0, size, size);
 
   // 低频云纹：模拟石灰岩的沉积色差，幅度压得很小
   for (let i = 0; i < 90; i++) {
-    const x = Math.random() * size;
-    const y = Math.random() * size;
-    const r = 26 + Math.random() * 90;
+    const x = random() * size;
+    const y = random() * size;
+    const r = 26 + random() * 90;
     const grad = g.createRadialGradient(x, y, 0, x, y, r);
-    const a = 0.01 + Math.random() * 0.014;
+    const a = 0.01 + random() * 0.014;
     grad.addColorStop(0, 'rgba(150,142,126,' + a.toFixed(3) + ')');
     grad.addColorStop(1, 'rgba(150,142,126,0)');
     g.fillStyle = grad;
@@ -275,7 +284,7 @@ function makeFineStoneTexture(THREE, owner, withSeam) {
   const img = g.getImageData(0, 0, size, size);
   const d = img.data;
   for (let i = 0; i < d.length; i += 4) {
-    const n = (Math.random() - 0.5) * 6;
+    const n = (random() - 0.5) * 6;
     d[i] += n;
     d[i + 1] += n;
     d[i + 2] += n;
@@ -314,6 +323,7 @@ function makeFineStoneTexture(THREE, owner, withSeam) {
  * 纹理沿 U（板件长边）走，避免每块板都出现同一个木结。
  */
 function makeLightOakTexture(THREE, owner, horizontal) {
+  const random = seededRandom(2789);
   if (typeof document === 'undefined') return null;
   const w = 512;
   const h = 512;
@@ -333,30 +343,30 @@ function makeLightOakTexture(THREE, owner, horizontal) {
   if (horizontal) {
     let y = -20;
     while (y < h + 20) {
-      const band = 0.25 + Math.random() * 0.8;
-      const alpha = 0.025 + Math.random() * 0.028;
+      const band = 0.25 + random() * 0.8;
+      const alpha = 0.025 + random() * 0.028;
       g.fillStyle = 'rgba(138,102,62,' + alpha.toFixed(3) + ')';
       g.beginPath(); g.lineWidth = band; g.strokeStyle = g.fillStyle; for (let gx = 0; gx <= w; gx += 8) { const gy = y + Math.sin(gx / 80 + y / 35) * 1.4; if (!gx) g.moveTo(gx, gy); else g.lineTo(gx, gy); } g.stroke();
-      if (Math.random() > 0.45) {
-        const x0 = Math.random() * w * 0.7;
+      if (random() > 0.45) {
+        const x0 = random() * w * 0.7;
         g.fillStyle = 'rgba(120,86,50,' + (alpha * 1.25).toFixed(3) + ')';
-        g.fillRect(x0, y, w * (0.2 + Math.random() * 0.5), band * (0.5 + Math.random() * 0.7));
+        g.fillRect(x0, y, w * (0.2 + random() * 0.5), band * (0.5 + random() * 0.7));
       }
-      y += band + 1.2 + Math.random() * 3.8;
+      y += band + 1.2 + random() * 3.8;
     }
   } else {
     let x = -20;
     while (x < w + 20) {
-      const band = 0.25 + Math.random() * 0.8;
-      const alpha = 0.025 + Math.random() * 0.028;
+      const band = 0.25 + random() * 0.8;
+      const alpha = 0.025 + random() * 0.028;
       g.fillStyle = 'rgba(138,102,62,' + alpha.toFixed(3) + ')';
       g.beginPath(); g.lineWidth = band; g.strokeStyle = g.fillStyle; for (let gy = 0; gy <= h; gy += 8) { const gx = x + Math.sin(gy / 80 + x / 35) * 1.4; if (!gy) g.moveTo(gx, gy); else g.lineTo(gx, gy); } g.stroke();
-      if (Math.random() > 0.45) {
-        const y0 = Math.random() * h * 0.7;
+      if (random() > 0.45) {
+        const y0 = random() * h * 0.7;
         g.fillStyle = 'rgba(120,86,50,' + (alpha * 1.25).toFixed(3) + ')';
-        g.fillRect(x, y0, band * (0.5 + Math.random() * 0.7), h * (0.2 + Math.random() * 0.5));
+        g.fillRect(x, y0, band * (0.5 + random() * 0.7), h * (0.2 + random() * 0.5));
       }
-      x += band + 1.2 + Math.random() * 3.8;
+      x += band + 1.2 + random() * 3.8;
     }
   }
 
@@ -364,7 +374,7 @@ function makeLightOakTexture(THREE, owner, horizontal) {
   const img = g.getImageData(0, 0, w, h);
   const d = img.data;
   for (let i = 0; i < d.length; i += 4) {
-    const n = (Math.random() - 0.5) * 7;
+    const n = (random() - 0.5) * 7;
     d[i] += n;
     d[i + 1] += n;
     d[i + 2] += n;
@@ -409,6 +419,7 @@ function resolveMaterials(THREE, shared, owner) {
       params.transparent = true;
       params.opacity = spec.opacity;
     }
+    if (id === 'leaf') params.side = THREE.DoubleSide;
     if (spec.depthWrite === false) params.depthWrite = false;
     // 程序化 albedo：石材与木色同步生成，直接带进构造函数
     if (id === 'stone_light' || id === 'stone_light_in') {
@@ -439,7 +450,7 @@ function resolveMaterials(THREE, shared, owner) {
  * 卸载安全：owner.dispose() 之后，仍在下载的纹理到达时立即释放，绝不回写材质；
  * 已登记的资源由 owner 统一释放，不从材质当前槽反推所有权。
  */
-function attachTextures(THREE, lib, pavingMats, owner) {
+function attachTextures(THREE, lib, pavingMats, owner, lawnMat) {
   if (!ASSET_DIR || typeof document === 'undefined' || typeof THREE.TextureLoader !== 'function') {
     return Promise.resolve({ ok: false, reason: 'no-asset-env', loaded: 0, total: 0, skipped: 0 });
   }
@@ -448,9 +459,9 @@ function attachTextures(THREE, lib, pavingMats, owner) {
   const pending = new Map();
   let skipped = 0;
 
-  function load(file, srgb) {
+  function load(file, srgb, base = ASSET_DIR) {
     if (pending.has(file)) return pending.get(file);
-    const job = loader.loadAsync(ASSET_DIR + file).then((tex) => {
+    const job = loader.loadAsync(base + file).then((tex) => {
       if (owner.disposed) {
         tex.dispose();
         skipped++;
@@ -469,6 +480,15 @@ function attachTextures(THREE, lib, pavingMats, owner) {
 
   const jobs = [];
 
+  if (lawnMat) jobs.push((async () => {
+    const base = new URL('./assets/pbr/', import.meta.url).href;
+    const [map,normal,rough] = await Promise.all([load('grass-diff.jpg',true,base),load('grass-nor_gl.jpg',false,base),load('grass-rough.jpg',false,base)]);
+    if(owner.disposed) return;
+    for(const tex of [map,normal,rough]) tex.repeat.set(35,35); // 70m / 2m capture
+    lawnMat.map=map;lawnMat.normalMap=normal;lawnMat.roughnessMap=rough;
+    lawnMat.color.setHex(0x8d9a7b);lawnMat.normalScale=new THREE.Vector2(.2,.2);lawnMat.needsUpdate=true;
+  })());
+
   // 构件材质：共享同一份贴图，repeat 保持 1×1，靠 uvUnit 决定观感尺度
   for (const [id, group] of Object.entries(PBR_GROUPS)) {
     const mat = lib[id];
@@ -482,9 +502,35 @@ function attachTextures(THREE, lib, pavingMats, owner) {
       if (owner.disposed) return;
       // skipColor 的材质保留自己的程序化 albedo，不被覆盖
       if (color) mat.map = color;
+      if (color && id === 'brick_grey' && color.image && typeof color.image.width === 'number') {
+        const canvas = document.createElement('canvas');
+        canvas.width = color.image.width; canvas.height = color.image.height;
+        const g = canvas.getContext('2d');
+        if (g) {
+          g.drawImage(color.image,0,0);
+          const pixels = g.getImageData(0,0,canvas.width,canvas.height);
+          for (let i=0;i<pixels.data.length;i+=4) {
+            const grey = .2126*pixels.data[i]+.7152*pixels.data[i+1]+.0722*pixels.data[i+2];
+            pixels.data[i]=grey*.90+24; pixels.data[i+1]=grey*.90+25; pixels.data[i+2]=grey*.90+24;
+          }
+          g.putImageData(pixels,0,0);
+          const neutral = new THREE.CanvasTexture(canvas);
+          neutral.wrapS=neutral.wrapT=THREE.RepeatWrapping;neutral.colorSpace=THREE.SRGBColorSpace;neutral.anisotropy=8;
+          if(owner.ownTexture(neutral)) mat.map=neutral;
+        }
+      }
+
       mat.normalMap = normal;
       mat.normalScale = new THREE.Vector2(group.normalScale, group.normalScale);
       mat.roughnessMap = rough;
+      if (id === 'oak_flat') {
+        for (const key of ['map','normalMap','roughnessMap']) {
+          const rotated = mat[key].clone();
+          rotated.center.set(0.5,0.5); rotated.rotation = Math.PI / 2;
+          rotated.needsUpdate = true;
+          if (owner.ownTexture(rotated)) mat[key] = rotated;
+        }
+      }
       mat.needsUpdate = true;
     })());
   }
@@ -500,7 +546,7 @@ function attachTextures(THREE, lib, pavingMats, owner) {
       n.needsUpdate = true;
       if (!owner.ownTexture(n)) return;
       item.mat.normalMap = n;
-      item.mat.normalScale = new THREE.Vector2(0.28, 0.28);
+      item.mat.normalScale = new THREE.Vector2(0.09, 0.09);
       item.mat.needsUpdate = true;
     })());
   }
@@ -641,6 +687,7 @@ export function createDistrict(ctx = {}) {
      单张天然石纹贴图平铺后重复感很强、也看不出"铺装"这件事，
      所以这里自己画石板，法线再借 v5 的 stone-normal 做凹凸。 */
   function makePavingMaterial(baseColor, width, depth, unit) {
+    const random = seededRandom(3911);
     const repX = width / unit;
     const repY = depth / unit;
     if (typeof document === 'undefined') return null;
@@ -664,16 +711,16 @@ export function createDistrict(ctx = {}) {
       for (let col = -1; col <= cols; col++) {
         const x = col * tw + offset;
         const y = row * th;
-        const v = 199 + (Math.random() * 16 - 8);
+        const v = 199 + (random() * 16 - 8);
         g.fillStyle = 'rgb(' + Math.round(v) + ',' + Math.round(v * 0.987) + ',' + Math.round(v * 0.948) + ')';
         g.fillRect(x + 1.6, y + 1.6, tw - 3.2, th - 3.2);
         // 单块石材内部的斑驳，避免每块都是一样平的浅灰
         for (let k = 0; k < 24; k++) {
-          const px = x + 3 + Math.random() * (tw - 6);
-          const py = y + 3 + Math.random() * (th - 6);
-          g.fillStyle = 'rgba(146,136,116,' + (0.03 + Math.random() * 0.05).toFixed(3) + ')';
+          const px = x + 3 + random() * (tw - 6);
+          const py = y + 3 + random() * (th - 6);
+          g.fillStyle = 'rgba(146,136,116,' + (0.03 + random() * 0.05).toFixed(3) + ')';
           g.beginPath();
-          g.arc(px, py, 3 + Math.random() * 13, 0, Math.PI * 2);
+          g.arc(px, py, 3 + random() * 13, 0, Math.PI * 2);
           g.fill();
         }
       }
@@ -726,6 +773,7 @@ export function createDistrict(ctx = {}) {
   /* 草地：仓库里没有草地贴图，用程序化颗粒噪点 + 颜色着色，
      避免 70×70 的底面上出现一整片死平的绿。 */
   function makeLawnMaterial() {
+    const random = seededRandom(4903);
     if (typeof document === 'undefined') return null;
     const size = 256;
     const canvas = document.createElement('canvas');
@@ -736,10 +784,10 @@ export function createDistrict(ctx = {}) {
     g.fillStyle = '#e9efe3';
     g.fillRect(0, 0, size, size);
     for (let i = 0; i < 2600; i++) {
-      const x = Math.random() * size;
-      const y = Math.random() * size;
-      const r = 0.6 + Math.random() * 1.6;
-      g.fillStyle = Math.random() > 0.5 ? 'rgba(255,255,255,0.26)' : 'rgba(116,134,104,0.32)';
+      const x = random() * size;
+      const y = random() * size;
+      const r = 0.6 + random() * 1.6;
+      g.fillStyle = random() > 0.5 ? 'rgba(255,255,255,0.26)' : 'rgba(116,134,104,0.32)';
       g.beginPath();
       g.arc(x, y, r, 0, Math.PI * 2);
       g.fill();
@@ -747,20 +795,22 @@ export function createDistrict(ctx = {}) {
     const tex = new THREE.CanvasTexture(canvas);
     tex.wrapS = THREE.RepeatWrapping;
     tex.wrapT = THREE.RepeatWrapping;
-    tex.repeat.set(35, 35);
+    tex.repeat.set(9, 9);
     tex.colorSpace = THREE.SRGBColorSpace;
     tex.anisotropy = 8;
     if (!owner.ownTexture(tex)) return null;
     const mat = new THREE.MeshStandardMaterial({
-      map: tex, color: 0x5e6b49, roughness: 0.97, metalness: 0.0,
+      map: tex, color: 0x788064, roughness: 0.97, metalness: 0.0,
     });
     mat.name = 'lawn';
     owner.ownMaterial(mat);
     return mat;
   }
 
+  let ownedLawnMaterial = null;
   function buildSite() {
     const lawnMat = makeLawnMaterial() || M.ground_lawn;
+    ownedLawnMaterial = lawnMat;
     add(new THREE.PlaneGeometry(70, 70), lawnMat, 0, -0.04, 0, {
       rotX: -Math.PI / 2, name: 'site:lawn', cast: false,
     });
@@ -797,10 +847,7 @@ export function createDistrict(ctx = {}) {
     add(new THREE.CircleGeometry(r - 0.26, 24), M.soil, x, 0.2, z, {
       rotX: -Math.PI / 2, name: 'green:soil', cast: false,
     });
-    add(cylGeo(0.1, 0.15, 2.3, 10), M.soil, x, 1.35, z, { name: 'green:trunk' });
-    for (const [dx, dy, dz, s] of [[0, 3.0, 0, 1.25], [0.55, 2.68, 0.35, 0.85], [-0.5, 2.74, -0.3, 0.8]]) {
-      add(new THREE.IcosahedronGeometry(s, 2), M.leaf, x + dx, dy, z + dz, { name: 'green:crown' });
-    }
+    buildCampusTree({ THREE, root, add, cylGeo, M, x, z });
     colliders.push({ name: 'green:pit', type: 'cylinder', center: [x, 0.19, z], radius: r, height: 0.38 });
   }
 
@@ -825,7 +872,7 @@ export function createDistrict(ctx = {}) {
     for (const x of xs) {
       for (const z of zs) {
         add(beveledBoxGeometry(THREE, 0.29, 0.12, 0.29, 0.014, 1), M.stone_light_in, x, plinth + 0.06, z, { name: 'pavilion:column-plinth' });
-        add(beveledBoxGeometry(THREE, P.column, colH - 0.12, P.column, 0.01, 1), M.metal_dark, x, plinth + 0.12 + (colH - 0.12) / 2, z, { name: 'pavilion:column' });
+        add(beveledBoxGeometry(THREE, P.column, colH - 0.12, P.column, 0.002, 1), M.metal_dark, x, plinth + 0.12 + (colH - 0.12) / 2, z, { name: 'pavilion:column' });
         add(beveledBoxGeometry(THREE, P.column + 0.08, 0.09, P.column + 0.08, 0.008, 1), M.stone_light_in, x, plinth + colH - 0.045, z, { name: 'pavilion:capital' });
         add(boxGeo(P.column + 0.14, 0.018, P.column + 0.14), M.metal_dark, x, plinth + 0.009, z, { name: 'pavilion:column-base' });
         // Cover the 360mm base plate as well as the shaft; prevent feet clipping the plinth.
@@ -841,23 +888,8 @@ export function createDistrict(ctx = {}) {
       add(beveledBoxGeometry(THREE, P.width + 0.34, 0.17, 0.20, 0.006, 1), M.metal_dark, P.cx, plinth + colH + 0.11, z, { name: 'pavilion:beam-cross' });
     }
 
-    // 浅坡双面金属屋面：独立薄板做出排水坡，周边连续滴水边与檐底木衬板。
-    const roofY = plinth + P.height;
-    const roofW = P.width + 0.95, roofL = P.length + 0.95, roofT = 0.11, roofSlope = 0.16;
-    const roofAngle = Math.atan2(roofSlope, roofW / 2);
-    const roofHalf = roofW / 2;
-    add(beveledBoxGeometry(THREE, roofW / 2 + 0.03, roofT, roofL, 0.012, 1), M.roof_bluegrey, P.cx - roofW / 4, roofY + roofSlope / 2, P.cz, { name: 'pavilion:roof-plane-west', rotZ: roofAngle });
-    add(beveledBoxGeometry(THREE, roofW / 2 + 0.03, roofT, roofL, 0.012, 1), M.roof_bluegrey, P.cx + roofW / 4, roofY + roofSlope / 2, P.cz, { name: 'pavilion:roof-plane-east', rotZ: -roofAngle });
-    add(boxGeo(0.08, 0.08, roofL + 0.08), M.metal_frame, P.cx, roofY + roofSlope + 0.04, P.cz, { name: 'pavilion:ridge-cap' });
-    for (const z of [P.cz - roofL / 2, P.cz + roofL / 2]) {
-      add(boxGeo(roofW + 0.08, 0.075, 0.07), M.metal_frame, P.cx, roofY - 0.045, z, { name: 'pavilion:fascia' });
-      add(boxGeo(roofW - 0.22, 0.035, 0.045), M.oak_flat, P.cx, roofY - 0.105, z, { name: 'pavilion:soffit-edge', cast: false });
-    }
-    for (const x of [P.cx - roofHalf, P.cx + roofHalf]) add(boxGeo(0.055, 0.075, roofL), M.metal_frame, x, roofY - 0.045, P.cz, { name: 'pavilion:fascia-side' });
-    const slatGap = 0.44;
-    for (let z = P.cz - (P.length - 0.2) / 2; z < P.cz + P.length / 2; z += slatGap) {
-      add(boxGeo(P.width + 0.36, 0.045, 0.065), M.oak_flat, P.cx, roofY - 0.13, z, { name: 'pavilion:slat', cast: false });
-    }
+    const roofDimensions = buildPavilionRoof({ THREE, P, M, add, boxGeo });
+    root.userData.roofDimensions = roofDimensions;
 
     // 东侧矮栏只压南北两端，中段完全敞开，保证从主路能直接看到服务台
     // 做成栏杆而不是实心板：实心板从远处看就是一块黑板，会挡住亭廊内部
@@ -881,8 +913,7 @@ export function createDistrict(ctx = {}) {
     const y0 = 0.12; // 台基面
     // 台体采用木饰面围板与内退踢脚，底部留 shadow reveal，避免整块箱体直接贴地。
     const body = add(beveledBoxGeometry(THREE, D.w - 0.04, D.h - 0.04, D.d - 0.05, 0.004, 1.8), M.oak_light, D.x, y0 + (D.h - 0.04) / 2 + 0.04, D.z, { name: 'social:desk-body' });
-    const frontX = D.x + D.w / 2 - 0.025;
-    add(boxGeo(D.w - 0.14, 0.07, D.d - 0.14), M.metal_dark, D.x, y0 + 0.035, D.z, { name: 'social:desk-plinth' });
+        add(boxGeo(D.w - 0.14, 0.07, D.d - 0.14), M.metal_dark, D.x, y0 + 0.035, D.z, { name: 'social:desk-plinth' });
     // 两片 22mm 饰面板，5mm 真缝；侧向主面沿长轴拆成三块饰面板。
     for (const dz of [-0.17, 0.17]) add(beveledBoxGeometry(THREE, 0.022, D.h - 0.14, 0.333, 0.002, 1.8), M.oak_light, D.x + D.w / 2 - 0.008, y0 + D.h / 2 + 0.01, D.z + dz, { name: 'social:desk-door' });
     for (const side of [-1, 1]) for (const dx of [-0.59, 0, 0.59]) add(beveledBoxGeometry(THREE, 0.585, D.h - 0.14, 0.022, 0.002, 1.8), M.oak_light, D.x + dx, y0 + D.h / 2 + 0.01, D.z + side * (D.d / 2 - 0.008), { name: 'social:desk-side-panel' });
@@ -975,7 +1006,7 @@ export function createDistrict(ctx = {}) {
 
     // 双石墩和横向钢托，坐面由四根 40mm 实木板构成，净缝 6mm。
     for (const dx of [-0.54, 0.54]) add(beveledBoxGeometry(THREE, 0.22, 0.37, S.depth - 0.06, 0.008, 1.2), M.stone_light_in, dx, 0.185, 0, { parent: group, name: 'bench:base' });
-    for (const dz of [-0.13, 0.13]) add(boxGeo(S.length - 0.12, 0.04, 0.035), M.metal_dark, 0, 0.385, dz, { parent: group, name: 'bench:rail' });
+    for (const dz of [-0.13, 0.13]) add(boxGeo(S.length - 0.12, 0.04, 0.035), M.metal_dark, 0, 0.39, dz, { parent: group, name: 'bench:rail' });
     for (let i = 0; i < 4; i++) add(beveledBoxGeometry(THREE, S.length, 0.04, 0.099, 0.003, 1.8), M.oak_flat, 0, S.seat - 0.02, (i - 1.5) * 0.105, { parent: group, name: 'bench:seat' });
     const halfX = Math.abs(Math.cos(rotY || 0)) * S.length / 2 + Math.abs(Math.sin(rotY || 0)) * S.depth / 2;
     const halfZ = Math.abs(Math.sin(rotY || 0)) * S.length / 2 + Math.abs(Math.cos(rotY || 0)) * S.depth / 2;
@@ -1037,30 +1068,26 @@ export function createDistrict(ctx = {}) {
 
   function buildFacadePlaceholder() {
     const F = L.facade;
-    const wall = add(boxGeo(F.width, F.height, F.thickness), M.brick_grey, 0, F.height / 2, F.z, {
-      name: 'placeholder:facade', placeholder: true,
-    });
-    wall.userData.note = '占位体量，不参与最终画面；由公共宿主接入时替换（D 负责宿主，本批不重建立面）';
-    // 檐口
-    add(boxGeo(F.width + 0.4, 0.45, F.thickness + 0.6), M.stone_light, 0, F.height + 0.2, F.z, {
-      name: 'placeholder:facade-cap', placeholder: true,
-    });
-    // 窗洞示意：三层开间，只是给占位体量一点建筑比例，不是可交付立面
-    // 深色块 + 一层反光玻璃 + 一道竖挺，远看有框料和分格，不再是一排黑洞
-    for (let floor = 0; floor < 3; floor++) {
-      const y = 2.0 + floor * 2.4;
-      for (let i = -6; i <= 6; i++) {
-        add(boxGeo(1.4, 1.5, 0.06), M.window_dark, i * 2.4, y, F.z + F.thickness / 2 + 0.02, {
-          name: 'placeholder:facade-window', cast: false, placeholder: true,
-        });
-        add(boxGeo(1.3, 1.4, 0.03), M.glass, i * 2.4, y, F.z + F.thickness / 2 + 0.06, {
-          name: 'placeholder:facade-glazing', cast: false, receive: false, placeholder: true,
-        });
-        add(boxGeo(0.045, 1.44, 0.05), M.metal_dark, i * 2.4, y, F.z + F.thickness / 2 + 0.07, {
-          name: 'placeholder:facade-mullion', cast: false, placeholder: true,
-        });
+    // Same background envelope, rebuilt as real piers/spandrels around recessed openings.
+    const front = F.z + F.thickness / 2;
+    for (const [lo,hi] of [[0,1.25],[2.75,3.65],[5.15,6.05],[7.55,8]]) {
+      add(boxGeo(F.width,hi-lo,F.thickness),M.brick_grey,0,(lo+hi)/2,F.z,{name:'placeholder:facade-spandrel',placeholder:true});
+    }
+    for(let i=-6;i<=6;i++) {
+      const x=i*2.3;
+      for(let floor=0;floor<3;floor++) {
+        const y=2+floor*2.4;
+        if(i<6) add(boxGeo(.9,1.5,F.thickness),M.brick_grey,x+1.15,y,F.z,{name:'placeholder:facade-pier',placeholder:true});
+        // Window back plane is 360mm behind masonry face; jambs are the actual wall sides.
+        add(boxGeo(1.4,1.5,.035),M.window_dark,x,y,front-.405,{name:'placeholder:window-interior',placeholder:true,cast:false});
+        add(boxGeo(1.30,1.40,.018),M.glass,x,y,front-.32,{name:'placeholder:facade-glazing',placeholder:true,cast:false});
+        for(const dx of [-.68,0,.68]) add(boxGeo(.04,1.50,.075),M.metal_frame,x+dx,y,front-.26,{name:'placeholder:window-frame',placeholder:true});
+        for(const dy of [-.73,.73]) add(boxGeo(1.4,.04,.075),M.metal_frame,x,y+dy,front-.26,{name:'placeholder:window-frame',placeholder:true});
+        add(boxGeo(1.53,.065,.58),M.stone_light_in,x,y-.77,front-.20,{name:'placeholder:window-sill',placeholder:true});
       }
     }
+    for(const sx of [-1,1]) add(boxGeo(.5,F.height,F.thickness),M.brick_grey,sx*14.75,F.height/2,F.z,{name:'placeholder:facade-pier',placeholder:true});
+    add(boxGeo(F.width+.12,.16,F.thickness+.20),M.stone_light_in,0,F.height+.08,F.z,{name:'placeholder:facade-cap',placeholder:true});
     colliders.push({
       name: 'placeholder:facade',
       type: 'box',
@@ -1104,10 +1131,12 @@ export function createDistrict(ctx = {}) {
   buildTreePit(-5.6, 4.4);
   buildTreePit(6.6, 4.4);
   buildFountain();
+  batchSocialDetails(THREE, root);
 
   /* 贴图异步补挂：不阻塞 createDistrict 的同步返回。
      调用方可以 await district.ready 之后再截图或验收，也可以不等。 */
-  const texturesReady = attachTextures(THREE, M, pavingMaterials, owner);
+  const texturesReady = attachTextures(THREE, M, pavingMaterials, owner, ownedLawnMaterial)
+    .then(async pbr => ({ ...pbr, bakedAO: ctx.bakedAO === false ? {ok:false,reason:'disabled'} : await attachSocialAO(THREE,root,owner) }));
 
   if (deskLampMaterial) {
     animated.push((t) => {
@@ -1133,6 +1162,7 @@ export function createDistrict(ctx = {}) {
       // 幂等：重复调用直接返回，避免把已释放的几何再 dispose 一次
       if (!owner.dispose()) return;
       root.traverse((o) => {
+        if (o.isInstancedMesh) o.dispose();
         if (o.isMesh && o.geometry && o.geometry.userData && o.geometry.userData.__socialDisposable) {
           o.geometry.dispose();
           o.geometry.userData.__socialDisposable = false;
