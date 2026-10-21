@@ -1,0 +1,17 @@
+{
+  "geometrySource": "c75a5e2",
+  "geometry": "r1-receivers-30704e41.glb",
+  "atlas": "r1-indirect-dcc8cbb9.exr",
+  "geometrySHA256": "30704e4134720f32f52e0207ff6f1a527acf2aac207ec72a8967bc4ad5523b66",
+  "atlasSHA256": "dcc8cbb9546218b2420d6c084305d0bf3caa97745f28e919cdce760d5b1f2755",
+  "receivers": 47,
+  "size": 2048,
+  "samples": 256,
+  "encoding": "linear-srgb-white-diffuse-radiance",
+  "irradianceScale": 3.141592653589793,
+  "skyGain": 3.5,
+  "sky": "full diffuse",
+  "sun": "indirect only",
+  "denoising": "Blender compositor OpenImageDenoise, colour-only, linear HDR",
+  "uvConvention": "GLTF TEXCOORD_1, EXR decoded rows flipped to top-origin"
+}

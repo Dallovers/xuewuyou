@@ -2,6 +2,12 @@
 
 一个可进入、可步行、可入座并阅读现有真实馆藏的独立 3D 图书馆。主站地点 ID 保持 `wenku`。本轮只维护图书馆和必要接入，没有修改 A/B 的场景、业务或任务。
 
+## R1 真实间接光与材质
+
+用户已将 R1 独立 UV 与实际烘焙交由 C 执行。当前页面默认加载 R1 桌椅、局部地面及一处窗墙的独立 UV1／真实 Cycles 烘焙；天空漫射和太阳反弹进入 atlas，太阳直射、镜面与动态对象保持实时。木材使用轻微清漆层，织物加入纤维掠射高光。入口、八座和真实阅读保留。
+
+[当前实现、前后实拍、资源与回归](validation/review-v7/README.md)。这是一组样板的进一步视觉优化，窗外和其他区域仍保持原型状态，不把全馆宣称为照片级完成。下面的准备阶段及历次审查均按对应版本保留。
+
 ## R1 局部烘焙样板准备
 
 [一页交接说明](bake-prep/r1/README.md) 提供已验收资产的局部 GLB、静态／动态清单、三种实际运行截图、材质与版本核验，以及未来 lightMap 的加载和释放方案。仅用于总策划继续制作 UV／光照；准备工具不进入运行代码，没有新增 lightmap UV 或烘焙，也没有改变现有测试。
@@ -58,11 +64,11 @@ node examples/library-3d/server.mjs
 - `src/catalog.js`：真实目录、筛选分页、文件检查、本地 PDF Worker、上传处理状态、异步结果及账号隔离。
 - `src/rendering.js`：沿用样板的 PBR/色彩处理方法，图书馆自己的画质策略、真实帧间隔测量、缓存静态阴影；慢设备自动降低分辨率并关闭 SSAO。
 - `src/app.js`：场景生命周期、门、座位、输入隔离、导航与 GLB 导出。
-- `assets/wenku-library.glb`：从实际程序导出的几何和内嵌材质；包含书本实例化扩展。
-- `Library_Editable.blend`：从该 GLB 导入并打包纹理的编辑工程，附检查相机和灯光。此工程没有新烘焙图，不宣称和浏览器的屏幕空间效果完全一致。
+- `assets/wenku-library.glb`：`ed40ec2` 已验收的完整几何基线，含内嵌材质／实例。新 R1 接收几何、UV1、EXR 及清单位于 `assets/r1-lighting/`，不覆盖原件。
+- `Library_Editable.blend`：已验收基线工程，保持原件；本轮真实烘焙工作工程由 `tools/bake-r1.py`、`tools/finish-r1-bake.py` 生成到独立输出目录。
 - `prepare-blender.py`：重复生成编辑工程。运行 `blender --background --factory-startup --python examples/library-3d/prepare-blender.py -- 输入.glb 输出.blend`。
 
-使用新图书馆实时太阳光、HDR 环境、辅助灯和接触阴影，没有套用教室的烘焙图。当前效果是实时建筑原型，尚未达到照片级。素材来源和授权见 `assets/sources.json`、`licenses/` 及原参考素材清单。未调用 AI 生图。
+当前混合实时太阳／HDR 镜面与 R1 局部真实烘焙；没有套用教室光照图。模型导出保留可见几何、UV1 和配套 atlas 的元数据，但标准 GLB 查看器不会自动复现自定义间接光着色，需要一并保留 atlas 与接入逻辑。素材来源见 `assets/sources.json`、`licenses/`；没有使用生成式图片冒充程序效果。
 
 ## 修改后重建与测试
 

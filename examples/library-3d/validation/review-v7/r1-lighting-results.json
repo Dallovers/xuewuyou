@@ -1,0 +1,372 @@
+{
+  "date": "2026-10-21T10:26:22.483Z",
+  "base": "http://127.0.0.1:5096",
+  "checks": [
+    {
+      "name": "实际加载 47 个 UV1 接收面及线性 HDR atlas",
+      "passed": true,
+      "data": {
+        "ready": true,
+        "enabled": true,
+        "disposed": false,
+        "error": null,
+        "receivers": 47,
+        "meshes": 50,
+        "materials": 8,
+        "atlasSize": [
+          2048,
+          2048
+        ],
+        "atlasChannel": 1,
+        "irradianceScale": 3.141592653589793,
+        "encoding": "linear-srgb-white-diffuse-radiance",
+        "released": {
+          "geometries": 0,
+          "materials": 0,
+          "textures": 0
+        }
+      }
+    },
+    {
+      "name": "同页同机位、相同曝光与画质的真实前后对比",
+      "passed": true
+    },
+    {
+      "name": "原场景回切、八座书架与树实例数量保持",
+      "passed": true,
+      "data": {
+        "legacy": {
+          "meshes": 102,
+          "triangles": 100322,
+          "instances": 8300,
+          "materials": [
+            "Honed grey stone",
+            "Sample east pane 12mm clear glass",
+            "Wayfinding: 知 识 图 书 馆",
+            "Wayfinding: 馆藏书架",
+            "Wayfinding: 安静阅览",
+            "Grey brick",
+            "Wayfinding: 学 无 忧  ·  阅 读 与 思 考",
+            "Clear architectural glass",
+            "Dark bronze powder coating",
+            "Cream limestone",
+            "Stone floor joints",
+            "Linear LED diffuser",
+            "Wayfinding: 考研真题卷",
+            "Clothbound book spines",
+            "White oak veneer",
+            "Wayfinding: 教材习题集",
+            "Wayfinding: 雅思备考库",
+            "Wayfinding: 专题与心得",
+            "Paper edges",
+            "Sage woven upholstery",
+            "Sample R1 longitudinal white oak",
+            "Pale bent oak chair veneer",
+            "Sample R1 sage fine woven upholstery",
+            "Wayfinding: 馆 藏 检 索",
+            "Mineral plaster and acoustic ceiling",
+            "Blue grey standing seam roof",
+            "Landscape ground",
+            "Planting soil",
+            "Tree bark",
+            "Botanical leaf cutouts"
+          ],
+          "groups": [
+            "Structure stone and real window openings",
+            "Furniture bookcases and reading desks",
+            "Roof editable zinc and clerestory",
+            "Library forecourt",
+            "R1 bounded daylight fill",
+            "R1 baked diffuse sky and bounce"
+          ],
+          "dimensions": {
+            "width": 24,
+            "depth": 18,
+            "clearHeight": 4.4,
+            "doorWidth": 2.8,
+            "mainAisle": 3,
+            "units": "metres"
+          },
+          "colliders": 60,
+          "shelves": 4,
+          "seats": 8,
+          "landscape": {
+            "trees": 3,
+            "foliageInstances": 7836,
+            "sample": {
+              "tree": 623,
+              "leaves": 4480,
+              "bladeMetres": [
+                0.09,
+                0.24
+              ],
+              "clusters": 28,
+              "detail": {
+                "policy": "auto",
+                "level": "near",
+                "nearLeaves": 4480,
+                "farLeaves": 2240,
+                "nearLeafTriangles": 17920,
+                "farLeafTriangles": 4480,
+                "farAfterMetres": 30,
+                "nearBeforeMetres": 26
+              }
+            },
+            "source": "Procedural branches and leaf alpha, no external image dependency"
+          }
+        },
+        "baked": {
+          "meshes": 123,
+          "triangles": 100428,
+          "instances": 8300,
+          "materials": [
+            "Sample east pane 12mm clear glass",
+            "Wayfinding: 知 识 图 书 馆",
+            "Wayfinding: 馆藏书架",
+            "Wayfinding: 安静阅览",
+            "Grey brick",
+            "Wayfinding: 学 无 忧  ·  阅 读 与 思 考",
+            "Clear architectural glass",
+            "Dark bronze powder coating",
+            "Stone floor joints",
+            "Linear LED diffuser",
+            "Wayfinding: 考研真题卷",
+            "Clothbound book spines",
+            "White oak veneer",
+            "Wayfinding: 教材习题集",
+            "Wayfinding: 雅思备考库",
+            "Wayfinding: 专题与心得",
+            "Paper edges",
+            "Sage woven upholstery",
+            "Cream limestone",
+            "Wayfinding: 馆 藏 检 索",
+            "Mineral plaster and acoustic ceiling",
+            "Blue grey standing seam roof",
+            "Honed grey stone",
+            "Landscape ground",
+            "Planting soil",
+            "Tree bark",
+            "Botanical leaf cutouts",
+            "Sample R1 longitudinal white oak [R1 indirect]",
+            "Dark bronze powder coating [R1 indirect]",
+            "Pale bent oak chair veneer [R1 indirect]",
+            "Sample R1 sage fine woven upholstery [R1 indirect]",
+            "Sage woven upholstery [R1 indirect]",
+            "Cream limestone [R1 indirect]",
+            "Honed grey stone [R1 indirect]"
+          ],
+          "groups": [
+            "Structure stone and real window openings",
+            "Furniture bookcases and reading desks",
+            "Roof editable zinc and clerestory",
+            "Library forecourt",
+            "R1 bounded daylight fill",
+            "R1 baked diffuse sky and bounce"
+          ],
+          "dimensions": {
+            "width": 24,
+            "depth": 18,
+            "clearHeight": 4.4,
+            "doorWidth": 2.8,
+            "mainAisle": 3,
+            "units": "metres"
+          },
+          "colliders": 60,
+          "shelves": 4,
+          "seats": 8,
+          "landscape": {
+            "trees": 3,
+            "foliageInstances": 7836,
+            "sample": {
+              "tree": 623,
+              "leaves": 4480,
+              "bladeMetres": [
+                0.09,
+                0.24
+              ],
+              "clusters": 28,
+              "detail": {
+                "policy": "auto",
+                "level": "near",
+                "nearLeaves": 4480,
+                "farLeaves": 2240,
+                "nearLeafTriangles": 17920,
+                "farLeafTriangles": 4480,
+                "farAfterMetres": 30,
+                "nearBeforeMetres": 26
+              }
+            },
+            "source": "Procedural branches and leaf alpha, no external image dependency"
+          }
+        }
+      }
+    },
+    {
+      "name": "八座各三次入座／站起，24 次均落在无碰撞通道",
+      "passed": true
+    },
+    {
+      "name": "流畅画质及 390×844 窄屏",
+      "passed": true
+    },
+    {
+      "name": "停止渲染，私有几何／材质／atlas 各释放一次，重复释放幂等",
+      "passed": true,
+      "data": {
+        "ready": false,
+        "enabled": false,
+        "disposed": true,
+        "error": null,
+        "receivers": 47,
+        "meshes": 0,
+        "materials": 0,
+        "atlasSize": null,
+        "irradianceScale": 3.141592653589793,
+        "encoding": "linear-srgb-white-diffuse-radiance",
+        "released": {
+          "geometries": 50,
+          "materials": 8,
+          "textures": 1
+        }
+      }
+    },
+    {
+      "name": "atlas 请求失败时恢复完整实时场景，目录仍可打开",
+      "passed": true,
+      "data": {
+        "ready": false,
+        "enabled": false,
+        "disposed": false,
+        "error": "R1 asset 503: r1-indirect-dcc8cbb9.exr",
+        "receivers": 47,
+        "meshes": 0,
+        "materials": 0,
+        "atlasSize": null,
+        "irradianceScale": 3.141592653589793,
+        "encoding": "linear-srgb-white-diffuse-radiance",
+        "released": {
+          "geometries": 0,
+          "materials": 0,
+          "textures": 0
+        }
+      }
+    },
+    {
+      "name": "UV1 缺失时回滚且释放已解析资源",
+      "passed": true,
+      "data": {
+        "ready": false,
+        "enabled": false,
+        "disposed": false,
+        "error": "Missing R1 UV1",
+        "receivers": 47,
+        "meshes": 0,
+        "materials": 0,
+        "atlasSize": null,
+        "irradianceScale": 3.141592653589793,
+        "encoding": "linear-srgb-white-diffuse-radiance",
+        "released": {
+          "geometries": 50,
+          "materials": 0,
+          "textures": 1
+        }
+      }
+    },
+    {
+      "name": "加载中离页／取消不安装迟到资源",
+      "passed": true,
+      "data": {
+        "bake": {
+          "ready": false,
+          "enabled": false,
+          "disposed": true,
+          "error": null,
+          "receivers": 47,
+          "meshes": 0,
+          "materials": 0,
+          "atlasSize": null,
+          "irradianceScale": 3.141592653589793,
+          "encoding": "linear-srgb-white-diffuse-radiance",
+          "released": {
+            "geometries": 0,
+            "materials": 0,
+            "textures": 0
+          }
+        },
+        "frames": 0
+      }
+    },
+    {
+      "name": "实际后端入口加载新 atlas，烘焙源码与 Blender 文件保持禁止访问",
+      "passed": true
+    },
+    {
+      "name": "实际主站往返由 BFCache 恢复同一 atlas 和渲染循环",
+      "passed": true,
+      "data": {
+        "before": {
+          "token": "0.y0tshqx8ycc",
+          "frames": 5
+        },
+        "after": {
+          "token": "0.y0tshqx8ycc",
+          "frames": 42,
+          "shows": [
+            {
+              "persisted": false
+            },
+            {
+              "persisted": true
+            }
+          ],
+          "bake": {
+            "ready": true,
+            "enabled": true,
+            "disposed": false,
+            "error": null,
+            "receivers": 47,
+            "meshes": 50,
+            "materials": 8,
+            "atlasSize": [
+              2048,
+              2048
+            ],
+            "atlasChannel": 1,
+            "irradianceScale": 3.141592653589793,
+            "encoding": "linear-srgb-white-diffuse-radiance",
+            "released": {
+              "geometries": 0,
+              "materials": 0,
+              "textures": 0
+            }
+          }
+        }
+      }
+    }
+  ],
+  "errors": [],
+  "consoleErrors": [],
+  "failedResources": [],
+  "initial": {
+    "ready": true,
+    "enabled": true,
+    "disposed": false,
+    "error": null,
+    "receivers": 47,
+    "meshes": 50,
+    "materials": 8,
+    "atlasSize": [
+      2048,
+      2048
+    ],
+    "atlasChannel": 1,
+    "irradianceScale": 3.141592653589793,
+    "encoding": "linear-srgb-white-diffuse-radiance",
+    "released": {
+      "geometries": 0,
+      "materials": 0,
+      "textures": 0
+    }
+  },
+  "passed": true
+}
