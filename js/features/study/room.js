@@ -358,6 +358,132 @@
     return g;
   }
 
+  /* —— 接地暗角（contact shadow）——
+   *
+   * 动手之前先量了三件事，结论是「阴影系统在工作，但细腿没有影子」：
+   *   1) 预览页阴影是开着的（PCFSoft，2048）。同一机位只切太阳的 castShadow，
+   *      画面有 20.8% 的像素变亮、最大通道差 127 —— 阴影确实在起作用；
+   *   2) 但阴影相机横跨 36×52 m、贴图 2048，一个 texel 是 **25.39 mm**；
+   *      椅腿直径 22 mm，比一个 texel 还细，投出来的暗影被直接抹平；
+   *   3) 实测椅脚周围：0~50 mm 环的地面亮度中位数 203.0，
+   *      300~450 mm 环 203.78，**比值 0.996** —— 脚下和远处一样亮。
+   * 更根本的是：业务页的 renderer 归宿主，宿主没开 shadowMap 时连桌板的影子都没有。
+   * 所以接地这一层必须做成与 renderer 无关的贴片。
+   *
+   * 两个刻意的取舍：
+   *   - 贴片**不挂进家具组**。家具的 footprint 是用 Box3.setFromObject 量的，
+   *     往椅子组里塞一片东西，会直接把「含椅占地进深 2.003」和
+   *     「主走道净距 1.547」两条校核一起改掉——那是拿美术改动去动通道尺寸。
+   *   - 贴片刻意用乘性混合（见 materials.makeContactShadowTexture），
+   *     不用半透明黑：半透明黑会把浅色水磨石糊成一片灰，看着像脏。
+   */
+  var CONTACT = {
+    footY: 0.035,     // 顶点低于这个高度才算「落地」
+    band: 0.008,      // 真正的「接触带」：最低点往上这么多，贴片以它的中心为准
+    maxArea: 0.12,    // 落地构件的地面投影面积上限（m²），用来排除墙、柜、地面自身
+    maxExtent: 1.0,   // 单边最长，排除踢脚线那种「又窄又长」的墙面构件
+    cell: 0.085,      // 贴片网格步长：长条面板靠它摊成连续的一条
+    half: 0.072,      // 单片贴片半径
+    lift: 0.0015      // 离地高度，避免与地砖共面打架
+  };
+
+  /**
+   * 按「哪些构件真的落到地上」自动生成接地暗角，合并成一个 mesh（一次 draw call）。
+   * 不写死构件名单：以后加凳子、加边几，只要脚低于 35 mm 就会自动带上。
+   */
+  function createContactShadows(THREE, g, mats) {
+    if (!mats.contact_shadow) return null;
+    g.updateMatrixWorld(true);
+
+    var pos = [], uv = [], index = [];
+    var feet = [];
+    var v = new THREE.Vector3();
+
+    function quad(cx, cz) {
+      var h = CONTACT.half, y = CONTACT.lift;
+      var b = pos.length / 3;
+      // 绕向按 +Y 面排，法线朝上；材质用 DoubleSide，绕向错了也不会整片消失
+      pos.push(cx - h, y, cz - h, cx - h, y, cz + h, cx + h, y, cz + h, cx + h, y, cz - h);
+      uv.push(0, 0, 0, 1, 1, 1, 1, 0);
+      index.push(b, b + 1, b + 2, b, b + 2, b + 3);
+    }
+
+    g.traverse(function (n) {
+      if (!n.isMesh || n.isInstancedMesh || !n.geometry) return;
+      if (n.name === 'FloorSlab') return;
+      var pa = n.geometry.attributes.position;
+      if (!pa) return;
+
+      /* 两遍扫：
+         第一遍拿整体包围盒（判它是不是「一只脚」），同时找最低点；
+         第二遍只收「最低点往上 8 mm」那一段的顶点，用它定贴片位置。
+         不分两遍会出错——弯曲立柱在 35 mm 以内还有一段斜管，
+         低区包围盒的中心会顺着管子方向偏出去约 5 cm，贴片就歪到腿的一侧了。 */
+      var aMinX = Infinity, aMaxX = -Infinity, aMinZ = Infinity, aMaxZ = -Infinity;
+      var minY = Infinity;
+      for (var i = 0; i < pa.count; i++) {
+        v.fromBufferAttribute(pa, i).applyMatrix4(n.matrixWorld);
+        if (v.x < aMinX) aMinX = v.x;
+        if (v.x > aMaxX) aMaxX = v.x;
+        if (v.z < aMinZ) aMinZ = v.z;
+        if (v.z > aMaxZ) aMaxZ = v.z;
+        if (v.y < minY) minY = v.y;
+      }
+      if (minY > CONTACT.footY) return;
+
+      var w = aMaxX - aMinX, d = aMaxZ - aMinZ;
+      if (w * d > CONTACT.maxArea) return;
+      if (Math.max(w, d) > CONTACT.maxExtent) return;
+
+      var lMinX = Infinity, lMaxX = -Infinity, lMinZ = Infinity, lMaxZ = -Infinity, low = 0;
+      var top = minY + CONTACT.band;
+      for (var j = 0; j < pa.count; j++) {
+        v.fromBufferAttribute(pa, j).applyMatrix4(n.matrixWorld);
+        if (v.y > top) continue;
+        low++;
+        if (v.x < lMinX) lMinX = v.x;
+        if (v.x > lMaxX) lMaxX = v.x;
+        if (v.z < lMinZ) lMinZ = v.z;
+        if (v.z > lMaxZ) lMaxZ = v.z;
+      }
+      if (!low) return;
+
+      var fw = lMaxX - lMinX, fd = lMaxZ - lMinZ;
+      var nx = Math.max(1, Math.round(fw / CONTACT.cell));
+      var nz = Math.max(1, Math.round(fd / CONTACT.cell));
+      for (var ix = 0; ix < nx; ix++) {
+        for (var iz = 0; iz < nz; iz++) {
+          /* 单格时取脚心，多格时取每格中心：面板 0.86 m 长会摊成 10 片，
+             彼此搭接成一条带子，而不是中间一个深坑两头淡。 */
+          var cx = nx === 1 ? (lMinX + lMaxX) / 2 : lMinX + (ix + 0.5) * (fw / nx);
+          var cz = nz === 1 ? (lMinZ + lMaxZ) / 2 : lMinZ + (iz + 0.5) * (fd / nz);
+          quad(cx, cz);
+        }
+      }
+      feet.push({
+        name: n.name, patches: nx * nz, bandVerts: low,
+        cx: +((lMinX + lMaxX) / 2).toFixed(4), cz: +((lMinZ + lMaxZ) / 2).toFixed(4)
+      });
+    });
+
+    if (!pos.length) return null;
+
+    var geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+    geo.setIndex(index);
+    geo.computeBoundingSphere();
+
+    var mesh = new THREE.Mesh(geo, mats.contact_shadow);
+    mesh.name = 'ContactShadows';
+    mesh.castShadow = false;
+    mesh.receiveShadow = false;
+    mesh.renderOrder = 1;          // 不透明画完之后再乘上去
+    mesh.userData = { kind: 'contactShadow', patches: index.length / 6, feet: feet, params: CONTACT };
+    g.add(mesh);
+    return mesh;
+  }
+
   /**
    * 建整间自习室。
    * @returns THREE.Group，userData 里带 layout / lightTable / spec，供预览页出表
@@ -493,13 +619,19 @@
     });
     g.add(decor);
 
+    /* —— 接地暗角：必须放在所有家具/软装都挂进来之后，它是按「谁真的挨着地」扫出来的 —— */
+    var contact = createContactShadows(THREE, g, mats);
+
     g.userData = {
       kind: 'studyRoom',
       spec: ROOM,
       layout: LAYOUT,
       lightTable: buildLightTable(),
       seats: seats.userData.seats,
-      parts: { counter: counter, shelf: shelf, entry: entry, seats: seats, islands: sets, decor: decor }
+      parts: {
+        counter: counter, shelf: shelf, entry: entry, seats: seats,
+        islands: sets, decor: decor, contact: contact
+      }
     };
     return g;
   }

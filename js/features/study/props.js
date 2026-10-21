@@ -314,10 +314,20 @@
    * 侧面露出一圈更浅的书口，是最省事也最有效的「这是本书」信号；
    * 代价只是实例数 ×3，draw call 不变（同一个 InstancedMesh）。
    */
+  /**
+   * 合着的书：一本书 = 上封面 + 书页 + 下封面，**三个实例**。
+   * 返回 items（给 instance 用）和 groups（每个实例属于哪本书）。
+   *
+   * groups 必须显式给出来：外面若按 "i*3 起连续三个" 去猜，
+   * 配方一改（比如以后加书脊）就会静默错位，而错误表现是
+   * "拿起来的书只剩一块板"——这种 bug 只有上手才发现。
+   */
   function bookInstances(books) {
     var PAGE = '#efe9dc';
     var out = [];
-    books.forEach(function (b) {
+    var groups = [];
+    books.forEach(function (b, bi) {
+      var base = out.length;
       var t = b.scale[1];
       var w = b.scale[0];
       var d = b.scale[2];
@@ -339,8 +349,9 @@
         rot: b.rot,
         color: PAGE
       });
+      groups.push([base, base + 1, base + 2]);
     });
-    return out;
+    return { items: out, groups: groups };
   }
 
   /**
@@ -476,15 +487,21 @@
     // 书脊细节在这个观看距离上读不出来，但厚度、高矮、颜色、倾角、书口这五样
     // 足以让书架不像一块色板。
     var boxGeo = new THREE.BoxGeometry(1, 1, 1);
-    instance(THREE, g, 'DecorBooks', boxGeo, mats.prop_book, bookInstances(books), true);
+    var bookPack = bookInstances(books);
+    var booksMesh = instance(THREE, g, 'DecorBooks', boxGeo, mats.prop_book, bookPack.items, true);
+    /* 可交互标记：groups 说明「哪几个实例属于同一件东西」。
+       拿起一本书要同时收起三个实例，只收一个会剩半块板。 */
+    if (booksMesh) booksMesh.userData.pickables = { label: '书', groups: bookPack.groups };
 
     // 笔：单位圆柱，靠 scale 拉长压细。圆柱默认沿 Y，转 90° 才躺在桌面上。
     var penGeo = new THREE.CylinderGeometry(1, 1, 1, 6);
-    instance(THREE, g, 'DecorPens', penGeo, mats.metal_dark, pens, false);
+    var pensMesh = instance(THREE, g, 'DecorPens', penGeo, mats.metal_dark, pens, false);
+    if (pensMesh) pensMesh.userData.pickables = { label: '笔', groups: pens.map(function (_, i) { return [i]; }) };
 
     // 杯子：上大下小的直筒，读成马克杯
     var cupGeo = new THREE.CylinderGeometry(1, 0.88, 1, 14);
-    instance(THREE, g, 'DecorCups', cupGeo, mats.prop_cup, cups, true);
+    var cupsMesh = instance(THREE, g, 'DecorCups', cupGeo, mats.prop_cup, cups, true);
+    if (cupsMesh) cupsMesh.userData.pickables = { label: '杯子', groups: cups.map(function (_, i) { return [i]; }) };
 
     var potGeo = new THREE.CylinderGeometry(1, 0.78, 1, 14);
     instance(THREE, g, 'DecorPots', potGeo, mats.prop_pot, pots, false);
