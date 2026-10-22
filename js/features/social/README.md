@@ -1,5 +1,7 @@
 # 社交广场：视觉细化 v4
 
+2026-10-22 近景补充 v5：服务台改为22mm五板空心柜壳，门/侧板/坐凳米制UV只平移错纹，新增齐平坐凳固定件、梁端连接螺栓和留言板底板/锚栓。留言板软木与石材微孔为自产程序纹理，非扫描PBR。精确运行模型重新烘焙165构件AO/GI，签名 `bcfeaace`；旧 `c8e35586` 图集不可混用。运行入口和业务不变，竞技仍暂缓。详见 [同条件实际对照、资源与测试](../../../docs/team/visuals/social-nearfield-v5/README.md) 和 [给D的最小交接](../../../docs/team/visuals/social-nearfield-v5/D-HANDOFF.md)。以下v4/互动/社区批次记录保留为历史。
+
 当前接入增量：服务台与留言板已能打开原主站的真实学习搭子/留言模块，复用原登录、WG_API 和 Socket.IO。**按用户最新要求，竞技暂不接入**：预览只保留桌体和暂未开放提示，不调用竞技 action。原场景交互契约保留供宿主使用。
 
 本地完整体验改用 `node server/scripts/social-preview-dev.cjs`（先安装 server 依赖，Node>=22.12），访问 `http://127.0.0.1:8099/js/features/social/preview.html?x=-5.2&z=.65&yaw=90&pitch=-10&mm=35`。此入口仅监听 loopback，使用独立本地账号库，需在“账号与登录”注册本地账号；不会同步线上用户。原 `/previews/social-visual-v4/index.html` 也由同一源文件实时提供。静态 Python 服务只适用于旧视觉查看，不能作为本轮完整业务入口。

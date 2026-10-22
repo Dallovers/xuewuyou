@@ -1,6 +1,7 @@
 import { createSocialFountain } from './social-fountain.js';
 import { registerSocialSeat } from './social-seating.js';
 import { detailSocialConstruction } from './social-detailing.js';
+import { refineSocialNearfield } from './social-nearfield.js';
 import { buildSocialFacade } from './social-facade.js';
 import { prepareSocialSurfaces } from './social-surfaces.js';
 import { attachSocialAO } from './social-baked-ao.js';
@@ -514,7 +515,8 @@ function attachTextures(THREE, lib, pavingMats, owner, lawnMat) {
     const stone=await load('limestone-albedo-v1.png',true,new URL('./assets/generated/',import.meta.url).href);
     if(owner.disposed)return;
     for(const id of ['stone_light','stone_light_in']){
-      replaceMap(lib[id],stone);lib[id].bumpMap=stone;lib[id].bumpScale=.00035;
+      replaceMap(lib[id],stone);
+      if(!lib[id].userData.nearfieldStone){lib[id].bumpMap=stone;lib[id].bumpScale=.00035;}
       lib[id].color.setHex(id==='stone_light'?0xe6e4de:0xf2f1eb);lib[id].needsUpdate=true;
     }
   })());
@@ -1156,6 +1158,7 @@ export function createDistrict(ctx = {}) {
   buildCampusHedge({THREE,root,M});
   buildFountain();
   detailSocialConstruction({THREE,root,add,boxGeo,cylGeo,bevel:beveledBoxGeometry,M,L,owner,colliders});
+  refineSocialNearfield({THREE,root,M,L,owner,add,bevel:beveledBoxGeometry,colliders});
   buildSocialGardenEdge({THREE,root,add,boxGeo,cylGeo,M});
   mergeSocialCurtains(THREE,root);
   batchSocialDetails(THREE, root);
