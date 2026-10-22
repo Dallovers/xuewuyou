@@ -182,12 +182,14 @@ function updateHint() {
     return;
   }
   if (seating && seating.isSeated()) {
-    aimHint.textContent = '按 E 起身';
+    aimHint.textContent = '按 C 起身';
     aimHint.style.display = 'block';
     return;
   }
+  /* 坐下只提示 C：E 已经彻底不做座位了（原来按距离响应 E，人对着桌上的书按 E
+     会被顺手按到椅子上）。准星上有东西时上面已经 return，所以这里不会抢提示。 */
   if (seating && seating.getNearby()) {
-    aimHint.textContent = '按 E 坐下';
+    aimHint.textContent = '按 C 坐下';
     aimHint.style.display = 'block';
     return;
   }
