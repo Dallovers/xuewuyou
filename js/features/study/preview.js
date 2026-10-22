@@ -169,9 +169,11 @@ function updateHint() {
     aimHint.textContent = (heldName ? '《' + heldName + '》　·　' : '') +
       '按 E 放回原位　·　按 G 随手放下' +
       (isBook ? (picker.isBookOpen() ? '　·　按 Q 合上' : '　·　按 Q 翻开') : '');
+    aimHint.classList.add('low');
     aimHint.style.display = 'block';
     return;
   }
+  aimHint.classList.remove('low');
   const aimed = picker && picker.getAim();
   if (aimed) {
     aimHint.textContent = '按 E 拿起 ' + (aimed.name ? '《' + aimed.name + '》' : aimed.label) +

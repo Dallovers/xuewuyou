@@ -53,18 +53,19 @@
     pageColor: '#efe9dc',
     pageShade: '#d8d0bf',
     textColor: '#b9b1a0',
-    pageTitle: '寝室长和凡越是我儿子',   // 翻开后书页上印的字（标题 + 每行反复写这一句）
+    /* 翻开后页面上印的字 = **这本书的书名**（大标题 + 每行反复写同一句）。
+       下面这个只是兜底：万一某本书没分到名字，仍旧印这句，不会出现空白页。 */
+    pageTitle: '寝室长和凡越是我儿子',
     pageAuthor: '作者刘福超',           // 右页右下角落款
-    /* 彩蛋：散列命中的那几本书，翻开是另一段文字。
-       用实例 id 做固定散列——同一本书每次翻开都必须是同一本，
-       不能"每次随机"，否则你会以为书自己在换内容。 */
-    eggEvery: 6,                        // 大约每 6 本里有 1 本
-    eggTitle: '寝室长和凡越欠我三顿饭',
-    eggAuthor: '作者刘福超',
+
+    /* 指定一本"有名有姓"的书：id=0 那本（第一组实例）固定叫这个。
+       其余书按散列从下面的表里取——所以这句不会重复出现在别的书上。 */
+    specialBookId: 0,
+    specialBookName: '论寝室长和凡越',
 
     /* 每本书的书名。按实例 id 散列取，**同一本书永远是同一个名字**——
        随机取名会让"我刚看的那本《边城》"下次变成别的，反而更怪。
-       名字只影响三处：准星提示、拿着时的提示、翻开后左右页的页眉。
+       名字影响四处：准星提示、拿着时的提示、翻开后的大标题、右页页眉。
        不往封面贴字：封面是实例化的一块板，一张贴图铺满所有实例，
        要做成每本不同就得给每本书单独一张贴图，几十张 512² 不划算。 */
     bookNames: [
@@ -328,13 +329,9 @@
        （Windows 有微软雅黑，macOS 有苹方，Linux 走 Noto）。
        一张"标题页"、一张"纯正文"，两页各一张，摊开时左右分开。 */
     var pageTexCache = {};
-    /** 这本书是不是"彩蛋书"：同一个 id 永远同一个结果（乘散列再取模，相邻 id 不扎堆） */
-    function isEggBook(id) {
-      return (((id * 2654435761) >>> 0) % SPEC.eggEvery) === 0;
-    }
-
-    /** 书名：同样用实例 id 定，换一个乘数，免得"书名"和"是不是彩蛋"两件事相关 */
+    /** 书名：散列 + 一本指定的。换一个乘数，免得"书名"和一本书落在哪个位置相关 */
     function bookNameOf(id) {
+      if (id === SPEC.specialBookId) return SPEC.specialBookName;
       var n = SPEC.bookNames.length;
       if (!n) return '';
       return SPEC.bookNames[(((id * 2246822519) >>> 0) % n)];
@@ -364,9 +361,9 @@
       }
       var txt = title || '';
 
-      /* 页眉：书名。左右两页都印，像真书的天头——这样翻开哪一页都知道自己拿的是哪本。
-         放在大标题上方，字号压到 26 px，只是"标一下"，不跟正文抢。 */
-      if (bookName) {
+      /* 页眉：书名。只印在右页——左页的大标题已经就是书名了，
+         两页都印会显得像在重复贴标签。 */
+      if (bookName && kind === 'body') {
         g.font = font(26, false);
         g.fillStyle = 'rgba(52,48,42,0.52)';
         g.textAlign = 'center';
@@ -453,11 +450,12 @@
       var paper = new THREE.MeshStandardMaterial({ color: SPEC.pageColor, roughness: 0.86, metalness: 0 });
       var shade = new THREE.MeshStandardMaterial({ color: SPEC.pageShade, roughness: 0.9, metalness: 0 });
 
-      // 彩蛋书：命中散列的这几本，翻开是另一段文字
-      var egg = isEggBook(held.ids[0]);
-      held.egg = egg;
-      var titleTxt = egg ? SPEC.eggTitle : SPEC.pageTitle;
-      var authorTxt = egg ? SPEC.eggAuthor : SPEC.pageAuthor;
+      /* 页面上印的字 = 这本书自己的书名。
+         大标题写书名，正文行反复写同一句（原来的排法不变），右页右下角落款。
+         拿不到名字才回落到 SPEC.pageTitle，保证不会翻出空白页。 */
+      var bookName = held.name || null;
+      var titleTxt = bookName || SPEC.pageTitle;
+      var authorTxt = SPEC.pageAuthor;
 
       [1, -1].forEach(function (sign) {
         var half = new THREE.Group();
@@ -743,7 +741,7 @@
           x: +held.size.x.toFixed(4), y: +held.size.y.toFixed(4), z: +held.size.z.toFixed(4),
           upright: held.baseQuat ? (held.baseQuat.w !== 1 ? 'rotated' : 'none') : 'not-book',
           axis: held.baseAxis,
-          egg: !!held.egg,
+          name: held.name || null,
           open: !!openBook
         };
       },
