@@ -44,10 +44,22 @@ renderer.toneMappingExposure = 0.92;
 const scene = new THREE.Scene();
 scene.background = new THREE.Color('#e9ebe6');
 
-// 室内环境贴图：让玻璃有反射、深色金属有层次。没有它，玻璃会渲染成一层看不见的膜。
+/* 室内环境贴图：让玻璃有反射、深色金属有层次。没有它，玻璃会渲染成一层看不见的膜。
+ *
+ * 强度 0.38 → 0.54 是量出来的，不是调口味：
+ *   原来天花面 148、桌板底 88、桌下走线槽 21（同画面白墙 220），整间屋子读起来"朝下的面全是灰的"。
+ *   先怀疑半球光的地面色（0xb9b4a6 / 0.28），实测把地面色从 0xB9B4A6 提到 0xF0E6D2、
+ *   强度 0.28→0.34，天花只从 148 走到 157 —— 半球光在这里几乎不起作用。
+ *   真正喂朝下面的就是这张环境贴图：0.38→0.55 时天花 148→170、桌板底 88→106、走线槽 21→30，
+ *   全画面过曝像素仍是 0。取 0.54 是留一点余量，别把地面顶到 200 以上。
+ *
+ * 顺带记一条坑：material.envMapIntensity 在这里**改不动**。
+ * 用 scene.environment 时 material.envMap 是 null，three 只在 material.envMap 非空时
+ * 才写 envMapIntensity 这条 uniform（WebGLMaterials.refreshUniformsStandard），
+ * 于是 metal_dark 从 1.0 改到 1.6、三组读数逐位相同。想单独加亮某种材质只能动 scene 这一层。 */
 const pmrem = new THREE.PMREMGenerator(renderer);
 scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
-scene.environmentIntensity = 0.38;
+scene.environmentIntensity = 0.54;
 
 const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 200);
 camera.position.set(6.4, 3.4, 7.6);
@@ -89,15 +101,17 @@ windowBounce.position.set(-6, 2.6, 0);
 windowBounce.target.position.set(2, 1.2, -6);
 scene.add(windowBounce, windowBounce.target);
 
-// —— 场地 ——
-const ground = new THREE.Mesh(
-  new THREE.PlaneGeometry(60, 60),
-  new THREE.MeshStandardMaterial({ color: 0xcfd0c9, roughness: 0.96 })
-);
-ground.rotation.x = -Math.PI / 2;
-ground.position.y = -0.002;
-ground.receiveShadow = true;
-scene.add(ground);
+/* —— 室外：天空 / 雾 / 远景 / 地坪 ——
+ *
+ * 实现收在 room.createOutdoor 里，参数说明和"为什么天空、雾、树线必须走同一条
+ * 色调映射"都写在那边的函数头上。
+ *
+ * 为什么要抽出去：单文件版（双击就开的那个 HTML）的母页自己建 scene，**不执行
+ * 本文件的顶层代码**。这段原来写死在这里，于是单文件版窗外一直是纯色——用户
+ * 双击开的就是它，等于白做。收进模块后两处调同一个函数，不会再各改一遍然后漂。
+ */
+const EXT = { treeline: true };
+SD.room.createOutdoor(THREE, scene, { treeline: EXT.treeline });
 
 const grid = new THREE.GridHelper(28, 28, 0x8f9186, 0xa8aa9e);
 grid.position.y = 0.001;
@@ -344,13 +358,17 @@ const views = {
   }
 };
 
-// 屋面构件（顶板 / 压顶 / 梁 / 灯具）：俯视和平面视角要把它们藏起来才看得进屋里
+// 屋面构件（顶板 / 梁 / 灯具）：俯视和平面视角要把它们藏起来才看得进屋里
 const roofParts = [];
 room.traverse((n) => {
-  if (['CeilingSlab', 'RoofCoping', 'Beam', 'LightFixture'].includes(n.name)) {
+  if (['CeilingSlab', 'Beam', 'LightFixture'].includes(n.name)) {
     roofParts.push(n);
   }
 });
+/* 四坡屋顶整组收进来：它是 2026-10-22 才有的，名字不在上面那份白名单里，
+   不单独加的话「屋面」开关关掉后屋顶还杵在上面，俯视视角什么也看不见。 */
+const roofGroup = room.getObjectByName('Roof');
+if (roofGroup) roofParts.push(roofGroup);
 function setRoofVisible(on) {
   roofParts.forEach((n) => {
     n.visible = on;

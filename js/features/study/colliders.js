@@ -35,7 +35,7 @@
   /**
    * @param {object} THREE three 命名空间
    * @param {object} root  createRoom 返回的整屋 Group（必须是单位变换）
-   * @returns {{colliders: Array, door: object, room: object, bounds: object}}
+   * @returns {{colliders: Array, door: object, room: object, bounds: object, apron: object}}
    */
   function build(THREE, root) {
     var S = global.StudyDistrict;
@@ -90,14 +90,44 @@
       if (b) push(pair[0], b.center, b.half);
     });
 
-    /* 室内可站范围（墙内皮再退 60 mm）。走动时用它兜底，
-       免得从门洞走到室外那一片没地板的空处。 */
+    /* 落地盆栽：位置与半径由 props.createPlanters 声明在 `userData.colliders` 上，
+       这里只负责把「会挡人的东西」补进清单，不抄坐标。
+
+       为什么不按包围盒量：叶子是蓬松的，Box3 会把叶展算进去（bush 冠幅 0.47 m），
+       结果是「离树干还有半米就被挡住」，比穿模更难受。props 那边按盆沿 +3 cm 给半径。
+       书架顶上那两盆 y=1.05，props 不把它们列进来。 */
+    var planters = parts.planters;
+    if (planters && planters.userData && planters.userData.colliders) {
+      planters.userData.colliders.forEach(function (c) {
+        push('plant.' + c.id, [c.x, c.h / 2, c.z], [c.r, c.h / 2, c.r]);
+      });
+    }
+
+    /* 可站范围（预览页 / 单文件版用它兜底；宿主有自己的导航范围，可以不看这一份）。
+
+       这里曾经只圈到墙内皮再退 60 mm（maxZ = HZ − 0.06 = 4.44），而门洞就开在
+       z = HZ = 4.50 那道墙皮上 —— 碰撞体明明放行、门扇也开着，人走到 4.44 m 就被钳住，
+       门口立着一道 6 cm 的隐形墙。用户的原话是"为什么出不去门"。
+
+       现在改成"整屋外轮廓 + 室外一圈"：挡人交给 colliders 本身（四面墙只有门洞一个开口），
+       这里只负责别让人走到地坪外面 —— 预览页地坪 260 m，走到边上就是天。
+       东西北各外扩 24 m（约两个楼宽）：只留 9 m 的话，站在边上也拍不全这栋楼
+       （走查时 fov 42，13.6 m 宽的立面要 18 m 开外才收得下）。
+       南侧固定 12 m 而不是同样外扩：预览页正南 15.9 m 处（世界 −10.1）摆着一组
+       StudyShellSample 壳样例，那是一层玻璃墙、没有碰撞体，放任走过去会直接穿玻璃。 */
+    var APRON = {
+      marginX: 24.0,
+      marginNorth: 24.0,
+      maxSouth: 12.0
+    };
     var bounds = {
-      minX: -(HX - 0.06), maxX: HX - 0.06,
-      minZ: -(HZ - 0.06), maxZ: HZ - 0.06
+      minX: -(HX + ROOM.wallThickness + APRON.marginX),
+      maxX: HX + ROOM.wallThickness + APRON.marginX,
+      minZ: -(HZ + ROOM.wallThickness + APRON.marginNorth),
+      maxZ: APRON.maxSouth
     };
 
-    return { colliders: colliders, door: DOOR, room: ROOM, bounds: bounds };
+    return { colliders: colliders, door: DOOR, room: ROOM, bounds: bounds, apron: APRON };
   }
 
   global.StudyDistrict = global.StudyDistrict || {};

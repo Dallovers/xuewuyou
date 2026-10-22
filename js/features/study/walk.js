@@ -58,7 +58,8 @@
    * @param {object} o.camera    宿主相机；本模块只改 position / rotation
    * @param {Element} o.dom      请求指针锁定的元素（一般是 canvas）
    * @param {Array}  o.colliders colliders.js 生成的那一份
-   * @param {object} [o.bounds]  可站范围（墙内皮再退一点），用来兜住门洞
+   * @param {object} [o.bounds]  可站范围。colliders.js 给的是"整屋 + 室外一圈"：
+   *                             挡人靠碰撞体本身（只有门洞一个开口），这一份只防走到地坪外面
    * @param {Array}  [o.origin]  整屋在世界里的平移 [x,y,z]。碰撞体是 root 局部坐标，
    *                             而相机是世界坐标——预览页把整屋摆在 z=−26，
    *                             不带这个偏移就会"走进屋外"（踩过）。接进主站时 root
