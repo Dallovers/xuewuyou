@@ -25,6 +25,13 @@
   var SPEC = {
     reach: 2.40,          // 能拿多远（m）
     key: 'e',             // 拿起 / **放回原位**
+    /* 准星容差（NDC 半宽，屏幕上大约 ±5°）：中心射线没命中时，在这个小锥里再补测几圈。
+       为什么需要：书是平放在桌上的薄板，宽 0.2 m、厚 0.02 m。人眼觉得"我对着一本书"，
+       屏幕中心却常常落在书旁边的桌面上。没有容差时 probe() 返回 null，
+       而座位那边是按**距离**响应的（离椅子 1.4 m 内就行），于是按 E 就坐下了。
+       补测只在 miss 时做，命中路径的射线数与以前相同。 */
+    aimCone: [0.07, 0.14],
+    aimRays: 8,
     /* 随手放下单独一个键。
        为什么不让 E 一个键包办：放下要先向下打射线找落面、再按相机朝向重算偏航，
        一旦人正低头、或者把书举到眼前（右键），落点就跑了——表现就是"一松手书掉地上"。
@@ -169,14 +176,26 @@
       return eul.y;
     }
 
-    /* 从相机中心射线找可拿的东西 */
-    function probe() {
-      /* 必须自己更新相机矩阵：setFromCamera 读的是 camera.matrixWorld，
-         而它在渲染时才会被刷新。如果这一帧先 probe 再 render（或者主循环里
-         probe 排在渲染前面），拿到的就是**上一帧的相机矩阵**——
-         表现是"明明对着书，却提示拿不到"。 */
-      camera.updateMatrixWorld(true);
-      ray.setFromCamera(CENTER, camera);
+    /* 小锥的采样点：中心之外两圈、每圈 8 个方向（第二圈错开半格，覆盖更密）。
+       单元矩阵只算一次。 */
+    var coneOffsets = null;
+    function cone() {
+      if (coneOffsets) return coneOffsets;
+      coneOffsets = [];
+      var n = SPEC.aimRays;
+      for (var r = 0; r < SPEC.aimCone.length; r++) {
+        var rad = SPEC.aimCone[r];
+        for (var i = 0; i < n; i++) {
+          var th = i / n * Math.PI * 2 + (r ? Math.PI / n : 0);
+          coneOffsets.push(new THREE.Vector2(Math.cos(th) * rad, Math.sin(th) * rad));
+        }
+      }
+      return coneOffsets;
+    }
+
+    /** 往一个 NDC 点打射线，命中最靠前的那个可交互实例 */
+    function castAt(offset) {
+      ray.setFromCamera(offset, camera);
       ray.far = SPEC.reach;
       var meshes = sources.map(function (s) { return s.mesh; });
       var hits = ray.intersectObjects(meshes, false);
@@ -188,7 +207,25 @@
       if (!src) return null;
       var gi = src.byId[h.instanceId];
       if (gi === undefined) return null;
-      var group = src.groups[gi];
+      return { src: src, group: src.groups[gi], distance: h.distance };
+    }
+
+    /* 从相机中心找可拿的东西。precise=true 时只看屏幕中心那一个点；
+       默认（宽判定）中心没命中就在 aimCone 小锥里补测——提示条与按键都走这一套，
+       所以"看到提示却拿不到"不会发生。 */
+    function probe(precise) {
+      /* 必须自己更新相机矩阵：setFromCamera 读的是 camera.matrixWorld，
+         而它在渲染时才会被刷新。如果这一帧先 probe 再 render（或者主循环里
+         probe 排在渲染前面），拿到的就是**上一帧的相机矩阵**——
+         表现是"明明对着书，却提示拿不到"。 */
+      camera.updateMatrixWorld(true);
+      var t = castAt(CENTER);
+      if (!t && !precise) {
+        var offs = cone();
+        for (var i = 0; i < offs.length && !t; i++) t = castAt(offs[i]);
+      }
+      if (!t) return null;
+      var src = t.src, group = t.group;
       return {
         label: src.label,
         // 书带书名，杯 / 笔没有；界面按 name 有没有决定要不要加书名号
@@ -197,7 +234,7 @@
         text: src.label === '书' ? bookTextOf(group[0]) : null,
         src: src,
         ids: group,
-        distance: +h.distance.toFixed(3)
+        distance: +t.distance.toFixed(3)
       };
     }
 
