@@ -235,6 +235,8 @@ function setWalk(on) {
         dom: canvas,
         root: room,
         scene,
+        // 持物软碰撞要用同一份碰撞盒（书贴墙 / 桌岛时往回收，不穿模）
+        colliders: walkBuild ? walkBuild.colliders : [],
         onAim: () => {},
         // 放回原位 / 随手放下之后各给一句，用户才知道东西到底去哪了
         onChange: (h, r) => {

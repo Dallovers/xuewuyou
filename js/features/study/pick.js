@@ -41,6 +41,13 @@
     holdDistance: 0.50,   // 拿在手里时离眼睛多远
     holdDown: 0.12,       // 往下沉一点，像端在手上
     holdRight: 0.06,      // 略偏右手
+    /* 软碰撞：书在手里离眼睛 0.50 m，人贴着墙、门框、桌沿走时它会插进去
+       （实测贴西墙 7.7 cm）。不穿模的办法是**沿视线往回收**，收到 holdMin 为止。
+       heldHalf 是"书在相机坐标系里的半个尺寸"：宽 0.22 / 高 0.22 / 厚 0.04。
+       翻开的摊页宽一倍，用 openHalfX。 */
+    holdMin: 0.26,
+    heldHalf: { x: 0.11, y: 0.11, z: 0.02 },
+    openHalfX: 0.23,
     follow: 14.0,         // 跟随速度（越大越"黏手"）
     dropForward: 0.62,    // 放下时往视线前方多远找落点
     dropProbeUp: 0.34,    // 从视线上方起算，保证桌沿也能落上去
@@ -150,6 +157,10 @@
     var CENTER = new THREE.Vector2(0, 0);
     var ZERO = new THREE.Matrix4().makeScale(0, 0, 0);
 
+    /* 持物软碰撞用的碰撞盒（root 局部坐标，来自 colliders.js）。没传就跳过这一步。 */
+    var clipColliders = o.colliders || [];
+    var clipRoot = root;
+
     var held = null;      // { group, src, ids, saved:[{id, matrix}], label }
     var aim = null;       // { label, src, ids, distance }
     var enabled = false;
@@ -174,6 +185,51 @@
     function cameraYaw() {
       eul.setFromQuaternion(camera.quaternion, 'YXZ');
       return eul.y;
+    }
+
+    /* ── 持物软碰撞 ──
+       书拿在手里离眼睛 0.50 m，人贴着墙 / 门扇 / 桌岛走时它会插进去（贴西墙实测 7.7 cm）。
+       不做真正的碰撞解算（书是软的，允许贴住），而是**沿视线往回收**：
+       把书按相机朝向摆好，取 8 个角，看有没有角落在任何一个碰撞盒里；
+       有就整本书朝相机挪一步，再试。
+       平时开销为零：只有 want 到某个盒子的球距 < 0.26 m 时才进细算。 */
+    var CORNER = [
+      [1, 1, 1], [1, 1, -1], [1, -1, 1], [1, -1, -1],
+      [-1, 1, 1], [-1, 1, -1], [-1, -1, 1], [-1, -1, -1]
+    ];
+    var clipM = new THREE.Matrix4();
+    var clipV = new THREE.Vector3();
+
+    /** 以 center 为书心、按当前相机朝向摆，插进碰撞盒的最大深度（0 = 没穿） */
+    function clipDepth(center) {
+      if (!clipColliders.length || !clipRoot) return 0;
+      var ox = clipRoot.position.x, oy = clipRoot.position.y, oz = clipRoot.position.z;
+      var hx = openBook ? SPEC.openHalfX : SPEC.heldHalf.x;
+      var hy = SPEC.heldHalf.y, hz = SPEC.heldHalf.z;
+      clipM.makeRotationFromQuaternion(camera.quaternion);
+      var e = clipM.elements;
+      var worst = 0;
+      for (var i = 0; i < clipColliders.length; i++) {
+        var b = clipColliders[i];
+        // 粗筛：球心到盒子的距离（用书的对角线当半径）
+        var cdx = center.x - ox - b.center[0], cdy = center.y - oy - b.center[1], cdz = center.z - oz - b.center[2];
+        var gx = Math.max(0, Math.abs(cdx) - b.half[0]);
+        var gy = Math.max(0, Math.abs(cdy) - b.half[1]);
+        var gz = Math.max(0, Math.abs(cdz) - b.half[2]);
+        if (gx * gx + gy * gy + gz * gz > 0.0625) continue;    // 0.25²
+        for (var c = 0; c < 8; c++) {
+          var sx = CORNER[c][0] * hx, sy = CORNER[c][1] * hy, sz = CORNER[c][2] * hz;
+          var wx = center.x + e[0] * sx + e[4] * sy + e[8] * sz - ox;
+          var wy = center.y + e[1] * sx + e[5] * sy + e[9] * sz - oy;
+          var wz = center.z + e[2] * sx + e[6] * sy + e[10] * sz - oz;
+          var dx = wx - b.center[0], dy = wy - b.center[1], dz = wz - b.center[2];
+          if (Math.abs(dx) < b.half[0] && Math.abs(dy) < b.half[1] && Math.abs(dz) < b.half[2]) {
+            var d = Math.min(b.half[0] - Math.abs(dx), b.half[1] - Math.abs(dy), b.half[2] - Math.abs(dz));
+            if (d > worst) worst = d;
+          }
+        }
+      }
+      return worst;
     }
 
     /* 小锥的采样点：中心之外两圈、每圈 8 个方向（第二圈错开半格，覆盖更密）。
@@ -674,6 +730,12 @@
           .addScaledVector(fwd, dist)
           .addScaledVector(rightV, side)
           .add(new THREE.Vector3(0, -down, 0));
+        /* 软碰撞：只要有一个角插进碰撞盒，就整本书朝相机挪一步（22%），再试。
+           14 步之内一定收敛；收到 holdMin 就停——再近就顶到脸上了。 */
+        for (var gi2 = 0; gi2 < 14 && clipDepth(want) > 0; gi2++) {
+          if (want.distanceTo(camera.position) <= SPEC.holdMin) break;
+          want.lerp(camera.position, 0.22);
+        }
         var k = 1 - Math.exp(-SPEC.follow * Math.min(dt || 0, 0.05));
         held.group.position.lerp(want, k);
         if (openBook) {
