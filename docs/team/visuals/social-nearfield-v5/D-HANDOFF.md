@@ -1,6 +1,6 @@
 # A → D：近景构造 v5 增量
 
-2026-10-22，`feature/social-nearfield-v5`；依赖 PR61 → PR54 → PR43，已合 main `fadadf1`（自习室65及之前变更原样保留）。D分支及公共宿主不改。**用户最新要求：竞技暂不接入。** 原好友/留言适配保持，完整说明见 [上一批交接](../../social-community-preview-handoff.md)。
+2026-10-22，`feature/social-nearfield-v5`；依赖 PR61 → PR54 → PR43，已合 main `b5973fb`（自习室65/67/68及之前变更原样保留）。本批模型代码 `96c6384`。D分支及公共宿主不改。**用户最新要求：竞技暂不接入。** 原好友/留言适配保持，完整说明见 [上一批交接](../../social-community-preview-handoff.md)。
 
 唯一场景装配增量：`social-district.js` import `refineSocialNearfield`，在 `detailSocialConstruction` 后、图集绑定前调用；异步石材albedo加载保留新微孔bump。新文件 `social-nearfield.js` 集中拥有本批构造与纹理，不要只迁几何而漏掉图集或新文件。
 
