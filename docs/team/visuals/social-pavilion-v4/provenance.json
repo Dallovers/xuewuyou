@@ -1,0 +1,29 @@
+{
+  "baseline": "3378257e9f96c8acf498903c4c395ed75cde23c7",
+  "testedCodeCommit": "ca7c9c4bc2d1ee8313073f965b583dfc20f92801",
+  "assets": [
+    {
+      "path": "js/features/social/assets/baked/contact-ao.png",
+      "bytes": 2387469,
+      "beforeBytes": 1931867,
+      "sha256": "50a332e2a22cfe1138b9a0e4b6c324e5b7e767b1a0877364751b8a72bf1317cc"
+    },
+    {
+      "path": "js/features/social/assets/baked/indirect-diffuse.jpg",
+      "bytes": 972984,
+      "beforeBytes": 1015958,
+      "sha256": "0a28b5e1a675fed2c23c7e9a1d2fd43da36c2cbca9a4d0742a829d6ad8c7f734"
+    },
+    {
+      "path": "js/features/social/assets/baked/ao-manifest.json",
+      "bytes": 315895,
+      "beforeBytes": 240593,
+      "sha256": "d58074b940a4937267a51b036589db8c5d78d60abf53f0746b152130590d39db"
+    }
+  ],
+  "deltaBytes": 487930,
+  "sourceGzipSha256": "8d2d358a02fe08a237b57406d9ef04ffb761dc13c4482eb450598f0fb654083a",
+  "sourceSceneSignature": "c8e35586",
+  "blender": "4.5.3 LTS 67807e1800cc",
+  "newExternalOrAIAssets": false
+}

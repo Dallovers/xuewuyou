@@ -1,0 +1,17 @@
+{
+  "views": {
+    "detail-column-foot": "x=-4.4&z=.5&yaw=44&pitch=-33",
+    "detail-challenge-table": "x=2&z=5&yaw=-47.7&pitch=-17.5"
+  },
+  "viewport": [
+    1536,
+    1024
+  ],
+  "dpr": 1,
+  "eye": 1.6,
+  "mm": 35,
+  "exposure": 0.86,
+  "headless": true,
+  "browser": "156.0.8078.4",
+  "errors": []
+}

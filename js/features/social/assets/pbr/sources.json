@@ -1,0 +1,32 @@
+[
+  {
+    "path": "grass-diff.jpg",
+    "bytes": 1195394,
+    "sha256": "cfa40bc9d9417d1852db8753a8d5917f110c40101179f63543c382e39bc05e4a",
+    "source": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/leafy_grass/leafy_grass_diff_1k.jpg",
+    "license": "CC0",
+    "license_url": "https://polyhaven.com/license",
+    "asset_url": "https://polyhaven.com/a/leafy_grass",
+    "physical_repeat_m": 2
+  },
+  {
+    "path": "grass-nor_gl.jpg",
+    "bytes": 1466049,
+    "sha256": "832328216adc0a7e1f70a31d5ee48c9ab7f2152d83816122736cf42ac4b2ebd6",
+    "source": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/leafy_grass/leafy_grass_nor_gl_1k.jpg",
+    "license": "CC0",
+    "license_url": "https://polyhaven.com/license",
+    "asset_url": "https://polyhaven.com/a/leafy_grass",
+    "physical_repeat_m": 2
+  },
+  {
+    "path": "grass-rough.jpg",
+    "bytes": 511385,
+    "sha256": "0c2a1d91aacb8e54a496051b59854e51e456fe858abeade778e308359ef16463",
+    "source": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/leafy_grass/leafy_grass_rough_1k.jpg",
+    "license": "CC0",
+    "license_url": "https://polyhaven.com/license",
+    "asset_url": "https://polyhaven.com/a/leafy_grass",
+    "physical_repeat_m": 2
+  }
+]

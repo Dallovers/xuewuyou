@@ -1,0 +1,18 @@
+/* Presentation of the original main-site DOM, scoped to this iframe only. */
+html.social-community-embedded .topbar,
+html.social-community-embedded .atlas-sidebar,
+html.social-community-embedded .skip-link,
+html.social-community-embedded #mainContent > :not(#view-community),
+html.social-community-embedded [data-community-tab="arena"],
+html.social-community-embedded #community-arena,
+html.social-community-embedded #buddyFriends button[hidden] { display:none!important; }
+html.social-community-embedded .atlas-layout { display:block; }
+html.social-community-embedded .app { max-width:none;padding:0; }
+html.social-community-embedded #mainContent { width:auto;max-width:none;margin:0;padding:16px; }
+html.social-community-embedded .community-hero { padding:16px!important;min-height:0!important;background:#eaf0e6!important;margin:0 0 16px;box-shadow:none; }
+html.social-community-embedded .community-hero::before,
+html.social-community-embedded .community-hero::after { display:none; }
+html.social-community-embedded .community-hero h1 { font-size:24px!important;color:#273e2e!important;text-shadow:none; }
+html.social-community-embedded .community-hero .atlas-kicker { color:#456148!important; }
+html.social-community-embedded .community-hero p { display:none; }
+html.social-community-embedded .community-tabs button { min-height:44px; }
