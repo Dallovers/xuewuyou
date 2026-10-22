@@ -3032,6 +3032,19 @@ var WG_App = (function () {
     }
     /* 图书馆独立页面返回现有资料目录，沿用主站数据加载和账号。 */
     if (location.hash === '#wenku') navTo('wenku');
+    /* 好友竞技场独立页里的「在主站继续」带 #community/arena 回来：
+       直接落在校园互动的好友竞技场那一栏，不用用户再点一次。
+       标签名只认这三个，避免把随便什么 hash 当成路由。 */
+    if (location.hash.indexOf('#community') === 0) {
+      var wantedTab = location.hash.split('/')[1];
+      var allowedTabs = ['friends', 'posts', 'arena'];
+      if (wantedTab && allowedTabs.indexOf(wantedTab) >= 0 && window.WG_Community) {
+        /* 等社区面板在 DOMContentLoaded 里绑完再切，否则 tab() 切到了但表单还没绑 */
+        setTimeout(function () { window.WG_Community.open(wantedTab); }, 0);
+      } else {
+        navTo('community');
+      }
+    }
   }
 
   /* 供自习室引擎调用：重新打开入场设置弹窗 */

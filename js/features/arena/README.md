@@ -6,14 +6,19 @@
 第二版补了入口与外壳：主站「校园互动 → 好友竞技场 → 进入 3D 好友竞技场」进独立页，
 页面外壳（顶部工具条 / 左侧引导条 / 底部状态条 / 纸色对话框）照知识图书馆那一套，3D 画面本身没动。
 
-不含：登台对打动画、观众 NPC、比分接线（面板仍是主站原有 DOM）、夜间照明、移动端适配。
+第三版把面板接到真实业务、并做了触屏：擂台台阶按 E 读的是真实的挑战列表（能就地发起 / 开始 / 取消），
+报名处读的是真实的搭子簿与待处理邀请（能直接接受 / 婉拒）；手机上是双指捏合缩放、单指转向、
+54px 方向键，底部三层控件互不遮挡。3D 画面仍然一行没动。
+
+不含：登台对打动画、观众 NPC、答题与复盘（要排数学式子，仍回主站）、夜间照明。
 
 ## 文件
 
 | 文件 | 说明 |
 | --- | --- |
 | `arena-district.js` | 空间与交互的源码。ESM，导出 `createDistrict(ctx)` 和 `ARENA_LAYOUT` |
-| `index.html` | **主站入口页**（图书馆式外壳）。三个检视机位 + 「进入漫游」+ 按 E 打开的纸色对话框 |
+| `index.html` | **主站入口页**（图书馆式外壳）。三个检视机位 + 「进入漫游」+ 按 E 打开的业务面板 |
+| `arena-business.js` | **业务层**。擂台 / 报名处面板的数据与动作，只调 `/api/community/*`，不持有挑战状态 |
 | `arena.css` | 入口页的样式。变量与类名对齐 `examples/library-3d/library.css`，改动请两边一起看 |
 | `preview.html` | 自测页（深色 HUD，**不进主站**）。`?with=social` 可与广场并排，`?x/z/yaw/pitch` 精确定位，验收脚本靠它 |
 | `previews/*.png` | 本机真实浏览器截图（headless + CDP 驱动）。按仓库 `.gitignore`，`previews/` 不入库，只留本地 |
@@ -27,7 +32,8 @@
 | --- | --- |
 | `js/campus-registry.js` | arena 地点新增 `{label:'进入 3D 竞技场', view:'arena3d'}` |
 | `js/app.js` | `view === 'arena3d'` → 整页跳转 `js/features/arena/index.html`（与图书馆同样是独立页，不在同页加载第二套引擎） |
-| `index.html` | 校园互动 → 好友竞技场 tab 里加「进入 3D 好友竞技场」；全部功能入口加「3D 竞技场」按钮；`app.js?v=55 → 56` |
+| `index.html` | 校园互动 → 好友竞技场 tab 里加「进入 3D 好友竞技场」；全部功能入口加「3D 竞技场」按钮；`app.js?v=56 → 57` |
+| `js/app.js` | 新增深链 `#community` / `#community/<tab>`（标签名只认 `friends / posts / arena`）——3D 页里的「在主站继续」靠它直接落在好友竞技场那一栏 |
 | `js/features/arena/index.html` | 左上角「返回主站」回 `index.html#community` |
 
 服务端静态白名单**没改**：页面在 `js/` 下、样式在 `js/features/arena/`、three 在 `vendor/`、贴图走
@@ -35,9 +41,15 @@
 
 ## 入口页操作
 
-- 外观检视：拖动旋转、滚轮缩放；左侧三个机位（西侧牌坊 / 擂台正面 / 报名处）
+- 外观检视：拖动旋转、滚轮缩放（缩放上下限**按机位算**，见下）；左侧三个机位（西侧牌坊 / 擂台正面 / 报名处）
 - 进入漫游：WASD / 方向键移动、Shift 加速、拖动转向、J/L 转向、E 交互、Esc 回到外观
-- 顶部「挑战规则」是静态规则卡；按 E 打开的是该交互点的说明（纸色对话框），不是业务面板
+- 触屏：双指捏合缩放（仅检视模式）、单指滑动转向、左下方向键长按行走且按下有反馈、
+  底部的 E 提示变成整条通栏并改口为「点一下…」
+- 顶部「挑战规则」是静态规则卡；按 E 打开的是业务面板（擂台读挑战、报名处读搭子簿、锣是本地动作）
+
+缩放区间（`zoomRange()`）：`min = max(3.2, 预设 × 0.7)`、`max = min(30, max(预设 × 1.7, 12))`。
+写死一个全局 4.5~26 的后果是：擂台正面一捏就把相机送进围绳里，报名处却几乎不能靠近——三个机位要读的关系差着三倍，
+只能各留各的区间。
 
 
 ## 尺寸与坐标
@@ -145,31 +157,44 @@ arena.dispose();
 
 ## 三个交互点
 
-| id | 挂在哪 | 提示 | 触发 |
-| --- | --- | --- | --- |
-| `arena.ring` | 最外一跑台阶（半径 3.2） | 擂台 · 五题定胜负 → 按 E 发起好友挑战 | `openFeature('community', {tab:'arena', from:'arena.ring'})` |
-| `arena.roster` | 报名处柜体（半径 2.8） | 报名处 · 搭子簿 → 按 E 打开搭子列表 | `openFeature('community', {tab:'friends', from:'arena.roster'})` |
-| `arena.bell` | 锣面（半径 2.8） | 开赛锣 → 按 E 敲锣 | **纯本地动作**，返回 `{ok, kind:'bell', strikes, message}` |
+| id | 挂在哪 | 提示 | 独立页里做什么 | 别的宿主里做什么 |
+| --- | --- | --- | --- | --- |
+| `arena.ring` | 最外一跑台阶（半径 3.2） | 擂台 · 五题定胜负 → 按 E 发起好友挑战 | 打开业务面板：挑战列表 + 发起表单 | `openFeature('community', {tab:'arena', from:'arena.ring'})` |
+| `arena.roster` | 报名处柜体（半径 2.8） | 报名处 · 搭子簿 → 按 E 打开搭子列表 | 打开业务面板：搭子簿 + 待处理邀请 | `openFeature('community', {tab:'friends', from:'arena.roster'})` |
+| `arena.bell` | 锣面（半径 2.8） | 开赛锣 → 按 E 敲锣 | **纯本地动作**，返回 `{ok, kind:'bell', strikes, message}` | 同左 |
+
+`it.action()` 仍然保留（`openFeature` → 回退 `WG_Community.open`），独立页只是**不走它**：
+那一页没有主站的社区 DOM，调它只会拿到 `{ok:false, reason:'no-bridge'}`。独立页改为直接读接口，
+宿主挂载（`preview.html`、将来的多板块宿主）照旧走 `action()`。
 
 两个设计取舍：
 
 - 擂台交互挂**台阶**不挂台心。台心到台阶口约 4.5m，半径得放到接近 5m 才够，那样看台第一排（距台心 4.5m）也会被误触发。挂台阶、半径 3.2，语义也更准——擂台只有西侧这一个上台口。
-- 报名处开的是**好友列表**不是挑战列表：挑战的前提是先有人可打。擂台负责「打」，报名处负责「先有人可打」，两个入口都指向既有社区面板，没有新增接口。
+- 报名处开的是**搭子**不是挑战：挑战的前提是先有人可打。擂台负责「打」，报名处负责「先有人可打」。
 
-## 业务接入方式（已在本机确认存在）
+## 业务接口（独立页用，全部是既有接口）
 
-```js
-// 擂台台阶
-WG_Community.open('arena');    // tabName==='arena' → loadChallenges()
-// 报名处
-WG_Community.open('friends');
-```
+| 动作 | 请求 | 用在哪 |
+| --- | --- | --- |
+| 读搭子与主题 | `GET /api/community/home` | 发起表单的下拉、报名处的搭子簿与邀请 |
+| 读挑战列表 | `GET /api/community/challenges` | 擂台面板的「我的挑战」 |
+| 发起挑战 | `POST /api/community/challenges` `{to, topic}` | 擂台面板 |
+| 开始计时 | `POST /api/community/challenge/start` `{id}` | 擂台面板（列表里 `!mine.startedAt` 时） |
+| 取消 / 婉拒 | `PUT /api/community/challenge/cancel` `{id}` | 擂台面板 |
+| 处理邀请 | `PUT /api/community/request` `{id, action}` | 报名处（`accept` / `reject` / `cancel`） |
 
-`arena` 是 `js/community.js` 里已经存在的 tab，链路是 `open(name)` → `tab(name)` → `StudyAppBridge.navTo('community')`。
-因此**不需要等公共 `openFeature` 落地、也不需要改 `index.html`** 就能跑通「走到擂台前 → 打开真实好友挑战」。
+请求走主站的 `js/api.js`（`window.WG_API.req`），和主站共用 `xwy_token` 与同一套超时/重试/错误归一化。
+代价是这一页多引了三个普通脚本（`deploy-config.js` / `runtime.js` / `api.js`），好处是**不新增任何后端接口**，
+也不会出现第二份登录态。
 
-`createDistrict` 的 `openFeature` 若被注入就用注入的；没有则回退到上面这条现成路径，并在返回值里带 `via: 'WG_Community.open'`；
-两样都没有时返回 `{ok:false, reason:'no-bridge'}`——**不伪造成功**。
+三种会话状态分得很清，都不伪造数据：
+
+- `guest`（没有 token）→ 面板说「还没有登录态」+ 一个去主站登录的按钮；
+- `local`（`local.*` 的降级 token）→ 说「云端没连上，挑战发不出」；
+- `cloud` → 顶部工具条出现昵称胶囊，面板正常读接口。
+
+**答题与复盘仍在主站**：五道题要排数学式子（MathJax），3D 页里重写一遍渲染必然走形。
+所以「在主站继续」是深链 `#community/arena`，落在主站好友竞技场那一栏，不是一句空话。
 
 ## 本轮自测（headless Edge / 1440×900 / CDP 真实键盘事件）
 
@@ -211,6 +236,47 @@ WG_Community.open('friends');
 
 **headless 的帧数不作为性能结论**，性能以宿主（D）的统一环境为准。
 
+## 第三轮自测（业务面板 + 触屏，2026-10-22）
+
+驱动脚本 `_shots/cdp-entry2.mjs`。业务面板用 **mock 拦 `WG_API.req`**：本机验收不该往生产后端写挑战，
+所以断言的是「发出去的请求对不对」，不是「后端返回了什么」。
+
+### 桌面 1440×900 · 业务
+
+| 检查项 | 结果 | 数据 |
+| --- | --- | --- |
+| 接口桥 | 通过 | `hasApi / loggedIn / cloud` 全 true，顶部昵称胶囊出现 |
+| 擂台面板 | 通过 | 2 条挑战卡、搭子下拉 2 项（阿岚 / 小舟）、主题下拉 2 项（含「· N 道客观题」），**不含任何说明性占位文案** |
+| 发起挑战 | 通过 | 表单提交 → `POST /api/community/challenges {to:'u3', topic:'矩阵'}`，吐司「挑战已发送，等搭子确认。」，面板随即刷新 |
+| 开始挑战 | 通过 | `POST /api/community/challenge/start {id:'c1'}` |
+| 报名处面板 | 通过 | 2 位搭子、1 条待处理邀请、科目标签正常 |
+| 接受邀请 | 通过 | `PUT /api/community/request {id:'r1', action:'accept'}`，吐司「已接受。」 |
+| 关闭后状态 | 通过 | `dialogOpen=false`、`mode=inspect`（业务面板没破坏 Esc 通路） |
+| 主站深链 | 通过 | `#community/arena` → `view-community` 显示、`arena` 标签 `aria-selected=true`、`#community-arena` 显示；裸 `#community` 也正常 |
+| 控制台 | 0 条错误 | — |
+
+### 手机 390×844 / 375×667 · 触屏（`Input.dispatchTouchEvent` 真实多点触摸）
+
+| 检查项 | 结果 | 数据 |
+| --- | --- | --- |
+| 触屏识别 | 通过 | `pointer: coarse` 命中，方向键仅在漫游模式出现 |
+| 双指捏合 | 通过 | 两指拉开半径 11 → 7.7（近），受 `zoomRange()` 钳制不会钻进围绳 |
+| 单指转向 | 通过 | `orbitYaw -2.094 → -1.644`，半径不变（两指手势不会误触发单指旋转） |
+| 方向键长按 | 通过 | 按住「前进」0.7s，`(-15.5, 9) → (-13.19, 7.07)`，按钮 54px 高、按下有反馈 |
+| 底部不重叠 | 通过 | 390×844：方向键 596–712 / E 提示 728–772 / 状态条 782–836 / 吐司 518–580，两两无交集且都在视口内；375×667 同样无交集 |
+| 文案随平台变 | 通过 | 触屏上 E 提示是「点一下敲锣」、状态条是「走到物件前点下面的按钮」，不再写「按 E」 |
+| 控制台 | 0 条错误 | — |
+
+成图：`biz-01-ring.png`、`biz-02-ring-sent.png`、`biz-03-roster.png`、`biz-04-mobile-walk.png`、`biz-05-mobile-inspect.png`、`biz-06-mobile-667.png`、`biz-07-deeplink.png`。
+
+### 踩到的两个坑（留给下次）
+
+1. **`Page.navigate` 到「同 URL 只改 hash」不会重新加载页面**。用它验深链会拿到上一个文档的 `location.hash`（空串），
+   结论完全反了。验深链必须从另一个文档出发，或加查询参数。
+2. **带假 token 进主站会污染结论**。无效 `xwy_token` → 接口 401 → `logout()` → 社区面板被重置回 `friends`，
+   看起来像「深链没生效」。验路由前先把凭证清干净。
+
+
 ## 与社交广场并排
 
 `?with=social` 下两片场地共用一个 renderer、一个相机、一套碰撞判定（`preview.html` 里 `collide()` 对两个板块是同一个函数，避免两套判定不一致）。
@@ -229,9 +295,9 @@ WG_Community.open('friends');
 - **锣只响不判**：本地计数 + 2.4 秒阻尼摆动，不写服务端、不发 Socket 事件。
 - **树被移除了**：第一版在场地内放了树，从并排机位读过去像「擂台里有几个绿球」。绿化交给旁边的社交广场，本板块只留草坪。
 - **只有白天**：4 根灯柱只有 `emissiveIntensity` 的呼吸（0.26±0.08）供观感，没有实际照明、没有夜景。
-- **只接了入口，没接业务 DOM**：主站是整页跳到 `index.html` 的 3D 页，页内的对话框只解释「主站里这一步会调用什么」，
-  并在末尾给一个回主站的链接；没有把社区面板嵌进 3D 页（社区 panel 仍是主站 DOM，两套页面不共享渲染树）。
-- **移动端只保证不崩**：入口页有六个移动/转向按钮与小屏降级，但没在物理手机上验收。
+- **答题与复盘不在这一页**：需要数学排版，仍回主站。这一页只做「读列表 / 发起 / 开始 / 取消 / 处理邀请」这五个不需要排版动作。
+- **没有实时推送**：主站靠 Socket + 15 秒兜底轮询，这一页只在打开面板那一刻取一次。看完关掉再开才会刷新。
+- **没在物理手机上验过**：手势与布局是 CDP 触摸事件 + 两档视口尺寸验的，真机的滚动惯性、地址栏收放还没跑。
 
 ## 待确认的两件事
 
