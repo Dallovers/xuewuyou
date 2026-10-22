@@ -38,6 +38,12 @@ export const ARENA_LAYOUT = {
   desk: { x: 7.9, z: 4.6, w: 0.66, h: 1.0, d: 1.7 },
   board: { x: 7.9, z: -4.6, width: 2.0, height: 1.55 },
   stand: { rows: 2, depth: 1.05, rise: 0.42, inner: 4.5, x0: -1.6, x1: 6.4 },
+  /* 彩蛋：西南角那片空铺装。定在这里是因为动线——
+     人从西围栏缺口进来看台，主路在 z ∈ [-2.25, 2.25]，纸条落在路缘石南侧 0.6m，
+     走在路上扫一眼就在余光里，但要专门拐半步才够得着（判定半径 2.0m）。
+     往西 x < -8 会撞上围栏，往东 x > -3 就是台阶和看台，只有这一段是纯空地。
+     高度压在铺装面（y = 0.02）之上 3.5mm，不 z-fighting 也不像浮着。 */
+  note: { x: -5.0, z: 2.85, y: 0.0235 },
   /* 西侧缺口净宽 4.2：必须宽于牌坊门洞（跨度 4.0、净宽 3.56），
      否则围栏会横在门洞前面，人从牌坊穿过去还得再钻一道栏杆。 */
   fence: { height: 0.95, gap: 4.2 },
@@ -2077,6 +2083,166 @@ export function createDistrict(ctx = {}) {
     blockBox(0.26, postH, B.width, B.x, B.z, 'arena:board');
   }
 
+  /* ---------- 彩蛋：一张纸条 ----------
+     西南角那片空铺装上压着一张对折的草稿纸。不挂任何业务件，
+     捡起来只出一个面板，不写服务端、不留状态，刷新之后回到原地。
+     纸不能做成"平贴的一张白片"：真正的纸放过地上永远有一道折痕和几处翘边，
+     所以在平面上按顶点推了一点高度（折线抬高 + 两道很轻的波），再重算法线。 */
+  const NOTE_TEXT = '寝室长和凡越是刘福超儿子';
+
+  let noteGroup = null;
+  let noteShadow = null;
+  let noteTaken = false;
+  let noteFade = -1;
+
+  /* 空白草稿纸的正面：偏米白、带一点纸纤维的颗粒，再压四道淡淡的格线。
+     9cm 见方的纸在地上读不出字，但那几道线能让它一眼是"写过字的纸"而不是纸屑。 */
+  function makeNoteTexture() {
+    if (typeof document === 'undefined') return null;
+    const W = 128;
+    const H = 176;
+    const canvas = document.createElement('canvas');
+    canvas.width = W;
+    canvas.height = H;
+    const g = canvas.getContext('2d');
+    if (!g) return null;
+    g.fillStyle = '#f6f1e2';
+    g.fillRect(0, 0, W, H);
+    for (let i = 0; i < 900; i++) {
+      const x = Math.random() * W;
+      const y = Math.random() * H;
+      g.fillStyle = 'rgba(' + (Math.random() > 0.5 ? '160,150,124' : '255,253,244')
+        + ',' + (0.05 + Math.random() * 0.09).toFixed(3) + ')';
+      g.fillRect(x, y, 1, 1);
+    }
+    // 四道格线 + 上面几笔潦草的"字"
+    for (let i = 0; i < 4; i++) {
+      const y = 40 + i * 32;
+      g.strokeStyle = 'rgba(120,140,168,0.16)';
+      g.lineWidth = 1;
+      g.beginPath(); g.moveTo(10, y); g.lineTo(W - 10, y); g.stroke();
+      let x = 14;
+      while (x < W - 22) {
+        const w = 4 + Math.random() * 9;
+        g.strokeStyle = 'rgba(38,48,66,' + (0.30 + Math.random() * 0.22).toFixed(2) + ')';
+        g.lineWidth = 0.9 + Math.random() * 0.7;
+        g.beginPath();
+        g.moveTo(x, y - 10);
+        g.quadraticCurveTo(x + w * 0.5, y - 10 - Math.random() * 7, x + w, y - 8 - Math.random() * 3);
+        g.stroke();
+        x += w + 3 + Math.random() * 4;
+      }
+    }
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.anisotropy = 4;
+    return owner.ownTexture(tex);
+  }
+
+  function buildNote() {
+    const N = L.note;
+    const tex = makeNoteTexture();
+    const mat = new THREE.MeshStandardMaterial({
+      /* 纯白纸在直射太阳下会被 ACES 压成一块死白贴片，稍微压一点底色，
+         高光留给环境。这是"纸"和"塑料卡片"的分界。 */
+      color: 0xeee7d5, roughness: 0.93, metalness: 0.0,
+      side: THREE.DoubleSide, envMapIntensity: 0.28,
+    });
+    if (tex) mat.map = tex;
+    mat.name = 'note-paper';
+    owner.ownMaterial(mat);
+
+    noteGroup = new THREE.Group();
+    noteGroup.name = 'arena:note';
+    noteGroup.position.set(N.x, N.y, N.z);
+    noteGroup.rotation.y = -0.55;
+    root.add(noteGroup);
+
+    /* 纸面 13 × 17.5cm。尺寸是被"能不能看见"定的：站在路边视线高 1.65m、
+       斜着看过去只有这么一小片，12cm 以下就得低头找；15cm 以上又像传单。
+       形状也别做太皱：第一版折 1.4cm、波 3.5mm，边缘起伏一圈，读成"揉过的纸团压平"；
+       真正的对折纸条放地上只有中缝那一道抬起来，其余是贴地的。 */
+    const PW = 0.13;
+    const PD = 0.175;
+    const paperGeo = new THREE.PlaneGeometry(PW, PD, 4, 6);
+    const pos = paperGeo.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+      const x = pos.getX(i);
+      const y = pos.getY(i);
+      // 中缝抬高 + 一侧微微翘起，再叠两道很小的波（0.8mm 级），只为破掉"平板"感
+      const fold = 0.008 * (1 - Math.abs(x) / (PW / 2));
+      const curl = 0.004 * Math.max(0, (y - PD * 0.18) / (PD / 2));
+      const wave = 0.0016 * Math.sin(y * 34) + 0.0013 * Math.sin(x * 46 + 1.3);
+      pos.setZ(i, fold + curl + wave);
+    }
+    pos.needsUpdate = true;
+    paperGeo.computeVertexNormals();
+    paperGeo.userData.__arenaDisposable = true;
+    add(paperGeo, mat, 0, 0, 0, { rotX: -Math.PI / 2, parent: noteGroup, cast: false });
+
+    /* 旁边再压一小片撕下来的角，两张一起才像"掉在这儿的纸"，不像贴了一张便签。
+       旋转必须写 rotZ 不能写 rotY：这块面已经 rotX -90° 放平了，
+       rotY 是绕世界竖直轴转，会把它立起来变成一片悬空的纸板。 */
+    const scrap = new THREE.PlaneGeometry(0.046, 0.062, 2, 2);
+    const sp = scrap.attributes.position;
+    for (let i = 0; i < sp.count; i++) sp.setZ(i, 0.003 * Math.sin(sp.getX(i) * 90));
+    sp.needsUpdate = true;
+    scrap.computeVertexNormals();
+    scrap.userData.__arenaDisposable = true;
+    add(scrap, mat, 0.099, 0.0006, 0.042, {
+      rotX: -Math.PI / 2, rotZ: 0.9, parent: noteGroup, cast: false,
+    });
+
+    /* 接地阴影压在纸和铺装之间（纸 0.0207 起 / 阴影 0.0216 / 铺装 0.02），
+       三条线差 1mm 上下，肉眼看是"贴着地"，深度缓冲也不会打架。
+       尺寸必须比纸大出好几倍，不是"刚好包住"：contactTexture 的径向渐变
+       只在中心 20% 半径内是实心的（0.66 → 0.30 → 0），按纸的 1.2 倍铺，
+       实心部分整片被纸盖住，露在外面的只剩 alpha 接近 0 的尾巴，等于没画——
+       第一版 0.34×0.40 就是这么消失的。这里铺到 4.5 倍，芯的边缘正好落在纸边。 */
+    noteShadow = contactShadow(N.x + 0.004, N.z + 0.006, 0.58, 0.68, N.y - 0.0019, 0.46);
+    if (noteShadow) noteShadow.name = 'arena:note-shadow';
+
+    /* 交互锚点单独一个空对象：拾取动画会把 noteGroup 抬起来缩小，
+       但判定点必须留在原地，否则"捡到一半"时提示会跟着纸飘走。 */
+    const anchor = new THREE.Group();
+    anchor.name = 'arena:note-anchor';
+    anchor.position.set(N.x, 0.05, N.z);
+    root.add(anchor);
+
+    const item = {
+      id: 'arena.note',
+      label: '一张对折的纸条',
+      prompt: '按 E 捡起纸条',
+      object: anchor,
+      radius: 2.0,
+      action() {
+        if (noteTaken) return { ok: false, message: '纸条已经捡走了' };
+        noteTaken = true;
+        noteFade = 0;
+        /* 交给 findNearest 的 disabled 标记，提示立刻消失；
+           object 保留——测试脚本还要靠它算"站到哪" */
+        item.disabled = true;
+        return { ok: true, kind: 'note', text: NOTE_TEXT };
+      },
+    };
+    interactions.push(item);
+
+    animated.push((t, dt) => {
+      if (noteFade < 0) return;
+      noteFade += dt;
+      const k = Math.min(1, noteFade / 0.45);
+      const e = 1 - Math.pow(1 - k, 3);
+      if (noteGroup) {
+        noteGroup.position.y = N.y + e * 0.24;
+        noteGroup.scale.setScalar(Math.max(0.001, 1 - e));
+        noteGroup.rotation.y = -0.55 + e * 1.5;
+        if (k >= 1) noteGroup.visible = false;
+      }
+      if (noteShadow && k >= 0.3) noteShadow.visible = false;
+      if (k >= 1) noteFade = -1;
+    });
+  }
+
   /* ---------- 看台 ---------- */
 
   function buildStand(side) {
@@ -2642,6 +2808,8 @@ export function createDistrict(ctx = {}) {
   buildLamp(-L.lamp.x, L.lamp.z);
   buildLamp(L.lamp.x, -L.lamp.z);
   buildLamp(L.lamp.x, L.lamp.z);
+  /* 彩蛋放最后：它只是地上一件小 dressing，不该插在场地结构中间 */
+  buildNote();
 
   /* 灯呼吸：四盏共用同一份 accent_amber，所以一次改完即可；
      幅度很小（0.26±0.08），只为让场地不死板，不做成闪烁。
