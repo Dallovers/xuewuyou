@@ -1,0 +1,354 @@
+{
+  "checks": [
+    {
+      "kind": "friends",
+      "keyboard": "W → E",
+      "start": {
+        "x": 0,
+        "z": 0.65,
+        "y": 1.6,
+        "speed": 4.2,
+        "run": 6.6,
+        "radius": 0.35
+      },
+      "reached": {
+        "x": -5.109720000000002,
+        "z": 0.65,
+        "y": 1.6,
+        "speed": 4.2,
+        "run": 6.6,
+        "radius": 0.35
+      }
+    },
+    {
+      "kind": "friends",
+      "keyboard": "W → E",
+      "start": {
+        "x": 0,
+        "z": 0.65,
+        "y": 1.6,
+        "speed": 4.2,
+        "run": 6.6,
+        "radius": 0.35
+      },
+      "reached": {
+        "x": -5.25,
+        "z": 0.65,
+        "y": 1.6,
+        "speed": 4.2,
+        "run": 6.6,
+        "radius": 0.35
+      }
+    },
+    {
+      "friends": "A UI invite → B UI accept → both real friend lists updated"
+    },
+    {
+      "kind": "posts",
+      "keyboard": "W → E",
+      "start": {
+        "x": 0,
+        "z": 2.6,
+        "y": 1.6,
+        "speed": 4.2,
+        "run": 6.6,
+        "radius": 0.35
+      },
+      "reached": {
+        "x": -1.6102799999999995,
+        "z": 2.6,
+        "y": 1.6,
+        "speed": 4.2,
+        "run": 6.6,
+        "radius": 0.35
+      }
+    },
+    {
+      "kind": "posts",
+      "keyboard": "W → E",
+      "start": {
+        "x": 0,
+        "z": 2.6,
+        "y": 1.6,
+        "speed": 4.2,
+        "run": 6.6,
+        "radius": 0.35
+      },
+      "reached": {
+        "x": -1.68,
+        "z": 2.6,
+        "y": 1.6,
+        "speed": 4.2,
+        "run": 6.6,
+        "radius": 0.35
+      }
+    },
+    {
+      "posts": "A UI post → B sees/replies → A sees reply"
+    },
+    {
+      "deletion": "author deletes, B sees tombstone with reply retained"
+    },
+    {
+      "cycles": 5,
+      "framesAfterClose": 0,
+      "pausedAfterClose": false
+    },
+    {
+      "failure": "503 document detached; retry opens original main-site posts"
+    },
+    {
+      "lateLoad": "closed during pending document; late response cannot reopen or pause plaza"
+    },
+    {
+      "kind": "posts",
+      "keyboard": "W → E",
+      "start": {
+        "x": 0,
+        "z": 2.6,
+        "y": 1.6,
+        "speed": 4.2,
+        "run": 6.6,
+        "radius": 0.35
+      },
+      "reached": {
+        "x": -1.8198600000000007,
+        "z": 2.6,
+        "y": 1.6,
+        "speed": 4.2,
+        "run": 6.6,
+        "radius": 0.35
+      }
+    },
+    {
+      "kind": "posts",
+      "keyboard": "W → E",
+      "start": {
+        "x": 0,
+        "z": 2.6,
+        "y": 1.6,
+        "speed": 4.2,
+        "run": 6.6,
+        "radius": 0.35
+      },
+      "reached": {
+        "x": -1.9601399999999993,
+        "z": 2.6,
+        "y": 1.6,
+        "speed": 4.2,
+        "run": 6.6,
+        "radius": 0.35
+      }
+    },
+    {
+      "login": "inner Escape preserves plaza dialog; original login returns to posts; refresh retains session",
+      "smallViewport": [
+        390,
+        844
+      ]
+    },
+    {
+      "arena": "walked to table, no business iframe or challenge request"
+    }
+  ],
+  "errors": [],
+  "requests": [
+    {
+      "method": "GET",
+      "path": "/api/community/home"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/community/profile"
+    },
+    {
+      "method": "GET",
+      "path": "/api/community/home"
+    },
+    {
+      "method": "GET",
+      "path": "/api/community/home"
+    },
+    {
+      "method": "GET",
+      "path": "/api/community/home"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/community/profile"
+    },
+    {
+      "method": "GET",
+      "path": "/api/community/home"
+    },
+    {
+      "method": "GET",
+      "path": "/api/community/home"
+    },
+    {
+      "method": "POST",
+      "path": "/api/community/request"
+    },
+    {
+      "method": "GET",
+      "path": "/api/community/home"
+    },
+    {
+      "method": "GET",
+      "path": "/api/community/home"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/community/request"
+    },
+    {
+      "method": "GET",
+      "path": "/api/community/home"
+    },
+    {
+      "method": "GET",
+      "path": "/api/community/home"
+    },
+    {
+      "method": "GET",
+      "path": "/api/community/home"
+    },
+    {
+      "method": "GET",
+      "path": "/api/community/home"
+    },
+    {
+      "method": "GET",
+      "path": "/api/community/posts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/community/home"
+    },
+    {
+      "method": "GET",
+      "path": "/api/community/posts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/community/posts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/community/posts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/community/posts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/community/posts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/community/posts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/community/posts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/community/posts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/community/posts"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/community/posts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/community/posts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/community/posts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/community/posts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/community/home"
+    },
+    {
+      "method": "GET",
+      "path": "/api/community/posts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/community/home"
+    },
+    {
+      "method": "GET",
+      "path": "/api/community/posts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/community/home"
+    },
+    {
+      "method": "GET",
+      "path": "/api/community/posts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/community/home"
+    },
+    {
+      "method": "GET",
+      "path": "/api/community/posts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/community/home"
+    },
+    {
+      "method": "GET",
+      "path": "/api/community/posts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/community/home"
+    },
+    {
+      "method": "GET",
+      "path": "/api/community/posts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/community/home"
+    },
+    {
+      "method": "GET",
+      "path": "/api/community/posts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/community/home"
+    },
+    {
+      "method": "GET",
+      "path": "/api/community/posts"
+    }
+  ],
+  "conditions": {
+    "viewport": [
+      1536,
+      1024
+    ],
+    "dpr": 1,
+    "headless": true
+  },
+  "browser": "156.0.8078.4"
+}

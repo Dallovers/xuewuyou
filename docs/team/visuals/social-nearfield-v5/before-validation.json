@@ -1,0 +1,251 @@
+{
+  "before": "b500fdc3bc28823d2982584c751b9357152ae942",
+  "views": {
+    "A1": "x=-3.8&z=-1.2&yaw=118.6&pitch=-11",
+    "A2": "x=.5&z=6&yaw=47.7&pitch=0",
+    "A3": "x=-7.2&z=6.2&yaw=0&pitch=0",
+    "panorama": "x=0&z=16&yaw=0&pitch=-5",
+    "desk": "x=-5.25&z=1.6&yaw=65&pitch=-22",
+    "foot": "x=-4.4&z=.5&yaw=44&pitch=-33",
+    "bench": "x=2.8&z=-3.15&yaw=-10&pitch=-27"
+  },
+  "errors": [],
+  "conditions": {
+    "viewport": [
+      1536,
+      1024
+    ],
+    "dpr": 1,
+    "eye": 1.6,
+    "mm": 35,
+    "exposure": 0.86,
+    "headless": true
+  },
+  "screens": [
+    {
+      "version": "before",
+      "name": "A1",
+      "ready": {
+        "ok": true,
+        "loaded": 6,
+        "total": 6,
+        "skipped": 0,
+        "disposed": false,
+        "bakedAO": {
+          "ok": true,
+          "meshes": 165,
+          "source": "Exact social-visual-detail-v4 geometry exported from runtime; Blender 4.5.3 Cycles AO, 32 samples, 0.6m distance, 2048 atlas, 8px margin",
+          "indirect": true,
+          "indirectSource": "Same static opaque geometry; thin glazing, alpha foliage and grass omitted as occluders, low-frequency averaged surface colours, existing sky.hdr world strength1, preview sun3.2, 64 samples and 4 diffuse bounces, DIFFUSE INDIRECT only; sRGB JPEG stores linear radiance encoded to sRGB, not a colour render",
+          "indirectError": null
+        }
+      },
+      "render": {
+        "frame": 1267,
+        "calls": 118,
+        "triangles": 163452,
+        "points": 0,
+        "lines": 0
+      },
+      "memory": {
+        "geometries": 247,
+        "textures": 33
+      },
+      "exposure": 0.86,
+      "eye": 1.6
+    },
+    {
+      "version": "before",
+      "name": "A2",
+      "ready": {
+        "ok": true,
+        "loaded": 6,
+        "total": 6,
+        "skipped": 0,
+        "disposed": false,
+        "bakedAO": {
+          "ok": true,
+          "meshes": 165,
+          "source": "Exact social-visual-detail-v4 geometry exported from runtime; Blender 4.5.3 Cycles AO, 32 samples, 0.6m distance, 2048 atlas, 8px margin",
+          "indirect": true,
+          "indirectSource": "Same static opaque geometry; thin glazing, alpha foliage and grass omitted as occluders, low-frequency averaged surface colours, existing sky.hdr world strength1, preview sun3.2, 64 samples and 4 diffuse bounces, DIFFUSE INDIRECT only; sRGB JPEG stores linear radiance encoded to sRGB, not a colour render",
+          "indirectError": null
+        }
+      },
+      "render": {
+        "frame": 371,
+        "calls": 190,
+        "triangles": 166460,
+        "points": 0,
+        "lines": 0
+      },
+      "memory": {
+        "geometries": 254,
+        "textures": 37
+      },
+      "exposure": 0.86,
+      "eye": 1.6
+    },
+    {
+      "version": "before",
+      "name": "A3",
+      "ready": {
+        "ok": true,
+        "loaded": 6,
+        "total": 6,
+        "skipped": 0,
+        "disposed": false,
+        "bakedAO": {
+          "ok": true,
+          "meshes": 165,
+          "source": "Exact social-visual-detail-v4 geometry exported from runtime; Blender 4.5.3 Cycles AO, 32 samples, 0.6m distance, 2048 atlas, 8px margin",
+          "indirect": true,
+          "indirectSource": "Same static opaque geometry; thin glazing, alpha foliage and grass omitted as occluders, low-frequency averaged surface colours, existing sky.hdr world strength1, preview sun3.2, 64 samples and 4 diffuse bounces, DIFFUSE INDIRECT only; sRGB JPEG stores linear radiance encoded to sRGB, not a colour render",
+          "indirectError": null
+        }
+      },
+      "render": {
+        "frame": 483,
+        "calls": 178,
+        "triangles": 148888,
+        "points": 0,
+        "lines": 0
+      },
+      "memory": {
+        "geometries": 253,
+        "textures": 33
+      },
+      "exposure": 0.86,
+      "eye": 1.6
+    },
+    {
+      "version": "before",
+      "name": "panorama",
+      "ready": {
+        "ok": true,
+        "loaded": 6,
+        "total": 6,
+        "skipped": 0,
+        "disposed": false,
+        "bakedAO": {
+          "ok": true,
+          "meshes": 165,
+          "source": "Exact social-visual-detail-v4 geometry exported from runtime; Blender 4.5.3 Cycles AO, 32 samples, 0.6m distance, 2048 atlas, 8px margin",
+          "indirect": true,
+          "indirectSource": "Same static opaque geometry; thin glazing, alpha foliage and grass omitted as occluders, low-frequency averaged surface colours, existing sky.hdr world strength1, preview sun3.2, 64 samples and 4 diffuse bounces, DIFFUSE INDIRECT only; sRGB JPEG stores linear radiance encoded to sRGB, not a colour render",
+          "indirectError": null
+        }
+      },
+      "render": {
+        "frame": 399,
+        "calls": 245,
+        "triangles": 167556,
+        "points": 0,
+        "lines": 0
+      },
+      "memory": {
+        "geometries": 263,
+        "textures": 37
+      },
+      "exposure": 0.86,
+      "eye": 1.6
+    },
+    {
+      "version": "before",
+      "name": "desk",
+      "ready": {
+        "ok": true,
+        "loaded": 6,
+        "total": 6,
+        "skipped": 0,
+        "disposed": false,
+        "bakedAO": {
+          "ok": true,
+          "meshes": 165,
+          "source": "Exact social-visual-detail-v4 geometry exported from runtime; Blender 4.5.3 Cycles AO, 32 samples, 0.6m distance, 2048 atlas, 8px margin",
+          "indirect": true,
+          "indirectSource": "Same static opaque geometry; thin glazing, alpha foliage and grass omitted as occluders, low-frequency averaged surface colours, existing sky.hdr world strength1, preview sun3.2, 64 samples and 4 diffuse bounces, DIFFUSE INDIRECT only; sRGB JPEG stores linear radiance encoded to sRGB, not a colour render",
+          "indirectError": null
+        }
+      },
+      "render": {
+        "frame": 497,
+        "calls": 106,
+        "triangles": 102124,
+        "points": 0,
+        "lines": 0
+      },
+      "memory": {
+        "geometries": 241,
+        "textures": 32
+      },
+      "exposure": 0.86,
+      "eye": 1.6
+    },
+    {
+      "version": "before",
+      "name": "foot",
+      "ready": {
+        "ok": true,
+        "loaded": 6,
+        "total": 6,
+        "skipped": 0,
+        "disposed": false,
+        "bakedAO": {
+          "ok": true,
+          "meshes": 165,
+          "source": "Exact social-visual-detail-v4 geometry exported from runtime; Blender 4.5.3 Cycles AO, 32 samples, 0.6m distance, 2048 atlas, 8px margin",
+          "indirect": true,
+          "indirectSource": "Same static opaque geometry; thin glazing, alpha foliage and grass omitted as occluders, low-frequency averaged surface colours, existing sky.hdr world strength1, preview sun3.2, 64 samples and 4 diffuse bounces, DIFFUSE INDIRECT only; sRGB JPEG stores linear radiance encoded to sRGB, not a colour render",
+          "indirectError": null
+        }
+      },
+      "render": {
+        "frame": 497,
+        "calls": 90,
+        "triangles": 97384,
+        "points": 0,
+        "lines": 0
+      },
+      "memory": {
+        "geometries": 237,
+        "textures": 31
+      },
+      "exposure": 0.86,
+      "eye": 1.6
+    },
+    {
+      "version": "before",
+      "name": "bench",
+      "ready": {
+        "ok": true,
+        "loaded": 6,
+        "total": 6,
+        "skipped": 0,
+        "disposed": false,
+        "bakedAO": {
+          "ok": true,
+          "meshes": 165,
+          "source": "Exact social-visual-detail-v4 geometry exported from runtime; Blender 4.5.3 Cycles AO, 32 samples, 0.6m distance, 2048 atlas, 8px margin",
+          "indirect": true,
+          "indirectSource": "Same static opaque geometry; thin glazing, alpha foliage and grass omitted as occluders, low-frequency averaged surface colours, existing sky.hdr world strength1, preview sun3.2, 64 samples and 4 diffuse bounces, DIFFUSE INDIRECT only; sRGB JPEG stores linear radiance encoded to sRGB, not a colour render",
+          "indirectError": null
+        }
+      },
+      "render": {
+        "frame": 770,
+        "calls": 45,
+        "triangles": 4884,
+        "points": 0,
+        "lines": 0
+      },
+      "memory": {
+        "geometries": 233,
+        "textures": 31
+      },
+      "exposure": 0.86,
+      "eye": 1.6
+    }
+  ],
+  "browser": "156.0.8078.4"
+}

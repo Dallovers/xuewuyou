@@ -24,7 +24,13 @@
 
   var SPEC = {
     reach: 2.40,          // 能拿多远（m）
-    key: 'e',             // 拿起 / 放下
+    key: 'e',             // 拿起 / **放回原位**
+    /* 随手放下单独一个键。
+       为什么不让 E 一个键包办：放下要先向下打射线找落面、再按相机朝向重算偏航，
+       一旦人正低头、或者把书举到眼前（右键），落点就跑了——表现就是"一松手书掉地上"。
+       放回原位是把拿起来时存下的实例矩阵原样写回，跟视角、姿态、位置全都无关，
+       所以它可以做默认动作。想挪到别处去才按 G。 */
+    dropKey: 'g',
     holdDistance: 0.50,   // 拿在手里时离眼睛多远
     holdDown: 0.12,       // 往下沉一点，像端在手上
     holdRight: 0.06,      // 略偏右手
@@ -46,7 +52,53 @@
     openExtra: 0.10,      // 摊开比合上宽一倍，拿远一点才看得全
     pageColor: '#efe9dc',
     pageShade: '#d8d0bf',
-    textColor: '#b9b1a0'
+    textColor: '#b9b1a0',
+    pageTitle: '寝室长和凡越是我儿子',   // 翻开后书页上印的字（标题 + 每行反复写这一句）
+    pageAuthor: '作者刘福超',           // 右页右下角落款
+    /* 彩蛋：散列命中的那几本书，翻开是另一段文字。
+       用实例 id 做固定散列——同一本书每次翻开都必须是同一本，
+       不能"每次随机"，否则你会以为书自己在换内容。 */
+    eggEvery: 6,                        // 大约每 6 本里有 1 本
+    eggTitle: '寝室长和凡越欠我三顿饭',
+    eggAuthor: '作者刘福超',
+
+    /* 每本书的书名。按实例 id 散列取，**同一本书永远是同一个名字**——
+       随机取名会让"我刚看的那本《边城》"下次变成别的，反而更怪。
+       名字只影响三处：准星提示、拿着时的提示、翻开后左右页的页眉。
+       不往封面贴字：封面是实例化的一块板，一张贴图铺满所有实例，
+       要做成每本不同就得给每本书单独一张贴图，几十张 512² 不划算。 */
+    bookNames: [
+      '高等数学（上）', '高等数学（下）', '线性代数', '概率论与数理统计', '离散数学',
+      '大学物理', '大学化学', '理论力学', '材料力学', '电路分析基础',
+      '数据结构与算法', '算法导论', '计算机组成原理', '计算机网络', '操作系统导论',
+      '数据库系统概念', '编译原理', '软件工程', '人工智能导论', '机器学习',
+      '深度学习', '统计学习方法', '数字图像处理', '计算机图形学', '人机交互概论',
+      '中国哲学简史', '西方哲学史', '美学散步', '艺术的故事', '西方美术史',
+      '世界建筑史', '中国建筑史', '建筑：形式、空间和秩序', '园冶', '街道的美学',
+      '乡土中国', '江村经济', '万历十五年', '中国历代政治得失', '叫魂',
+      '边城', '围城', '平凡的世界', '活着', '白鹿原',
+      '城南旧事', '呼兰河传', '骆驼祥子', '四世同堂', '家',
+      '瓦尔登湖', '人类简史', '枪炮、病菌与钢铁', '自私的基因', '时间简史',
+      '寂静的春天', '万物简史', '宇宙的琴弦', '七堂极简物理课', '元素的盛宴',
+      '数学之美', '数学分析', '具体数学', '怎样解题', '从一到无穷大',
+      '设计中的设计', '写给大家看的设计书', '室内设计资料集', '住宅设计解剖书', '家具结构设计',
+      '木工全书', '木材学', '色彩设计法则', '字体设计手册', '版式设计原理',
+      '手绘表现技法', '素描的诀窍', '水彩基础', '摄影构图学', '光影的艺术',
+      '英语语法新思维', '考研英语词汇', '雅思真题集', '托福核心词汇', '学术写作指南',
+      '日语入门', '法语速成', '德语基础教程', '拉丁语入门', '古代汉语',
+      '唐诗三百首', '宋词选', '古文观止', '诗经', '楚辞',
+      '沉思录', '苏东坡传', '月亮与六便士', '小王子', '夜航西飞',
+      '百年孤独', '局外人', '悉达多', '变形记', '老人与海',
+      '追风筝的人', '解忧杂货店', '挪威的森林', '雪国', '古都',
+      '刀锋', '我与地坛', '病隙碎笔', '文化苦旅', '山居笔记',
+      '费曼物理学讲义', '物理世界奇遇记', '上帝掷骰子吗', '黑洞与时间弯曲', '果壳中的宇宙',
+      '经济学原理', '国富论', '就业、利息和货币通论', '思考，快与慢', '贫穷的本质',
+      '社会学的想象力', '乌合之众', '娱乐至死', '技术垄断', '理解媒介',
+      '心理学与生活', '社会心理学', '认知心理学', '发展心理学', '变态心理学',
+      '教育学原理', '陶行知教育名篇', '给教师的建议', '学习之道', '刻意练习',
+      '中国美术史', '书法概论', '篆刻入门', '中国画技法', '陶瓷工艺学',
+      '音乐欣赏十五讲', '西方音乐史', '和声学基础', '曲式分析', '乐理入门'
+    ]
   };
 
   function isDescendant(obj, maybeParent) {
@@ -132,7 +184,15 @@
       if (!src) return null;
       var gi = src.byId[h.instanceId];
       if (gi === undefined) return null;
-      return { label: src.label, src: src, ids: src.groups[gi], distance: +h.distance.toFixed(3) };
+      var group = src.groups[gi];
+      return {
+        label: src.label,
+        // 书带书名，杯 / 笔没有；界面按 name 有没有决定要不要加书名号
+        name: src.label === '书' ? bookNameOf(group[0]) : null,
+        src: src,
+        ids: group,
+        distance: +h.distance.toFixed(3)
+      };
     }
 
     function hideInstances(src, ids) {
@@ -236,6 +296,7 @@
         src: src,
         ids: ids,
         label: target.label,
+        name: target.name || null,
         saved: hideInstances(src, ids),
         pickYaw: cameraYaw(),
         baseQuat: baseQuat,
@@ -252,6 +313,7 @@
       openBook.traverse(function (n) {
         if (n.isMesh) {
           n.geometry.dispose();
+          // 贴图是全局缓存的，别在这里 dispose，不然第二次翻开就没字了
           if (n.material && n.material.dispose) n.material.dispose();
         }
       });
@@ -259,6 +321,119 @@
       openBook = null;
       if (held && held.parts) held.parts.forEach(function (p) { p.visible = true; });
       return true;
+    }
+
+    /* ── 书页贴图 ──
+       用 canvas 现画：不引入字体文件，直接吃系统里的中文字体
+       （Windows 有微软雅黑，macOS 有苹方，Linux 走 Noto）。
+       一张"标题页"、一张"纯正文"，两页各一张，摊开时左右分开。 */
+    var pageTexCache = {};
+    /** 这本书是不是"彩蛋书"：同一个 id 永远同一个结果（乘散列再取模，相邻 id 不扎堆） */
+    function isEggBook(id) {
+      return (((id * 2654435761) >>> 0) % SPEC.eggEvery) === 0;
+    }
+
+    /** 书名：同样用实例 id 定，换一个乘数，免得"书名"和"是不是彩蛋"两件事相关 */
+    function bookNameOf(id) {
+      var n = SPEC.bookNames.length;
+      if (!n) return '';
+      return SPEC.bookNames[(((id * 2246822519) >>> 0) % n)];
+    }
+
+    function pageTexture(kind, title, author, bookName) {
+      var key = kind + '|' + title + '|' + (author || '') + '|' + (bookName || '');
+      if (pageTexCache[key]) return pageTexCache[key];
+      var W = 512, H = 1280;                       // 页高比页宽约 2.5:1
+      var cv = document.createElement('canvas');
+      cv.width = W;
+      cv.height = H;
+      var g = cv.getContext('2d');
+
+      g.fillStyle = SPEC.pageColor;
+      g.fillRect(0, 0, W, H);
+      // 极淡的纸纹：几条横向色差，避免死白
+      for (var i = 0; i < 26; i++) {
+        g.fillStyle = 'rgba(196,188,170,' + (0.03 + (i % 3) * 0.012) + ')';
+        g.fillRect(0, (i * 53) % H, W, 2);
+      }
+
+      var ink = 'rgba(52,48,42,0.92)';
+      function font(size, bold) {
+        return (bold ? '700 ' : '400 ') + size +
+          'px "Microsoft YaHei","PingFang SC","Noto Sans CJK SC","Source Han Sans SC",sans-serif';
+      }
+      var txt = title || '';
+
+      /* 页眉：书名。左右两页都印，像真书的天头——这样翻开哪一页都知道自己拿的是哪本。
+         放在大标题上方，字号压到 26 px，只是"标一下"，不跟正文抢。 */
+      if (bookName) {
+        g.font = font(26, false);
+        g.fillStyle = 'rgba(52,48,42,0.52)';
+        g.textAlign = 'center';
+        g.textBaseline = 'top';
+        g.fillText('《' + bookName + '》', W / 2, 40);
+        g.fillStyle = 'rgba(52,48,42,0.20)';
+        g.fillRect(W * 0.33, 80, W * 0.34, 2);
+      }
+
+      if (kind === 'title') {
+        var fs = 64;
+        g.font = font(fs, true);
+        // 放不下就缩：中文一行 7 个字，得保证 84% 宽度内
+        while (g.measureText(txt).width > W * 0.84 && fs > 18) {
+          fs -= 2;
+          g.font = font(fs, true);
+        }
+        g.fillStyle = ink;
+        g.textAlign = 'center';
+        g.textBaseline = 'top';
+        g.fillText(txt, W / 2, 104);
+
+        // 标题下面一条细分隔线
+        g.fillStyle = 'rgba(52,48,42,0.35)';
+        g.fillRect(W * 0.18, 104 + fs * 1.7, W * 0.64, 3);
+      }
+
+      // 正文：每一行都反复写同一句，写满到右边界为止（超出部分裁掉），
+      // 像抄写本里排满的一页，而不是几条灰杠
+      var top = kind === 'title' ? 300 : 150;
+      var rowH = 58;
+      var rows = Math.floor((H - top - 120) / rowH);
+      var left = W * 0.12;
+      var textW = W * 0.76;
+      g.font = font(34, false);
+      g.fillStyle = 'rgba(52,48,42,0.74)';
+      g.textAlign = 'left';
+      g.textBaseline = 'top';
+
+      g.save();
+      g.beginPath();
+      g.rect(left, top - 8, textW, rows * rowH + 16);
+      g.clip();
+      for (var r = 0; r < rows; r++) {
+        var y = top + r * rowH;
+        var x = left;
+        while (x < left + textW - 6) {
+          g.fillText(txt, x, y);
+          x += g.measureText(txt).width + 6;
+        }
+      }
+      g.restore();
+
+      // 右页右下角落款
+      if (kind === 'body' && author) {
+        g.font = font(30, false);
+        g.fillStyle = 'rgba(52,48,42,0.82)';
+        g.textAlign = 'right';
+        g.textBaseline = 'bottom';
+        g.fillText(author, W * 0.88, H - 72);
+      }
+
+      var tex = new THREE.CanvasTexture(cv);
+      tex.colorSpace = THREE.SRGBColorSpace;
+      tex.anisotropy = 4;
+      pageTexCache[key] = tex;
+      return tex;
     }
 
     /** 翻开：藏起封面三块板，换成摊开的两页
@@ -277,34 +452,26 @@
       g.name = 'OpenSpread';
       var paper = new THREE.MeshStandardMaterial({ color: SPEC.pageColor, roughness: 0.86, metalness: 0 });
       var shade = new THREE.MeshStandardMaterial({ color: SPEC.pageShade, roughness: 0.9, metalness: 0 });
-      var lineMat = new THREE.MeshStandardMaterial({ color: SPEC.textColor, roughness: 0.95, metalness: 0 });
+
+      // 彩蛋书：命中散列的这几本，翻开是另一段文字
+      var egg = isEggBook(held.ids[0]);
+      held.egg = egg;
+      var titleTxt = egg ? SPEC.eggTitle : SPEC.pageTitle;
+      var authorTxt = egg ? SPEC.eggAuthor : SPEC.pageAuthor;
 
       [1, -1].forEach(function (sign) {
         var half = new THREE.Group();
         half.position.x = sign * halfW * 0.5;
 
-        var page = new THREE.Mesh(new THREE.BoxGeometry(halfW * 0.96, pageH, 0.0016), paper);
+        /* 左页印标题，右页纯正文。
+           贴图是 canvas 现画的，字形来自系统字体，不额外带字体文件。 */
+        var mat = new THREE.MeshStandardMaterial({
+          map: pageTexture(sign < 0 ? 'title' : 'body', titleTxt, authorTxt, held.name),
+          roughness: 0.9,
+          metalness: 0
+        });
+        var page = new THREE.Mesh(new THREE.BoxGeometry(halfW * 0.96, pageH, 0.0016), mat);
         half.add(page);
-
-        // 每页 9 行横排文字：靠书脊留白，行末参差
-        var LN = 9;
-        var im = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 0.0045, 0.0012), lineMat, LN);
-        var dm = new THREE.Object3D();
-        var yStart = pageH * 0.34;
-        var yStep = (pageH * 0.68) / (LN - 1);
-        for (var i = 0; i < LN; i++) {
-          var fr = (i === LN - 1) ? 0.42 : (0.72 + 0.26 * (((i * 37 + 5) % 11) / 10));
-          var len = halfW * 0.78 * fr;
-          // 靠书脊 10% 留白，外边对齐
-          var xInner = -sign * halfW * 0.5 + sign * halfW * 0.10;
-          dm.position.set(xInner + sign * len / 2, yStart - yStep * i, 0.0016);
-          dm.scale.set(len, 1, 1);
-          dm.rotation.set(0, 0, 0);
-          dm.updateMatrix();
-          im.setMatrixAt(i, dm.matrix);
-        }
-        im.instanceMatrix.needsUpdate = true;
-        half.add(im);
 
         half.rotation.y = sign * SPEC.spreadFold;   // 沿书脊折一点，外侧往后让
         g.add(half);
@@ -386,11 +553,12 @@
       h.src.mesh.instanceMatrix.needsUpdate = true;
 
       var label = h.label;
+      var bookName = h.name || null;
       h.group.traverse(function (n) {
         if (n.isMesh && n.material && n.material.dispose) n.material.dispose();
       });
       h.group.removeFromParent();
-      return { ok: true, label: label, surfaceY: +surfaceY.toFixed(3) };
+      return { ok: true, mode: 'drop', label: label, name: bookName, surfaceY: +surfaceY.toFixed(3) };
     }
 
     function take() {
@@ -406,6 +574,22 @@
       aim = null;
       onAim(null);
       return { ok: true, label: held.label, parts: held.ids.length };
+    }
+
+    /* 放回原位：拿起来时 `buildHeld` 已经把每一块的原始实例矩阵存进 held.saved，
+       这里原样写回去就完事——不解算落面、不重算偏航、不看相机。
+       所以人走到屋子哪一头、躺着看还是举到眼前，放回去的位置都是那本书原来的位置。 */
+    function putBack() {
+      if (!held) return { ok: false, reason: 'nothing' };
+      // 摊开的那页纸没有 instanceId，写矩阵之前必须先合上
+      closeBook();
+      var h = held;
+      held = null;
+      inspecting = false;
+      inspectW = 0;
+      var out = { ok: true, mode: 'putback', label: h.label, name: h.name || null, parts: h.saved.length };
+      disposeHeld(h, true);      // restore=true：把 saved 里的矩阵一条条写回实例
+      return out;
     }
 
     function update(dt) {
@@ -456,8 +640,9 @@
       }
 
       var t = probe();
-      var next = t ? { label: t.label, distance: t.distance } : null;
-      var changed = (!aim && next) || (aim && !next) || (aim && next && (aim.label !== next.label || Math.abs(aim.distance - next.distance) > 0.25));
+      var next = t ? { label: t.label, name: t.name || null, distance: t.distance } : null;
+      var changed = (!aim && next) || (aim && !next) ||
+        (aim && next && (aim.label !== next.label || Math.abs(aim.distance - next.distance) > 0.25));
       aim = next;
       if (changed) onAim(next);
     }
@@ -475,8 +660,21 @@
       }
       if (k === SPEC.key) {
         e.preventDefault();
-        take();
-        if (o.onChange) o.onChange(held);
+        // 手上拿着东西时，E 是"放回原位"，不是"随手放下"
+        if (held) {
+          var back = putBack();
+          if (o.onChange) o.onChange(null, back);
+        } else {
+          take();
+          if (o.onChange) o.onChange(held);
+        }
+        return;
+      }
+      if (k === SPEC.dropKey) {
+        if (!held) return;
+        e.preventDefault();
+        var fell = drop();
+        if (o.onChange) o.onChange(null, fell);
       }
     }
 
@@ -526,10 +724,12 @@
       update: update,
       take: take,
       drop: drop,
+      putBack: putBack,
       probe: probe,
       getAim: function () { return aim; },
       isHolding: function () { return !!held; },
       getHeldLabel: function () { return held ? held.label : null; },
+      getHeldName: function () { return held ? (held.name || null) : null; },
       getHeldPartCount: function () { return held ? held.ids.length : 0; },
       setInspect: function (on) { inspecting = !!on && !!held; },
       isInspecting: function () { return inspecting; },
@@ -543,6 +743,7 @@
           x: +held.size.x.toFixed(4), y: +held.size.y.toFixed(4), z: +held.size.z.toFixed(4),
           upright: held.baseQuat ? (held.baseQuat.w !== 1 ? 'rotated' : 'none') : 'not-book',
           axis: held.baseAxis,
+          egg: !!held.egg,
           open: !!openBook
         };
       },

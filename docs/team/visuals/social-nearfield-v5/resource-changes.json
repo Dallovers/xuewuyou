@@ -1,0 +1,23 @@
+[
+  {
+    "file": "ao-manifest.json",
+    "before": 315895,
+    "after": 325953,
+    "delta": 10058,
+    "sha256": "689d89d2173a24fe71ebc36d8d3423fb839f75976cf46f332a1b5e3f643c772f"
+  },
+  {
+    "file": "contact-ao.png",
+    "before": 2387469,
+    "after": 2375303,
+    "delta": -12166,
+    "sha256": "13f9eac8e62c681ff21c8bfd24f1e4d7ed7aa86da2334456c0026f5ac1bb643a"
+  },
+  {
+    "file": "indirect-diffuse.jpg",
+    "before": 972984,
+    "after": 965462,
+    "delta": -7522,
+    "sha256": "e72c02b27ab6f1a9cc4ccafa772831c90f9964fddfd1c3155b7dea11369f37e8"
+  }
+]

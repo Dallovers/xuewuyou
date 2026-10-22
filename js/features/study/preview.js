@@ -144,20 +144,38 @@ const crosshair = document.getElementById('crosshair');
 const aimHint = document.getElementById('aimHint');
 
 /* 提示条要同时照顾三件事：准星上能拿的东西、旁边的座位、已经坐着。
-   所以每帧算一次，而不是靠回调——两个来源各自回调会互相覆盖。 */
+   所以每帧算一次，而不是靠回调——两个来源各自回调会互相覆盖。
+   另有一层"短提示"：放下 / 放回原位这类瞬时动作要给一句反馈，
+   但下一帧就会被每帧重算的提示盖掉，所以单独占一个时间窗。 */
+let toast = null;
+let toastAt = 0;
+function flash(msg) {
+  toast = msg;
+  toastAt = performance.now();
+}
+
 function updateHint() {
   if (!aimHint) return;
+  const now = performance.now();
+  if (toast && now - toastAt < 1400) {
+    aimHint.textContent = toast;
+    aimHint.style.display = 'block';
+    return;
+  }
   // 手上拿着东西时，最要紧的是"怎么放/怎么翻"，优先于准星提示
   if (picker && picker.isHolding()) {
     const isBook = picker.getHeldLabel() === '书';
-    aimHint.textContent = '按 E 放下' +
+    const heldName = picker.getHeldName();
+    aimHint.textContent = (heldName ? '《' + heldName + '》　·　' : '') +
+      '按 E 放回原位　·　按 G 随手放下' +
       (isBook ? (picker.isBookOpen() ? '　·　按 Q 合上' : '　·　按 Q 翻开') : '');
     aimHint.style.display = 'block';
     return;
   }
   const aimed = picker && picker.getAim();
   if (aimed) {
-    aimHint.textContent = '按 E 拿起 ' + aimed.label + '　·　' + aimed.distance.toFixed(1) + ' m';
+    aimHint.textContent = '按 E 拿起 ' + (aimed.name ? '《' + aimed.name + '》' : aimed.label) +
+      '　·　' + aimed.distance.toFixed(1) + ' m';
     aimHint.style.display = 'block';
     return;
   }
@@ -213,19 +231,27 @@ function setWalk(on) {
         dom: canvas,
         root: room,
         scene,
-        onAim: () => {}
+        onAim: () => {},
+        // 放回原位 / 随手放下之后各给一句，用户才知道东西到底去哪了
+        onChange: (h, r) => {
+          if (!r) return;
+          const who = r.name ? '《' + r.name + '》' : r.label;
+          if (r.mode === 'putback') flash(who + ' 已放回原位');
+          else if (r.mode === 'drop') flash(who + ' 已放下');
+        }
       });
     }
     if (picker) picker.enable();
     /* 坐下：座位数据来自 room，朝向与落脚点在 seating.js 里推。
-       E 键的优先顺序——准星上有可拿的东西时让给拾取，否则才坐下 / 起身。 */
+       E 键的优先顺序——准星上有东西、或手上拿着东西，都让给拾取；否则才坐下 / 起身。
+       只判准星不判手，会出现"坐着拿书按 E 反而站起来"。 */
     if (!seating && SD.seating) {
       seating = SD.seating.createSeating({
         THREE,
         room,
         walker,
         colliders: walkBuild ? walkBuild.colliders : SD.colliders.build(THREE, room).colliders,
-        shouldYield: () => !!(picker && picker.getAim())
+        shouldYield: () => !!(picker && (picker.getAim() || picker.isHolding()))
       });
     }
     if (seating) seating.enable();

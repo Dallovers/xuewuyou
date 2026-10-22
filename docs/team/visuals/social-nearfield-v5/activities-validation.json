@@ -1,0 +1,204 @@
+{
+  "errors": [],
+  "consoleErrors": [],
+  "seating": {
+    "start": {
+      "x": 0,
+      "z": -5,
+      "y": 1.6,
+      "speed": 4.2,
+      "run": 6.6,
+      "radius": 0.35
+    },
+    "standing": {
+      "x": 1.8895800000000025,
+      "z": -5,
+      "y": 1.6,
+      "speed": 4.2,
+      "run": 6.6,
+      "radius": 0.35
+    },
+    "seated": {
+      "x": 3.1,
+      "z": -5,
+      "y": 1.18,
+      "speed": 4.2,
+      "run": 6.6,
+      "radius": 0.35
+    },
+    "walking": "W then E",
+    "movementPaused": true,
+    "escapeRestores": true,
+    "buttonRestores": true,
+    "eRestores": true
+  },
+  "otherSeats": [
+    {
+      "id": "social.bench.2",
+      "walking": "W then E",
+      "restored": {
+        "x": 7.1087400000000045,
+        "z": -1.9,
+        "y": 1.6,
+        "speed": 4.2,
+        "run": 6.6,
+        "radius": 0.35
+      }
+    },
+    {
+      "id": "social.bench.3",
+      "walking": "W then E",
+      "restored": {
+        "x": 7.529999999999998,
+        "z": 0.9,
+        "y": 1.6,
+        "speed": 4.2,
+        "run": 6.6,
+        "radius": 0.35
+      }
+    }
+  ],
+  "fountain": {
+    "standing": {
+      "x": 7.8,
+      "z": -3.0101400000000016,
+      "y": 1.6,
+      "speed": 4.2,
+      "run": 6.6,
+      "radius": 0.35
+    },
+    "render": {
+      "frame": 860,
+      "calls": 119,
+      "triangles": 46925,
+      "points": 2048,
+      "lines": 256
+    },
+    "memory": {
+      "geometries": 246,
+      "textures": 35
+    },
+    "particles": 2048,
+    "prompt": "按 E 关闭水流",
+    "staticSignature": "3f5f9a2e",
+    "heldEDoesNotRetoggle": true,
+    "bakeCheck": {
+      "before": "bcfeaace",
+      "after": "bcfeaace",
+      "expected": "bcfeaace"
+    }
+  },
+  "waterOnMoving": {
+    "samples": 96,
+    "p50": 16.699999999999818,
+    "p95": 16.800000000000182,
+    "max": 17,
+    "from": {
+      "x": 7.8,
+      "z": -3.0101400000000016,
+      "y": 1.6,
+      "speed": 4.2,
+      "run": 6.6,
+      "radius": 0.35
+    },
+    "to": {
+      "x": 7.84827343483982,
+      "z": -3.060444611008996,
+      "y": 1.6,
+      "speed": 4.2,
+      "run": 6.6,
+      "radius": 0.35
+    },
+    "route": "D then A, fountain on"
+  },
+  "cycles": [
+    {
+      "loaded": {
+        "geometries": 498,
+        "textures": 66
+      },
+      "after": {
+        "geometries": 246,
+        "textures": 35
+      },
+      "staleAction": {
+        "ok": false,
+        "reason": "disposed"
+      },
+      "detached": true
+    },
+    {
+      "loaded": {
+        "geometries": 498,
+        "textures": 66
+      },
+      "after": {
+        "geometries": 246,
+        "textures": 35
+      },
+      "staleAction": {
+        "ok": false,
+        "reason": "disposed"
+      },
+      "detached": true
+    },
+    {
+      "loaded": {
+        "geometries": 498,
+        "textures": 66
+      },
+      "after": {
+        "geometries": 246,
+        "textures": 35
+      },
+      "staleAction": {
+        "ok": false,
+        "reason": "disposed"
+      },
+      "detached": true
+    },
+    {
+      "loaded": {
+        "geometries": 498,
+        "textures": 66
+      },
+      "after": {
+        "geometries": 246,
+        "textures": 35
+      },
+      "staleAction": {
+        "ok": false,
+        "reason": "disposed"
+      },
+      "detached": true
+    },
+    {
+      "loaded": {
+        "geometries": 498,
+        "textures": 66
+      },
+      "after": {
+        "geometries": 246,
+        "textures": 35
+      },
+      "staleAction": {
+        "ok": false,
+        "reason": "disposed"
+      },
+      "detached": true
+    }
+  ],
+  "browser": "156.0.8078.4",
+  "conditions": {
+    "viewport": [
+      1536,
+      1024
+    ],
+    "dpr": 1,
+    "eyeStanding": 1.6,
+    "eyeSeated": 1.18,
+    "mm": 35,
+    "exposure": 0.86,
+    "headless": true
+  }
+}
