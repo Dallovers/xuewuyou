@@ -24,7 +24,13 @@
 
   var SPEC = {
     reach: 2.40,          // 能拿多远（m）
-    key: 'e',             // 拿起 / 放下
+    key: 'e',             // 拿起 / **放回原位**
+    /* 随手放下单独一个键。
+       为什么不让 E 一个键包办：放下要先向下打射线找落面、再按相机朝向重算偏航，
+       一旦人正低头、或者把书举到眼前（右键），落点就跑了——表现就是"一松手书掉地上"。
+       放回原位是把拿起来时存下的实例矩阵原样写回，跟视角、姿态、位置全都无关，
+       所以它可以做默认动作。想挪到别处去才按 G。 */
+    dropKey: 'g',
     holdDistance: 0.50,   // 拿在手里时离眼睛多远
     holdDown: 0.12,       // 往下沉一点，像端在手上
     holdRight: 0.06,      // 略偏右手
@@ -484,7 +490,7 @@
         if (n.isMesh && n.material && n.material.dispose) n.material.dispose();
       });
       h.group.removeFromParent();
-      return { ok: true, label: label, surfaceY: +surfaceY.toFixed(3) };
+      return { ok: true, mode: 'drop', label: label, surfaceY: +surfaceY.toFixed(3) };
     }
 
     function take() {
@@ -500,6 +506,22 @@
       aim = null;
       onAim(null);
       return { ok: true, label: held.label, parts: held.ids.length };
+    }
+
+    /* 放回原位：拿起来时 `buildHeld` 已经把每一块的原始实例矩阵存进 held.saved，
+       这里原样写回去就完事——不解算落面、不重算偏航、不看相机。
+       所以人走到屋子哪一头、躺着看还是举到眼前，放回去的位置都是那本书原来的位置。 */
+    function putBack() {
+      if (!held) return { ok: false, reason: 'nothing' };
+      // 摊开的那页纸没有 instanceId，写矩阵之前必须先合上
+      closeBook();
+      var h = held;
+      held = null;
+      inspecting = false;
+      inspectW = 0;
+      var out = { ok: true, mode: 'putback', label: h.label, parts: h.saved.length };
+      disposeHeld(h, true);      // restore=true：把 saved 里的矩阵一条条写回实例
+      return out;
     }
 
     function update(dt) {
@@ -569,8 +591,21 @@
       }
       if (k === SPEC.key) {
         e.preventDefault();
-        take();
-        if (o.onChange) o.onChange(held);
+        // 手上拿着东西时，E 是"放回原位"，不是"随手放下"
+        if (held) {
+          var back = putBack();
+          if (o.onChange) o.onChange(null, back);
+        } else {
+          take();
+          if (o.onChange) o.onChange(held);
+        }
+        return;
+      }
+      if (k === SPEC.dropKey) {
+        if (!held) return;
+        e.preventDefault();
+        var fell = drop();
+        if (o.onChange) o.onChange(null, fell);
       }
     }
 
@@ -620,6 +655,7 @@
       update: update,
       take: take,
       drop: drop,
+      putBack: putBack,
       probe: probe,
       getAim: function () { return aim; },
       isHolding: function () { return !!held; },
