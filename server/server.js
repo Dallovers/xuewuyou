@@ -611,7 +611,9 @@ function serveStatic(req, res) {
   const publicPath = parts.join('/');
   const libraryAsset = /^examples\/library-3d\/(?:index\.html|library\.css|app\.bundle\.js|assets\/(?:catalog-availability\.json|wenku-library\.glb)|vendor\/pdfjs\/(?:pdf\.min\.js|pdf\.worker\.min\.js))$/.test(publicPath);
   const libraryMaterial = /^examples\/campus-3d-v5\/assets\/(?:[a-z]+-(?:color|normal|roughness)\.jpg|sky\.hdr)$/.test(publicPath);
-  if (relative.startsWith('..') || path.isAbsolute(relative) || parts.some(p => p.startsWith('.')) || !(ALLOWED_ROOTS.includes(parts[0]) || libraryAsset || libraryMaterial)) return sendError(res, 403, '禁止访问');
+    /* 只额外放行 3D 自习接入样例，不开放整个 examples/ */
+  const campusIntegration = publicPath.startsWith('examples/campus-integration/');
+  if (relative.startsWith('..') || path.isAbsolute(relative) || parts.some(p => p.startsWith('.')) || !(ALLOWED_ROOTS.includes(parts[0]) || libraryAsset || libraryMaterial|| campusIntegration)) return sendError(res, 403, '禁止访问');
   fs.readFile(filePath, (err, buf) => {
     if (err) return sendError(res, 404, '文件不存在');
     const ext = path.extname(filePath).toLowerCase();

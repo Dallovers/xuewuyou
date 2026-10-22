@@ -64,6 +64,21 @@ https://<你的域名>/xuewuyou/examples/campus-integration/preview.html
 
 前提：仓库根目录的 `index.html`、`js/` 已部署；浏览器允许同源 iframe（GitHub Pages 默认允许）。本地 `file://` 打开不行（跨域）。
 
+## 主站入口与返回（本批补齐）
+
+- **主站入口**：自习室 → 多人自习 → 「进入 3D 自习空间」。保留原有「刷新房间」和普通房间入口。
+- **场景返回**：左上「返回多人自习」→ 主站 `#rooms`。
+- **深链垫片**：`js/features/campus-entry.js` 在 `#rooms` 时复用现有 `[data-nav="rooms"]` 点击，不改 `app.js`。
+-**最小接线**：`index.html` 两处 + `server/server.js` 白名单一处，见本文“主站入口与返回”一节。
+
+## 本批修复（PR #28 审查）
+
+1. **主站入口/返回**：不再要求手输 `__district_reference__/preview.html`；入口、返回和静态白名单见上。
+2. **iframe 内 Esc**：同源子文档监听 Escape，尊重业务内层 `dialog[open]`，关闭外层并清理输入/焦点；iframe 每次重载重新绑定。
+3. **BFCache**：`pagehide.persisted=true` 只暂停并保留 renderer/模块；`pageshow.persisted=true` 重置时钟、清输入并恢复循环；真正卸载才幂等 `dispose()`。
+
+> `validation.json` 仍是下发参考包的旧结果，不作为本批实测证据；本批需要按本 README 的验收清单实跑并另存记录。
+
 ## 接口约定（A/B 可挂载模块）
 
 ```js
