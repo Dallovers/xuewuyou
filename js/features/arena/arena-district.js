@@ -50,7 +50,7 @@ export const ARENA_LAYOUT = {
    - bronze：开赛锣的铜面，靠金属反射读出"是真锣"。 */
 const MATERIAL_SPEC = {
   stone_light: { color: 0xcfc8ba, roughness: 0.74, metalness: 0.0, envMapIntensity: 0.55, uvUnit: 1.2 },
-  stone_light_in: { color: 0xd2cbbd, roughness: 0.62, metalness: 0.0, envMapIntensity: 0.5, uvUnit: 1.2 },
+  stone_light_in: { color: 0xc3bcac, roughness: 0.62, metalness: 0.0, envMapIntensity: 0.5, uvUnit: 1.2 },
   brick_grey: { color: 0x9a9f9b, roughness: 0.86, metalness: 0.0, envMapIntensity: 0.5, uvUnit: 1.7 },
   metal_dark: { color: 0x454b47, roughness: 0.54, metalness: 0.04, envMapIntensity: 0.52 },
   metal_frame: { color: 0x4a5559, roughness: 0.32, metalness: 0.55, envMapIntensity: 0.9 },
@@ -60,6 +60,16 @@ const MATERIAL_SPEC = {
   fabric_greygreen: { color: 0x777d6e, roughness: 0.9, metalness: 0.0 },
   accent_amber: { color: 0xc98b3f, roughness: 0.4, metalness: 0.2, emissive: 0xc98b3f, emissiveIntensity: 0.3 },
   arena_olive: { color: 0x9a9e67, roughness: 0.82, metalness: 0.0, envMapIntensity: 0.45 },
+  /* 围绳分三层颜色：下深、中橄榄、上米白。
+     三道绳全用同一个橄榄时，逆光下会糊成一块绿板，读不出"三层绳"这个结构。 */
+  rope_dark: { color: 0x6d7248, roughness: 0.96, metalness: 0.0, envMapIntensity: 0.25 },
+  rope_cream: { color: 0xe0d7b9, roughness: 0.95, metalness: 0.0, envMapIntensity: 0.25 },
+  /* 护角垫：包布的，比围绳更暗更粗糙，否则读成"柱子加粗了一圈" */
+  canvas_olive: { color: 0x7f8455, roughness: 0.97, metalness: 0.0, envMapIntensity: 0.2 },
+  /* 串旗三色。赭石是这块场地唯一的暖色，专门用来把"有比赛"这件事点出来 */
+  flag_olive: { color: 0x8d915e, roughness: 0.92, metalness: 0.0, doubleSide: true },
+  flag_cream: { color: 0xe6dcbe, roughness: 0.92, metalness: 0.0, doubleSide: true },
+  flag_ochre: { color: 0xb0744a, roughness: 0.9, metalness: 0.0, doubleSide: true },
   /* 铜面：挂在牌坊梁下、一直在檐影里，纯金属 + 低环境强度会读成一块深褐色圆板。
      颜色提亮、粗糙度放宽、envMapIntensity 单独拉高，再加一点自发光兜底，
      让它从西侧正对着看也是"铜"而不是"泥"。 */
@@ -387,6 +397,9 @@ function resolveMaterials(THREE, shared, owner) {
       roughness: spec.roughness,
       metalness: spec.metalness,
     };
+    /* 旗子是薄片，单面材质从背面看会直接消失；这里不能写 THREE.DoubleSide——
+       THREE 是宿主传进来的，模块顶层拿不到，只能在拼参数时按标记补上。 */
+    if (spec.doubleSide) params.side = THREE.DoubleSide;
     if (spec.envMapIntensity !== undefined) params.envMapIntensity = spec.envMapIntensity;
     if (spec.emissive !== undefined) {
       params.emissive = spec.emissive;
@@ -530,6 +543,48 @@ export function createDistrict(ctx = {}) {
     return g;
   }
 
+  function planeGeo(w, d) {
+    const key = 'p' + w.toFixed(3) + '|' + d.toFixed(3);
+    let g = geoCache.get(key);
+    if (!g) {
+      g = new THREE.PlaneGeometry(w, d);
+      g.userData.__arenaCached = true;
+      geoCache.set(key, g);
+    }
+    return g;
+  }
+
+  function sphereGeo(r, wSeg, hSeg) {
+    const key = 's' + r + '|' + wSeg + '|' + hSeg;
+    let g = geoCache.get(key);
+    if (!g) {
+      g = new THREE.SphereGeometry(r, wSeg, hSeg);
+      g.userData.__arenaCached = true;
+      geoCache.set(key, g);
+    }
+    return g;
+  }
+
+  /* 三角串旗：一个三角形平面，顶点在 0、底边压在上沿。
+     用 PlaneGeometry 拼不出下垂的三角，单独建一份、全场地共用。 */
+  function triFlagGeo(w, h) {
+    const key = 'f' + w + '|' + h;
+    let g = geoCache.get(key);
+    if (g) return g;
+    const hw = w / 2;
+    g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute([
+      -hw, 0, 0,
+      0, -h, 0,
+      hw, 0, 0,
+    ], 3));
+    g.setAttribute('uv', new THREE.Float32BufferAttribute([0, 1, 0.5, 0, 1, 1], 2));
+    g.computeVertexNormals();
+    g.userData.__arenaCached = true;
+    geoCache.set(key, g);
+    return g;
+  }
+
   /* Box 默认每面 UV 都是 0–1，一块 7.2m 宽的台基用 0–1 铺石材会被拉成条带。
      按面的真实尺寸除以 unit 重算，思路同社交广场。 */
   function tileBoxUV(geo, unit) {
@@ -589,6 +644,99 @@ export function createDistrict(ctx = {}) {
     colliders.push({ name, type: 'box', center: [x, h / 2, z], half: [w / 2, h / 2, d / 2] });
   }
 
+  /* ---------- 接地阴影 ----------
+   * vendor 里没有 EffectComposer，做不了 SSAO。没有这一层，所有东西都是"硬贴"在地面上，
+   * 一眼就是没渲染完的模型。一张径向渐变贴片压在底下，成本两个三角形，效果比加十盏灯强。
+   * 贴片不写深度（depthWrite:false）、不参与 tone mapping，免得被 ACES 提亮回去。 */
+  let contactTex = null;
+
+  function contactTexture() {
+    if (contactTex) return contactTex;
+    if (typeof document === 'undefined') return null;
+    const size = 128;
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    const g = canvas.getContext('2d');
+    if (!g) return null;
+    const grd = g.createRadialGradient(size / 2, size / 2, size * 0.10, size / 2, size / 2, size * 0.5);
+    grd.addColorStop(0, 'rgba(24,22,16,0.66)');
+    grd.addColorStop(0.42, 'rgba(24,22,16,0.30)');
+    grd.addColorStop(1, 'rgba(24,22,16,0)');
+    g.fillStyle = grd;
+    g.fillRect(0, 0, size, size);
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    contactTex = owner.ownTexture(tex);
+    return contactTex;
+  }
+
+  function contactShadow(x, z, w, d, y, opacity) {
+    const tex = contactTexture();
+    if (!tex) return null;
+    const mat = new THREE.MeshBasicMaterial({
+      map: tex,
+      transparent: true,
+      opacity: opacity == null ? 0.85 : opacity,
+      depthWrite: false,
+      toneMapped: false,
+    });
+    mat.name = 'contact-shadow';
+    owner.ownMaterial(mat);
+    const mesh = add(planeGeo(w, d), mat, x, y, z, {
+      rotX: -Math.PI / 2, cast: false, receive: false, name: 'dressing:contact-shadow',
+    });
+    mesh.renderOrder = 2;
+    return mesh;
+  }
+
+  /* ---------- 灯晕 ----------
+   * vendor 里没有后处理，做不了 bloom。灯笼想"亮"只能自己贴一圈加色贴片。
+   * 用 Sprite 而不是平面：无论机位转到哪个角度都正对镜头，不会变成一条线。 */
+  let glowTex = null;
+  let glowMat = null;
+
+  function lanternGlow(x, y, z, scale) {
+    if (!glowTex && typeof document !== 'undefined') {
+      const size = 128;
+      const canvas = document.createElement('canvas');
+      canvas.width = size;
+      canvas.height = size;
+      const g = canvas.getContext('2d');
+      if (g) {
+        const grd = g.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
+        grd.addColorStop(0, 'rgba(255,232,178,0.85)');
+        grd.addColorStop(0.32, 'rgba(255,206,132,0.34)');
+        grd.addColorStop(0.68, 'rgba(255,190,110,0.10)');
+        grd.addColorStop(1, 'rgba(255,180,100,0)');
+        g.fillStyle = grd;
+        g.fillRect(0, 0, size, size);
+        const tex = new THREE.CanvasTexture(canvas);
+        tex.colorSpace = THREE.SRGBColorSpace;
+        glowTex = owner.ownTexture(tex);
+      }
+    }
+    if (!glowTex) return null;
+    if (!glowMat) {
+      glowMat = owner.ownMaterial(new THREE.SpriteMaterial({
+        map: glowTex,
+        transparent: true,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending,
+        opacity: 0.42,
+        toneMapped: false,
+      }));
+      glowMat.name = 'lantern-glow';
+    }
+    const s = new THREE.Sprite(glowMat);
+    s.position.set(x, y, z);
+    const k = scale == null ? 1.05 : scale;
+    s.scale.set(k, k, 1);
+    s.name = 'dressing:lantern-glow';
+    root.add(s);
+    return s;
+  }
+
   /* ---------- 纹理：铺装 / 标识 / 挂幡 ---------- */
 
   /* 程序化错缝石板：单张天然石纹平铺后重复感重、也读不出板缝，所以自己画。
@@ -604,30 +752,60 @@ export function createDistrict(ctx = {}) {
     const g = canvas.getContext('2d');
     if (!g) return null;
 
-    g.fillStyle = '#a9a495';
+    /* 底色就是缝隙色。之前底色取浅灰、板面也浅，缝隙只有 1.6px 且几乎同色，
+       整片地面在太阳下读成一块白板——远看没有任何"板"的信息。 */
+    g.fillStyle = '#59564b';
     g.fillRect(0, 0, size, size);
 
     const cols = 4;
     const rows = 4;
     const tw = size / cols;
     const th = size / rows;
+    const gap = 2.6;
     for (let row = 0; row < rows; row++) {
       const offset = (row % 2) * (tw / 2);
       for (let col = -1; col <= cols; col++) {
         const x = col * tw + offset;
         const y = row * th;
-        const v = 199 + (Math.random() * 16 - 8);
-        g.fillStyle = 'rgb(' + Math.round(v) + ',' + Math.round(v * 0.987) + ',' + Math.round(v * 0.948) + ')';
-        g.fillRect(x + 1.6, y + 1.6, tw - 3.2, th - 3.2);
-        for (let k = 0; k < 24; k++) {
-          const px = x + 3 + Math.random() * (tw - 6);
-          const py = y + 3 + Math.random() * (th - 6);
-          g.fillStyle = 'rgba(146,136,116,' + (0.03 + Math.random() * 0.05).toFixed(3) + ')';
+        /* 每块石板单独取一个亮度：±14 的浮动才看得出"一块一块"，
+           之前 ±8 且色相固定，四块拼起来是一整片。 */
+        const v = 178 + (Math.random() * 28 - 14);
+        const warm = Math.random() * 0.5;
+        g.fillStyle = 'rgb(' + Math.round(v + warm * 4)
+          + ',' + Math.round(v * 0.982)
+          + ',' + Math.round(v * 0.930) + ')';
+        g.fillRect(x + gap, y + gap, tw - gap * 2, th - gap * 2);
+
+        // 石纹：小斑点 + 一两处浅色晕
+        for (let k = 0; k < 30; k++) {
+          const px = x + 4 + Math.random() * (tw - 8);
+          const py = y + 4 + Math.random() * (th - 8);
+          g.fillStyle = 'rgba(96,88,72,' + (0.03 + Math.random() * 0.07).toFixed(3) + ')';
           g.beginPath();
-          g.arc(px, py, 3 + Math.random() * 13, 0, Math.PI * 2);
+          g.arc(px, py, 2 + Math.random() * 14, 0, Math.PI * 2);
+          g.fill();
+        }
+        for (let k = 0; k < 3; k++) {
+          const px = x + 6 + Math.random() * (tw - 12);
+          const py = y + 6 + Math.random() * (th - 12);
+          g.fillStyle = 'rgba(226,221,203,' + (0.05 + Math.random() * 0.06).toFixed(3) + ')';
+          g.beginPath();
+          g.ellipse(px, py, 8 + Math.random() * 16, 5 + Math.random() * 10, Math.random() * 3, 0, Math.PI * 2);
           g.fill();
         }
       }
+    }
+    /* 整片再盖一层很低对比的脏迹，打散"平铺"的规律感；
+       石板边缘留出的一点暗角也一起压一下，接缝不至于太硬。 */
+    for (let k = 0; k < 26; k++) {
+      const px = Math.random() * size;
+      const py = Math.random() * size;
+      const rr = 40 + Math.random() * 120;
+      const grd = g.createRadialGradient(px, py, 0, px, py, rr);
+      grd.addColorStop(0, 'rgba(70,64,52,0.055)');
+      grd.addColorStop(1, 'rgba(70,64,52,0)');
+      g.fillStyle = grd;
+      g.fillRect(px - rr, py - rr, rr * 2, rr * 2);
     }
 
     const tex = new THREE.CanvasTexture(canvas);
@@ -797,6 +975,53 @@ export function createDistrict(ctx = {}) {
     return mat;
   }
 
+  /* 铺装与草地的软过渡：
+     硬质铺装直接切到草地是一条刀切般的直边，近景看就是"两块面片叠在一起"。
+     这里在铺装外沿压一圈渐隐的苔痕，越靠外越淡，等于补上距离场该有的接触暗部。
+     逐像素算到场地矩形的距离再平滑，比拉四条渐变条省事，四个角也不会接缝。
+     西边界不放：并排到社交广场时那条边是两片铺装的接缝，压一圈绿会变成一条割裂线。 */
+  function makeEdgeFadeMaterial(w, d, band) {
+    if (typeof document === 'undefined') return null;
+    const planeW = w + band;
+    const planeD = d + band * 2;
+    const W = 256;
+    const H = Math.max(64, Math.round(W * planeD / planeW));
+    const canvas = document.createElement('canvas');
+    canvas.width = W;
+    canvas.height = H;
+    const g = canvas.getContext('2d');
+    if (!g) return null;
+    const img = g.createImageData(W, H);
+    const px = img.data;
+    const maxA = 0.62;
+    for (let j = 0; j < H; j++) {
+      const z = -d / 2 - band + (j + 0.5) / H * planeD;
+      const dz = Math.max(0, Math.abs(z) - d / 2);
+      for (let i = 0; i < W; i++) {
+        const x = -w / 2 + (i + 0.5) / W * planeW;
+        const dx = Math.max(0, x - w / 2);
+        const dist = Math.sqrt(dx * dx + dz * dz);
+        const t = Math.min(1, dist / band);
+        const k = t * t * (3 - 2 * t) * maxA;
+        const o = (j * W + i) * 4;
+        px[o] = 74;
+        px[o + 1] = 70;
+        px[o + 2] = 52;
+        px[o + 3] = Math.round(k * 255);
+      }
+    }
+    g.putImageData(img, 0, 0);
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    if (!owner.ownTexture(tex)) return null;
+    const mat = new THREE.MeshBasicMaterial({
+      map: tex, transparent: true, depthWrite: false, toneMapped: false,
+    });
+    mat.name = 'edge-fade';
+    owner.ownMaterial(mat);
+    return mat;
+  }
+
   /* ---------- 场地与通路 ---------- */
 
   function buildSite() {
@@ -806,13 +1031,26 @@ export function createDistrict(ctx = {}) {
     add(new THREE.PlaneGeometry(L.lawn.w, L.lawn.d), lawnMat, 0, -0.055, 0, {
       rotX: -Math.PI / 2, name: 'site:lawn', cast: false,
     });
-    const siteMat = makePavingMaterial('#a8a08f', L.site.w, L.site.d, 2.2) || M.ground_paving;
+    /* 三块地面压成三档明度：主场地最亮、擂台圈地中间、进场主路最浅（人走得多，磨得发白）。
+       先前三块都在 #a8 以上，又被贴图的亮底色乘了一遍，整片读成一块白板。 */
+    const siteMat = makePavingMaterial('#9c9684', L.site.w, L.site.d, 2.2) || M.ground_paving;
     add(new THREE.PlaneGeometry(L.site.w, L.site.d), siteMat, 0, 0.02, 0, {
       rotX: -Math.PI / 2, name: 'site:paving', cast: false,
     });
 
+    /* 场地外沿的苔痕过渡：压在铺装下面一档（0.016 < 0.02），
+       只有铺装之外那圈才露出来。 */
+    const fadeBand = 0.9;
+    const fadeMat = makeEdgeFadeMaterial(L.site.w, L.site.d, fadeBand);
+    if (fadeMat) {
+      const fade = add(planeGeo(L.site.w + fadeBand, L.site.d + fadeBand * 2), fadeMat, fadeBand / 2, 0.016, 0, {
+        rotX: -Math.PI / 2, cast: false, receive: false, name: 'site:edge-fade',
+      });
+      fade.renderOrder = 1;
+    }
+
     // 擂台圈地：整块铺装略深一档，把"场"和"通道"分开
-    const apronMat = makePavingMaterial('#94907c', L.ring.size + 1.8, L.ring.size + 1.8, 1.4) || M.ground_paving;
+    const apronMat = makePavingMaterial('#847f6c', L.ring.size + 1.8, L.ring.size + 1.8, 1.4) || M.ground_paving;
     add(new THREE.PlaneGeometry(L.ring.size + 1.8, L.ring.size + 1.8), apronMat, L.ring.cx, 0.028, L.ring.cz, {
       rotX: -Math.PI / 2, name: 'ring:apron', cast: false,
     });
@@ -824,7 +1062,7 @@ export function createDistrict(ctx = {}) {
     const pathX2 = L.ring.cx - L.ring.size / 2 - L.step.run * L.step.count;
     const pathLen = pathX2 - pathX1;
     const pathCx = (pathX1 + pathX2) / 2;
-    const pathMat = makePavingMaterial('#ddd6c6', pathLen, pathW, 2.2) || M.stone_light;
+    const pathMat = makePavingMaterial('#c9bfa8', pathLen, pathW, 2.2) || M.stone_light;
     add(new THREE.PlaneGeometry(pathLen, pathW), pathMat, pathCx, 0.045, 0, {
       rotX: -Math.PI / 2, name: 'path:main', cast: false,
     });
@@ -854,6 +1092,9 @@ export function createDistrict(ctx = {}) {
     add(beveledBoxGeometry(THREE, R.size, R.base, R.size, 0.014, 1.15), M.stone_light, R.cx, R.base / 2, R.cz, {
       name: 'arena:ring-base',
     });
+    /* 落地阴影：只在台基四周露出来一圈。没有它，7.2m 见方的台子读起来是"贴"在铺装上
+       而不是压在上面——这是整个场地最显眼的一处悬浮感。 */
+    contactShadow(R.cx, R.cz, R.size + 2.6, R.size + 2.6, 0.032, 0.9);
     // 台面：整块石材，不做地砖式分缝
     ringTop = add(beveledBoxGeometry(THREE, R.size + 0.1, R.cap, R.size + 0.1, 0.006, 1.2), M.stone_light_in,
       R.cx, R.base + R.cap / 2, R.cz, { name: 'arena:ring-top' });
@@ -883,11 +1124,35 @@ export function createDistrict(ctx = {}) {
       rotX: -Math.PI / 2, name: 'arena:ring-mark-dot', cast: false,
     });
 
+    /* 台面内圈一道乳白赛线：把台心那组圈收进一个框，远看就是"这块台上要比一场"。
+       比再画一组圆圈便宜，也把台面从"一整块石灰板"里救回来。 */
+    const lineY = topY + 0.006;
+    const lineInset = 0.62;
+    const lineW = 0.07;
+    const lineLen = R.size - lineInset * 2;
+    for (const sz of [-1, 1]) {
+      add(boxGeo(lineLen, 0.004, lineW), M.rope_cream, R.cx, lineY, R.cz + sz * (R.size / 2 - lineInset), {
+        name: 'arena:ring-line', cast: false,
+      });
+    }
+    for (const sx of [-1, 1]) {
+      add(boxGeo(lineW, 0.004, lineLen), M.rope_cream, R.cx + sx * (R.size / 2 - lineInset), lineY, R.cz, {
+        name: 'arena:ring-line', cast: false,
+      });
+    }
+
     // 四角立柱：柱础 + 柱身 + 柱帽，柱顶接一圈横梁
     const postR = R.size / 2 - L.post.inset;
+    const span = postR * 2;
     const postXs = [R.cx - postR, R.cx + postR];
     const postZs = [R.cz - postR, R.cz + postR];
     const postH = L.post.height;
+    const ropeY0 = topY + L.rope.from;
+    /* 柱身中段包一圈护角垫：围绳从垫子里穿出来，才像一张能打的擂台。
+       垫子只包下两道绳（0.3 ~ 1.1），第三道绳和绳扣露在垫子上方，
+       不然护垫一路包到柱顶，从远处看就是四根粗柱子。 */
+    const padH = 0.8;
+    const padCy = ropeY0 + 0.2;
     for (const px of postXs) {
       for (const pz of postZs) {
         add(beveledBoxGeometry(THREE, 0.3, 0.1, 0.3, 0.012, 1), M.stone_light_in, px, topY + 0.05, pz, {
@@ -897,6 +1162,13 @@ export function createDistrict(ctx = {}) {
           topY + 0.1 + (postH - 0.1) / 2, pz, { name: 'arena:post' });
         add(beveledBoxGeometry(THREE, L.post.size + 0.09, 0.08, L.post.size + 0.09, 0.008, 1), M.stone_light_in, px,
           topY + postH + 0.04, pz, { name: 'arena:post-cap' });
+        add(beveledBoxGeometry(THREE, 0.245, padH, 0.245, 0.022, 1), M.canvas_olive, px, padCy, pz, {
+          name: 'arena:post-pad',
+        });
+        // 束带：一道米白捆绳，护垫不是一个光面方桶
+        add(boxGeo(0.256, 0.05, 0.256), M.rope_cream, px, padCy + padH / 2 - 0.13, pz, {
+          name: 'arena:post-pad-strap', cast: false,
+        });
       }
     }
     const postTopY = topY + postH + 0.08;
@@ -914,18 +1186,43 @@ export function createDistrict(ctx = {}) {
       });
     }
 
+    /* 串旗：沿四根横梁挂一圈三角旗，三色循环。
+       擂台不该有顶，但"今天有比赛"这件事得有个信号——旗挂在裸梁下面，不封顶。
+       赭石是这块场地唯一的暖色，用来把节日感点出来，不然整场是灰绿一片。 */
+    const flagMats = [M.flag_olive, M.flag_cream, M.flag_ochre];
+    const flagGeo = triFlagGeo(0.24, 0.34);
+    const flagY = postTopY - 0.012;
+    const flagN = 8;
+    let flagIdx = 0;
+    for (const px of postXs) {
+      for (let i = 0; i < flagN; i++) {
+        const z = R.cz - postR + span * ((i + 0.5) / flagN);
+        const f = add(flagGeo, flagMats[flagIdx++ % 3], px, flagY, z, { name: 'arena:bunting', cast: false });
+        f.rotation.y = Math.PI / 2 + (Math.random() - 0.5) * 0.14;
+      }
+    }
+    for (const pz of postZs) {
+      for (let i = 0; i < flagN; i++) {
+        const x = R.cx - postR + span * ((i + 0.5) / flagN);
+        const f = add(flagGeo, flagMats[flagIdx++ % 3], x, flagY, pz, { name: 'arena:bunting', cast: false });
+        f.rotation.y = (Math.random() - 0.5) * 0.14;
+      }
+    }
+
     // 三道围绳：橄榄色包布，不是钢丝——钢丝在这个尺度上直接消失
-    const ropeY0 = topY + L.rope.from;
-    const span = postR * 2;
+    /* 三层分色：下深、中橄榄、上米白。全用一个橄榄色时，三道绳在逆光下糊成一块绿板，
+       结构完全读不出来；分色之后站在场外就能数清是三道。 */
+    const ropeMats = [M.rope_dark, M.arena_olive, M.rope_cream];
     for (let i = 0; i < L.rope.levels; i++) {
       const y = ropeY0 + i * L.rope.step;
+      const mat = ropeMats[i] || M.arena_olive;
       for (const pz of postZs) {
-        add(cylGeo(L.rope.radius, L.rope.radius, span, 10), M.arena_olive, R.cx, y, pz, {
+        add(cylGeo(L.rope.radius, L.rope.radius, span, 10), mat, R.cx, y, pz, {
           rotZ: Math.PI / 2, name: 'arena:rope',
         });
       }
       for (const px of postXs) {
-        add(cylGeo(L.rope.radius, L.rope.radius, span, 10), M.arena_olive, px, y, R.cz, {
+        add(cylGeo(L.rope.radius, L.rope.radius, span, 10), mat, px, y, R.cz, {
           rotX: Math.PI / 2, name: 'arena:rope',
         });
       }
@@ -1018,6 +1315,7 @@ export function createDistrict(ctx = {}) {
       add(beveledBoxGeometry(THREE, G.post, G.height - 0.12, G.post, 0.01, 1), M.metal_dark, G.x,
         0.12 + (G.height - 0.12) / 2, z, { name: 'arena:gate-post' });
       blockBox(0.28, G.height, 0.28, G.x, z, 'arena:gate-post');
+      contactShadow(G.x, z, 1.05, 1.05, 0.049, 0.8);
     }
     // 主梁 + 檐口。檐口只挑出 0.34/侧、板厚 0.08：
     // 早先 0.45+0.1 的檐从西侧看是一整块黑板，把擂台全挡住了
@@ -1128,6 +1426,45 @@ export function createDistrict(ctx = {}) {
       addSignPanel(sign, 1.2, 0.4, D.x, D.h + 0.06 + 0.2, D.z, { name: 'arena:desk-sign' });
     }
 
+    /* 报到处上方一顶单坡挑檐：东侧这一角原本只有一只柜子立在空铺装上，
+       从场内看过去没有任何高度变化。给一件家具加顶，比再摆一件家具管用。
+       两根柱子全部落在东侧（靠围栏），西侧朝顾客那一面完全敞开——
+       四柱方亭在这个位置会把柜台挡在柱子后面，走近了反而看不清报名处。 */
+    const roofW = 1.9;   // 沿 X 的坡长
+    const roofD = 2.5;   // 沿 Z
+    const ch = 2.42;     // 贴围栏一侧的檐高
+    const postX = D.x + 0.72;
+    const armY = ch - 0.08;
+    for (const sz of [-1, 1]) {
+      const pz = D.z + sz * (roofD / 2 - 0.18);
+      add(boxGeo(0.08, ch, 0.08), M.metal_dark, postX, ch / 2, pz, { name: 'arena:desk-canopy-post' });
+      // 悬臂：柱顶往西挑出，托住棚子外沿
+      add(boxGeo(roofW - 0.1, 0.07, 0.07), M.metal_frame, postX - (roofW - 0.1) / 2, armY, pz, {
+        name: 'arena:desk-canopy-arm', cast: false,
+      });
+    }
+    // 单坡布顶：东高西低，水往场地外侧走
+    const sl = 0.2;
+    const canopyTilt = Math.atan2(sl, roofW);
+    add(beveledBoxGeometry(THREE, roofW, 0.05, roofD, 0.008, 1), M.canvas_olive,
+      D.x - 0.12, ch + 0.02 + sl / 2, D.z, { rotZ: canopyTilt, name: 'arena:desk-canopy', cast: false });
+    /* 檐口一道米白布边：布顶不做收边就是一块悬空的绿板。
+       挂在低的那条边上——正对进场方向，远看就知道这是个有棚子的摊位。 */
+    add(boxGeo(0.035, 0.13, roofD + 0.04), M.rope_cream, D.x - 0.12 - roofW / 2 + 0.02, ch + 0.02 - 0.05, D.z, {
+      name: 'arena:desk-canopy-trim', cast: false,
+    });
+    // 棚下挂一盏小灯笼，背光时这块角不会塌成一片灰
+    const lx = D.x - roofW / 2 + 0.28;
+    const lz = D.z + roofD / 2 - 0.34;
+    add(cylGeo(0.008, 0.008, 0.24, 6), M.metal_frame, lx, ch - 0.1, lz, {
+      name: 'arena:desk-lantern-cord', cast: false,
+    });
+    const dl = add(sphereGeo(0.1, 12, 9), M.accent_amber, lx, ch - 0.32, lz, {
+      name: 'arena:desk-lantern', cast: false,
+    });
+    dl.scale.y = 1.14;
+    lanternGlow(lx, ch - 0.32, lz, 0.62);
+
     interactions.push({
       id: 'arena.roster',
       label: '报名处 · 搭子簿',
@@ -1184,7 +1521,44 @@ export function createDistrict(ctx = {}) {
       add(boxGeo(len, 0.05, 0.05), M.metal_dark, cx, h - 0.09, z - side * (S.depth / 2 - 0.03), {
         name: 'arena:stand-edge', cast: false,
       });
+      /* 木坐板：石阶只是台阶，加上一条木板才读成"看台"。
+         板压在前沿、比踏面窄，后面留出一条走路的空档。 */
+      add(boxGeo(len - 0.08, 0.07, 0.34), M.oak_flat, cx, h + 0.035, z - side * (S.depth / 2 - 0.26), {
+        name: 'arena:stand-seat',
+      });
       blockBox(len, h, S.depth + 0.02, cx, z, 'arena:stand');
+    }
+  }
+
+  /* ---------- 场边什物 ---------- */
+
+  /* 擂台与东围栏之间空着一整条铺装，从台阶口望过去没有任何东西可看。
+     一条选手席长凳 + 两只水桶，把这块空地收进"有人在这儿练"的叙事里，
+     同时给东侧那一角一个尺度参照——不然铺装没有任何参照物，看不出多大。 */
+  function buildFixtures() {
+    // 长凳：沿 Z 摆，凳面木板 + 两条钢腿
+    const bx = 6.75;
+    const bz = 0;
+    const benchLen = 2.2;
+    for (const dz of [-benchLen / 2 + 0.16, benchLen / 2 - 0.16]) {
+      add(boxGeo(0.06, 0.4, 0.5), M.metal_frame, bx, 0.2, bz + dz, { name: 'arena:bench-leg' });
+      add(boxGeo(0.44, 0.05, 0.06), M.metal_frame, bx, 0.05, bz + dz, { name: 'arena:bench-foot', cast: false });
+    }
+    for (const dx of [-0.16, 0, 0.16]) {
+      add(boxGeo(0.145, 0.055, benchLen), M.oak_flat, bx + dx, 0.427, bz, { name: 'arena:bench-slat' });
+    }
+    colliders.push({
+      name: 'arena:bench', type: 'box',
+      center: [bx, 0.23, bz], half: [0.28, 0.23, benchLen / 2],
+    });
+    contactShadow(bx, bz, 1.0, benchLen + 0.6, 0.03, 0.55);
+
+    // 水桶：一只放在长凳北头，桶口一道金属箍
+    for (const [wx, wz] of [[bx - 0.1, bz - benchLen / 2 - 0.5], [bx + 0.12, bz + benchLen / 2 + 0.62]]) {
+      add(cylGeo(0.17, 0.15, 0.34, 14), M.fabric_greygreen, wx, 0.17, wz, { name: 'arena:bucket' });
+      add(cylGeo(0.158, 0.158, 0.02, 14), M.arena_olive, wx, 0.315, wz, { name: 'arena:bucket-water', cast: false });
+      add(cylGeo(0.176, 0.176, 0.02, 14, true), M.metal_frame, wx, 0.34, wz, { name: 'arena:bucket-rim', cast: false });
+      contactShadow(wx, wz, 0.62, 0.62, 0.03, 0.5);
     }
   }
 
@@ -1237,13 +1611,30 @@ export function createDistrict(ctx = {}) {
 
   /* ---------- 灯柱 ---------- */
 
+  /* 柱头挂一盏灯笼，不再用方块灯罩：
+     0.26 见方的琥珀色方块从任何角度看都是一块"发光砖"，是整场最明显的工程件。
+     换成上下箍 + 球体 + 檐帽 + 顶珠之后，轮廓是收进去的，剩下的交给灯晕去补。 */
   function buildLamp(x, z) {
     const H = L.lamp.height;
+    const y0 = 0.16;
+    const poleTop = y0 + H;
     add(cylGeo(0.16, 0.2, 0.16, 16), M.stone_light, x, 0.08, z, { name: 'lamp:base' });
-    add(cylGeo(0.055, 0.075, H, 12), M.metal_dark, x, H / 2 + 0.16, z, { name: 'lamp:pole' });
-    add(boxGeo(0.26, 0.34, 0.26), M.accent_amber, x, H + 0.33, z, { name: 'lamp:lantern', cast: false });
-    add(boxGeo(0.34, 0.06, 0.34), M.metal_dark, x, H + 0.53, z, { name: 'lamp:cap', cast: false });
-    add(boxGeo(0.3, 0.05, 0.3), M.metal_dark, x, H + 0.14, z, { name: 'lamp:sill', cast: false });
+    add(cylGeo(0.055, 0.075, H, 12), M.metal_dark, x, y0 + H / 2, z, { name: 'lamp:pole' });
+    // 柱头托座
+    add(cylGeo(0.1, 0.118, 0.06, 14), M.metal_frame, x, poleTop + 0.03, z, { name: 'lamp:collar' });
+
+    const ly = poleTop + 0.3;
+    add(cylGeo(0.1, 0.115, 0.05, 14), M.metal_dark, x, ly - 0.145, z, { name: 'lamp:band-low' });
+    const body = add(sphereGeo(0.155, 16, 12), M.accent_amber, x, ly, z, {
+      name: 'lamp:lantern', cast: false,
+    });
+    body.scale.y = 1.12;
+    add(cylGeo(0.082, 0.1, 0.05, 14), M.metal_dark, x, ly + 0.15, z, { name: 'lamp:band-high' });
+    // 檐帽：外挑一圈，灯笼顶上是"帽"不是"盖"
+    add(cylGeo(0.02, 0.175, 0.09, 14), M.roof_bluegrey, x, ly + 0.205, z, { name: 'lamp:eave', cast: false });
+    add(sphereGeo(0.038, 10, 8), M.metal_frame, x, ly + 0.27, z, { name: 'lamp:finial', cast: false });
+
+    lanternGlow(x, ly, z, 1.15);
     colliders.push({ name: 'lamp', type: 'cylinder', center: [x, H / 2, z], radius: 0.2, height: H });
   }
 
@@ -1279,6 +1670,7 @@ export function createDistrict(ctx = {}) {
   buildBoard();
   buildStand(1);
   buildStand(-1);
+  buildFixtures();
   buildFence();
   buildLamp(-L.lamp.x, -L.lamp.z);
   buildLamp(-L.lamp.x, L.lamp.z);
@@ -1286,9 +1678,12 @@ export function createDistrict(ctx = {}) {
   buildLamp(L.lamp.x, L.lamp.z);
 
   /* 灯呼吸：四盏共用同一份 accent_amber，所以一次改完即可；
-     幅度很小（0.26±0.08），只为让场地不死板，不做成闪烁。 */
+     幅度很小（0.26±0.08），只为让场地不死板，不做成闪烁。
+     灯晕跟着一起轻轻起伏，两层的亮暗才是一件事。 */
   animated.push((t) => {
-    M.accent_amber.emissiveIntensity = 0.26 + 0.08 * Math.sin(t * 1.1);
+    const s = Math.sin(t * 1.1);
+    M.accent_amber.emissiveIntensity = 0.26 + 0.08 * s;
+    if (glowMat) glowMat.opacity = 0.40 + 0.045 * s;
   });
 
   const texturesReady = attachTextures(THREE, M, pavingMaterials, owner);
