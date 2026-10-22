@@ -88,6 +88,15 @@ const MATERIAL_SPEC = {
     color: 0xc0994f, roughness: 0.42, metalness: 0.6, envMapIntensity: 1.4,
     emissive: 0x3a2c16, emissiveIntensity: 0.34,
   },
+  /* 牌坊柱头的铜箍：和锣同一种暖金属，但**不要**锣那层自发光——
+     锣一直吊在檐影里，需要一点兜底才不像泥；柱头是站在光下的，
+     再发光只会读成"套了一圈金塑料"。 */
+  brass: { color: 0xb08a45, roughness: 0.38, metalness: 0.72, envMapIntensity: 1.15 },
+  /* 柱身专用漆面钢：metal_dark（0x454b47 / 0.54）做横梁、围栏那种细杆很好，
+     但立成 2.7m 的柱子就是一块没有转折的黑板——背光面上连倒角都读不出来。
+     这里把明度提一档、粗糙度压到 0.44，柱子的两个可见面才有明暗差、
+     0.018 的倒角才拉得出一条高光。偏一点橄榄，和识别色是同一族。 */
+  post_steel: { color: 0x535c50, roughness: 0.44, metalness: 0.08, envMapIntensity: 0.9 },
   ground_paving: { color: 0xbdb6a6, roughness: 0.82, metalness: 0.0 },
   ground_lawn: { color: 0x7e8a71, roughness: 0.95, metalness: 0.0 },
   leaf: { color: 0x5a6a47, roughness: 0.92, metalness: 0.0 },
@@ -102,7 +111,7 @@ const MATERIAL_SPEC = {
    oak_light / oak_flat / brick_grey 不在此列——它们的 roughnessMap 由异步 PBR 贴图接管。 */
 const ROUGH_NOISE_IDS = new Set([
   'metal_dark', 'metal_frame', 'roof_bluegrey', 'stone_light', 'stone_light_in',
-  'arena_olive', 'rope_dark', 'rope_cream', 'canvas_olive', 'bronze',
+  'arena_olive', 'rope_dark', 'rope_cream', 'canvas_olive', 'bronze', 'brass', 'post_steel',
   'ground_paving', 'ground_lawn', 'ring_canvas',
 ]);
 
@@ -1642,6 +1651,31 @@ export function createDistrict(ctx = {}) {
      读成"围台里浮着两个绿球"，而且树干被围绳挡掉只剩树冠。
      绿化交给隔壁社交广场，这里保持硬质场地 + 灯柱 + 围栏。 */
 
+  /* ---------- 柱子 ----------
+   * 场地里所有承重柱共用一套语汇，从下往上：
+   *   两级石座 → 金属法兰 → 柱身（下段 / 喉箍 / 上段）→ 石帽
+   *
+   * 之前每根柱子就是一个方盒 + 一块石帽：远看四根方管，近看一条没有转折的边。
+   * 柱子是这种场地里最容易被盯着看的东西——人站在台前、眼睛正好平齐柱身，
+   * 它一"素"，整场就露馅。
+   *
+   * 这里不加面数、只加"转折"：
+   *   1. 三段材质对比（亮石 / 暗金属 / 亮金属），交界处自然形成横线，柱子有了比例；
+   *   2. 倒角从 0.008 放到 0.018（柱宽的 10%），方管变八角，四条棱各自吃一条高光；
+   *   3. 喉箍把柱身断成 1.3 : 1.25 两段，眼睛读得出"这是一件装起来的构件"。
+   * 每根柱子 7 个网格（原来 3 个），六根柱子共 +24 个 draw call——换来的是整场的前景质量。
+   */
+  function column(x, z, baseY, segs, tag) {
+    let y = baseY;
+    for (const s of segs) {
+      add(beveledBoxGeometry(THREE, s.w, s.h, s.w, s.b, 1), M[s.mat], x, y + s.h / 2, z, {
+        name: (tag || 'arena:post') + (s.part ? ':' + s.part : ''),
+      });
+      y += s.h;
+    }
+    return y;
+  }
+
   /* ---------- 擂台 ---------- */
 
   let ringTop = null;
@@ -1732,22 +1766,32 @@ export function createDistrict(ctx = {}) {
        不然护垫一路包到柱顶，从远处看就是四根粗柱子。 */
     const padH = 0.8;
     const padCy = ropeY0 + 0.2;
+    const S = L.post.size;
+    /* 7 段刚好落满 2.83（= postH + 0.08，柱帽顶正好顶住横梁底面）。
+       石座两级向外张、法兰收回来、喉箍再张开一点——宽度这么一张一收，
+       柱子才有"座 / 身 / 头"三段，而不是一根等宽的杆。 */
+    const POST_SEGS = [
+      { w: 0.340, h: 0.055, mat: 'stone_light', b: 0.014, part: 'plinth' },
+      { w: 0.285, h: 0.050, mat: 'stone_light_in', b: 0.012, part: 'plinth' },
+      { w: 0.215, h: 0.050, mat: 'roof_bluegrey', b: 0.008, part: 'flange' },
+      { w: S, h: 1.300, mat: 'post_steel', b: 0.018, part: 'shaft' },
+      { w: S + 0.018, h: 0.055, mat: 'metal_frame', b: 0.010, part: 'collar' },
+      { w: S - 0.008, h: 1.250, mat: 'post_steel', b: 0.017, part: 'shaft' },
+      { w: S + 0.090, h: 0.070, mat: 'stone_light_in', b: 0.014, part: 'cap' },
+    ];
     for (const px of postXs) {
       for (const pz of postZs) {
-        add(beveledBoxGeometry(THREE, 0.3, 0.1, 0.3, 0.012, 1), M.stone_light_in, px, topY + 0.05, pz, {
-          name: 'arena:post-plinth',
-        });
-        add(beveledBoxGeometry(THREE, L.post.size, postH - 0.1, L.post.size, 0.008, 1), M.metal_dark, px,
-          topY + 0.1 + (postH - 0.1) / 2, pz, { name: 'arena:post' });
-        add(beveledBoxGeometry(THREE, L.post.size + 0.09, 0.08, L.post.size + 0.09, 0.008, 1), M.stone_light_in, px,
-          topY + postH + 0.04, pz, { name: 'arena:post-cap' });
+        column(px, pz, topY, POST_SEGS, 'arena:post');
         add(beveledBoxGeometry(THREE, 0.245, padH, 0.245, 0.022, 1), M.canvas_olive, px, padCy, pz, {
           name: 'arena:post-pad',
         });
-        // 束带：一道米白捆绳，护垫不是一个光面方桶
-        add(boxGeo(0.256, 0.05, 0.256), M.rope_cream, px, padCy + padH / 2 - 0.13, pz, {
-          name: 'arena:post-pad-strap', cast: false,
-        });
+        /* 束带：护垫上下各一道米白捆绳。只做上面一道时，垫子下沿直接切在
+           柱身上，读成"套了个布桶"；两道才闭合。 */
+        for (const sy of [-1, 1]) {
+          add(boxGeo(0.254, 0.05, 0.254), M.rope_cream, px, padCy + sy * (padH / 2 - 0.13), pz, {
+            name: 'arena:post-pad-strap', cast: false,
+          });
+        }
       }
     }
     const postTopY = topY + postH + 0.08;
@@ -1890,11 +1934,22 @@ export function createDistrict(ctx = {}) {
     const halfSpan = G.span / 2;
     for (const sz of [-1, 1]) {
       const z = G.z + sz * halfSpan;
-      add(beveledBoxGeometry(THREE, 0.28, 0.12, 0.28, 0.014, 1), M.stone_light_in, G.x, 0.06, z, {
-        name: 'arena:gate-foot',
-      });
-      add(beveledBoxGeometry(THREE, G.post, G.height - 0.12, G.post, 0.01, 1), M.metal_dark, G.x,
-        0.12 + (G.height - 0.12) / 2, z, { name: 'arena:gate-post' });
+      /* 牌坊柱站在进场主路上（路面 y = 0.045），所以整根从 0.045 起。
+         比擂台柱多元两件事：一段石础（牌坊的柱子本来就落在石础上），
+         和柱头那道铜箍——它和 1.5m 外的锣是同一族暖金属，
+         门洞这一片不然全是墨绿和蓝灰。 */
+      const GP = G.post;
+      const GATE_SEGS = [
+        { w: 0.420, h: 0.080, mat: 'stone_light', b: 0.016, part: 'plinth' },
+        { w: 0.340, h: 0.060, mat: 'stone_light_in', b: 0.014, part: 'plinth' },
+        { w: 0.270, h: 0.120, mat: 'stone_light_in', b: 0.012, part: 'base' },
+        { w: 0.245, h: 0.050, mat: 'roof_bluegrey', b: 0.008, part: 'flange' },
+        { w: GP, h: 1.300, mat: 'post_steel', b: 0.020, part: 'shaft' },
+        { w: GP + 0.018, h: 0.060, mat: 'metal_frame', b: 0.010, part: 'collar' },
+        { w: GP - 0.008, h: 1.195, mat: 'post_steel', b: 0.019, part: 'shaft' },
+        { w: GP + 0.024, h: 0.090, mat: 'brass', b: 0.010, part: 'capital' },
+      ];
+      column(G.x, z, 0.045, GATE_SEGS, 'arena:gate-post');
       blockBox(0.28, G.height, 0.28, G.x, z, 'arena:gate-post');
       contactShadow(G.x, z, 1.05, 1.05, 0.049, 0.8);
     }
