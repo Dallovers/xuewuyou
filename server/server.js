@@ -611,7 +611,8 @@ function serveStatic(req, res) {
   const publicPath = parts.join('/');
   const libraryAsset = /^examples\/library-3d\/(?:index\.html|library\.css|app\.bundle\.js|assets\/(?:catalog-availability\.json|wenku-library\.glb|r1-lighting\/(?:r1-bake\.json|r1-receivers-[a-f0-9]{8}\.glb|r1-indirect-[a-f0-9]{8}\.exr))|vendor\/pdfjs\/(?:pdf\.min\.js|pdf\.worker\.min\.js))$/.test(publicPath);
   const libraryMaterial = /^examples\/campus-3d-v5\/assets\/(?:[a-z]+-(?:color|normal|roughness)\.jpg|sky\.hdr)$/.test(publicPath);
-  if (relative.startsWith('..') || path.isAbsolute(relative) || parts.some(p => p.startsWith('.')) || !(ALLOWED_ROOTS.includes(parts[0]) || libraryAsset || libraryMaterial)) return sendError(res, 403, '禁止访问');
+  const academyAsset = /^examples\/campus-3d-v5\/(?:index\.html|style\.css|app\.bundle\.js|assets\/(?:classroom-baked\.glb|lightmaps\/(?:day-open|day-closed|led)\.hdr|characters\/student-(?:anime\.vrm|anime-motion\.json|robot\.glb|formal\.glb|hoodie\.glb)))$/.test(publicPath);
+  if (relative.startsWith('..') || path.isAbsolute(relative) || parts.some(p => p.startsWith('.')) || !(ALLOWED_ROOTS.includes(parts[0]) || libraryAsset || libraryMaterial || academyAsset)) return sendError(res, 403, '禁止访问');
   fs.readFile(filePath, (err, buf) => {
     if (err) return sendError(res, 404, '文件不存在');
     const ext = path.extname(filePath).toLowerCase();

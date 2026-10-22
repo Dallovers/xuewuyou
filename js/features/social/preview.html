@@ -48,8 +48,8 @@
 <script type="importmap">
 {
   "imports": {
-    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
-    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+    "three": "./assets/vendor/three-r160/three.module.js",
+    "three/addons/": "./assets/vendor/three-r160/"
   }
 }
 </script>
@@ -518,5 +518,5 @@ window.addEventListener('beforeunload', () => {
   renderer.forceContextLoss();
 });
 </script>
-</body>
+<script src="../campus-hub/return-bridge.js"></script></body>
 </html>

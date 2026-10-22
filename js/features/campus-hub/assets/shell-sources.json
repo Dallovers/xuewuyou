@@ -1,0 +1,31 @@
+[
+  {
+    "id": "academy",
+    "source": "examples/campus-3d-v5/course_academy_v5.glb",
+    "sourceHash": "0079abacce1f639f19f90fb374010807df93e21b59b2c2bd9e5a73d06b5de3d9",
+    "groups": [
+      "Floors and foundations",
+      "South teaching facade",
+      "East west and north facades",
+      "Independent roof and drainage",
+      "Upper storey visible interior structure"
+    ],
+    "bytes": 2580148,
+    "sha256": "1054bd9e588e900f53b816167e70cfc0b4f9d9a5433f0951c1da233f11c97d97",
+    "uncompressedShellBytes": 38318736,
+    "optimization": "weld; mesh simplification ratio .65 / error .001; textures max 512px WebP; meshopt medium"
+  },
+  {
+    "id": "library",
+    "source": "examples/library-3d/assets/wenku-library.glb",
+    "sourceHash": "9bbcd6676913ec6e43a5d02dfc99dde332664624a49e41b3432bbfd8c7ba73e1",
+    "groups": [
+      "Structure stone and real window openings",
+      "Roof editable zinc and clerestory"
+    ],
+    "bytes": 357588,
+    "sha256": "4a40d39c4ad76abff5073175172a55d433b89c03994d69a81cc3da5019150806",
+    "uncompressedShellBytes": 11981056,
+    "optimization": "weld; mesh simplification ratio .65 / error .001; textures max 512px WebP; meshopt medium"
+  }
+]

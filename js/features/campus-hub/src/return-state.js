@@ -1,0 +1,5 @@
+import {VERSION,ENTRIES,START} from './layout.js';
+export const KEY='xuewuyou:campus-hub:return:v1';
+export function readReturn(storage){try{const value=JSON.parse(storage.getItem(KEY));if(value?.version!==VERSION||!ENTRIES.some(e=>e.id===value.scene)||typeof value.ticket!=='string'||!Number.isFinite(value.created)||Date.now()-value.created>30*60*1000||value.created>Date.now()+60000||!['x','z','yaw','pitch'].every(k=>Number.isFinite(value.pose?.[k])))return null;return value;}catch{return null;}}
+export function makeReturn(entry,pose){return{version:VERSION,scene:entry.id,ticket:crypto.randomUUID(),created:Date.now(),pending:true,pose:{x:entry.outside[0],z:entry.outside[1],yaw:pose.yaw||0,pitch:pose.pitch||0},heading:Number.isFinite(pose.heading)?pose.heading:Math.PI-(pose.yaw||0)};}
+export function restorePose(record,navigation){const pose=record?.pose;if(pose&&!navigation.blocked(pose.x,pose.z))return{...pose};const entry=ENTRIES.find(e=>e.id===record?.scene);if(entry&&!navigation.blocked(...entry.outside))return{x:entry.outside[0],z:entry.outside[1],yaw:0,pitch:0};return{...START};}

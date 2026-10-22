@@ -1,0 +1,11 @@
+{
+  "passed": true,
+  "walkZ": 28.985249999999994,
+  "runZ": 28.931809999847406,
+  "clips": [
+    "walk",
+    "run",
+    "idle"
+  ],
+  "errors": []
+}

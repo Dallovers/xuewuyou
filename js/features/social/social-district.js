@@ -853,7 +853,7 @@ export function createDistrict(ctx = {}) {
   function buildSite() {
     const lawnMat = makeLawnMaterial() || M.ground_lawn;
     ownedLawnMaterial = lawnMat;
-    add(new THREE.PlaneGeometry(200, 200), lawnMat, 0, -0.04, 0, {
+    if (!ctx.sharedSite) add(new THREE.PlaneGeometry(200, 200), lawnMat, 0, -0.04, 0, {
       rotX: -Math.PI / 2, name: 'site:lawn', cast: false,
     });
     // 广场铺装：22 × 18，石材 3m 一个平铺循环，抬高 2cm 避免与草地 Z-fighting
@@ -1144,8 +1144,8 @@ export function createDistrict(ctx = {}) {
   /* ---------- 组装 ---------- */
 
   buildSite();
-  buildCampusGrass({THREE,root,owner});
-  buildFacadePlaceholder();
+  if (!ctx.sharedSite) buildCampusGrass({THREE,root,owner});
+  if (!ctx.sharedSite) buildFacadePlaceholder();
   buildPavilion();
   buildDesk();
   buildBoard();
@@ -1153,13 +1153,15 @@ export function createDistrict(ctx = {}) {
   buildBench(3.1, -5.0, Math.PI / 2);
   buildBench(5.9, -1.9, 0);
   buildBench(6.3, 0.9, Math.PI / 2);
-  buildTreePit(-5.6, 4.4);
-  buildTreePit(6.6, 4.4);
-  buildCampusHedge({THREE,root,M});
+  if (!ctx.sharedSite) {
+    buildTreePit(-5.6, 4.4);
+    buildTreePit(6.6, 4.4);
+    buildCampusHedge({THREE,root,M});
+  }
   buildFountain();
   detailSocialConstruction({THREE,root,add,boxGeo,cylGeo,bevel:beveledBoxGeometry,M,L,owner,colliders});
   refineSocialNearfield({THREE,root,M,L,owner,add,bevel:beveledBoxGeometry,colliders});
-  buildSocialGardenEdge({THREE,root,add,boxGeo,cylGeo,M});
+  if (!ctx.sharedSite) buildSocialGardenEdge({THREE,root,add,boxGeo,cylGeo,M});
   mergeSocialCurtains(THREE,root);
   batchSocialDetails(THREE, root);
 

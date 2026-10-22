@@ -1585,9 +1585,10 @@ export function createDistrict(ctx = {}) {
        两块并排时不会 z-fighting。重叠部分被对方的草地盖住，两边都是草，看不出来。 */
     const lawnGeo = new THREE.PlaneGeometry(L.lawn.w, L.lawn.d, 46, 40);
     lawnMottle(lawnGeo);
-    add(lawnGeo, lawnMat, 0, -0.055, 0, {
+    if (!ctx.sharedSite) add(lawnGeo, lawnMat, 0, -0.055, 0, {
       rotX: -Math.PI / 2, name: 'site:lawn', cast: false,
     });
+    else lawnGeo.dispose();
     /* 三块地面压成三档明度：主场地最亮、擂台圈地中间、进场主路最浅（人走得多，磨得发白）。
        先前三块都在 #a8 以上，又被贴图的亮底色乘了一遍，整片读成一块白板。 */
     const siteMat = makePavingMaterial('#9c9684', L.site.w, L.site.d, 2.2) || M.ground_paving;
@@ -2627,9 +2628,11 @@ export function createDistrict(ctx = {}) {
   /* ---------- 组装 ---------- */
 
   buildSite();
-  buildGrass();
-  buildTreeLine();
-  buildDust();
+  if (!ctx.sharedSite) {
+    buildGrass();
+    buildTreeLine();
+    buildDust();
+  }
   buildRing();
   buildGate();
   buildDesk();
