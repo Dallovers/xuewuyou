@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>好友竞技场 · 擂台预览</title>
+<link rel="stylesheet" href="../../../css/feature-arena.css" />
+<style>
+  html, body { margin: 0; height: 100%; background: #1d2320; overflow: hidden; }
+  #view { display: block; width: 100vw; height: 100vh; touch-action: none; cursor: grab; }
+  #view:active { cursor: grabbing; }
+</style>
+</head>
+<body>
+<canvas id="view"></canvas>
+
+<div class="arena-ui" id="ui" hidden>
+  <div class="arena-ui__badge">
+    <b>好友竞技场 · 擂台</b>
+    <span id="badgeNote">三个实物交互点：擂台、报名处、开赛锣。</span>
+  </div>
+
+  <div class="arena-ui__crosshair"></div>
+
+  <div class="arena-ui__hint" id="hint">
+    <span class="arena-ui__key">E</span>
+    <span><em id="hintLabel"></em><span id="hintPrompt"></span></span>
+  </div>
+
+  <aside class="arena-ui__panel" id="panel" hidden aria-live="polite">
+    <div class="arena-ui__panel-head">
+      <div>
+        <h2 id="panelTitle">面板</h2>
+        <p id="panelSub"></p>
+      </div>
+      <button class="arena-ui__close" id="panelClose" type="button" aria-label="关闭">×</button>
+    </div>
+    <div class="arena-ui__panel-body" id="panelBody"></div>
+  </aside>
+
+  <div class="arena-ui__debug" id="debug"></div>
+</div>
+
+<div class="arena-ui__fatal" id="fatal" hidden></div>
+
+<!-- three 走仓库内的 vendor/three（r170），不再依赖 CDN：
+     CDN 一抖整页白屏，而且页面上不会有任何报错。 -->
+<script type="importmap">
+{
+  "imports": {
+    "three": "../../../vendor/three/three.module.js",
+    "three/addons/": "../../../vendor/three/addons/"
+  }
+}
+</script>
+
+<script type="module">
+const fatal = document.getElementById('fatal');
+function fail(err) {
+  fatal.hidden = false;
+  fatal.innerHTML = '预览未能启动：<br><b>' + String(err && err.message || err) + '</b>' +
+    '<br><br>常见原因：<br>① 用 file:// 直接打开（ESM 必需 http）<br>' +
+    '② 浏览器未启用 WebGL<br>③ vendor/three 缺失';
+  console.error(err);
+}
+
+let THREE, createArena, ARENA_LAYOUT;
+try {
+  THREE = await import('three');
+  ({ createDistrict: createArena, ARENA_LAYOUT } = await import('./arena-district.js'));
+} catch (err) {
+  fail(err);
+  throw err;
+}
+
+const qs = new URLSearchParams(location.search);
+const L = ARENA_LAYOUT;
+// ?with=social 把社交广场一起挂上，擂台按 ARENA_LAYOUT.neighbor 的偏移摆到东侧：
+// 这是验证"在广场旁边"的唯一方式，单开擂台看不出并排关系。
+const WITH_SOCIAL = qs.get('with') === 'social';
+
+/* ---------- 渲染器：仅预览用的宿主，主站不引这一段 ---------- */
+
+const canvas = document.getElementById('view');
+let renderer;
+try {
+  renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+} catch (err) {
+  fail(new Error('WebGL 初始化失败：' + (err && err.message)));
+  throw err;
+}
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 0.78;
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xc6dae4);
+scene.fog = new THREE.Fog(0xc6dae4, 52, 128);
+
+/* 天空 HDR → 环境反射（IBL）。没有它，金属度偏高的柱、围绳、锣面会发死黑。 */
+let envState = { ok: false, reason: 'not-started' };
+try {
+  const { RGBELoader } = await import('three/addons/loaders/RGBELoader.js');
+  const hdr = await new RGBELoader().loadAsync('../../../examples/campus-3d-v5/assets/sky.hdr');
+  hdr.mapping = THREE.EquirectangularReflectionMapping;
+  scene.background = hdr;
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  pmrem.compileEquirectangularShader();
+  scene.environment = pmrem.fromEquirectangular(hdr).texture;
+  /* r170 的 environmentIntensity 默认 1。这个板块大面积是浅石材，
+     满强度 IBL 会把台面和看台直接打到近白，石材纹理全糊掉——
+     library-3d 那边用的是 0.4，这里取 0.5 保持同一套观感。 */
+  if ('environmentIntensity' in scene) scene.environmentIntensity = 0.5;
+  pmrem.dispose();
+  envState = { ok: true, source: 'sky.hdr' };
+} catch (err) {
+  envState = { ok: false, reason: err && err.message };
+  console.warn('[preview] 天空 HDR 未加载，回退纯色背景与环境', err);
+}
+
+/* 等效焦距换算：垂直 FOV = 2·atan(12/mm)，不把毫米数直接当 fov 填 */
+function fovFromMm(mm) { return 2 * Math.atan(12 / mm) * 180 / Math.PI; }
+const EQUIV_MM = qs.has('mm') ? parseFloat(qs.get('mm')) : 35;
+const CAMERA_FOV = qs.has('fov') ? parseFloat(qs.get('fov')) : fovFromMm(EQUIV_MM);
+
+const camera = new THREE.PerspectiveCamera(CAMERA_FOV, 1, 0.1, 260);
+camera.rotation.order = 'YXZ';
+
+const hemi = new THREE.HemisphereLight(0xdfeaf2, 0x6f7564, envState.ok ? 0.42 : 1.05);
+scene.add(hemi);
+
+/* 主光：方向沿用社交广场预览（东南上方），阴影相机覆盖本板块站点。
+   并排模式下把目标与跨度一起放宽，否则擂台会落在阴影相机外面、直接没有影子。 */
+const focusX = WITH_SOCIAL ? ARENA_LAYOUT.neighbor.offset[0] * 0.5 : 0;
+const shadowSpan = WITH_SOCIAL ? 22 : 12;
+const sun = new THREE.DirectionalLight(0xfff3de, envState.ok ? 2.2 : 2.1);
+sun.position.set(focusX + 15, 23, 12);
+sun.target.position.set(focusX, 1.4, 0);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+sun.shadow.camera.near = 1;
+sun.shadow.camera.far = 80;
+sun.shadow.camera.left = -shadowSpan;
+sun.shadow.camera.right = shadowSpan;
+sun.shadow.camera.top = shadowSpan;
+sun.shadow.camera.bottom = -shadowSpan;
+sun.shadow.bias = -0.00004;
+sun.shadow.normalBias = 0.012;
+sun.shadow.radius = 2;
+scene.add(sun.target);
+scene.add(sun);
+
+const fill = new THREE.DirectionalLight(0xdce8ef, envState.ok ? 0.16 : 0.6);
+fill.position.set(focusX - 14, 9, -10);
+scene.add(fill);
+
+/* ---------- 空间 ---------- */
+
+const worlds = [];
+
+const arenaOffset = WITH_SOCIAL ? ARENA_LAYOUT.neighbor.offset : [0, 0, 0];
+const arena = createArena({ THREE, mode: 'preview' });
+arena.root.position.set(arenaOffset[0], arenaOffset[1], arenaOffset[2]);
+scene.add(arena.root);
+worlds.push({ id: 'arena', district: arena, offset: arenaOffset });
+
+let social = null;
+if (WITH_SOCIAL) {
+  try {
+    const mod = await import('../social/social-district.js');
+    social = mod.createDistrict({ THREE, mode: 'preview' });
+    social.root.position.set(0, 0, 0);
+    scene.add(social.root);
+    worlds.push({ id: 'social', district: social, offset: [0, 0, 0] });
+  } catch (err) {
+    console.warn('[preview] 社交广场没挂上（不影响擂台本体）', err);
+  }
+}
+
+// 碰撞体统一换算到世界坐标：root 有位移，但契约里 colliders 用的是局部坐标
+const worldColliders = [];
+for (const w of worlds) {
+  for (const c of w.district.colliders) {
+    worldColliders.push({
+      ...c,
+      center: [c.center[0] + w.offset[0], c.center[1], c.center[2] + w.offset[2]],
+    });
+  }
+}
+
+// 交互点：object 已在场景图里，getWorldPosition 直接就是世界坐标
+const interactions = [];
+for (const w of worlds) {
+  for (const it of w.district.interactions) interactions.push({ ...it, district: w.id });
+}
+
+Promise.all(worlds.map((w) => w.district.ready)).then((r) => {
+  console.log('[preview] PBR 贴图', r, '环境', envState, '并排', WITH_SOCIAL);
+});
+
+/* ---------- 第一人称行走（预览自用） ---------- */
+
+const PLAYER = { x: 0, z: 0, y: 1.6, speed: 4.2, run: 6.6, radius: 0.35 };
+/* 默认机位：西南 3/4 视角。
+   正对门洞的机位不要用——门和擂台在同一条轴线上，正对着看两者必然互相遮挡，
+   而且西立面背光，整座牌坊是一块黑剪影。斜着看才能同时读到 台阶 / 围台 / 看台 / 牌坊。
+   yaw 用目标点反算：看向擂台中心。forward = (-sin yaw, -cos yaw)。 */
+let yaw, pitch = -0.05;
+if (WITH_SOCIAL) {
+  /* 并排模式的默认机位抬高到 9m、俯视 14°：
+     这个页面开 ?with=social 就是为了看"两块地怎么并排"，平视只能看到一片铺装和围栏。
+     抬高后画面里依次是 喷泉与坐凳 → 广场铺装 → 接缝与围栏缺口 → 牌坊（含吊锣）→ 擂台。
+     想看平视就加 ?h=1.6&x=-2&z=10&yaw=-45。 */
+  PLAYER.x = -2;
+  PLAYER.z = 10;
+  PLAYER.y = 9;
+  pitch = -14 * Math.PI / 180;
+} else {
+  /* 单开默认机位：站西侧围栏外的草地上往里看，画面从左到右是
+     匾额 + 开赛锣 → 门洞与台前空地 → 台阶与围台 → 四角竖幡。
+     一开始默认机位摆在场地内西南角，只拍得到擂台、拍不到牌坊，
+     看不出"这是个有门的场子"；往后退到栏外才把入口关系讲清楚。 */
+  PLAYER.x = -(L.site.w / 2) - 5.5;
+  PLAYER.z = L.site.d / 2;
+}
+{
+  const dx = (L.ring.cx + (WITH_SOCIAL ? arenaOffset[0] : 0)) - PLAYER.x;
+  const dz = L.ring.cz - PLAYER.z;
+  yaw = Math.atan2(-dx, -dz);
+}
+/* 两个默认机位的朝向都不按"对准台心"取：
+   - 并排模式对准台心会把广场挤出画面（只剩左下角一片铺装），压到 -45° 才装得下 广场 → 接缝 → 牌坊 → 擂台；
+   - 单开模式从栏外对准台心是 -62°，牌坊匾额会顶到画面左边缘，压到 -50° 才把牌坊、缺口、围台摆平。
+   用 ?x / ?z 手动定位时仍按台心反算，那时候人是在"走到某处看擂台"，不是看总览。 */
+if (WITH_SOCIAL) yaw = -45 * Math.PI / 180;
+else if (!qs.has('x') && !qs.has('z')) yaw = -50 * Math.PI / 180;
+
+if (qs.has('x')) PLAYER.x = parseFloat(qs.get('x')) || 0;
+if (qs.has('z')) PLAYER.z = parseFloat(qs.get('z')) || 0;
+if (qs.has('h')) PLAYER.y = parseFloat(qs.get('h')) || PLAYER.y;
+if (qs.has('yaw')) yaw = (parseFloat(qs.get('yaw')) || 0) * Math.PI / 180;
+if (qs.has('pitch')) pitch = (parseFloat(qs.get('pitch')) || 0) * Math.PI / 180;
+
+const keys = Object.create(null);
+let dragging = false;
+let lastX = 0, lastY = 0;
+let panelOpen = false;
+
+canvas.addEventListener('pointerdown', (e) => {
+  if (panelOpen) return;
+  dragging = true;
+  lastX = e.clientX;
+  lastY = e.clientY;
+  canvas.setPointerCapture(e.pointerId);
+});
+canvas.addEventListener('pointermove', (e) => {
+  if (!dragging || panelOpen) return;
+  yaw -= (e.clientX - lastX) * 0.0026;
+  pitch -= (e.clientY - lastY) * 0.0026;
+  pitch = Math.max(-1.1, Math.min(1.1, pitch));
+  lastX = e.clientX;
+  lastY = e.clientY;
+});
+canvas.addEventListener('pointerup', (e) => {
+  dragging = false;
+  try { canvas.releasePointerCapture(e.pointerId); } catch (_) {}
+});
+canvas.addEventListener('pointercancel', () => { dragging = false; });
+
+window.addEventListener('keydown', (e) => {
+  if (e.code === 'Escape') {
+    if (panelOpen) closePanel();
+    return;
+  }
+  if (panelOpen) return;
+  if (e.code === 'KeyE') {
+    if (current) { e.preventDefault(); trigger(current); }
+    return;
+  }
+  keys[e.code] = true;
+});
+window.addEventListener('keyup', (e) => { keys[e.code] = false; });
+window.addEventListener('blur', () => {
+  for (const k of Object.keys(keys)) keys[k] = false;
+  dragging = false;
+});
+
+/* 圆-盒 / 圆-柱 推开。同一份函数同时服务两个板块，避免两套判定不一致。 */
+function collide(pos) {
+  const yLo = pos.y - 1.6, yHi = pos.y + 0.1;
+  for (const c of worldColliders) {
+    if (c.type === 'box') {
+      const [cx, cy, cz] = c.center;
+      const [hx, hy, hz] = c.half;
+      if (yHi < cy - hy || yLo > cy + hy) continue;
+      const nx = Math.max(cx - hx, Math.min(pos.x, cx + hx));
+      const nz = Math.max(cz - hz, Math.min(pos.z, cz + hz));
+      const dx = pos.x - nx, dz = pos.z - nz;
+      const d2 = dx * dx + dz * dz;
+      const R = PLAYER.radius;
+      if (d2 >= R * R) continue;
+      if (d2 < 1e-8) {
+        const px = hx - Math.abs(pos.x - cx);
+        const pz = hz - Math.abs(pos.z - cz);
+        if (px < pz) pos.x = cx + (pos.x >= cx ? 1 : -1) * (hx + R);
+        else pos.z = cz + (pos.z >= cz ? 1 : -1) * (hz + R);
+      } else {
+        const d = Math.sqrt(d2);
+        pos.x = nx + (dx / d) * R;
+        pos.z = nz + (dz / d) * R;
+      }
+    } else if (c.type === 'cylinder') {
+      const [cx, cy, cz] = c.center;
+      const halfH = (c.height || 1) / 2;
+      if (yHi < cy - halfH || yLo > cy + halfH) continue;
+      const dx = pos.x - cx, dz = pos.z - cz;
+      const d = Math.hypot(dx, dz);
+      const min = c.radius + PLAYER.radius;
+      if (d < min && d > 1e-6) {
+        pos.x = cx + (dx / d) * min;
+        pos.z = cz + (dz / d) * min;
+      }
+    }
+  }
+  /* 边界：西侧要留出围栏外的观景距离（默认机位就站在栏外 5.5m），
+     东侧到本板块站点为止；并排模式下西边扩到社交广场。 */
+  const minX = WITH_SOCIAL ? -13 : -L.site.w / 2 - 7;
+  const maxX = (WITH_SOCIAL ? arenaOffset[0] : 0) + L.site.w / 2 + 2;
+  const maxZ = L.site.d / 2 + 1;
+  pos.x = Math.max(minX, Math.min(maxX, pos.x));
+  pos.z = Math.max(-maxZ, Math.min(maxZ, pos.z));
+}
+
+/* ---------- 靠近提示 ---------- */
+
+const ui = document.getElementById('ui');
+const hintEl = document.getElementById('hint');
+const hintLabel = document.getElementById('hintLabel');
+const hintPrompt = document.getElementById('hintPrompt');
+const debugEl = document.getElementById('debug');
+const panelEl = document.getElementById('panel');
+const panelTitle = document.getElementById('panelTitle');
+const panelSub = document.getElementById('panelSub');
+const panelBody = document.getElementById('panelBody');
+document.getElementById('badgeNote').textContent = WITH_SOCIAL
+  ? '并排模式：擂台挂在社交广场东侧（偏移 x=' + arenaOffset[0] + '），两片铺装正好接缝。'
+  : '单开模式：三个实物交互点。加 ?with=social 可并排看和广场的关系。';
+
+let current = null;
+let hintShown = null;
+const tmpV = new THREE.Vector3();
+
+function findNearest() {
+  let best = null;
+  let bestD = Infinity;
+  for (const it of interactions) {
+    if (!it.object) continue;
+    it.object.getWorldPosition(tmpV);
+    const d = Math.hypot(tmpV.x - PLAYER.x, tmpV.z - PLAYER.z);
+    if (d <= (it.radius || 2.5) && d < bestD) {
+      bestD = d;
+      best = it;
+    }
+  }
+  return best;
+}
+
+const LIVE = typeof window.WG_Community !== 'undefined' && typeof window.WG_Community.open === 'function';
+
+const PANEL_COPY = {
+  'arena.ring': {
+    title: '擂台 · 好友挑战',
+    sub: '擂台台阶 → 真实好友挑战',
+    body: () => `
+      <p>在主站里，站到台阶前按 E 会调用：</p>
+      <code>WG_Community.open('arena')</code>
+      <p><b>arena</b> 是 <b>js/community.js</b> 里已经存在的 tab：<code>tabName === 'arena'</code> 时走
+      <code>loadChallenges()</code>，再 <code>StudyAppBridge.navTo('community')</code> 打开面板。
+      所以不需要等公共 <code>openFeature</code> 落地就能跑通。</p>
+      <p><span class="arena-ui__tag">业务约定</span> 同一组五道客观题 · 服务器判分 · 每人 15 分钟 · 整场 24 小时有效</p>
+      <div class="arena-ui__note">本页是独立预览，没有主站的社区 DOM，上面的调用会返回 <b>no-bridge</b>；
+      这是预览限制，不是业务缺陷。擂台本身不伪造比分，面板里也不显示假战绩。</div>`,
+  },
+  'arena.roster': {
+    title: '报名处 · 搭子簿',
+    sub: '报名处 → 学习搭子列表',
+    body: () => `
+      <p>挑战的前提是有搭子，所以报名处开的是好友列表，不是挑战列表：</p>
+      <code>WG_Community.open('friends')</code>
+      <p><span class="arena-ui__tag">为什么分两个入口</span> 擂台负责"打"，报名处负责"先有人可打"。
+      两个入口都指向既有的社区面板，没有新增接口。</p>
+      <div class="arena-ui__note">好友关系需要对方确认；名片不公开就不会出现在搭子广场。</div>`,
+  },
+  'arena.bell': {
+    title: '开赛锣',
+    sub: '场地设施 → 本地动作',
+    body: () => `
+      <p>锣吊在牌坊梁下，绕吊点按阻尼正弦摆 2.4 秒。这是<b>纯本地动作</b>：
+      只返回敲击次数，不写服务端、不发 Socket 事件。</p>
+      <p id="bellState"><span class="arena-ui__tag">当前状态</span> 尚未敲响</p>
+      <div class="arena-ui__note">刻意不接业务：挑战的发起与判分都在服务端，3D 侧不该有第二套状态。</div>`,
+  },
+  'social.desk': {
+    title: '学习搭子服务台',
+    sub: '社交广场 · 搭子业务',
+    body: () => `<p>这里是社交广场的服务台，调用 <code>WG_Community.open('friends')</code>。
+      并排模式下两块场地共用同一套社区面板。</p>`,
+  },
+  'social.board': {
+    title: '校园留言',
+    sub: '社交广场 · 公告栏',
+    body: () => `<p>这里是社交广场的公告栏，调用 <code>WG_Community.open('posts')</code>。</p>`,
+  },
+  'social.fountain': {
+    title: '广场喷泉',
+    sub: '社交广场 · 设施',
+    body: () => `<p>喷泉属于社交广场板块，水面仍是静态占位，水流效果未实现。</p>`,
+  },
+};
+
+function openPanel(it, result) {
+  const copy = PANEL_COPY[it.id] || { title: it.label, sub: '', body: () => '' };
+  panelTitle.textContent = copy.title;
+  panelSub.textContent = copy.sub;
+  panelBody.innerHTML = copy.body();
+
+  if (it.id === 'arena.bell' && result && typeof result.strikes === 'number') {
+    const el = document.getElementById('bellState');
+    if (el) {
+      el.innerHTML = '<span class="arena-ui__tag">当前状态</span> 已敲响 ' + result.strikes + ' 次（本地计数）';
+    }
+  }
+
+  panelEl.hidden = false;
+  panelOpen = true;
+  hintEl.classList.remove('is-on');
+}
+
+function closePanel() {
+  panelEl.hidden = true;
+  panelOpen = false;
+  current = null;
+  hintShown = undefined;
+  for (const k of Object.keys(keys)) keys[k] = false;
+  dragging = false;
+  canvas.focus && canvas.focus();
+}
+
+document.getElementById('panelClose').addEventListener('click', closePanel);
+panelEl.addEventListener('pointerdown', (e) => e.stopPropagation());
+
+function trigger(it) {
+  let result;
+  try {
+    result = it.action();
+  } catch (err) {
+    result = { ok: false, message: String(err && err.message || err) };
+  }
+  openPanel(it, result);
+}
+
+/* ---------- 主循环：唯一的 RAF，在这里 ---------- */
+
+let rafId = 0;
+let last = performance.now();
+let frames = 0;
+let fpsAcc = 0;
+let fps = 0;
+
+function resize() {
+  const w = window.innerWidth;
+  const h = window.innerHeight;
+  renderer.setSize(w, h, false);
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+}
+window.addEventListener('resize', resize);
+resize();
+
+function tick(now) {
+  const dt = Math.min((now - last) / 1000, 0.1);
+  last = now;
+
+  if (!panelOpen) {
+    let f = 0, r = 0;
+    if (keys.KeyW || keys.ArrowUp) f += 1;
+    if (keys.KeyS || keys.ArrowDown) f -= 1;
+    if (keys.KeyD || keys.ArrowRight) r += 1;
+    if (keys.KeyA || keys.ArrowLeft) r -= 1;
+    if (f || r) {
+      const len = Math.hypot(f, r) || 1;
+      const speed = (keys.ShiftLeft || keys.ShiftRight ? PLAYER.run : PLAYER.speed) * dt / len;
+      const sin = Math.sin(yaw), cos = Math.cos(yaw);
+      PLAYER.x += (-sin * f + cos * r) * speed;
+      PLAYER.z += (-cos * f - sin * r) * speed;
+      collide(PLAYER);
+    }
+    if (keys.KeyJ) yaw += dt * 1.6;
+    if (keys.KeyL) yaw -= dt * 1.6;
+  }
+
+  camera.position.set(PLAYER.x, PLAYER.y, PLAYER.z);
+  camera.rotation.set(pitch, yaw, 0, 'YXZ');
+
+  for (const w of worlds) w.district.update(dt);
+
+  if (!panelOpen) {
+    const near = findNearest();
+    current = near;
+    const key = near ? near.id : null;
+    if (key !== hintShown) {
+      hintShown = key;
+      if (near) {
+        hintLabel.textContent = near.label + ' · ';
+        hintPrompt.textContent = near.prompt.replace(/^按 E\s*/, '');
+        hintEl.classList.add('is-on');
+      } else {
+        hintEl.classList.remove('is-on');
+      }
+    }
+  }
+
+  frames++;
+  fpsAcc += dt;
+  if (fpsAcc >= 0.5) {
+    fps = Math.round(frames / fpsAcc);
+    frames = 0;
+    fpsAcc = 0;
+    debugEl.textContent =
+      'x ' + PLAYER.x.toFixed(2) + '  z ' + PLAYER.z.toFixed(2) +
+      '\nyaw ' + (yaw * 180 / Math.PI).toFixed(1) + '°  pitch ' + (pitch * 180 / Math.PI).toFixed(1) + '°' +
+      '\nfov ' + CAMERA_FOV.toFixed(1) + '° ≈' + EQUIV_MM + 'mm  fps ' + fps +
+      '\n碰撞体 ' + worldColliders.length + '  交互点 ' + interactions.length +
+      '\n' + (WITH_SOCIAL ? '并排：社交广场 + 好友竞技场' : '单开：好友竞技场');
+  }
+
+  renderer.render(scene, camera);
+  rafId = requestAnimationFrame(tick);
+}
+
+/* 先同步画一帧，避免 rAF 启动前空一帧（截图/慢设备都受益） */
+camera.position.set(PLAYER.x, PLAYER.y, PLAYER.z);
+camera.rotation.set(pitch, yaw, 0, 'YXZ');
+for (const w of worlds) w.district.update(0);
+renderer.render(scene, camera);
+
+ui.hidden = false;
+// 截图用：?hud=0 隐藏所有覆盖层，不改交互与入口
+if (qs.get('hud') === '0') ui.hidden = true;
+rafId = requestAnimationFrame(tick);
+
+/* 供自动化检查用：读场景规模、当前交互点、强制触发一次 */
+window.__arena = {
+  worlds,
+  arena,
+  social,
+  scene,
+  player: PLAYER,
+  renderer,
+  camera,
+  get current() { return current; },
+  get panelOpen() { return panelOpen; },
+  get fov() { return CAMERA_FOV; },
+  get env() { return envState; },
+  get withSocial() { return WITH_SOCIAL; },
+  get counts() {
+    let meshes = 0;
+    scene.traverse((o) => { if (o.isMesh) meshes++; });
+    return {
+      meshes,
+      colliders: worldColliders.length,
+      interactions: interactions.length,
+      memory: { ...renderer.info.memory },
+    };
+  },
+  interact() { if (current) trigger(current); return current ? current.id : null; },
+  close() { closePanel(); },
+  /** 把玩家放到某个交互点正前方（自动化用，模拟"走过去"，不替代真实按键） */
+  standNear(id, back) {
+    const it = interactions.find((x) => x.id === id);
+    if (!it) return null;
+    const p = new THREE.Vector3();
+    it.object.getWorldPosition(p);
+    const d = (it.radius || 2.5) - 0.7;
+    PLAYER.x = p.x - (back === undefined ? d : back);
+    PLAYER.z = p.z;
+    collide(PLAYER);
+    return [PLAYER.x, PLAYER.z];
+  },
+};
+
+window.addEventListener('beforeunload', () => {
+  cancelAnimationFrame(rafId);
+  for (const w of worlds) w.district.dispose();
+  renderer.dispose();
+});
+</script>
+</body>
+</html>
