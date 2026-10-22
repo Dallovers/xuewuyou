@@ -163,7 +163,7 @@ try {
   const pmrem = new THREE.PMREMGenerator(renderer);
   pmrem.compileEquirectangularShader();
   scene.environment = pmrem.fromEquirectangular(hdr).texture;
-  if ('environmentIntensity' in scene) scene.environmentIntensity = 0.5;
+  if ('environmentIntensity' in scene) scene.environmentIntensity = 0.35;
   pmrem.dispose();
   envState = { ok: true, source: 'sky.hdr' };
 } catch (err) {
@@ -174,16 +174,19 @@ try {
 const camera = new THREE.PerspectiveCamera(2 * Math.atan(12 / 35) * 180 / Math.PI, 1, 0.1, 260);
 camera.rotation.order = 'YXZ';
 
-/* 天空补光略微抬一点（0.42 → 0.48）：阴影里的暗部全靠它，
-   太低的话低角度太阳会把半个场地压成一片死灰。 */
-const hemi = new THREE.HemisphereLight(0xdfeaf2, 0x6f7564, envState.ok ? 0.48 : 1.05);
+/* 天空补光：这里决定阴影是什么颜色。
+   天空本来是蓝的——阴影里只有天光，所以照片上的背光面永远偏冷；
+   反过来，地面反弹上来的是暖的。把 hemisphere 的上半球调蓝一档、
+   下半球调暖一档，整个画面立刻有了"光有来处"的感觉，
+   比再加一盏灯管用，也不会像套了滤镜那样一层蓝。 */
+const hemi = new THREE.HemisphereLight(0xbfd6f2, 0x7d7159, envState.ok ? 0.78 : 1.05);
 scene.add(hemi);
 
 /* 太阳压低到 39°：正午的顶光会把所有竖向构件压扁、影子全缩在脚下，
    看起来像产品渲染图。压低之后影子拉长、受光面转暖，是照片里那种侧光。
-   强度同时从 2.2 提到 2.6：低角度下水平面的入射余弦小了约 17%，
-   不补回来整片铺装会平白暗一档。 */
-const sun = new THREE.DirectionalLight(0xfff0d6, envState.ok ? 2.38 : 2.1);
+   强度同时从 2.2 提到 2.55：低角度下水平面的入射余弦小了约 17%，
+   不补回来整片铺装会平白暗一档；补过头则台面帆布先烧。 */
+const sun = new THREE.DirectionalLight(0xfff0d6, envState.ok ? 2.55 : 2.1);
 sun.position.set(17, 17.5, 12.5);
 sun.target.position.set(0, 1.4, 0);
 sun.castShadow = true;
@@ -234,10 +237,12 @@ const PRESETS = {
      真正的问题在几何上——围绳的旋转装反了，一半的绳穿到台外去了。
      修好之后正面反而最耐看：三道绳各自横平，台面透视收进去，人像站在台下抬头看。 */
   ring:     { target: [1.8, 1.5, 0], radius: 10.2, yaw: -90, pitch: 14 },
-  /* 报名处在场地东南角、紧贴围栏，东侧是看台、西侧就是擂台：
-     从这个角往外退，怎么摆都会有围栏和围绳入画。最后选西南偏西的斜视——
-     围绳横在下缘当近景，报名处的匾额正好在画面中心，读完一眼就知道这是来报名的地方。 */
-  desk:     { target: [7.75, 1.2, 4.6], radius: 5.4, yaw: -136, pitch: 15 },
+  /* 报名处在场地东南角、紧贴围栏，东侧是看台、西侧就是擂台。
+     原来从西南方向退 5.4m 拍，那是围绳还没修好时的角度；绳位一对，
+     照相机会正好贴着擂台东侧那道绳——一根 6cm 的绳从底角斜着切过整个画面，
+     还把柜台下沿挡住。现在退到擂台外的东北，yaw -150：绳退出画面，
+     匾额仍然正对镜头，人的位置也像"走到柜台前排队"。 */
+  desk:     { target: [7.75, 1.15, 4.6], radius: 4.8, yaw: -150, pitch: 12 },
 };
 
 const state = {

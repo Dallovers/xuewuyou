@@ -100,10 +100,17 @@ const ROUGH_NOISE_IDS = new Set([
   'ground_paving', 'ground_lawn', 'ring_canvas',
 ]);
 
+/* 异步 PBR 贴图。normalScale 是"照片感"的开关，不是细节量：
+   木材那张法线原本挂的是 0.035——贴图是加载进来了，可 0.035 等于没有，
+   站在报名处前面看柜体就是一块刷了漆的平板。木纹要读得出来，得给到 0.35 以上。
+   stone_light / stone_light_in 只借法线：底色是自己画的细石纹、粗糙度已经挂了噪声图，
+   这两样不能被照片贴图顶掉，所以 skipColor + skipRough。 */
 const PBR_GROUPS = {
   brick_grey: { set: 'brick', normalScale: 0.08 },
-  oak_light: { set: 'wood', normalScale: 0.035, skipColor: true },
-  oak_flat: { set: 'wood', normalScale: 0.035, skipColor: true },
+  oak_light: { set: 'wood', normalScale: 1.3, skipColor: true },
+  oak_flat: { set: 'wood', normalScale: 1.3, skipColor: true },
+  stone_light: { set: 'stone', normalScale: 1.2, skipColor: true, skipRough: true },
+  stone_light_in: { set: 'stone', normalScale: 1.2, skipColor: true, skipRough: true },
 };
 
 /* js/features/arena/ → 仓库根 → examples/campus-3d-v5/assets/ */
@@ -343,38 +350,83 @@ function makeLightOakTexture(THREE, owner, horizontal) {
   g.fillStyle = '#d9bd93';
   g.fillRect(0, 0, w, h);
 
+  /* 直纹。真木头不是等距等深的横条：深度上"几道深、一堆浅"，
+     间距上大半很近、偶尔一道岔开，走向还要慢慢摆。这三样缺一样，画出来就变成拉丝金属。 */
   if (horizontal) {
-    let y = -20;
-    while (y < h + 20) {
-      const band = 0.25 + Math.random() * 0.8;
-      const alpha = 0.025 + Math.random() * 0.028;
-      g.fillStyle = 'rgba(138,102,62,' + alpha.toFixed(3) + ')';
-      g.beginPath(); g.lineWidth = band; g.strokeStyle = g.fillStyle;
-      for (let gx = 0; gx <= w; gx += 8) { const gy = y + Math.sin(gx / 80 + y / 35) * 1.4; if (!gx) g.moveTo(gx, gy); else g.lineTo(gx, gy); }
+    let y = -24;
+    while (y < h + 24) {
+      const band = 0.3 + Math.random() * 1.1;
+      const alpha = (0.045 + Math.random() * 0.10) * (Math.random() > 0.72 ? 1.8 : 1);
+      const amp = 0.8 + Math.random() * 4.4;
+      const per = 55 + Math.random() * 90;
+      g.lineWidth = band;
+      g.strokeStyle = 'rgba(138,102,62,' + alpha.toFixed(3) + ')';
+      g.beginPath();
+      for (let gx = 0; gx <= w; gx += 6) {
+        const gy = y + Math.sin(gx / per + y / 29) * amp
+          + Math.sin(gx / (per * 0.31) + y / 7) * amp * 0.34;
+        if (!gx) g.moveTo(gx, gy); else g.lineTo(gx, gy);
+      }
       g.stroke();
-      if (Math.random() > 0.45) {
+      if (Math.random() > 0.55) {
         const x0 = Math.random() * w * 0.7;
-        g.fillStyle = 'rgba(120,86,50,' + (alpha * 1.25).toFixed(3) + ')';
+        g.fillStyle = 'rgba(120,86,50,' + (alpha * 1.5).toFixed(3) + ')';
         g.fillRect(x0, y, w * (0.2 + Math.random() * 0.5), band * (0.5 + Math.random() * 0.7));
       }
-      y += band + 1.2 + Math.random() * 3.8;
+      y += band + 1.0 + Math.pow(Math.random(), 1.8) * 16;
     }
   } else {
-    let x = -20;
-    while (x < w + 20) {
-      const band = 0.25 + Math.random() * 0.8;
-      const alpha = 0.025 + Math.random() * 0.028;
-      g.fillStyle = 'rgba(138,102,62,' + alpha.toFixed(3) + ')';
-      g.beginPath(); g.lineWidth = band; g.strokeStyle = g.fillStyle;
-      for (let gy = 0; gy <= h; gy += 8) { const gx = x + Math.sin(gy / 80 + x / 35) * 1.4; if (!gy) g.moveTo(gx, gy); else g.lineTo(gx, gy); }
+    let x = -24;
+    while (x < w + 24) {
+      const band = 0.3 + Math.random() * 1.1;
+      const alpha = (0.045 + Math.random() * 0.10) * (Math.random() > 0.72 ? 1.8 : 1);
+      const amp = 0.8 + Math.random() * 4.4;
+      const per = 55 + Math.random() * 90;
+      g.lineWidth = band;
+      g.strokeStyle = 'rgba(138,102,62,' + alpha.toFixed(3) + ')';
+      g.beginPath();
+      for (let gy = 0; gy <= h; gy += 6) {
+        const gx = x + Math.sin(gy / per + x / 29) * amp
+          + Math.sin(gy / (per * 0.31) + x / 7) * amp * 0.34;
+        if (!gy) g.moveTo(gx, gy); else g.lineTo(gx, gy);
+      }
       g.stroke();
-      if (Math.random() > 0.45) {
+      if (Math.random() > 0.55) {
         const y0 = Math.random() * h * 0.7;
-        g.fillStyle = 'rgba(120,86,50,' + (alpha * 1.25).toFixed(3) + ')';
+        g.fillStyle = 'rgba(120,86,50,' + (alpha * 1.5).toFixed(3) + ')';
         g.fillRect(x, y0, band * (0.5 + Math.random() * 0.7), h * (0.2 + Math.random() * 0.5));
       }
-      x += band + 1.2 + Math.random() * 3.8;
+      x += band + 1.0 + Math.pow(Math.random(), 1.8) * 16;
     }
+  }
+
+  /* 节疤：三处就够了。同心椭圆 + 周围一点暗晕——
+     直纹再真实，一片完全没有节疤的木板也还是"贴图"。 */
+  for (let i = 0; i < 3; i++) {
+    const kx = w * (0.12 + Math.random() * 0.76);
+    const ky = h * (0.12 + Math.random() * 0.76);
+    const rx = 5 + Math.random() * 7;
+    const ry = rx * (1.6 + Math.random() * 1.2);
+    for (let r = 0; r < 5; r++) {
+      g.strokeStyle = 'rgba(112,80,44,' + (0.10 - r * 0.016).toFixed(3) + ')';
+      g.lineWidth = 1 + Math.random() * 1.6;
+      g.beginPath();
+      g.ellipse(kx, ky, rx + r * 3.4, ry + r * 5.2, 0, 0, Math.PI * 2);
+      g.stroke();
+    }
+  }
+
+  /* 大尺度色差：直纹之外还得有"这一块板偏深、那一块偏浅"的走向，
+     否则一排木板拼起来是同一块色。宽度按整张贴图算，不受直纹密度影响。 */
+  for (let i = 0; i < 14; i++) {
+    const grd = horizontal
+      ? g.createLinearGradient(0, Math.random() * h, 0, Math.random() * h + h * 0.35)
+      : g.createLinearGradient(Math.random() * w, 0, Math.random() * w + w * 0.35, 0);
+    const dark = Math.random() > 0.45;
+    grd.addColorStop(0, dark ? 'rgba(126,92,54,0.055)' : 'rgba(255,238,206,0.055)');
+    grd.addColorStop(1, 'rgba(150,116,74,0)');
+    g.fillStyle = grd;
+    g.fillRect(0, 0, w, h);
   }
 
   const img = g.getImageData(0, 0, w, h);
@@ -440,7 +492,7 @@ function resolveMaterials(THREE, shared, owner) {
 }
 
 /** 异步补挂 PBR：不阻塞 createDistrict 的同步返回，失败保留纯色。 */
-function attachTextures(THREE, lib, pavingMats, owner) {
+function attachTextures(THREE, lib, owner) {
   if (!ASSET_DIR || typeof document === 'undefined' || typeof THREE.TextureLoader !== 'function') {
     return Promise.resolve({ ok: false, reason: 'no-asset-env', loaded: 0, total: 0, skipped: 0 });
   }
@@ -483,24 +535,13 @@ function attachTextures(THREE, lib, pavingMats, owner) {
       if (color) mat.map = color;
       mat.normalMap = normal;
       mat.normalScale = new THREE.Vector2(group.normalScale, group.normalScale);
-      mat.roughnessMap = rough;
+      if (rough && !group.skipRough) mat.roughnessMap = rough;
       mat.needsUpdate = true;
     })());
   }
 
-  for (const item of pavingMats) {
-    jobs.push((async () => {
-      const normal = await load('stone-normal.jpg', false);
-      if (owner.disposed) return;
-      const n = normal.clone();
-      n.repeat.set(item.repeat[0], item.repeat[1]);
-      n.needsUpdate = true;
-      if (!owner.ownTexture(n)) return;
-      item.mat.normalMap = n;
-      item.mat.normalScale = new THREE.Vector2(0.28, 0.28);
-      item.mat.needsUpdate = true;
-    })());
-  }
+  /* 铺装的法线不再走这里：板缝必须是"凹下去的"，而 stone-normal 只是一块石板表面的起伏，
+     铺上去缝还是平的。改成在 makePavingMaterial() 里按同一张网格程序化生成（见 pavingNormal）。 */
 
   return Promise.allSettled(jobs).then((results) => {
     const rejected = results.filter((r) => r.status === 'rejected');
@@ -546,7 +587,10 @@ export function createDistrict(ctx = {}) {
       if (canvasMap) rc.map = canvasMap;
       if (weave) {
         rc.normalMap = weave;
-        rc.normalScale = new THREE.Vector2(0.95, 0.95);
+        /* 0.62 而不是 1.0：整块台面在画面里占的面积太大，
+           经纬一旦给满，远看会读成一层规则网格（像铺了张金属网），
+           帆布该是"近看有织点、退开只剩一点方向感"。 */
+        rc.normalScale = new THREE.Vector2(0.55, 0.55);
       }
       rc.needsUpdate = true;
     }
@@ -600,7 +644,6 @@ export function createDistrict(ctx = {}) {
   const colliders = [];
   const interactions = [];
   const animated = [];
-  const pavingMaterials = [];
 
   function boxGeo(w, h, d) {
     const key = 'b' + w.toFixed(3) + '|' + h.toFixed(3) + '|' + d.toFixed(3);
@@ -643,6 +686,34 @@ export function createDistrict(ctx = {}) {
       g.userData.__arenaCached = true;
       geoCache.set(key, g);
     }
+    return g;
+  }
+
+  /* 远景植被用的"不规则球"。正球无论怎么错位堆叠，轮廓都是圆弧拼圆弧，
+     远看就是一堆绿气球——问题不在面数，在轮廓本身太规矩。
+     这里按顶点方向推一把：三组正弦当伪噪声（便宜、确定性、球面上连续），
+     每个顶点沿法线方向伸缩 ±amp。接缝与两极是重合顶点、位移相同，不会裂。
+     位移完之后必须重算法线，否则凹凸没有明暗。 */
+  function lumpySphereGeo(r, wSeg, hSeg, amp, seed) {
+    const key = 'l' + r + '|' + wSeg + '|' + hSeg + '|' + amp + '|' + seed;
+    let g = geoCache.get(key);
+    if (g) return g;
+    g = new THREE.SphereGeometry(r, wSeg, hSeg);
+    const pos = g.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+      const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
+      const len = Math.sqrt(x * x + y * y + z * z) || 1;
+      const nx = x / len, ny = y / len, nz = z / len;
+      const f = 1
+        + amp * Math.sin(2.3 * nx * 3.1 + seed) * Math.cos(2.7 * ny + seed * 1.7)
+        + amp * 0.55 * Math.sin(3.3 * nz + seed * 2.9) * Math.sin(1.9 * ny * 2.1 + seed)
+        + amp * 0.3 * Math.sin(6.1 * nx - 4.7 * nz + seed * 0.6);
+      pos.setXYZ(i, x * f, y * f, z * f);
+    }
+    pos.needsUpdate = true;
+    g.computeVertexNormals();
+    g.userData.__arenaCached = true;
+    geoCache.set(key, g);
     return g;
   }
 
@@ -993,10 +1064,23 @@ export function createDistrict(ctx = {}) {
     tex.colorSpace = THREE.SRGBColorSpace;
     tex.anisotropy = 8;
     if (!owner.ownTexture(tex)) return null;
-    const mat = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.8, metalness: 0.0, color: baseColor });
+    const mat = new THREE.MeshStandardMaterial({
+      map: tex, roughness: 0.8, metalness: 0.0, color: baseColor,
+    });
     mat.name = 'paving:' + baseColor;
+    /* 板缝法线：和底色共用一张网格，repeat 必须一致，否则缝会错位。
+       贴图本身是共享的（同一张 512），只是每块地面的 repeat 不同，所以克隆纹理句柄。 */
+    const pn = pavingNormal();
+    if (pn) {
+      const n = pn.clone();
+      n.repeat.set(repX, repY);
+      n.needsUpdate = true;
+      if (owner.ownTexture(n)) {
+        mat.normalMap = n;
+        mat.normalScale = new THREE.Vector2(0.9, 0.9);
+      }
+    }
     owner.ownMaterial(mat);
-    pavingMaterials.push({ mat, repeat: [repX, repY] });
     return mat;
   }
 
@@ -1265,19 +1349,68 @@ export function createDistrict(ctx = {}) {
     return ropeNormalTex;
   }
 
-  /* 台面帆布：经纬交错的凹凸。sin*sin 出来是棋盘状的起落，正是帆布的读法。 */
+  /* 台面帆布：经纬交错的凹凸。sin*sin 出来是棋盘状的起落，正是帆布的读法。
+     频率是这里唯一的难点：原来写 48 个循环、台面上再重复 48 次，
+     一个织格只有 3mm，投影到屏幕上是亚像素——结果不是"看不见"，而是**走样成一片竖条纹**。
+     现在降到 12 个循环（256 图里 21px 一格，采样够密）、台面重复 36 次，
+     一格约 1.7cm：近看是粗帆布，远看交给 mip 自己抹平。 */
   function weaveNormal() {
     if (!weaveNormalDone) {
       weaveNormalDone = true;
       weaveNormalTex = heightToNormal(256,
-        (u, v) => Math.sin(2 * Math.PI * 48 * u) * Math.sin(2 * Math.PI * 48 * v), 0.0016);
+        (u, v) => Math.sin(2 * Math.PI * 12 * u) * Math.sin(2 * Math.PI * 12 * v), 0.006);
       if (weaveNormalTex) {
-        weaveNormalTex.repeat.set(48, 48);
+        /* repeat 22 → 一格 2.8cm。之前 36（1.7cm）在十米外正好落在奈奎斯特线上，
+           整块台面会织出一层规则的方格，像铺了张坐标纸。 */
+        weaveNormalTex.repeat.set(22, 22);
         weaveNormalTex.anisotropy = 8;
         weaveNormalTex.needsUpdate = true;
       }
     }
     return weaveNormalTex;
+  }
+
+  /* 护角垫/帆布之后是铺装：整片地面是画面里面积最大的表面，也是最先露馅的——
+     底色里画了 2.6px 的板缝，可法线贴的是"石材表面起伏"，缝在地面上是**平的**，
+     于是近看像一张印了格子的纸。这里按和底色完全同一张网格（4×4、错缝半块）算高度场：
+     缝底 0、板面 1、中间 7px 倒角过渡，每块板的倒角宽度单独抖一下——
+     倒角一样宽的时候，整片地面读起来像挤出来的塑料件。 */
+  const PAVING_COLS = 4;
+  const PAVING_ROWS = 4;
+  const PAVING_GAP = 2.6 / 1024;
+  const PAVING_BEVEL = 7 / 1024;
+  let pavingNormalTex = null;
+  let pavingNormalDone = false;
+
+  function pavingNormal() {
+    if (pavingNormalDone) return pavingNormalTex;
+    pavingNormalDone = true;
+    const hash = (a, b) => {
+      const s = Math.sin(a * 127.1 + b * 311.7) * 43758.5453;
+      return s - Math.floor(s);
+    };
+    const height = (u, v) => {
+      const fv = v * PAVING_ROWS;
+      const row = Math.floor(fv);
+      const cv = fv - row;
+      const off = (row % 2) * (0.5 / PAVING_COLS);   // 与底色那张图的错缝一致
+      const fu = (u + off) * PAVING_COLS;
+      const col = Math.floor(fu);
+      const cu = fu - col;
+      const du = Math.min(cu, 1 - cu) / PAVING_COLS;  // 到本块内边界的距离（uv 单位）
+      const dv = Math.min(cv, 1 - cv) / PAVING_ROWS;
+      const bevel = PAVING_BEVEL * (0.6 + 0.8 * hash(col, row));
+      const d = Math.min(du, dv) - PAVING_GAP;
+      let h = d <= 0 ? 0 : Math.min(1, d / bevel);
+      h = h * h * (3 - 2 * h);
+      /* 板面的微起伏：两个正弦互调一下，既打破"绝对平面"，又保证首尾可平铺 */
+      const grain = 0.030 * Math.sin(6.2832 * 11 * u + 3.1 * Math.sin(6.2832 * 7 * v))
+        + 0.022 * Math.sin(6.2832 * 23 * v + 1.7 * Math.sin(6.2832 * 17 * u));
+      return h * (1 + grain);
+    };
+    pavingNormalTex = heightToNormal(512, height, 0.005);
+    if (pavingNormalTex) pavingNormalTex.anisotropy = 8;
+    return pavingNormalTex;
   }
 
   /* 粗糙度噪声：低频斑块 + 细颗粒。只求"不是一整块光滑面"。
@@ -1344,6 +1477,30 @@ export function createDistrict(ctx = {}) {
       grd.addColorStop(1, 'rgba(128,120,100,0)');
       g.fillStyle = grd;
       g.fillRect(x - r, y - r, r * 2, r * 2);
+    }
+
+    /* 中心踩踏区：双方来回走的就是这一块，比四周暗一点点、也没有四周干净。
+       只给 10%——再重就成了"脏台子"，这一块要的是"用过"，不是"旧"。 */
+    const wg = g.createRadialGradient(
+      size * 0.5, size * 0.5, size * 0.06,
+      size * 0.5, size * 0.5, size * 0.44,
+    );
+    wg.addColorStop(0, 'rgba(118,110,90,0.10)');
+    wg.addColorStop(0.58, 'rgba(118,110,90,0.045)');
+    wg.addColorStop(1, 'rgba(118,110,90,0)');
+    g.fillStyle = wg;
+    g.fillRect(0, 0, size, size);
+
+    /* 织点：512 一张铺满 7.3m，一个像素就是 1.4cm。
+       真帆布的织格比这细得多，硬画下去只会走样成噪点条带——所以这里只画
+       "成团的浅深颗粒"，负责在近景给出颗粒感，远景交给 mip 抹平。 */
+    for (let i = 0; i < 5200; i++) {
+      const x = Math.random() * size;
+      const y = Math.random() * size;
+      const v = Math.random() > 0.5 ? 255 : 118;
+      g.fillStyle = 'rgba(' + v + ',' + (v - 5) + ',' + (v - 18) + ','
+        + (0.03 + Math.random() * 0.05).toFixed(3) + ')';
+      g.fillRect(x, y, 1 + Math.random() * 1.6, 1 + Math.random() * 1.6);
     }
 
     // 边角积灰：四条边各一道向内渐隐的暗带
@@ -2316,7 +2473,7 @@ export function createDistrict(ctx = {}) {
     /* ---- 第一层：矮灌。围栏外 12~26m 撒一圈 0.5~1.1m 高的暗绿团块。
        这一层是专门补"围栏后面那片空草地"的——没有它，围栏和树带之间
        是三十米宽的纯绿平面，一眼就是没做完。 ---- */
-    const blobGeo = sphereGeo(1, 10, 7);
+    const blobGeo = lumpySphereGeo(1, 10, 7, 0.26, 3.7);
     const scrubs = [];
     for (let i = 0; i < 54; i++) {
       const ang = (i / 54) * Math.PI * 2 + rnd() * 0.28;
@@ -2407,7 +2564,7 @@ export function createDistrict(ctx = {}) {
         });
       });
     });
-    layer('treeline-canopy', sphereGeo(1, 10, 7), lobeItems, false);
+    layer('treeline-canopy', lumpySphereGeo(1, 12, 8, 0.2, 11.3), lobeItems, false);
     const trunkMesh = new THREE.InstancedMesh(cylGeo(0.13, 0.2, 1, 6), M.soil, trunkItems.length);
     trunkMesh.name = 'dressing:treeline-trunk';
     trunkMesh.castShadow = false;
@@ -2440,7 +2597,7 @@ export function createDistrict(ctx = {}) {
         rgb: [0.3 * t, 0.355 * t, 0.325 * t],
       });
     }
-    layer('far-ridge', sphereGeo(1, 9, 6), ridge, false);
+    layer('far-ridge', lumpySphereGeo(1, 10, 7, 0.16, 5.1), ridge, false);
   }
 
 
@@ -2495,7 +2652,7 @@ export function createDistrict(ctx = {}) {
     if (glowMat) glowMat.opacity = 0.40 + 0.045 * s;
   });
 
-  const texturesReady = attachTextures(THREE, M, pavingMaterials, owner);
+  const texturesReady = attachTextures(THREE, M, owner);
 
   let elapsed = 0;
 
@@ -2523,7 +2680,6 @@ export function createDistrict(ctx = {}) {
       geoCache.clear();
       for (const g of tiledGeoCache.values()) g.dispose();
       tiledGeoCache.clear();
-      pavingMaterials.length = 0;
       if (root.parent) root.parent.remove(root);
     },
   };
