@@ -47,6 +47,36 @@ button:focus-visible, a:focus-visible { outline: 3px solid #a46b26; outline-offs
 
 #world { display: block; width: 100vw; height: 100dvh; outline: none; touch-action: none; }
 
+/* 镜头层：渲染端没有后处理，一切"镜头味"都只能靠这层 DOM 做。
+   ① 暗角 + 顶端暖调——镜头边缘的光衰减，顺便把注意力收到画面中心；
+   ② 胶片颗粒——极淡的一层噪点，压掉大面积渐变上的色带，也把 CG 的"太干净"磨掉。
+
+   浅景深试过、没留下：`backdrop-filter: blur()` 确实能把背后的 WebGL 画布糊掉
+   （单独验过，整屏 blur 是生效的），但一旦在它上面加 mask-image 做"中间实、四周虚"
+   的渐变遮罩，Chromium 就整层不绘制；把遮罩挪到父级、blur 留在子级也一样失效
+   （父级有 mask 时，子级的 backdrop 根被截在父级内部，没有可模糊的内容）。
+   剩下的办法要么是全屏统一虚化（会把主体也糊掉、还额外多一次全屏合成），
+   要么上 EffectComposer 做景深——vendor 里没有后处理链路，不引。
+   所以景深这块放弃，靠雾、暗角和颗粒去补"不是渲染图"的感觉。 */
+.lens {
+  position: fixed; inset: 0; z-index: 2; pointer-events: none;
+  background:
+    radial-gradient(120% 90% at 50% 42%, rgba(30, 38, 34, 0) 46%, rgba(26, 33, 30, .26) 100%),
+    linear-gradient(180deg, rgba(255, 238, 210, .07) 0%, rgba(255, 238, 210, 0) 22%);
+}
+/* ② 胶片颗粒：feTurbulence 生成的噪点，140px 平铺。opacity 压到 0.05——
+   看得见就过了，照片上的颗粒只是在放大时能摸到。 */
+.lens::after {
+  content: ''; position: absolute; inset: 0; opacity: .05; mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+@media (prefers-reduced-motion: reduce) {
+  .lens::after { display: none; }
+}
+/* 叠层在 z-index 2，界面要压在它上面 */
+.topbar, .guide, .bottom, #interact, #crosshair, #touch { position: fixed; z-index: 3; }
+#loading { z-index: 10; }
+
 /* ---------- 顶部工具条 ---------- */
 
 .topbar {

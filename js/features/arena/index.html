@@ -8,6 +8,8 @@
 </head>
 <body>
 <canvas id="world" tabindex="0" aria-label="好友竞技场三维空间，WASD 移动，拖动转向，E 操作"></canvas>
+<!-- 镜头层：极淡的暗角 + 一点冷调收边。没有后处理管线，这一层是最便宜的"照片感" -->
+<div class="lens" aria-hidden="true"></div>
 
 <header class="topbar">
   <a class="back" href="../../../index.html#community">返回主站</a>
@@ -139,11 +141,17 @@ renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 0.78;
+/* 0.78 → 0.80：只补一点点。上一版为了抵掉低角度太阳的影响抬到 0.86，
+   结果是台面帆布直接烧成一片白纸——ACES 也救不回没有层次的中间调。
+   正确的补法是抬太阳强度、把曝光留在原地。 */
+renderer.toneMappingExposure = 0.80;
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0xc6dae4);
-scene.fog = new THREE.Fog(0xc6dae4, 52, 150);
+/* 指数雾而不是线性雾：草地铺到 70m 外，需要"近处几乎不雾、远处很快化掉"的曲线。
+   线性雾（30–115）在 30m 内一点不给，背景仍然是一整片饱和的绿；
+   FogExp2 在 17m 只有 7%，到 45m 已经过半，远处的草才会真的退成空气色。 */
+scene.fog = new THREE.FogExp2(0xc6dae4, 0.016);
 
 /* 天空 HDR → 环境反射（IBL）。没有它，金属度偏高的柱、围绳、锣面会发死黑。 */
 let envState = { ok: false, reason: 'not-started' };
@@ -166,14 +174,23 @@ try {
 const camera = new THREE.PerspectiveCamera(2 * Math.atan(12 / 35) * 180 / Math.PI, 1, 0.1, 260);
 camera.rotation.order = 'YXZ';
 
-const hemi = new THREE.HemisphereLight(0xdfeaf2, 0x6f7564, envState.ok ? 0.42 : 1.05);
+/* 天空补光略微抬一点（0.42 → 0.48）：阴影里的暗部全靠它，
+   太低的话低角度太阳会把半个场地压成一片死灰。 */
+const hemi = new THREE.HemisphereLight(0xdfeaf2, 0x6f7564, envState.ok ? 0.48 : 1.05);
 scene.add(hemi);
 
-const sun = new THREE.DirectionalLight(0xfff3de, envState.ok ? 2.2 : 2.1);
-sun.position.set(15, 23, 12);
+/* 太阳压低到 39°：正午的顶光会把所有竖向构件压扁、影子全缩在脚下，
+   看起来像产品渲染图。压低之后影子拉长、受光面转暖，是照片里那种侧光。
+   强度同时从 2.2 提到 2.6：低角度下水平面的入射余弦小了约 17%，
+   不补回来整片铺装会平白暗一档。 */
+const sun = new THREE.DirectionalLight(0xfff0d6, envState.ok ? 2.38 : 2.1);
+sun.position.set(17, 17.5, 12.5);
 sun.target.position.set(0, 1.4, 0);
 sun.castShadow = true;
-sun.shadow.mapSize.set(2048, 2048);
+/* 阴影图 4096：2048 在 28m 投影范围上只有 13mm/texel，
+   台基边、门柱脚这种细接触线会糊成一团。移动端退回 2048——带宽先保住帧率。 */
+const shadowSize = window.innerWidth < 900 ? 2048 : 4096;
+sun.shadow.mapSize.set(shadowSize, shadowSize);
 sun.shadow.camera.near = 1;
 sun.shadow.camera.far = 80;
 sun.shadow.camera.left = -14;
@@ -186,7 +203,9 @@ sun.shadow.radius = 2;
 scene.add(sun.target);
 scene.add(sun);
 
-const fill = new THREE.DirectionalLight(0xdce8ef, envState.ok ? 0.16 : 0.6);
+/* 反光板：从西北侧补一点中性光，把背光面的死黑抬起来。
+   太阳压到 39° 之后，朝西南的立面几乎全落在阴影里，只靠半球光会很平。 */
+const fill = new THREE.DirectionalLight(0xd8ddd2, envState.ok ? 0.22 : 0.6);
 fill.position.set(-14, 9, -10);
 scene.add(fill);
 
@@ -210,8 +229,11 @@ const maxZ = ARENA_LAYOUT.site.d / 2 + 1;
 const PRESETS = {
   /* 牌坊和擂台分别在视点两侧，画面中心取两者的中间点，否则匾额会被顶到画面外 */
   entrance: { target: [-2.0, 1.4, 1.0], radius: 17, yaw: -55, pitch: 5 },
-  /* 擂台正面：西南 3/4、抬高到 5m 俯看，台基、台阶与场地圆环都在画面里 */
-  ring:     { target: [1.8, 1.2, 0], radius: 11, yaw: -120, pitch: 20 },
+  /* 擂台正面：站在进场主路上正对擂台（yaw -90 就是"从牌坊往里看"这条视线）。
+     早先是西南 3/4 的斜视，围绳在画面上是斜线交叉，看久了才发现
+     真正的问题在几何上——围绳的旋转装反了，一半的绳穿到台外去了。
+     修好之后正面反而最耐看：三道绳各自横平，台面透视收进去，人像站在台下抬头看。 */
+  ring:     { target: [1.8, 1.5, 0], radius: 10.2, yaw: -90, pitch: 14 },
   /* 报名处在场地东南角、紧贴围栏，东侧是看台、西侧就是擂台：
      从这个角往外退，怎么摆都会有围栏和围绳入画。最后选西南偏西的斜视——
      围绳横在下缘当近景，报名处的匾额正好在画面中心，读完一眼就知道这是来报名的地方。 */
