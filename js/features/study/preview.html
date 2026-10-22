@@ -72,6 +72,9 @@
     color: #1d2419; background: rgba(255,255,255,.9); border: 1px solid #d7d8cf;
     border-radius: 5px; padding: 3px 9px; pointer-events: none; display: none; z-index: 40;
   }
+  /* 拿着书时提示条挪到画面下缘：它原来正好压在摊开的书页大标题上，
+     而大标题就是书名，被盖住等于白做。 */
+  #aimHint.low { top: auto; bottom: 58px; }
 </style>
 <script type="importmap">
 {
