@@ -219,6 +219,13 @@
       { base: S.boardThickness + 0.34, limit: S.height - S.boardThickness }
     ];
 
+    /* 相邻两本不取同一个颜色。
+       调色板只有 8 色，随机取色时约 1/8 的书会和左邻撞色，连着两本撞色就成了
+       一条 4~5 cm 的纯色带（近景实拍见 05-书架），整排读成色块拼贴。
+       这里**不额外调 rand()**：只是把已抽到的索引错开一位，随机序列一格没动，
+       所以书的位置、数量、包围盒与改前完全一致，只有颜色变。 */
+    var lastColor = null;
+
     levels.forEach(function (lv) {
       var left = -S.width / 2 + 0.07;
       var right = S.width / 2 - 0.07;
@@ -258,11 +265,19 @@
         // 会压到预留窗口就整本跳过，下一本从窗口右侧继续
         if (slot && x + wide > slot[0] && x < slot[1]) { x = slot[1] + 0.002; continue; }
 
+        /* 这两次 rand() 的先后顺序就是原来的顺序（先 z 抖动、后取色），
+           改成先算局部量只是为了让颜色能被上一本的取值影响到。 */
+        var jz = (rand() - 0.5) * 0.03;
+        var ci = Math.floor(rand() * BOOK_COLORS.length);
+        if (BOOK_COLORS[ci] === lastColor) ci = (ci + 1) % BOOK_COLORS.length;
+        lastColor = BOOK_COLORS[ci];
+
         books.push({
-          pos: [x + wide / 2, lv.base + h / 2, z + (rand() - 0.5) * 0.03],
+          pos: [x + wide / 2, lv.base + h / 2, z + jz],
           scale: [th, h, d],
           rot: [0, yaw, lean],
-          color: BOOK_COLORS[Math.floor(rand() * BOOK_COLORS.length)]
+          upright: true,                     // 书架上是立着放的，封面要在左右
+          color: lastColor
         });
         x += wide + 0.002 + (rand() < 0.12 ? 0.02 + rand() * 0.05 : 0);
       }
@@ -345,40 +360,87 @@
    * 代价只是实例数 ×3，draw call 不变（同一个 InstancedMesh）。
    */
   /**
+   * 调色板里的颜色往白里兑一点，用来做「书脊比封面浅」的层次。
+   * 只处理 #rrggbb，够用了。
+   */
+  function lighten(hex, k) {
+    var c = parseInt(hex.slice(1), 16);
+    var r = (c >> 16) & 255, g = (c >> 8) & 255, b = c & 255;
+    r = Math.round(r + (255 - r) * k);
+    g = Math.round(g + (255 - g) * k);
+    b = Math.round(b + (255 - b) * k);
+    return '#' + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
+  }
+
+  /**
    * 合着的书：一本书 = 上封面 + 书页 + 下封面，**三个实例**。
    * 返回 items（给 instance 用）和 groups（每个实例属于哪本书）。
    *
    * groups 必须显式给出来：外面若按 "i*3 起连续三个" 去猜，
    * 配方一改（比如以后加书脊）就会静默错位，而错误表现是
    * "拿起来的书只剩一块板"——这种 bug 只有上手才发现。
+   *
+   * 两种姿态分开算，因为 `scale` 三个数的含义不一样：
+   *   平放（桌面 / 窗台 / 那摞）：[宽, 厚, 深]——封面在**上下**。
+   *   立着（书架）：        [厚, 高, 深]——封面在**左右**，书脊朝 +Z（朝人）。
+   *
+   * 立书原来被当成平放处理：`t = 高` 于是两片封面被放到了书的**顶部和底部**，
+   * 正面整面露出白书页，157 本排在一起读成"一墙白纸板"（实拍见 05-书架）。
+   * 现在封面对到左右、书页夹在中间并调成封面色，正面才是一条彩色书脊。
    */
   function bookInstances(books) {
     var PAGE = '#efe9dc';
     var out = [];
     var groups = [];
-    books.forEach(function (b, bi) {
+    books.forEach(function (b) {
       var base = out.length;
-      var t = b.scale[1];
-      var w = b.scale[0];
+      var upright = !!b.upright;
+      var t = b.scale[1];                       // 平放：厚度；立着：高度
+      var w = b.scale[0];                       // 平放：宽度；立着：厚度
       var d = b.scale[2];
-      var coverT = Math.min(0.0038, t * 0.24);
+      var coverT = Math.min(0.0038, (upright ? w : t) * 0.24);
       var y = b.pos[1];
-      // 上下封面：整本书的厚度里各占一层
-      [1, -1].forEach(function (s) {
-        out.push({
-          pos: [b.pos[0], y + s * (t / 2 - coverT / 2), b.pos[2]],
-          scale: [w, coverT, d],
-          rot: b.rot,
-          color: b.color
+
+      if (upright) {
+        /* 立书：两片封面在左右两侧（法线沿 X），书页夹在中间。
+           书页比封面矮 6 mm、浅 5 mm，于是上下和前后各露出一圈封面边——
+           那是"精装书脊"的压边感，也是让整本书不读成一根纯色柱子的唯一细节。 */
+        [-1, 1].forEach(function (s) {
+          out.push({
+            pos: [b.pos[0] + s * (w / 2 - coverT / 2), y, b.pos[2]],
+            scale: [coverT, t, d],
+            rot: b.rot,
+            color: b.color
+          });
         });
-      });
-      // 书页：比封面小一圈，于是四周能看见书口
-      out.push({
-        pos: [b.pos[0], y, b.pos[2]],
-        scale: [Math.max(0.004, w - 0.006), Math.max(0.002, t - 2 * coverT), Math.max(0.004, d - 0.005)],
-        rot: b.rot,
-        color: PAGE
-      });
+        out.push({
+          pos: [b.pos[0], y, b.pos[2]],
+          scale: [
+            Math.max(0.004, w - 2 * coverT),
+            Math.max(0.004, t - 0.006),
+            Math.max(0.004, d - 0.005)
+          ],
+          rot: b.rot,
+          color: lighten(b.color, 0.18)
+        });
+      } else {
+        // 平放：上下封面各一层
+        [1, -1].forEach(function (s) {
+          out.push({
+            pos: [b.pos[0], y + s * (t / 2 - coverT / 2), b.pos[2]],
+            scale: [w, coverT, d],
+            rot: b.rot,
+            color: b.color
+          });
+        });
+        // 书页：比封面小一圈，于是四周能看见书口
+        out.push({
+          pos: [b.pos[0], y, b.pos[2]],
+          scale: [Math.max(0.004, w - 0.006), Math.max(0.002, t - 2 * coverT), Math.max(0.004, d - 0.005)],
+          rot: b.rot,
+          color: PAGE
+        });
+      }
       groups.push([base, base + 1, base + 2]);
     });
     return { items: out, groups: groups };
