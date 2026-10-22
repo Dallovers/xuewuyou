@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>好友竞技场 · 学无忧</title>
 <link rel="stylesheet" href="arena.css">
 </head>
@@ -12,6 +12,7 @@
 <header class="topbar">
   <a class="back" href="../../../index.html#community">返回主站</a>
   <div class="identity"><h1>好友竞技场</h1><span id="location">竞技场前庭</span></div>
+  <span id="who" class="who" hidden></span>
   <button id="rules" type="button">挑战规则</button>
   <button id="walk" class="primary" type="button">进入漫游</button>
 </header>
@@ -23,7 +24,7 @@
     <button type="button" data-view="ring" aria-pressed="false">擂台正面</button>
     <button type="button" data-view="desk" aria-pressed="false">报名处</button>
   </nav>
-  <small id="help">拖动旋转 · 滚轮缩放 · 进入漫游后走到擂台前按 E</small>
+  <small id="help">拖动旋转 · 滚轮/双指缩放 · 进入漫游后走到擂台前按 E</small>
 </aside>
 
 <div id="crosshair" hidden aria-hidden="true">+</div>
@@ -42,7 +43,6 @@
   <button type="button" data-key="KeyS" aria-label="向后走">后退</button>
   <button type="button" data-key="KeyD" aria-label="向右走">右移</button>
 </div>
-
 <p id="toast" role="status" hidden></p>
 
 <div id="loading">
@@ -50,7 +50,7 @@
   <p>加载擂台、石材与天光…</p>
 </div>
 
-<dialog id="rules-dialog" aria-labelledby="rules-title">
+<dialog id="rules-dialog" tabindex="-1" aria-labelledby="rules-title">
   <div class="dialog-head">
     <div><h2 id="rules-title">挑战规则</h2><p>来自既有好友挑战，不是这块场地自己定的</p></div>
     <button id="close-rules" type="button" aria-label="关闭挑战规则">关闭</button>
@@ -64,18 +64,18 @@
     </ul>
     <p style="margin-top:16px">场地上有三个实物交互点：</p>
     <ul class="kv">
-      <li><b>擂台台阶</b><span>按 E 打开好友挑战（<code>arena</code>）</span></li>
-      <li><b>报名处</b><span>按 E 打开学习搭子列表（<code>friends</code>）——先有人可打</span></li>
+      <li><b>擂台台阶</b><span>按 E 读出真实挑战列表，也能就地发起、开始或取消</span></li>
+      <li><b>报名处</b><span>按 E 读学习搭子与待处理邀请，可以直接接受或婉拒</span></li>
       <li><b>开赛锣</b><span>按 E 敲一下，纯本地动作，不上报服务端</span></li>
     </ul>
     <div class="dialog-note">
-      本页是独立 3D 场景，没有主站的社区面板。想看真实挑战列表，点「返回主站」→ 校园互动 → 好友竞技场。
-      场地本身不显示比分，也不伪造战绩。
+      这两个面板读的是主站同一套接口（<code>/api/community/*</code>）、同一个登录态，不另存一份数据。
+      答题与复盘要排数学式子，仍回主站「校园互动 → 好友竞技场」那一栏完成。
     </div>
   </div>
 </dialog>
 
-<dialog id="feature-dialog" aria-labelledby="feature-title">
+<dialog id="feature-dialog" tabindex="-1" aria-labelledby="feature-title">
   <div class="dialog-head">
     <div><h2 id="feature-title">擂台</h2><p id="feature-sub"></p></div>
     <button id="close-feature" type="button" aria-label="关闭">关闭</button>
@@ -93,7 +93,16 @@
 }
 </script>
 
+<!-- 主站的 API 客户端：擂台与报名处要读真实的挑战/搭子，靠它带 xwy_token 打既有接口。
+     三个都是 defer 的普通脚本，按文档顺序先于下面的 module 执行。 -->
+<script src="../../../js/deploy-config.js"></script>
+<script src="../../../js/runtime.js"></script>
+<script src="../../../js/api.js"></script>
+
 <script type="module">
+/* 擂台与报名处的面板走业务层：读真实挑战/搭子，不再放说明卡 */
+import { createPanels, session } from './arena-business.js';
+
 const $ = (id) => document.getElementById(id);
 const loading = $('loading');
 
@@ -222,6 +231,22 @@ const state = {
   ready: false,
 };
 
+/* 缩放的上下限按机位算，不是一个全局常数。
+ * 全局 4.5 那种写法的后果是：两个机位要读的关系差着三倍，擂台正面一捏就钻进
+ * 围绳里，报名处却几乎不能靠近。这里让每个机位各留自己的舒适区间。 */
+function zoomRange(name) {
+  const p = PRESETS[name] || PRESETS.entrance;
+  return {
+    min: Math.max(3.2, p.radius * 0.7),
+    max: Math.min(30, Math.max(p.radius * 1.7, 12)),
+  };
+}
+
+function clampRadius(value) {
+  const r = zoomRange(state.view);
+  return Math.max(r.min, Math.min(r.max, value));
+}
+
 function applyOrbit() {
   const cp = Math.cos(state.orbitPitch);
   camera.position.set(
@@ -264,14 +289,18 @@ function walk() {
   state.mode = 'walk';
   applyWalk();
   canvas.focus();
+  const touchUI = matchMedia('(pointer: coarse)').matches || innerWidth < 700;
   $('walk').textContent = '漫游中';
   $('exit').hidden = false;
   $('crosshair').hidden = false;
-  $('modeStatus').textContent = '漫游中 · 走到物件前按 E';
+  /* 触屏上没有 E 键，状态条别写「按 E」 */
+  $('modeStatus').textContent = touchUI ? '漫游中 · 走到物件前点下面的按钮' : '漫游中 · 走到物件前按 E';
   $('statusDot').classList.add('is-live');
-  $('touch').hidden = !(matchMedia('(pointer: coarse)').matches || innerWidth < 700);
+  $('touch').hidden = !touchUI;
   updateLocation();
-  toast('拖动转向，WASD 移动；走到擂台台阶、报名处或开赛锣前按 E。');
+  toast(touchUI
+    ? '左手方向键移动，画布上滑动转向；回到外观后可以双指捏合缩放。'
+    : '拖动转向，WASD 移动；走到擂台台阶、报名处或开赛锣前按 E。');
 }
 
 /* 圆-盒 / 圆-柱 推开，判定与 aria 预览页同一份，避免两处不一致 */
@@ -338,15 +367,49 @@ function updateLocation() {
 
 const keys = Object.create(null);
 let drag = null;
+/* 触屏：记录所有按在画布上的指针。两指进来就是捏合缩放，不能再当拖动使——
+   否则第二根手指落下的那一瞬，视角会先被甩一下再开始放大。 */
+const pointers = new Map();
+let pinch = null;
+
+function pinchSpan() {
+  if (pointers.size < 2) return 0;
+  const [a, b] = Array.from(pointers.values());
+  return Math.hypot(a.x - b.x, a.y - b.y);
+}
 
 canvas.addEventListener('pointerdown', (e) => {
   if (state.modal) return;
   canvas.focus();
   canvas.setPointerCapture(e.pointerId);
-  drag = { id: e.pointerId, x: e.clientX, y: e.clientY };
+  pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  if (pointers.size === 1) {
+    drag = { id: e.pointerId, x: e.clientX, y: e.clientY };
+  } else if (pointers.size === 2) {
+    drag = null;
+    const span = pinchSpan();
+    /* 只在检视模式缩放：漫游里对着墙面捏合没有意义，还会让相机忽然贴脸 */
+    pinch = (state.mode === 'inspect' && span > 0) ? { start: span, radius: state.radius } : null;
+  }
 });
+
 canvas.addEventListener('pointermove', (e) => {
-  if (!drag || drag.id !== e.pointerId || state.modal) return;
+  if (!pointers.has(e.pointerId)) return;
+  pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  if (state.modal) return;
+
+  if (pointers.size >= 2) {
+    if (pinch) {
+      const span = pinchSpan();
+      if (span > 0) {
+        state.radius = clampRadius(pinch.radius * (pinch.start / span));
+        applyOrbit();
+      }
+    }
+    return;
+  }
+
+  if (!drag || drag.id !== e.pointerId) return;
   const dx = e.clientX - drag.x;
   const dy = e.clientY - drag.y;
   drag.x = e.clientX;
@@ -356,14 +419,16 @@ canvas.addEventListener('pointermove', (e) => {
     state.orbitPitch = Math.max(-0.1, Math.min(1.05, state.orbitPitch + dy * 0.004));
     applyOrbit();
   } else {
+    /* 触屏上没有鼠标那么稳，转向系数略放大，一指就能带得动 */
     state.yaw -= dx * 0.0026;
     state.pitch = Math.max(-1.1, Math.min(1.1, state.pitch - dy * 0.0026));
     applyWalk();
   }
 });
 const endDrag = (e) => {
-  if (!drag) return;
-  drag = null;
+  pointers.delete(e.pointerId);
+  if (pointers.size < 2) pinch = null;
+  if (drag && drag.id === e.pointerId) drag = null;
   try { canvas.releasePointerCapture(e.pointerId); } catch (_) { /* 指针已释放 */ }
 };
 canvas.addEventListener('pointerup', endDrag);
@@ -371,7 +436,7 @@ canvas.addEventListener('pointercancel', endDrag);
 canvas.addEventListener('wheel', (e) => {
   if (state.mode !== 'inspect' || state.modal) return;
   e.preventDefault();
-  state.radius = Math.max(4.5, Math.min(26, state.radius * (1 + Math.sign(e.deltaY) * 0.08)));
+  state.radius = clampRadius(state.radius * (1 + Math.sign(e.deltaY) * 0.08));
   applyOrbit();
 }, { passive: false });
 
@@ -393,55 +458,52 @@ addEventListener('keydown', (e) => {
   }
 });
 addEventListener('keyup', (e) => { keys[e.code] = false; });
-addEventListener('blur', () => { for (const k of Object.keys(keys)) keys[k] = false; drag = null; });
+addEventListener('blur', () => {
+  for (const k of Object.keys(keys)) keys[k] = false;
+  drag = null;
+  pointers.clear();
+  pinch = null;
+});
 
 for (const b of document.querySelectorAll('#touch button')) {
   const code = b.dataset.key;
-  b.addEventListener('pointerdown', (e) => { e.preventDefault(); keys[code] = true; });
+  const press = (e) => {
+    e.preventDefault();
+    keys[code] = true;
+    b.classList.add('is-down');
+  };
+  const release = () => {
+    keys[code] = false;
+    b.classList.remove('is-down');
+  };
+  b.addEventListener('pointerdown', press);
   for (const ev of ['pointerup', 'pointercancel', 'pointerleave']) {
-    b.addEventListener(ev, () => { keys[code] = false; });
+    b.addEventListener(ev, release);
   }
 }
 
 /* ---------- 交互 ---------- */
 
-const FEATURE_COPY = {
-  'arena.ring': {
-    title: '擂台 · 好友挑战',
-    sub: '擂台台阶 → 真实好友挑战',
-    body: () => `
-      <p>主站里站到台阶前按 E，走的是既有链路：</p>
-      <p><code>WG_Community.open('arena')</code></p>
-      <p><b>arena</b> 是 <code>js/community.js</code> 里早就存在的 tab：<code>tabName === 'arena'</code>
-      时调 <code>loadChallenges()</code>，再 <code>StudyAppBridge.navTo('community')</code> 打开面板。
-      所以 3D 这边只负责「把已经存在的好友挑战打开」，没有第二套挑战状态。</p>
-      <div class="dialog-note">本页是独立场景，没有主站的社区 DOM，这里不显示假比分。
-      想看真实挑战列表：返回主站 → 校园互动 → 好友竞技场。</div>`,
-    action: { label: '返回主站打开好友挑战', href: '../../../index.html#community' },
-  },
-  'arena.roster': {
-    title: '报名处 · 搭子簿',
-    sub: '报名处 → 学习搭子列表',
-    body: () => `
-      <p>挑战的前提是先有人可打，所以报名处开的是好友列表，不是挑战列表：</p>
-      <p><code>WG_Community.open('friends')</code></p>
-      <p><span class="tag">为什么分两个入口</span> 擂台负责「打」，报名处负责「先有人可打」。
-      两个入口都指向既有社区面板，没有新增接口。</p>
-      <div class="dialog-note">好友关系需要对方确认；名片不公开就不会出现在搭子广场。</div>`,
-    action: { label: '返回主站打开搭子列表', href: '../../../index.html#community' },
-  },
-  'arena.bell': {
-    title: '开赛锣',
-    sub: '场地设施 → 本地动作',
-    body: () => `
-      <p>锣吊在牌坊梁下，按阻尼正弦摆 2.4 秒。这是<b>纯本地动作</b>：只返回敲击次数，
-      不写服务端、不发 Socket 事件。</p>
-      <p id="bellState"><span class="tag">当前状态</span> 尚未敲响</p>
-      <div class="dialog-note">刻意不接业务：挑战的发起与判分都在服务端，3D 侧不该有第二套状态。</div>`,
-  },
+/* 擂台与报名处的文案已经由 arena-business.js 生成，这里只剩「开赛锣」——
+   它是刻意的本地动作，不接业务。 */
+const BELL_COPY = {
+  title: '开赛锣',
+  sub: '场地设施 → 本地动作',
+  body: () => `
+    <p>锣吊在牌坊梁下，按阻尼正弦摆 2.4 秒。这是<b>纯本地动作</b>：只返回敲击次数，
+    不写服务端、不发 Socket 事件。</p>
+    <p id="bellState"><span class="tag">当前状态</span> 尚未敲响</p>
+    <div class="dialog-note">刻意不接业务：挑战的发起与判分都在服务端，3D 侧不该有第二套状态。</div>`,
 };
 
 const featureDialog = $('feature-dialog');
+
+const panels = createPanels({
+  titleEl: $('feature-title'),
+  subEl: $('feature-sub'),
+  bodyEl: $('feature-body'),
+  toast: (m) => toast(m),
+});
 
 function findNearest() {
   if (state.mode !== 'walk' || state.modal) return null;
@@ -459,23 +521,23 @@ function findNearest() {
 function interact() {
   if (!state.ready || state.modal || !state.nearest) return;
   const it = state.nearest;
+
+  /* 擂台、报名处：开面板并让它自己去读接口。面板先画「正在读取」，
+     读不到就把缺什么说清楚，不会停在空白上。 */
+  if (it.id === 'arena.ring') { openDialog(featureDialog); return panels.ring({}); }
+  if (it.id === 'arena.roster') { openDialog(featureDialog); return panels.roster(); }
+
+  /* 开赛锣：唯一的纯本地动作 */
   let result;
   try {
     result = it.action();
   } catch (err) {
     result = { ok: false, message: String((err && err.message) || err) };
   }
-  const copy = FEATURE_COPY[it.id];
-  if (!copy) { toast(it.label); return; }
-
-  $('feature-title').textContent = copy.title;
-  $('feature-sub').textContent = copy.sub;
-  $('feature-body').innerHTML = copy.body() +
-    (copy.action
-      ? `<p style="margin-top:16px"><a class="btn primary" style="display:inline-block;padding:9px 17px;border-radius:6px;background:var(--accent);color:#fff;text-decoration:none;font-size:14px" href="${copy.action.href}">${copy.action.label}</a></p>`
-      : '');
-
-  if (it.id === 'arena.bell' && result && typeof result.strikes === 'number') {
+  $('feature-title').textContent = BELL_COPY.title;
+  $('feature-sub').textContent = BELL_COPY.sub;
+  $('feature-body').innerHTML = BELL_COPY.body();
+  if (result && typeof result.strikes === 'number') {
     const el = $('bellState');
     if (el) el.innerHTML = '<span class="tag">当前状态</span> 已敲响 ' + result.strikes + ' 次（本地计数）';
   }
@@ -488,6 +550,9 @@ function openDialog(dlg) {
   drag = null;
   $('interact').hidden = true;
   dlg.showModal();
+  /* showModal() 会把焦点丢给第一个可聚焦子元素（关闭按钮），键盘用户一进来就
+     看到一圈橙色焦点环，像是「关闭」被高亮了。焦点收到对话框本身更稳。 */
+  dlg.focus();
 }
 
 function closeDialogs() {
@@ -581,7 +646,8 @@ function frame(now) {
       hint = key;
       const btn = $('interact');
       if (near) {
-        btn.textContent = near.prompt;
+        /* 触屏上没有 E 键：把「按 E 敲锣」改成「点一下敲锣」，整条都能点 */
+        btn.textContent = $('touch').hidden ? near.prompt : near.prompt.replace(/^按 E\s*/, '点一下');
         btn.hidden = false;
       } else {
         btn.hidden = true;
@@ -605,6 +671,17 @@ state.ready = true;
 loading.hidden = true;
 requestAnimationFrame(frame);
 
+/* 顶部工具条的身份位：只有云端会话才显示昵称。本地账号不冒充「已登录」，
+   否则用户会以为挑战发得出去。 */
+(function markIdentity() {
+  const s = session();
+  if (s.state !== 'cloud' || !s.user || !s.user.nick) return;
+  const who = $('who');
+  who.textContent = s.user.nick;
+  who.title = '已连接云端：挑战与搭子都用这个账号';
+  who.hidden = false;
+})();
+
 /* 供本机自动化检查用（与预览页同名的几个钩子，脚本可以复用） */
 window.__arena = {
   scene,
@@ -627,10 +704,19 @@ window.__arena = {
   get env() { return envState; },
   get dialogOpen() { return featureDialog.open || $('rules-dialog').open; },
   get location() { return $('location').textContent; },
+  get panelTitle() { return $('feature-title').textContent; },
+  get panelSub() { return $('feature-sub').textContent; },
+  get panelText() { return $('feature-body').textContent.replace(/\s+/g, ' ').trim(); },
+  get touchVisible() { return !$('touch').hidden; },
+  get radius() { return state.radius; },
   setView,
   walk,
   interact,
   close: closeDialogs,
+  openPanel(kind, opts) {
+    openDialog(featureDialog);
+    return (kind === 'roster') ? panels.roster() : panels.ring(opts || {});
+  },
   standNear(id) {
     const it = interactions.find((x) => x.id === id);
     if (!it) return null;
