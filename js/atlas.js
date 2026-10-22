@@ -43,17 +43,13 @@ window.WG_Atlas = (function () {
   function navigate(name, tab) { closeMenu(); if(name==='community'){WG_Community.open(tab);return;}StudyAppBridge.navTo(name); if(tab)setTimeout(function(){var b=$('tab-'+tab);if(b)b.click();},0); }
   function campusNodes() {
     var a=activity();
-    if(window.WG_CampusDistricts)return WG_CampusDistricts.map(function(d){var n=Object.assign({},d);n.sub=d.metric?count(a[d.metric],d.unit):d.sub;n.state=d.id==='mistakes'&&a.mistakes?'weak':'unknown';n.action=d.entries[0].label;n.go=function(){navigate(d.entries[0].view,d.entries[0].tab);};n.extraEntries=d.entries.slice(1);return n;});
-    return [
-      {id:'bank',label:'课程探索区',kind:'college',color:0x649573,sub:'数学 · 英语 · 雅思',description:'从课程大地图进入模块，再选择章节关卡。每个知识点都有自己的学习足迹。',facts:['课程模块对应原题库','各主题显示作答记录、错题和掌握估计'],action:'进入课程地图',go:function(){navigate('bank');}},
-      {id:'wenku',label:'资料图书馆',kind:'library',color:0xc59758,sub:count(a.documents,'份私有资料'),description:'阅读学习资料，整理自己的课程讲义与笔记。',facts:['原资料库可直接阅读','已上传 '+count(a.documents,'份')+' · 索引就绪 '+count(a.readyDocuments,'份')],action:'进入资料馆',go:function(){navigate('wenku');}},
-      {id:'lab',label:'随机训练场',kind:'laboratory',color:0x729ca0,sub:count(a.boards,'份题目草稿'),description:'跨章节随机练习；遇到难题可打开题目白板，按题号保存推导。',facts:['题目白板 '+count(a.boards,'份'),'练习与挑战复盘均可打开'],action:'开始随机练习',go:function(){navigate('random');}},
-      {id:'social',label:'社交广场',kind:'station',color:0xb98a60,sub:count(a.friends,'位学习搭子'),description:'找到学习搭子，看看校园留言板。',facts:['好友邀请需要对方确认','留言板可分享想法与解题思路'],action:'看看留言板',go:function(){navigate('community','posts');}},
-      {id:'review',label:'记忆复习站',kind:'lodge',color:0x9a9e67,sub:count(a.due,'题到期'),description:'优先复习已经到期的错题。完成后真实更新 FSRS 记录与下次复习时间。',facts:['复习卡片 '+count(a.reviews,'张'),'到期数量来自服务器当前时间'],action:'开始到期复习',go:function(){navigate('review');}},
-      {id:'study',label:'专注自习馆',kind:'college',color:0x72997e,sub:count(a.focusMinutes,'分钟专注'),description:'进入已有沉浸自习室，设置专注时长与环境声音，让学习时间留下记录。',facts:['累计云端专注 '+count(a.focusMinutes,'分钟'),'自习时长来自已保存的专注记录'],action:'进入自习室',go:function(){navigate('study');}},
-      {id:'mistakes',label:'错题修复工坊',kind:'workshop',color:0xbc8b68,sub:a.mistakes+' 道待巩固',state:a.mistakes?'weak':'unknown',description:'把答错的题作为待修复的知识点，查看解析、重新练习，并保留自己的推导草稿。',facts:['当前错题 '+a.mistakes+' 道','已攻克错题 '+count(a.cleared,'道')],action:'进入错题工坊',go:function(){navigate('mistakes');}},
-      {id:'report',label:'学情观测塔',kind:'tower',color:0x71958d,sub:a.answers+' 次作答记录',description:'观察自己的学习状态：哪里有记录，哪里需要巩固，哪些数据尚不足以评估。',facts:['作答记录 '+a.answers+' 次，包含原网站自评记录','BKT 仅使用客观题，不等同考试分数'],action:'查看学情报告',go:function(){navigate('report');},secondary:'知识与掌握度',more:function(){navigate('report');}}
-    ];
+    /* 地点清单以 js/campus-registry.js 的 WG_CampusDistricts 为唯一来源。
+       原来这里还有一份 8 条的硬编码兜底，已经和注册表漂移（兜底里是 review、注册表里是 arena），
+       而注册表先加载、兜底永不执行，语法检查、单测、CI 全绿也查不出来。删掉它：
+       真没加载到就给一句可读的警告，别拿一份过期清单去画地图。
+       三处清单的一致性由 server/scripts/check-campus-registry.js 守。 */
+    if(!window.WG_CampusDistricts){console.warn('campus-registry.js 未加载，校园地图没有地点定义。');return [];}
+    return WG_CampusDistricts.map(function(d){var n=Object.assign({},d);n.sub=d.metric?count(a[d.metric],d.unit):d.sub;n.state=d.id==='mistakes'&&a.mistakes?'weak':'unknown';n.action=d.entries[0].label;n.go=function(){navigate(d.entries[0].view,d.entries[0].tab);};n.extraEntries=d.entries.slice(1);return n;});
   }
   function bankNodes() {
     var nodes=[];
