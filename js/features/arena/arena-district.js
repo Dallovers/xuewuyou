@@ -1966,28 +1966,73 @@ export function createDistrict(ctx = {}) {
     bellPivot.name = 'arena:bell-pivot';
     root.add(bellPivot);
 
+    /* 悬挂：绳吊到锣的**上缘**，不穿锣心。
+       穿心的绳在物理上没法敲（正对着面），画面上也正好把锣面切成两半。
+       吊点 → 锣心的距离仍然是 ropeLen，锣心高度不变，摆动的转轴也不变。 */
     const ropeLen = G.height + 0.05 - L.bell.y;
-    add(cylGeo(0.012, 0.012, ropeLen, 6), M.metal_frame, 0, -ropeLen / 2, 0, {
+    const gr = L.bell.radius;
+    const cordLen = ropeLen - gr;
+    add(cylGeo(0.008, 0.008, cordLen, 6), M.metal_frame, 0, -cordLen / 2, 0, {
       parent: bellPivot, name: 'arena:bell-rope', cast: false,
     });
-    const gong = add(cylGeo(L.bell.radius, L.bell.radius, 0.035, 40), M.bronze, 0, -ropeLen, 0, {
+    // 上缘的吊环：绳和铜面之间要有金属件过渡，否则绳是"插进"铜里的
+    add(new THREE.TorusGeometry(0.032, 0.007, 6, 16), M.metal_frame, 0, -cordLen - 0.022, 0, {
+      rotY: Math.PI / 2, parent: bellPivot, name: 'arena:bell-eye', cast: false,
+    });
+
+    const gong = add(cylGeo(gr, gr, 0.03, 40), M.bronze, 0, -ropeLen, 0, {
       rotZ: Math.PI / 2, parent: bellPivot, name: 'arena:bell-gong',
     });
-    add(cylGeo(L.bell.radius * 0.9, L.bell.radius * 0.9, 0.022, 40), M.bronze, 0.03, -ropeLen, 0, {
-      rotZ: Math.PI / 2, parent: bellPivot, name: 'arena:bell-face', cast: false,
-    });
-    /* 锣面细节：一枚中心凸脐 + 两圈同心棱 + 一道深色外箍。
-       一块素圆盘在檐影里只会读成"深褐色圆板"，这几层才有金属件该有的转折。 */
-    add(cylGeo(0.085, 0.085, 0.03, 24), M.bronze, -0.032, -ropeLen, 0, {
-      rotZ: Math.PI / 2, parent: bellPivot, name: 'arena:bell-boss', cast: false,
-    });
-    for (const rr of [0.17, 0.26]) {
-      add(cylGeo(rr, rr, 0.012, 32), M.bronze, -0.026, -ropeLen, 0, {
-        rotZ: Math.PI / 2, parent: bellPivot, name: 'arena:bell-ring', cast: false,
+    /* 锣面：一块**浅球冠**，不再是平盘。
+       平盘在光下没有明暗梯度——怎么调材质都是一块棕色圆板，这是铜锣读不出来的主要原因。
+       球冠半径 1.1m、开口到 0.335（正好接住锣径 0.34），鼓起 5.4cm：
+       够出一条从中心到边缘的高光过渡，又不至于变成一只碗。 */
+    const CAP_R = 1.1;
+    const capTheta = Math.asin((gr - 0.005) / CAP_R);
+    const capCx = 0.015 - CAP_R * Math.cos(capTheta);   // 球心在 x 上的位置
+    add(new THREE.SphereGeometry(CAP_R, 56, 16, 0, Math.PI * 2, 0, capTheta), M.bronze,
+      capCx, -ropeLen, 0, {
+        rotZ: -Math.PI / 2, parent: bellPivot, name: 'arena:bell-face', cast: false,
+      });
+    /* 一道车削纹：就在卷边里面。试过两圈，读成"靶心"/"音箱"——
+       锣面本来就是素的，只留最外这一道，作为卷边和鼓面之间的过渡。 */
+    {
+      const rr = 0.255;
+      const rx = capCx + Math.sqrt(CAP_R * CAP_R - rr * rr);
+      add(new THREE.TorusGeometry(rr, 0.0045, 6, 44), M.bronze, rx, -ropeLen, 0, {
+        rotY: Math.PI / 2, parent: bellPivot, name: 'arena:bell-groove', cast: false,
       });
     }
-    add(cylGeo(L.bell.radius + 0.012, L.bell.radius + 0.012, 0.05, 40, true), M.metal_frame, 0,
-      -ropeLen, 0, { rotZ: Math.PI / 2, parent: bellPivot, name: 'arena:bell-rim', cast: false });
+    // 卷边：滚一圈铜条，正面才有"这是个锻造件"的轮廓，平盘的边永远是一条硬切线
+    add(new THREE.TorusGeometry(gr - 0.008, 0.014, 8, 40), M.bronze, 0.012, -ropeLen, 0, {
+      rotY: Math.PI / 2, parent: bellPivot, name: 'arena:bell-rim', cast: false,
+    });
+    // 中心凸脐：锣心是敲击点，也是整块面上最亮的一处。做扁，不做成门把手
+    const boss = add(sphereGeo(0.068, 16, 10), M.bronze, 0.060, -ropeLen, 0, {
+      parent: bellPivot, name: 'arena:bell-boss', cast: false,
+    });
+    boss.scale.x = 0.34;
+
+    /* 锣槌：靠在北侧门柱的柱脚上。
+       之前门洞这一片只有一口悬空的锣，没有"谁敲它"的痕迹——补一只槌，
+       而且必须是**放下的**：挂在柱上就成了装饰，靠在地上才像刚刚有人敲完。
+       比例按真家伙：头 0.10 × 0.17，柄 0.45——第一版柄做到 0.6，
+       在这个尺度上读成扫帚。 */
+    const mx = G.x + 0.20;
+    /* z 必须落在柱子的厚度里（柱心 -2.00、半宽 0.11），否则槌是立在柱子**旁边**的，
+       从东侧看过去柄顶悬空，读成一根自己站着的木棍。 */
+    const mz = G.z + L.bell.z - 0.48;
+    add(cylGeo(0.05, 0.05, 0.17, 14), M.oak_flat, mx, 0.10, mz, {
+      rotZ: Math.PI / 2, name: 'arena:bell-mallet-head',
+    });
+    add(cylGeo(0.048, 0.048, 0.012, 14), M.metal_dark, mx + 0.086, 0.10, mz, {
+      rotZ: Math.PI / 2, name: 'arena:bell-mallet-band', cast: false,
+    });
+    /* 柄斜靠在柱东面（x = G.x + 0.11）：底端接槌头、顶端贴柱面，
+       倾角由两点反算——0.09 / 0.45，约 11.5°。 */
+    add(cylGeo(0.015, 0.018, 0.45, 10), M.oak_flat, mx - 0.055, 0.31, mz, {
+      rotZ: 0.20, name: 'arena:bell-mallet-handle',
+    });
 
     let struck = 0;
     let clock = 0;
@@ -2074,17 +2119,63 @@ export function createDistrict(ctx = {}) {
     add(boxGeo(0.035, 0.13, roofD + 0.04), M.rope_cream, D.x - 0.12 - roofW / 2 + 0.02, ch + 0.02 - 0.05, D.z, {
       name: 'arena:desk-canopy-trim', cast: false,
     });
-    // 棚下挂一盏小灯笼，背光时这块角不会塌成一片灰
-    const lx = D.x - roofW / 2 + 0.28;
-    const lz = D.z + roofD / 2 - 0.34;
-    add(cylGeo(0.008, 0.008, 0.24, 6), M.metal_frame, lx, ch - 0.1, lz, {
+    const lanternX = D.x - roofW / 2 + 0.28;
+    const lanternZ = D.z + roofD / 2 - 0.34;
+    add(cylGeo(0.008, 0.008, 0.24, 6), M.metal_frame, lanternX, ch - 0.1, lanternZ, {
       name: 'arena:desk-lantern-cord', cast: false,
     });
-    const dl = add(sphereGeo(0.1, 12, 9), M.accent_amber, lx, ch - 0.32, lz, {
+    const dl = add(sphereGeo(0.1, 12, 9), M.accent_amber, lanternX, ch - 0.32, lanternZ, {
       name: 'arena:desk-lantern', cast: false,
     });
     dl.scale.y = 1.14;
-    lanternGlow(lx, ch - 0.32, lz, 0.62);
+    lanternGlow(lanternX, ch - 0.32, lanternZ, 0.62);
+
+    /* 台面三件：登记簿 / 笔 / 叫号铃。
+       这块 0.66 × 1.7 的台面原来只有一块立牌，从预设机位看是一张空柜台——
+       一件家具上有没有"用过"的痕迹，比它本身的分段做得细不细更决定可信度。
+       位置都避开中间的立牌（立牌占 z ±0.6），放在两端各 ±0.68 的窄条里。 */
+    const topY = D.h + 0.06;
+    const ledgerZ = D.z + 0.68;
+    add(boxGeo(0.36, 0.011, 0.27), M.metal_dark, D.x, topY + 0.006, ledgerZ, {
+      name: 'arena:desk-ledger-cover', cast: false,
+    });
+    /* 摊开的两页：中缝两侧各压一个薄块、向外微微抬起 4°。
+       两页一样大、一样平的时候读成"一块白板"，抬起才有"翻开着"的意思。 */
+    for (const s of [-1, 1]) {
+      add(boxGeo(0.142, 0.007, 0.232), M.rope_cream, D.x + s * 0.081, topY + 0.018, ledgerZ, {
+        rotZ: -s * 0.07, name: 'arena:desk-ledger-page', cast: false,
+      });
+    }
+    /* 铅笔横搭在中缝上——这是"写到一半放下"的位置，也是这本书唯一放得住笔的地方。
+       侧过来斜放试过：笔身细、又没有接触阴影（柜台在棚子底下没有直射光），
+       读成一根浮在纸上面的棍子。 */
+    add(cylGeo(0.005, 0.005, 0.155, 6), M.oak_flat, D.x, topY + 0.027, ledgerZ - 0.02, {
+      rotX: Math.PI / 2, name: 'arena:desk-pen', cast: false,
+    });
+
+    const bellZ = D.z - 0.68;
+    add(cylGeo(0.062, 0.066, 0.012, 20), M.metal_dark, D.x + 0.04, topY + 0.006, bellZ, {
+      name: 'arena:desk-bell-base', cast: false,
+    });
+    const deskBell = add(sphereGeo(0.052, 18, 12), M.bronze, D.x + 0.04, topY + 0.03, bellZ, {
+      name: 'arena:desk-bell', cast: false,
+    });
+    deskBell.scale.y = 0.86;
+    add(cylGeo(0.007, 0.007, 0.026, 8), M.bronze, D.x + 0.04, topY + 0.072, bellZ, {
+      name: 'arena:desk-bell-stem', cast: false,
+    });
+    add(sphereGeo(0.014, 10, 8), M.bronze, D.x + 0.04, topY + 0.088, bellZ, {
+      name: 'arena:desk-bell-knob', cast: false,
+    });
+
+    /* 柜门拉手。柜门是两块 22mm 的板贴在柜身上，没有五金，
+       近看就是两块"印刷出来的门"——两条横杆比什么都管用。
+       用铜不用深灰钢：深灰钢在这个角度反射的是暗环境，两条把手会读成贴了两条黑胶带。 */
+    for (const s of [-1, 1]) {
+      add(boxGeo(0.026, 0.024, 0.17), M.bronze, D.x - D.w / 2 - 0.003, 0.60, D.z + s * 0.10, {
+        name: 'arena:desk-handle', cast: false,
+      });
+    }
 
     interactions.push({
       id: 'arena.roster',
