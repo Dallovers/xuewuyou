@@ -62,6 +62,9 @@
        其余书按散列从下面的表里取——所以这句不会重复出现在别的书上。 */
     specialBookId: 0,
     specialBookName: '论寝室长和凡越',
+    /* 这一本的**正文**单独写一句。别的书正文是反复抄自己的书名，
+       这本抄下面这句；大标题仍然用上面的书名，读起来就是"标题立论、正文把话说透"。 */
+    specialBookText: '和凡越是刘福超儿子',
 
     /* 每本书的书名。按实例 id 散列取，**同一本书永远是同一个名字**——
        随机取名会让"我刚看的那本《边城》"下次变成别的，反而更怪。
@@ -190,6 +193,8 @@
         label: src.label,
         // 书带书名，杯 / 笔没有；界面按 name 有没有决定要不要加书名号
         name: src.label === '书' ? bookNameOf(group[0]) : null,
+        // 正文那句。书才有；杯 / 笔没有正文
+        text: src.label === '书' ? bookTextOf(group[0]) : null,
         src: src,
         ids: group,
         distance: +h.distance.toFixed(3)
@@ -298,6 +303,7 @@
         ids: ids,
         label: target.label,
         name: target.name || null,
+        text: target.text || null,
         saved: hideInstances(src, ids),
         pickYaw: cameraYaw(),
         baseQuat: baseQuat,
@@ -337,8 +343,15 @@
       return SPEC.bookNames[(((id * 2246822519) >>> 0) % n)];
     }
 
-    function pageTexture(kind, title, author, bookName) {
-      var key = kind + '|' + title + '|' + (author || '') + '|' + (bookName || '');
+    /** 正文那句：默认和书名同一句（每行抄书名）；指定的那本换成自己的话。
+        没有 specialBookText 时回落到书名，不会印出空白。 */
+    function bookTextOf(id) {
+      if (id === SPEC.specialBookId && SPEC.specialBookText) return SPEC.specialBookText;
+      return bookNameOf(id);
+    }
+
+    function pageTexture(kind, title, author, bookName, bodyText) {
+      var key = kind + '|' + title + '|' + (author || '') + '|' + (bookName || '') + '|' + (bodyText || '');
       if (pageTexCache[key]) return pageTexCache[key];
       var W = 512, H = 1280;                       // 页高比页宽约 2.5:1
       var cv = document.createElement('canvas');
@@ -392,13 +405,21 @@
       }
 
       // 正文：每一行都反复写同一句，写满到右边界为止（超出部分裁掉），
-      // 像抄写本里排满的一页，而不是几条灰杠
+      // 像抄写本里排满的一页，而不是几条灰杠。
+      // 正文那句可以不等于标题（指定那本就是），所以字号按**这句自己**量，
+      // 保证一句至少能完整放进一行——不然长句会被裁掉半截。
       var top = kind === 'title' ? 300 : 150;
       var rowH = 58;
       var rows = Math.floor((H - top - 120) / rowH);
       var left = W * 0.12;
       var textW = W * 0.76;
-      g.font = font(34, false);
+      var bodyTxt = bodyText || txt;
+      var bfs = 34;
+      g.font = font(bfs, false);
+      while (bfs > 16 && g.measureText(bodyTxt).width > textW - 8) {
+        bfs -= 2;
+        g.font = font(bfs, false);
+      }
       g.fillStyle = 'rgba(52,48,42,0.74)';
       g.textAlign = 'left';
       g.textBaseline = 'top';
@@ -407,12 +428,16 @@
       g.beginPath();
       g.rect(left, top - 8, textW, rows * rowH + 16);
       g.clip();
+      // 行内只放**整句**：以前是"放到右边界为止 + 裁掉"，句尾就会被切出半个字
+      // （9 字那句尤其明显）。现在按这一行放得下几句来均分，句间与两端等距，
+      // 单句就是居中——行是满的，又不会被切。
+      var unitW = g.measureText(bodyTxt).width;
+      var perRow = Math.max(1, Math.floor((textW + 6) / (unitW + 6)));
+      var gap = (textW - perRow * unitW) / (perRow + 1);
       for (var r = 0; r < rows; r++) {
         var y = top + r * rowH;
-        var x = left;
-        while (x < left + textW - 6) {
-          g.fillText(txt, x, y);
-          x += g.measureText(txt).width + 6;
+        for (var k = 0; k < perRow; k++) {
+          g.fillText(bodyTxt, left + gap + k * (unitW + gap), y);
         }
       }
       g.restore();
@@ -455,6 +480,7 @@
          拿不到名字才回落到 SPEC.pageTitle，保证不会翻出空白页。 */
       var bookName = held.name || null;
       var titleTxt = bookName || SPEC.pageTitle;
+      var bodyTxt = held.text || titleTxt;      // 正文那句；普通书就等于书名
       var authorTxt = SPEC.pageAuthor;
 
       [1, -1].forEach(function (sign) {
@@ -464,7 +490,7 @@
         /* 左页印标题，右页纯正文。
            贴图是 canvas 现画的，字形来自系统字体，不额外带字体文件。 */
         var mat = new THREE.MeshStandardMaterial({
-          map: pageTexture(sign < 0 ? 'title' : 'body', titleTxt, authorTxt, held.name),
+          map: pageTexture(sign < 0 ? 'title' : 'body', titleTxt, authorTxt, held.name, bodyTxt),
           roughness: 0.9,
           metalness: 0
         });
@@ -742,6 +768,7 @@
           upright: held.baseQuat ? (held.baseQuat.w !== 1 ? 'rotated' : 'none') : 'not-book',
           axis: held.baseAxis,
           name: held.name || null,
+          text: held.text || null,
           open: !!openBook
         };
       },
