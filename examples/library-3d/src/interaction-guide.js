@@ -9,7 +9,7 @@ export function createInteractionGuide({scene,camera,building,targets,getState,a
  const ring=new T.Mesh(new T.RingGeometry(.38,.43,48),new T.MeshBasicMaterial({color:0xd9ad54,transparent:true,opacity:.85,side:T.DoubleSide,depthWrite:false,toneMapped:false}));
  ring.name='Interaction location hint';ring.rotation.x=-Math.PI/2;ring.visible=false;scene.add(ring);
  const entries=new Map();let shown=false,selected=null,lastUpdate=-Infinity,disposed=false,visible=[],cachedRects=[];
- const icon={door:'门',shelf:'书',seat:'座',book:'读',desk:'询'};
+ const icon={door:'门',shelf:'书',seat:'座',book:'读',desk:'询',display:'阅'};
  for(const target of targets){
   const button=document.createElement('button');button.className='world-marker';button.dataset.target=target.id;button.hidden=true;
   const badge=document.createElement('span');badge.className='marker-icon';badge.textContent=icon[target.kind];badge.setAttribute('aria-hidden','true');

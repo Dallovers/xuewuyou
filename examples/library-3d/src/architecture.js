@@ -4,6 +4,7 @@ import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
 import {createLandscape} from './landscape.js';
 import {bentwoodChairFactory} from './chairs.js';
 import {createBookDetails} from './books.js';
+import {createFacilities} from './facilities.js';
 
 export const dimensions={width:24,depth:18,clearHeight:4.4,doorWidth:2.8,mainAisle:3,units:'metres'};
 export const colliders=[],shelves=[],seats=[];
@@ -150,13 +151,17 @@ export function createBuilding(){
  for(const x of [-9,-5.1,5.4,9])for(const z of [-5,1.3,6]){box(structure,'Suspended linear light housing',x,4.25,z,2.74,.07,.09,materials.metal);box(structure,'Suspended linear light',x,4.21,z,2.7,.015,.075,materials.light);for(const dx of [-1.12,1.12])box(structure,'Light suspension rod',x+dx,4.36,z,.008,.23,.008,materials.metal,.002);}
  for(const [id,label,x,z] of [['exam','考研真题卷',-8.1,-4.8],['book','教材习题集',-3.6,-4.8],['ielts','雅思备考库',-8.1,.2],['topic','专题与心得',-3.6,.2]])makeShelf(furniture,id,label,x,z);
  makeReadingTable(furniture,1,6.6,-4.5);makeReadingTable(furniture,2,6.6,1.3);
- const welcome=group('Welcome and catalogue desk',furniture);box(welcome,'Oak enquiry desk',-7,.5,6.3,3.7,1,.8,materials.wood);box(welcome,'Stone enquiry counter',-7,1.04,6.3,3.85,.08,.9,materials.stone);sign(welcome,'馆 藏 检 索',-7,1.6,6.3,2.5,.4);obstacle(-7,6.3,3.85,.9,'welcome desk');
+ const welcome=group('Welcome and catalogue desk',furniture);box(welcome,'Oak enquiry desk',-7,.5,6.3,3.7,1,.8,materials.wood);box(welcome,'Stone enquiry counter',-7,1.04,6.3,3.85,.08,.9,materials.stone);
+ for(const x of [-8.2,-5.8])box(welcome,'Catalogue header mounting post',x,1.5,6.1,.022,.85,.025,materials.metal);
+ box(welcome,'Catalogue header oak backing',-7,2.05,6.1,2.65,.32,.045,materials.wood);
+ sign(welcome,'馆 藏 检 索',-7,2.05,6.126,2.5,.28);obstacle(-7,6.3,3.85,.9,'welcome desk');
  box(structure,'Rear grey brick accent',0,2.15,-8.79,5.2,4.3,.07,materials.brick);sign(structure,'学 无 忧  ·  阅 读 与 思 考',0,2.5,-8.73,4.5,.52);
  box(site,'Accessible forecourt',0,-.16,16,40,.28,14.1,materials.floor);box(site,'Site ground',0,-.37,0,100,.12,80,new T.MeshStandardMaterial({name:'Landscape ground',color:0x8e9c83,roughness:1}));
  for(const x of [-9,9]){box(site,'Courtyard planter',x,.28,12.5,2.6,.56,1.1,materials.brick);box(site,'Planter soil',x,.57,12.5,2.4,.025,.95,new T.MeshStandardMaterial({name:'Planting soil',color:0x514d3d,roughness:1}));obstacle(x,12.5,2.6,1.1,'planter');for(let i=0;i<5;i++)box(site,'Forecourt bench timber slat',x,.45,16.2+(i-2)*.10,3,.07,.085,materials.wood);for(const dx of [-1.2,1.2])box(site,'Bench leg',x+dx,.21,16.2,.08,.42,.4,materials.metal);obstacle(x,16.2,3,.5,'bench');}
  for(const x of [-19.95,19.95])box(site,'Courtyard stone edge',x,-.065,16,.10,.11,14.1,materials.stone);
  createLandscape(site,materials.wood,obstacle);
  const door=makeDoor(structure);
+ createFacilities({parent:building,materials,box,sign,obstacle});
  batchStatic(building);
  // Bounded window-sky approximation for R1 only. The low-bias cached local
  // shadow resolves feet much smaller than the full-site sun shadow texels.

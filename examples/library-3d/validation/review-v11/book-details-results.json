@@ -1,0 +1,46 @@
+{
+  "date": "2026-10-22T10:31:07.840Z",
+  "base": "http://127.0.0.1:5299",
+  "checks": [
+    {
+      "name": "四类书架实际按 E 打开目录，搜索为空、分类正确、焦点进入搜索",
+      "passed": true
+    },
+    {
+      "name": "检索台长按 E 的首次和八次自动重复均不成为搜索字符",
+      "passed": true
+    },
+    {
+      "name": "松开激活键后可正常输入和长按 e，中文与数字文本也可输入",
+      "passed": true
+    },
+    {
+      "name": "修饰键和输入法 composition 事件不激活场景操作（composition 为事件注入）",
+      "passed": true
+    },
+    {
+      "name": "座位先入座、再按 E 查资料，搜索也不带入 e，Esc 可站起",
+      "passed": true
+    },
+    {
+      "name": "封面、纸页侧面和书架固定近景真实渲染，390×844 页面无横向溢出",
+      "passed": true
+    },
+    {
+      "name": "细化后的导读书仍可实际抽取馆藏并打开正文",
+      "passed": true
+    },
+    {
+      "name": "运行时 GLB 含导读书几何、书签和材质",
+      "passed": true,
+      "data": {
+        "bytes": 30439824,
+        "nodes": 10,
+        "materials": 8
+      }
+    }
+  ],
+  "errors": [],
+  "failedResources": [],
+  "passed": true
+}
