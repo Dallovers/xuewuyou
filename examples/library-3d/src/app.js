@@ -11,6 +11,7 @@ import {createR1Lighting} from './r1-lighting.js';
 import {createInteractionGuide} from './interaction-guide.js';
 import {createReadingActivities} from './reading-activities.js';
 import {createReadingShelf} from './reading-shelf.js';
+import {facilityStops} from './facilities.js';
 const $=id=>document.getElementById(id),canvas=$('world');
 const scene=new T.Scene(),camera=new T.PerspectiveCamera(55,innerWidth/innerHeight,.08,180);
 const graphics=createRendering(canvas,scene,camera),{renderer}=graphics;
@@ -18,6 +19,7 @@ const orbit=new OrbitControls(camera,canvas);orbit.enableDamping=true;orbit.minD
 const state={ready:false,mode:'inspect',view:'exterior',pos:new T.Vector3(0,0,14),yaw:0,pitch:0,seated:null,seatReturn:null,modal:false,nearest:null,frames:0};
 const keys=new Set();let door,r1Light,r1Lighting,catalog,guide,activities,readingShelf,targets=[],drag=null,toastTimer,lastShadow=0,doorWasMoving=false,disposed=false;
 const presets={exterior:{eye:[25,10.5,30],target:[0,2.2,1]},hall:{eye:[1.7,1.78,6.7],target:[-3.6,1.5,-3.6]},reading:{eye:[2.1,1.78,6.6],target:[7.8,1.3,-2.5]},sample:{eye:[2.7,1.7,-5.2],target:[9,1.25,-4.6]},book:{eye:[7.55,1.48,-3.5],target:[7.15,.805,-4.15]},bookEdge:{eye:[7.72,1.08,-3.35],target:[7.15,.8,-4.15]},shelfDetail:{eye:[-3.8,1.5,-1.8],target:[-3.6,1.15,-4.2]},sampleTree:{eye:[23,3,4],target:[16,3.6,-4]},chair:{eye:[4.55,1.0,-7.1],target:[5.62,.48,-5.63]},treeFar:{eye:[39,4.5,22],target:[16,3.7,-4]}};
+Object.assign(presets,{facilities:{eye:[1.8,2.35,8.05],target:[6.4,1.0,3.45]},display:{eye:[3.9,1.9,8.25],target:[6.6,.95,5.95]},topics:{eye:[3.3,1.9,-4.9],target:[0,1.0,-8.22]},enquiry:{eye:[-4.8,1.85,8.15],target:[-7,1.16,6.3]}});
 function toast(message){$('toast').textContent=message;$('toast').hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').hidden=true,4200);}
 function clearInput(){keys.clear();drag=null;}
 function pause(){state.modal=true;clearInput();orbit.enabled=false;$('interact').hidden=true;guide?.update(performance.now(),true);activities?.sync();}
@@ -25,11 +27,12 @@ function resume(){if(disposed||document.querySelector('dialog[open]'))return;sta
 function locationName(){if(state.seated)return state.seated.label;if(state.pos.z>9)return '图书馆前庭';if(state.pos.z>4.5)return '入口门厅';return state.pos.x<-.8?'馆藏书架区':state.pos.x>2.5?'窗边阅览区':'中央通道';}
 function updateCamera(){camera.position.set(state.pos.x,state.seated?1.18:1.65,state.pos.z);camera.rotation.order='YXZ';camera.rotation.set(state.pitch,state.yaw,0);}
 function stand(){if(!state.seated)return;activities?.sync();const fallback=state.seated.approach,p=state.seatReturn&&!blocked(state.seatReturn.x,state.seatReturn.z)?state.seatReturn:fallback;state.pos.set(p.x,0,p.z);state.seated=null;state.seatReturn=null;$('touch').hidden=!(matchMedia('(pointer:coarse)').matches||innerWidth<700);$('stand').hidden=true;$('seat-status').textContent='开放阅览';clearInput();updateCamera();activities?.sync();toast('已站起，可以继续漫游');}
-function setView(id){if(state.modal||!presets[id])return;stand();state.mode='inspect';document.body.dataset.mode='inspect';state.nearest=null;state.view=id;clearInput();orbit.enabled=true;camera.position.fromArray(presets[id].eye);orbit.target.fromArray(presets[id].target);orbit.update();$('walk').textContent='进入漫游';$('crosshair').hidden=true;$('touch').hidden=true;$('interact').hidden=true;$('help').textContent='拖动旋转 · 滚轮缩放 · 探索清单可查互动';$('location').textContent=({exterior:'图书馆前庭',hall:'馆藏书架区',reading:'窗边阅览区',sample:'窗边阅览区',book:'窗边导读书',bookEdge:'窗边导读书',shelfDetail:'馆藏书脊细节',sampleTree:'图书馆侧庭',chair:'窗边阅览区',treeFar:'图书馆侧庭'})[id];document.querySelectorAll('[data-view]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.view===id)));}
+function setView(id){if(state.modal||!presets[id])return;stand();state.mode='inspect';document.body.dataset.mode='inspect';state.nearest=null;state.view=id;clearInput();orbit.enabled=true;camera.position.fromArray(presets[id].eye);orbit.target.fromArray(presets[id].target);orbit.update();$('walk').textContent='进入漫游';$('crosshair').hidden=true;$('touch').hidden=true;$('interact').hidden=true;$('help').textContent='拖动旋转 · 滚轮缩放 · 探索清单可查互动';$('location').textContent=({exterior:'图书馆前庭',hall:'馆藏书架区',reading:'窗边阅览区',sample:'窗边阅览区',book:'窗边导读书',bookEdge:'窗边导读书',shelfDetail:'馆藏书脊细节',sampleTree:'图书馆侧庭',chair:'窗边阅览区',treeFar:'图书馆侧庭',facilities:'馆内设施',display:'主题选读',topics:'专题阅览',enquiry:'馆藏检索台'})[id];document.querySelectorAll('[data-view]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.view===id)));}
 function walk(){if(!state.ready||state.modal)return;if(state.mode==='walk'){setView('exterior');return;}state.mode='walk';document.body.dataset.mode='walk';orbit.enabled=false;clearInput();state.seated=null;state.pos.set(state.view!=='exterior'?1.7:0,0,state.view!=='exterior'?6.7:14);state.yaw=0;state.pitch=0;$('walk').textContent='结束漫游';$('crosshair').hidden=false;$('touch').hidden=!(matchMedia('(pointer:coarse)').matches||innerWidth<700);$('help').textContent='WASD / 方向键移动 · 拖动看向 · J/L 转向 · E 操作 · Esc 站起';document.querySelectorAll('[data-view]').forEach(b=>b.setAttribute('aria-pressed','false'));canvas.focus();updateCamera();toast('走近门、书架或座位按 E。需要位置提示可开启互动标记。');}
 function createTargets(){
  const anchor=(x,y,z)=>new T.Vector3(x,y,z);
  return [
+  ...facilityStops.map(t=>({...t,kind:'display',anchor:anchor(...t.anchor)})),
   {id:'door',kind:'door',label:'入口玻璃门',short:'入口 · 开关门',description:'走近按 E 开门或关门',action:'开关玻璃门',anchor:anchor(0,1.4,10.9),approach:{x:0,z:9},range:2.5},
   ...shelves.map(s=>({id:'shelf-'+s.id,kind:'shelf',shelf:s,label:s.label,short:s.label,description:'查看对应分类的真实资料',action:'查看 '+s.label,anchor:anchor(s.x,1.65,s.z+.32),approach:s.approach,range:1.55})),
   ...seats.map(s=>({id:'seat-'+s.id,kind:'seat',seat:s,label:s.label,short:'坐下 · '+s.id,description:'坐下选资料，也可开启阅读计时',action:'坐下 · '+s.label,anchor:anchor(s.x,.95,s.z),approach:s.approach,range:1.12})),
@@ -61,6 +64,7 @@ function interact(target){if(!state.ready||state.modal)return;const n=target||st
  if(n.kind==='read')catalog.open();
  if(n.kind==='desk')catalog.open();
  if(n.kind==='book')activities.openBook();
+ if(n.kind==='display'){if(n.category)catalog.open(n.category);else activities.openBook();}
  if(n.kind==='seat'){state.seatReturn={x:state.pos.x,z:state.pos.z};state.seated=n.seat;state.pos.set(n.seat.x,0,n.seat.z);state.yaw=n.seat.yaw;state.pitch=-.1;clearInput();$('stand').hidden=false;$('touch').hidden=true;$('seat-status').textContent=n.seat.label+' · 已入座';updateCamera();toast('已坐下。按 E 查找资料，Esc 或「站起」离座。');}
  nearby();
  activities?.sync();guide?.update(performance.now(),true);

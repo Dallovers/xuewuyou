@@ -33,7 +33,7 @@ const pause=(p,ms=700)=>p.waitForTimeout(ms);
   pass('同页同机位、相同曝光与画质的真实前后对比');
   await p.evaluate(()=>__library.reviewBake(false));const legacy=await p.evaluate(()=>__library.modelStats());
   await p.evaluate(()=>__library.reviewBake(true));const baked=await p.evaluate(()=>__library.modelStats());
-  assert.equal(legacy.meshes,124);assert.equal(baked.meshes,145);assert.equal(baked.seats,8);assert.equal(baked.shelves,4);assert.equal(baked.instances,legacy.instances);
+  assert(legacy.meshes>=124);assert.equal(baked.meshes-legacy.meshes,21);assert.equal(baked.seats,8);assert.equal(baked.shelves,4);assert.equal(baked.instances,legacy.instances);
   pass('R1 回切正常，新书本细节进入渲染且八座、书架和树实例数量保持',{legacy,baked});
   const seats=await p.evaluate(()=>__library.seats());
   for(let cycle=0;cycle<3;cycle++)for(const seat of seats){
@@ -56,7 +56,7 @@ const pause=(p,ms=700)=>p.waitForTimeout(ms);
   const missing=await browser.newPage();await missing.route('**/assets/r1-lighting/*.exr',r=>r.fulfill({status:503,body:'Intentional acceptance-only atlas failure'}));
   await missing.goto(base+'/examples/library-3d/?view=sample');await ready(missing);
   const failed=await missing.evaluate(()=>({bake:__library.bake(),model:__library.modelStats()}));
-  assert.equal(failed.bake.ready,false);assert.equal(failed.bake.enabled,false);assert.match(failed.bake.error,/503/);assert.equal(failed.model.meshes,124);
+  assert.equal(failed.bake.ready,false);assert.equal(failed.bake.enabled,false);assert.match(failed.bake.error,/503/);assert.equal(failed.model.meshes,legacy.meshes);
   await missing.locator('#catalog').click();await missing.locator('#library-dialog').waitFor({state:'visible'});
   pass('atlas 请求失败时恢复完整实时场景，目录仍可打开',failed.bake);await missing.close();
 
@@ -67,7 +67,7 @@ const pause=(p,ms=700)=>p.waitForTimeout(ms);
   const bin=original.subarray(20+n),head=Buffer.alloc(20);head.writeUInt32LE(0x46546c67,0);head.writeUInt32LE(2,4);head.writeUInt32LE(20+json.length+bin.length,8);head.writeUInt32LE(json.length,12);head.writeUInt32LE(0x4e4f534a,16);
   const invalid=await browser.newPage();await invalid.route('**/assets/r1-lighting/*.glb',r=>r.fulfill({contentType:'model/gltf-binary',body:Buffer.concat([head,json,bin])}));
   await invalid.goto(base+'/examples/library-3d/?view=sample');await ready(invalid);
-  const rollback=await invalid.evaluate(()=>({bake:__library.bake(),model:__library.modelStats()}));assert.match(rollback.bake.error,/UV1/);assert.equal(rollback.model.meshes,124);
+  const rollback=await invalid.evaluate(()=>({bake:__library.bake(),model:__library.modelStats()}));assert.match(rollback.bake.error,/UV1/);assert.equal(rollback.model.meshes,legacy.meshes);
   assert.equal(rollback.bake.released.geometries,50);assert.equal(rollback.bake.released.textures,1);
   pass('UV1 缺失时回滚且释放已解析资源',rollback.bake);await invalid.close();
 

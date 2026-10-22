@@ -1,0 +1,194 @@
+{
+  "date": "2026-10-22T10:32:56.881Z",
+  "base": "http://127.0.0.1:5299",
+  "checks": [
+    {
+      "name": "设施加载，保留四书架八座及 R1 接收面，18 个互动点默认隐藏",
+      "passed": true,
+      "data": {
+        "model": {
+          "meshes": 206,
+          "triangles": 151182,
+          "instances": 8890,
+          "materials": [
+            "Sample east pane 12mm clear glass",
+            "Wayfinding: 知 识 图 书 馆",
+            "Wayfinding: 馆藏书架",
+            "Wayfinding: 安静阅览",
+            "Grey brick",
+            "Wayfinding: 学 无 忧  ·  阅 读 与 思 考",
+            "Clear architectural glass",
+            "Dark bronze powder coating",
+            "Stone floor joints",
+            "Linear LED diffuser",
+            "Wayfinding: 考研真题卷",
+            "Clothbound book covers",
+            "Book uncoated paper faces",
+            "Book spine lettering atlas",
+            "White oak veneer",
+            "Wayfinding: 教材习题集",
+            "Wayfinding: 雅思备考库",
+            "Wayfinding: 专题与心得",
+            "Guide 1 cloth binding",
+            "Book layered paper edges",
+            "Book recessed binding joint",
+            "Guide 1 cover lettering",
+            "Woven ochre reading ribbon",
+            "Guide 2 cloth binding",
+            "Guide 2 cover lettering",
+            "Sage woven upholstery",
+            "Cream limestone",
+            "Wayfinding: 馆 藏 检 索",
+            "Mineral plaster and acoustic ceiling",
+            "Blue grey standing seam roof",
+            "Honed grey stone",
+            "Landscape ground",
+            "Planting soil",
+            "Tree bark",
+            "Botanical leaf cutouts",
+            "Facility graphite polymer",
+            "Wayfinding: 主 题 选 读",
+            "Paper edges",
+            "Display cloth cover 0",
+            "Facility themed cover atlas",
+            "Display cloth cover 1",
+            "Display cloth cover 2",
+            "Display cloth cover 3",
+            "Wayfinding: 专题阅览",
+            "Facility warm enamel",
+            "Catalogue terminal printed interface",
+            "Wayfinding: 阅后归位",
+            "Facility cork notice backing",
+            "Wayfinding: 轻声阅读 · 物品随身",
+            "Wayfinding: 书架查阅    窗边入座",
+            "Wayfinding: 阅读后请将资料归位",
+            "Indoor plant soil",
+            "Indoor plant satin leaves",
+            "Indoor plant stems",
+            "Sample R1 longitudinal white oak [R1 indirect]",
+            "Dark bronze powder coating [R1 indirect]",
+            "Pale bent oak chair veneer [R1 indirect]",
+            "Sample R1 sage fine woven upholstery [R1 indirect]",
+            "Sage woven upholstery [R1 indirect]",
+            "Cream limestone [R1 indirect]",
+            "Honed grey stone [R1 indirect]"
+          ],
+          "groups": [
+            "Structure stone and real window openings",
+            "Furniture bookcases and reading desks",
+            "Roof editable zinc and clerestory",
+            "Library forecourt",
+            "Library facilities: displays, enquiry equipment and entry amenities",
+            "R1 bounded daylight fill",
+            "R1 baked diffuse sky and bounce"
+          ],
+          "dimensions": {
+            "width": 24,
+            "depth": 18,
+            "clearHeight": 4.4,
+            "doorWidth": 2.8,
+            "mainAisle": 3,
+            "units": "metres"
+          },
+          "colliders": 67,
+          "shelves": 4,
+          "seats": 8,
+          "landscape": {
+            "trees": 3,
+            "foliageInstances": 7836,
+            "sample": {
+              "tree": 623,
+              "leaves": 4480,
+              "bladeMetres": [
+                0.09,
+                0.24
+              ],
+              "clusters": 28,
+              "detail": {
+                "policy": "auto",
+                "level": "near",
+                "nearLeaves": 4480,
+                "farLeaves": 2240,
+                "nearLeafTriangles": 17920,
+                "farLeafTriangles": 4480,
+                "farAfterMetres": 30,
+                "nearBeforeMetres": 26
+              }
+            },
+            "source": "Procedural branches and leaf alpha, no external image dependency"
+          }
+        },
+        "bake": {
+          "ready": true,
+          "enabled": true,
+          "disposed": false,
+          "error": null,
+          "receivers": 47,
+          "meshes": 50,
+          "materials": 8,
+          "atlasSize": [
+            2048,
+            2048
+          ],
+          "atlasChannel": 1,
+          "irradianceScale": 3.141592653589793,
+          "encoding": "linear-srgb-white-diffuse-radiance",
+          "released": {
+            "geometries": 0,
+            "materials": 0,
+            "textures": 0
+          }
+        },
+        "guide": {
+          "shown": false,
+          "disposed": false,
+          "selected": null,
+          "visible": [],
+          "targets": 18
+        }
+      }
+    },
+    {
+      "name": "真实碰撞图中主通道连通，八座、四书架、检索台和两个新增入口全部可达",
+      "passed": true,
+      "data": {
+        "sampleStepMetres": 0.25,
+        "reachableCells": 5167,
+        "destinations": 15,
+        "unreachable": [],
+        "aisle": []
+      }
+    },
+    {
+      "name": "实体设施阻挡穿越，沿中央通道实际走到后墙，按 E 打开真实专题分类且无误输入",
+      "passed": true
+    },
+    {
+      "name": "从后墙实际行走到入口主题柜，按 E 抽取并渲染真实馆藏 PDF",
+      "passed": true,
+      "data": {
+        "category": "topic",
+        "results": 31,
+        "reader": true,
+        "catalog": false,
+        "pdfPages": 3,
+        "pdfPage": 1
+      }
+    },
+    {
+      "name": "整体及细节机位真实渲染，390×844／844×390 无横向溢出，互动仍默认隐藏",
+      "passed": true
+    },
+    {
+      "name": "运行时 GLB 保留设施分组、键帽／轮轴／连接件，所有导出贴图内嵌",
+      "passed": true,
+      "data": {
+        "bytes": 30439836,
+        "embeddedImages": 40
+      }
+    }
+  ],
+  "errors": [],
+  "failedResources": [],
+  "passed": true
+}
