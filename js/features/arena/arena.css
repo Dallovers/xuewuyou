@@ -1,0 +1,209 @@
+/* 好友竞技场 · 独立页外壳
+ *
+ * 视觉沿用知识图书馆（examples/library-3d/library.css）那一套：
+ * 浅纸色浮动工具条 + 左侧带竖线的引导条 + 底部状态条 + 纸色对话框。
+ * 变量与取值都对齐图书馆，改动时请两边一起看，避免两个 3D 场景长得像两套产品。
+ */
+
+:root {
+  font-family: "Microsoft YaHei UI", "PingFang SC", sans-serif;
+  color: #273d3a;
+  background: #dbe2df;
+  font-size: 15px;
+  --ink: #273d3a;
+  --muted: #586b66;
+  --paper: #f7f8f4;
+  --line: #d1dad3;
+  --accent: #315f57;
+  /* 竞技场的识别色只用在强调件上（状态点、当前视角、对话框小标），不铺大面积 */
+  --arena: #6f7a3f;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; overflow: hidden; }
+button, a, input, select { font: inherit; }
+button, select { cursor: pointer; }
+button, a { touch-action: manipulation; }
+button {
+  min-height: 44px;
+  padding: 9px 17px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--paper);
+  color: var(--ink);
+}
+button:hover { background: #e3ece5; }
+button:disabled { cursor: default; opacity: .5; }
+button.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+a { color: var(--accent); text-underline-offset: 4px; }
+button:focus-visible, a:focus-visible { outline: 3px solid #a46b26; outline-offset: 3px; }
+
+#world { display: block; width: 100vw; height: 100dvh; outline: none; touch-action: none; }
+
+/* ---------- 顶部工具条 ---------- */
+
+.topbar {
+  position: fixed; top: 20px; left: 24px; right: 24px;
+  display: flex; gap: 12px; align-items: center;
+  background: rgba(247, 248, 244, .96);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 12px 16px;
+  box-shadow: 0 4px 30px #26392e14;
+}
+.back { font-size: 13px; white-space: nowrap; padding: 12px 6px; }
+.identity { flex: 1; border-left: 1px solid var(--line); padding-left: 16px; }
+.identity h1 { font-size: 19px; font-weight: 600; letter-spacing: 2px; margin: 0 0 3px; }
+.identity span { font-size: 12px; color: var(--muted); }
+
+/* ---------- 左侧引导条 ---------- */
+
+.guide {
+  position: fixed; top: 125px; left: 28px;
+  max-width: 355px;
+  padding: 16px;
+  background: rgba(247, 248, 244, .92);
+  border-left: 3px solid #789287;
+  border-radius: 0 6px 6px 0;
+}
+.guide p { font-family: "Songti SC", "SimSun", serif; font-size: 18px; margin: 0 0 14px; }
+.guide nav { display: flex; gap: 8px; flex-wrap: wrap; }
+.guide button { font-size: 13px; padding: 6px 12px; }
+.guide button[aria-pressed=true] { background: #dbe7dd; border-color: #6f9381; }
+.guide small { display: block; font-size: 12px; line-height: 1.8; margin-top: 10px; color: #465b53; }
+
+/* ---------- 底部状态条 ---------- */
+
+.bottom {
+  position: fixed; bottom: 18px; left: 24px; right: 24px;
+  display: flex; align-items: center; gap: 14px;
+  font-size: 12px;
+  padding: 10px 16px;
+  background: rgba(247, 248, 244, .95);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+.bottom > div { flex: 1; display: flex; align-items: center; gap: 10px; }
+.bottom button { font-size: 12px; min-height: 36px; padding: 6px 12px; }
+.status-dot { width: 6px; height: 6px; background: #54765c; border-radius: 50%; }
+.status-dot.is-live { background: var(--arena); box-shadow: 0 0 0 3px #6f7a3f22; }
+
+/* ---------- 漫游模式才出现的东西 ---------- */
+
+#crosshair {
+  position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%);
+  color: #fff; text-shadow: 0 1px 3px #000; font-size: 20px; pointer-events: none;
+}
+#interact {
+  position: fixed; bottom: 100px; left: 50%; transform: translateX(-50%);
+  border-color: #54765c; box-shadow: 0 4px 20px #1234;
+  max-width: 90vw; white-space: nowrap;
+}
+#toast {
+  position: fixed; bottom: 155px; left: 50%; transform: translateX(-50%); margin: 0;
+  background: #273d3a; color: #fff; padding: 12px 18px; border-radius: 7px;
+  max-width: 90vw; z-index: 5;
+}
+
+/* ---------- 加载页 ---------- */
+
+#loading {
+  position: fixed; inset: 0; background: #e5ebe3;
+  display: grid; place-content: center; text-align: center; z-index: 10;
+}
+#loading h2 { font-size: 20px; font-weight: 600; letter-spacing: 1px; margin: 0 0 8px; }
+#loading p { font-size: 13px; color: var(--muted); margin: 0; }
+#loading.is-failed h2 { color: #8c3b2e; }
+[hidden] { display: none !important; }
+
+/* ---------- 窄屏移动/转向按钮 ---------- */
+
+#touch {
+  position: fixed; bottom: 95px; left: 20px;
+  display: grid; grid-template-columns: repeat(3, 52px); gap: 6px;
+}
+#touch button { padding: 6px; font-size: 12px; background: #f7f8f4dc; user-select: none; }
+
+/* ---------- 纸色对话框：挑战规则 / 交互说明 ---------- */
+
+dialog {
+  padding: 24px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  color: var(--ink);
+  background: var(--paper);
+  width: min(560px, calc(100vw - 32px));
+  max-height: calc(100dvh - 32px);
+  overscroll-behavior: contain;
+}
+dialog::backdrop { background: #152c2877; backdrop-filter: blur(3px); }
+.dialog-head { display: flex; align-items: center; justify-content: space-between; gap: 15px; margin-bottom: 18px; }
+.dialog-head h2 { font-size: 21px; margin: 0; }
+.dialog-head p { color: var(--muted); font-size: 13px; margin: 6px 0 0; }
+.dialog-body { font-size: 14px; line-height: 1.75; }
+.dialog-body p { margin: 0 0 12px; }
+.dialog-body code {
+  font-family: "Cascadia Code", Consolas, monospace;
+  font-size: 12.5px;
+  background: #e8efe7;
+  border: 1px solid #d5e0d5;
+  border-radius: 4px;
+  padding: 1px 5px;
+}
+.dialog-body .kv { margin: 0; padding: 0; list-style: none; }
+.dialog-body .kv li {
+  display: flex; gap: 12px;
+  padding: 8px 0;
+  border-top: 1px solid var(--line);
+}
+.dialog-body .kv li:first-child { border-top: 0; }
+.dialog-body .kv b { flex: 0 0 96px; font-weight: 600; }
+.dialog-body .kv span { color: var(--muted); }
+.tag {
+  display: inline-block;
+  font-size: 11px;
+  letter-spacing: .5px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid #cdd8c6;
+  background: #eef2e6;
+  color: #55602f;
+}
+.dialog-note {
+  margin-top: 14px;
+  padding: 10px 12px;
+  background: #eef1ea;
+  border-left: 3px solid #b9c3a5;
+  border-radius: 0 6px 6px 0;
+  font-size: 13px;
+  color: #4a5a52;
+  line-height: 1.7;
+}
+
+@media (max-width: 640px) {
+  .topbar { top: 10px; left: 10px; right: 10px; gap: 6px; padding: 8px; }
+  .topbar button { font-size: 12px; padding: 8px; }
+  .identity { padding-left: 8px; }
+  .identity h1 { font-size: 15px; letter-spacing: 0; }
+  .identity span { font-size: 11px; }
+  .back { font-size: 12px; padding: 8px 0; }
+  .guide { left: 12px; top: 104px; max-width: calc(100vw - 24px); padding: 12px; }
+  .guide p { display: none; }
+  .guide small { max-width: 250px; }
+  .bottom { left: 10px; right: 10px; bottom: 10px; padding: 8px; gap: 7px; }
+  .bottom > div { gap: 5px; }
+  #interact { bottom: 92px; font-size: 13px; }
+  #touch { left: 12px; bottom: 145px; grid-template-columns: repeat(3, 44px); }
+  #touch button { font-size: 11px; }
+  #toast { bottom: 110px; width: max-content; max-width: 90vw; }
+  dialog { padding: 16px; }
+  .dialog-head h2 { font-size: 18px; }
+}
+
+@media (max-height: 500px) {
+  .guide { display: none; }
+  .topbar { top: 6px; }
+  .bottom { bottom: 6px; }
+  #touch { bottom: 75px; }
+  #interact { bottom: 75px; }
+}

@@ -2953,6 +2953,9 @@ var WG_App = (function () {
       }
     }
     else if (name === 'library3d') location.assign(new URL('examples/library-3d/', document.baseURI).href);
+    /* 好友竞技场与图书馆同样是独立 3D 页：整页跳转，不在同一页加载第二套引擎。
+       页面在 js/ 下，服务端静态白名单不用改。 */
+    else if (name === 'arena3d') location.assign(new URL('js/features/arena/index.html', document.baseURI).href);
     else if (name === 'wenku') gateData(function () { renderWenku(); });
     else if (name === 'mistakes') gateData(function () { renderMistakes(); });
     else if (name === 'report') renderReport();

@@ -172,7 +172,7 @@
         <section><h2>课程与资料</h2><button type="button" data-nav="bank">课程地图</button><button type="button" data-nav="wenku">学习资料</button><button type="button" data-nav="ai">AI 助手</button><button type="button" data-nav="random">随机组卷</button></section>
         <section><h2>错题与复习</h2><button type="button" data-nav="mistakes">错题本</button><button type="button" data-nav="review">智能复习</button><button type="button" data-nav="report">学情报告</button><button type="button" data-nav="ai">AI 备考计划</button></section>
         <section><h2>自习室</h2><button type="button" data-nav="rooms">多人自习</button><button type="button" data-nav="study">个人自习</button></section>
-        <section><h2>同伴 / 校园互动</h2><button type="button" data-nav="community" data-community-entry="friends">学习搭子</button><button type="button" data-nav="community" data-community-entry="posts">留言板</button><button type="button" data-nav="community" data-community-entry="arena">好友竞技场</button></section>
+        <section><h2>同伴 / 校园互动</h2><button type="button" data-nav="community" data-community-entry="friends">学习搭子</button><button type="button" data-nav="community" data-community-entry="posts">留言板</button><button type="button" data-nav="community" data-community-entry="arena">好友竞技场</button><button type="button" data-nav="arena3d">3D 竞技场</button></section>
       </div>
       <p>题目白板仍在练习与挑战复盘的每道题旁；拍照搜题和自由提问可通过右下角 AI 助手打开。</p>
     </details>
@@ -762,7 +762,7 @@
       </section>
     </div>
     <div id="community-arena" role="tabpanel" aria-labelledby="community-tab-arena" hidden>
-      <section class="community-card"><h2>发起五题挑战</h2><p class="community-muted">双方完成同一组五道客观题，可以分别作答。每人开始后限时 15 分钟，服务器判分；正确题数优先，相同时比较用时，双方交卷后开放解析。邀请 24 小时有效。</p><form id="challengeCreateForm" class="community-form community-challenge-create"><label>邀请学习搭子<select id="challengeFriend" required></select></label><label>挑战主题<select id="challengeTopic" required></select></label><button class="btn primary" type="submit">发起挑战</button></form></section>
+      <section class="community-card"><h2>发起五题挑战</h2><p class="community-muted">双方完成同一组五道客观题，可以分别作答。每人开始后限时 15 分钟，服务器判分；正确题数优先，相同时比较用时，双方交卷后开放解析。邀请 24 小时有效。</p><p><a class="btn primary" id="arena3dEntry" href="js/features/arena/index.html">进入 3D 好友竞技场</a> <span>走到擂台前按 E 发起挑战，也能在牌坊下敲锣。</span></p><form id="challengeCreateForm" class="community-form community-challenge-create"><label>邀请学习搭子<select id="challengeFriend" required></select></label><label>挑战主题<select id="challengeTopic" required></select></label><button class="btn primary" type="submit">发起挑战</button></form></section>
       <div class="community-columns"><section class="community-card"><div class="community-section-head"><h2>我的挑战</h2><button id="challengeRefresh" class="btn ghost">刷新挑战</button></div><div id="challengeList"></div></section><section id="challengeDetail" class="community-card"><h2>选择一场挑战</h2><p class="community-muted">添加学习搭子后即可发起挑战。当前为异步挑战，双方无需同时在线。</p></section></div>
     </div>
   </section>
@@ -1049,7 +1049,7 @@
 <!-- 重型数据延迟加载器：gaoshu_bank / english_words / ielts_words / wenku / wenku_cat
      首屏渲染后后台加载，避免 4.3MB 同步阻塞登录界面 -->
 <script src="js/loader.js?v=1" defer></script>
-<script src="js/app.js?v=55" defer></script>
+<script src="js/app.js?v=56" defer></script>
 <script src="js/integrations.js?v=wall-3" defer></script>
 <script src="js/whiteboard.js?v=1" defer></script>
 <script src="js/community.js?v=4" defer></script>

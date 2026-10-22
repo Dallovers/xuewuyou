@@ -1,0 +1,650 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>好友竞技场 · 学无忧</title>
+<link rel="stylesheet" href="arena.css">
+</head>
+<body>
+<canvas id="world" tabindex="0" aria-label="好友竞技场三维空间，WASD 移动，拖动转向，E 操作"></canvas>
+
+<header class="topbar">
+  <a class="back" href="../../../index.html#community">返回主站</a>
+  <div class="identity"><h1>好友竞技场</h1><span id="location">竞技场前庭</span></div>
+  <button id="rules" type="button">挑战规则</button>
+  <button id="walk" class="primary" type="button">进入漫游</button>
+</header>
+
+<aside class="guide">
+  <p>五道题，见高下。</p>
+  <nav aria-label="场景视角">
+    <button type="button" data-view="entrance" aria-pressed="true">西侧牌坊</button>
+    <button type="button" data-view="ring" aria-pressed="false">擂台正面</button>
+    <button type="button" data-view="desk" aria-pressed="false">报名处</button>
+  </nav>
+  <small id="help">拖动旋转 · 滚轮缩放 · 进入漫游后走到擂台前按 E</small>
+</aside>
+
+<div id="crosshair" hidden aria-hidden="true">+</div>
+<button id="interact" type="button" hidden></button>
+
+<footer class="bottom">
+  <div><span class="status-dot" id="statusDot"></span><span id="modeStatus">外观检视 · 开放挑战</span></div>
+  <button id="exit" type="button" hidden>回到外观</button>
+</footer>
+
+<div id="touch" hidden aria-label="移动与转向">
+  <button type="button" data-key="KeyJ" aria-label="向左转">左转</button>
+  <button type="button" data-key="KeyW" aria-label="向前走">前进</button>
+  <button type="button" data-key="KeyL" aria-label="向右转">右转</button>
+  <button type="button" data-key="KeyA" aria-label="向左走">左移</button>
+  <button type="button" data-key="KeyS" aria-label="向后走">后退</button>
+  <button type="button" data-key="KeyD" aria-label="向右走">右移</button>
+</div>
+
+<p id="toast" role="status" hidden></p>
+
+<div id="loading">
+  <h2>正在打开好友竞技场</h2>
+  <p>加载擂台、石材与天光…</p>
+</div>
+
+<dialog id="rules-dialog" aria-labelledby="rules-title">
+  <div class="dialog-head">
+    <div><h2 id="rules-title">挑战规则</h2><p>来自既有好友挑战，不是这块场地自己定的</p></div>
+    <button id="close-rules" type="button" aria-label="关闭挑战规则">关闭</button>
+  </div>
+  <div class="dialog-body">
+    <ul class="kv">
+      <li><b>题目</b><span>同一组五道客观题，双方各自作答</span></li>
+      <li><b>限时</b><span>每人开始后 15 分钟，邀请 24 小时内有效</span></li>
+      <li><b>判分</b><span>服务器判分；先比正确题数，再比用时</span></li>
+      <li><b>复盘</b><span>双方交卷后开放解析，结果计入答题记录与错题本</span></li>
+    </ul>
+    <p style="margin-top:16px">场地上有三个实物交互点：</p>
+    <ul class="kv">
+      <li><b>擂台台阶</b><span>按 E 打开好友挑战（<code>arena</code>）</span></li>
+      <li><b>报名处</b><span>按 E 打开学习搭子列表（<code>friends</code>）——先有人可打</span></li>
+      <li><b>开赛锣</b><span>按 E 敲一下，纯本地动作，不上报服务端</span></li>
+    </ul>
+    <div class="dialog-note">
+      本页是独立 3D 场景，没有主站的社区面板。想看真实挑战列表，点「返回主站」→ 校园互动 → 好友竞技场。
+      场地本身不显示比分，也不伪造战绩。
+    </div>
+  </div>
+</dialog>
+
+<dialog id="feature-dialog" aria-labelledby="feature-title">
+  <div class="dialog-head">
+    <div><h2 id="feature-title">擂台</h2><p id="feature-sub"></p></div>
+    <button id="close-feature" type="button" aria-label="关闭">关闭</button>
+  </div>
+  <div class="dialog-body" id="feature-body"></div>
+</dialog>
+
+<!-- three 走仓库内的 vendor/three（r170），不依赖 CDN：CDN 一抖整页白屏 -->
+<script type="importmap">
+{
+  "imports": {
+    "three": "../../../vendor/three/three.module.js",
+    "three/addons/": "../../../vendor/three/addons/"
+  }
+}
+</script>
+
+<script type="module">
+const $ = (id) => document.getElementById(id);
+const loading = $('loading');
+
+function fail(err) {
+  loading.hidden = false;
+  loading.classList.add('is-failed');
+  loading.querySelector('h2').textContent = '竞技场没能打开';
+  loading.querySelector('p').textContent = String((err && err.message) || err) +
+    '。请用 node server.mjs 或 python -m http.server 起本地服务后刷新（ESM 不能用 file:// 打开）。';
+  console.error(err);
+}
+
+let THREE, createArena, ARENA_LAYOUT;
+try {
+  THREE = await import('three');
+  ({ createDistrict: createArena, ARENA_LAYOUT } = await import('./arena-district.js'));
+} catch (err) {
+  fail(err);
+  throw err;
+}
+
+/* ---------- 渲染器：与图书馆同一套色彩/曝光取向 ---------- */
+
+const canvas = $('world');
+let renderer;
+try {
+  renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+} catch (err) {
+  fail(new Error('WebGL 初始化失败：' + (err && err.message)));
+  throw err;
+}
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 0.78;
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xc6dae4);
+scene.fog = new THREE.Fog(0xc6dae4, 52, 150);
+
+/* 天空 HDR → 环境反射（IBL）。没有它，金属度偏高的柱、围绳、锣面会发死黑。 */
+let envState = { ok: false, reason: 'not-started' };
+try {
+  const { RGBELoader } = await import('three/addons/loaders/RGBELoader.js');
+  const hdr = await new RGBELoader().loadAsync('../../../examples/campus-3d-v5/assets/sky.hdr');
+  hdr.mapping = THREE.EquirectangularReflectionMapping;
+  scene.background = hdr;
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  pmrem.compileEquirectangularShader();
+  scene.environment = pmrem.fromEquirectangular(hdr).texture;
+  if ('environmentIntensity' in scene) scene.environmentIntensity = 0.5;
+  pmrem.dispose();
+  envState = { ok: true, source: 'sky.hdr' };
+} catch (err) {
+  envState = { ok: false, reason: err && err.message };
+  console.warn('[arena] 天空 HDR 未加载，回退纯色背景与环境', err);
+}
+
+const camera = new THREE.PerspectiveCamera(2 * Math.atan(12 / 35) * 180 / Math.PI, 1, 0.1, 260);
+camera.rotation.order = 'YXZ';
+
+const hemi = new THREE.HemisphereLight(0xdfeaf2, 0x6f7564, envState.ok ? 0.42 : 1.05);
+scene.add(hemi);
+
+const sun = new THREE.DirectionalLight(0xfff3de, envState.ok ? 2.2 : 2.1);
+sun.position.set(15, 23, 12);
+sun.target.position.set(0, 1.4, 0);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+sun.shadow.camera.near = 1;
+sun.shadow.camera.far = 80;
+sun.shadow.camera.left = -14;
+sun.shadow.camera.right = 14;
+sun.shadow.camera.top = 14;
+sun.shadow.camera.bottom = -14;
+sun.shadow.bias = -0.00004;
+sun.shadow.normalBias = 0.012;
+sun.shadow.radius = 2;
+scene.add(sun.target);
+scene.add(sun);
+
+const fill = new THREE.DirectionalLight(0xdce8ef, envState.ok ? 0.16 : 0.6);
+fill.position.set(-14, 9, -10);
+scene.add(fill);
+
+/* ---------- 空间 ---------- */
+
+const arena = createArena({ THREE, mode: 'mounted' });
+scene.add(arena.root);
+const colliders = arena.colliders;
+const interactions = arena.interactions;
+arena.ready.then((r) => console.log('[arena] PBR 贴图', r, '环境', envState));
+
+/* ---------- 相机：外观检视（机位 + 轨道）与第一人称漫游 ---------- */
+
+const EYE = 1.65;
+const minX = -ARENA_LAYOUT.site.w / 2 - 7;
+const maxX = ARENA_LAYOUT.site.w / 2 + 2;
+const maxZ = ARENA_LAYOUT.site.d / 2 + 1;
+
+/* 三个检视机位。target 是看的点，radius / yaw / pitch 决定相机站在哪。
+   机位是按实拍调的：既要读到牌坊和擂台的关系，又不能让灯柱、门柱挡住主体。 */
+const PRESETS = {
+  /* 牌坊和擂台分别在视点两侧，画面中心取两者的中间点，否则匾额会被顶到画面外 */
+  entrance: { target: [-2.0, 1.4, 1.0], radius: 17, yaw: -55, pitch: 5 },
+  /* 擂台正面：西南 3/4、抬高到 5m 俯看，台基、台阶与场地圆环都在画面里 */
+  ring:     { target: [1.8, 1.2, 0], radius: 11, yaw: -120, pitch: 20 },
+  /* 报名处在场地东南角、紧贴围栏，身后就是看台，只能从西北侧斜着看 */
+  desk:     { target: [7.9, 0.95, 4.6], radius: 4.5, yaw: -142, pitch: 16 },
+};
+
+const state = {
+  mode: 'inspect',            // inspect | walk
+  view: 'entrance',
+  target: new THREE.Vector3(...PRESETS.entrance.target),
+  radius: PRESETS.entrance.radius,
+  orbitYaw: PRESETS.entrance.yaw * Math.PI / 180,
+  orbitPitch: PRESETS.entrance.pitch * Math.PI / 180,
+  pos: { x: -(ARENA_LAYOUT.site.w / 2) - 5.5, z: ARENA_LAYOUT.site.d / 2 },
+  yaw: -50 * Math.PI / 180,
+  pitch: -3 * Math.PI / 180,
+  nearest: null,
+  modal: false,
+  ready: false,
+};
+
+function applyOrbit() {
+  const cp = Math.cos(state.orbitPitch);
+  camera.position.set(
+    state.target.x + Math.sin(state.orbitYaw) * cp * state.radius,
+    state.target.y + Math.sin(state.orbitPitch) * state.radius,
+    state.target.z + Math.cos(state.orbitYaw) * cp * state.radius,
+  );
+  camera.lookAt(state.target);
+}
+
+function applyWalk() {
+  camera.position.set(state.pos.x, EYE, state.pos.z);
+  camera.rotation.set(state.pitch, state.yaw, 0, 'YXZ');
+}
+
+function setView(name) {
+  const p = PRESETS[name];
+  if (!p) return;
+  state.mode = 'inspect';
+  state.view = name;
+  state.target.set(p.target[0], p.target[1], p.target[2]);
+  state.radius = p.radius;
+  state.orbitYaw = p.yaw * Math.PI / 180;
+  state.orbitPitch = p.pitch * Math.PI / 180;
+  for (const b of document.querySelectorAll('.guide button')) {
+    b.setAttribute('aria-pressed', String(b.dataset.view === name));
+  }
+  $('walk').textContent = '进入漫游';
+  $('exit').hidden = true;
+  $('crosshair').hidden = true;
+  $('touch').hidden = true;
+  $('interact').hidden = true;
+  $('modeStatus').textContent = '外观检视 · 开放挑战';
+  $('statusDot').classList.remove('is-live');
+  applyOrbit();
+  updateLocation();
+}
+
+function walk() {
+  state.mode = 'walk';
+  applyWalk();
+  canvas.focus();
+  $('walk').textContent = '漫游中';
+  $('exit').hidden = false;
+  $('crosshair').hidden = false;
+  $('modeStatus').textContent = '漫游中 · 走到物件前按 E';
+  $('statusDot').classList.add('is-live');
+  $('touch').hidden = !(matchMedia('(pointer: coarse)').matches || innerWidth < 700);
+  updateLocation();
+  toast('拖动转向，WASD 移动；走到擂台台阶、报名处或开赛锣前按 E。');
+}
+
+/* 圆-盒 / 圆-柱 推开，判定与 aria 预览页同一份，避免两处不一致 */
+const PLAYER_R = 0.35;
+function collide(p) {
+  for (const c of colliders) {
+    if (c.type === 'box') {
+      const [cx, cy, cz] = c.center;
+      const [hx, hy, hz] = c.half;
+      if (EYE + 0.1 < cy - hy || EYE - EYE > cy + hy) continue;
+      const nx = Math.max(cx - hx, Math.min(p.x, cx + hx));
+      const nz = Math.max(cz - hz, Math.min(p.z, cz + hz));
+      const dx = p.x - nx;
+      const dz = p.z - nz;
+      const d2 = dx * dx + dz * dz;
+      if (d2 >= PLAYER_R * PLAYER_R) continue;
+      if (d2 < 1e-8) {
+        const px = hx - Math.abs(p.x - cx);
+        const pz = hz - Math.abs(p.z - cz);
+        if (px < pz) p.x = cx + (p.x >= cx ? 1 : -1) * (hx + PLAYER_R);
+        else p.z = cz + (p.z >= cz ? 1 : -1) * (hz + PLAYER_R);
+      } else {
+        const d = Math.sqrt(d2);
+        p.x = nx + (dx / d) * PLAYER_R;
+        p.z = nz + (dz / d) * PLAYER_R;
+      }
+    } else if (c.type === 'cylinder') {
+      const [cx, cy, cz] = c.center;
+      const halfH = (c.height || 1) / 2;
+      if (EYE < cy - halfH || EYE > cy + halfH) continue;
+      const dx = p.x - cx;
+      const dz = p.z - cz;
+      const d = Math.hypot(dx, dz);
+      const min = c.radius + PLAYER_R;
+      if (d < min && d > 1e-6) {
+        p.x = cx + (dx / d) * min;
+        p.z = cz + (dz / d) * min;
+      }
+    }
+  }
+  p.x = Math.max(minX, Math.min(maxX, p.x));
+  p.z = Math.max(-maxZ, Math.min(maxZ, p.z));
+}
+
+/* ---------- 位置名：顶部工具条要跟着人走 ---------- */
+
+const tmpV = new THREE.Vector3();
+function updateLocation() {
+  if (state.mode === 'inspect') {
+    $('location').textContent = { entrance: '竞技场前庭', ring: '擂台正面', desk: '报名处' }[state.view] || '竞技场前庭';
+    return;
+  }
+  const { x, z } = state.pos;
+  if (x < -ARENA_LAYOUT.site.w / 2) $('location').textContent = '场外草地';
+  else if (x < -7.4) $('location').textContent = '西侧牌坊';
+  else if (Math.abs(z + 4.6) < 2.2 && x > 5.6) $('location').textContent = '对战牌';
+  else if (Math.abs(z - 4.6) < 2.2 && x > 5.6) $('location').textContent = '报名处';
+  /* 8.2m ≈ 台心到围栏外沿再留一步：站在台阶前、台边、看台第一排都算「擂台前」 */
+  else if (Math.hypot(x - ARENA_LAYOUT.ring.cx, z - ARENA_LAYOUT.ring.cz) < 8.2) $('location').textContent = '擂台前';
+  else $('location').textContent = '竞技场';
+}
+
+/* ---------- 输入 ---------- */
+
+const keys = Object.create(null);
+let drag = null;
+
+canvas.addEventListener('pointerdown', (e) => {
+  if (state.modal) return;
+  canvas.focus();
+  canvas.setPointerCapture(e.pointerId);
+  drag = { id: e.pointerId, x: e.clientX, y: e.clientY };
+});
+canvas.addEventListener('pointermove', (e) => {
+  if (!drag || drag.id !== e.pointerId || state.modal) return;
+  const dx = e.clientX - drag.x;
+  const dy = e.clientY - drag.y;
+  drag.x = e.clientX;
+  drag.y = e.clientY;
+  if (state.mode === 'inspect') {
+    state.orbitYaw -= dx * 0.005;
+    state.orbitPitch = Math.max(-0.1, Math.min(1.05, state.orbitPitch + dy * 0.004));
+    applyOrbit();
+  } else {
+    state.yaw -= dx * 0.0026;
+    state.pitch = Math.max(-1.1, Math.min(1.1, state.pitch - dy * 0.0026));
+    applyWalk();
+  }
+});
+const endDrag = (e) => {
+  if (!drag) return;
+  drag = null;
+  try { canvas.releasePointerCapture(e.pointerId); } catch (_) { /* 指针已释放 */ }
+};
+canvas.addEventListener('pointerup', endDrag);
+canvas.addEventListener('pointercancel', endDrag);
+canvas.addEventListener('wheel', (e) => {
+  if (state.mode !== 'inspect' || state.modal) return;
+  e.preventDefault();
+  state.radius = Math.max(4.5, Math.min(26, state.radius * (1 + Math.sign(e.deltaY) * 0.08)));
+  applyOrbit();
+}, { passive: false });
+
+addEventListener('keydown', (e) => {
+  if (e.code === 'Escape') {
+    if (featureDialog.open || $('rules-dialog').open) closeDialogs();
+    else if (state.mode === 'walk') setView('entrance');
+    return;
+  }
+  if (state.modal) return;
+  if (e.code === 'KeyE' && state.mode === 'walk') {
+    if (state.nearest) { e.preventDefault(); interact(); }
+    return;
+  }
+  if (e.code === 'KeyW' || e.code === 'KeyA' || e.code === 'KeyS' || e.code === 'KeyD' ||
+      e.code === 'ArrowUp' || e.code === 'ArrowDown' || e.code === 'ArrowLeft' || e.code === 'ArrowRight' ||
+      e.code === 'KeyJ' || e.code === 'KeyL' || e.code === 'ShiftLeft' || e.code === 'ShiftRight') {
+    if (state.mode === 'walk') { e.preventDefault(); keys[e.code] = true; }
+  }
+});
+addEventListener('keyup', (e) => { keys[e.code] = false; });
+addEventListener('blur', () => { for (const k of Object.keys(keys)) keys[k] = false; drag = null; });
+
+for (const b of document.querySelectorAll('#touch button')) {
+  const code = b.dataset.key;
+  b.addEventListener('pointerdown', (e) => { e.preventDefault(); keys[code] = true; });
+  for (const ev of ['pointerup', 'pointercancel', 'pointerleave']) {
+    b.addEventListener(ev, () => { keys[code] = false; });
+  }
+}
+
+/* ---------- 交互 ---------- */
+
+const FEATURE_COPY = {
+  'arena.ring': {
+    title: '擂台 · 好友挑战',
+    sub: '擂台台阶 → 真实好友挑战',
+    body: () => `
+      <p>主站里站到台阶前按 E，走的是既有链路：</p>
+      <p><code>WG_Community.open('arena')</code></p>
+      <p><b>arena</b> 是 <code>js/community.js</code> 里早就存在的 tab：<code>tabName === 'arena'</code>
+      时调 <code>loadChallenges()</code>，再 <code>StudyAppBridge.navTo('community')</code> 打开面板。
+      所以 3D 这边只负责「把已经存在的好友挑战打开」，没有第二套挑战状态。</p>
+      <div class="dialog-note">本页是独立场景，没有主站的社区 DOM，这里不显示假比分。
+      想看真实挑战列表：返回主站 → 校园互动 → 好友竞技场。</div>`,
+    action: { label: '返回主站打开好友挑战', href: '../../../index.html#community' },
+  },
+  'arena.roster': {
+    title: '报名处 · 搭子簿',
+    sub: '报名处 → 学习搭子列表',
+    body: () => `
+      <p>挑战的前提是先有人可打，所以报名处开的是好友列表，不是挑战列表：</p>
+      <p><code>WG_Community.open('friends')</code></p>
+      <p><span class="tag">为什么分两个入口</span> 擂台负责「打」，报名处负责「先有人可打」。
+      两个入口都指向既有社区面板，没有新增接口。</p>
+      <div class="dialog-note">好友关系需要对方确认；名片不公开就不会出现在搭子广场。</div>`,
+    action: { label: '返回主站打开搭子列表', href: '../../../index.html#community' },
+  },
+  'arena.bell': {
+    title: '开赛锣',
+    sub: '场地设施 → 本地动作',
+    body: () => `
+      <p>锣吊在牌坊梁下，按阻尼正弦摆 2.4 秒。这是<b>纯本地动作</b>：只返回敲击次数，
+      不写服务端、不发 Socket 事件。</p>
+      <p id="bellState"><span class="tag">当前状态</span> 尚未敲响</p>
+      <div class="dialog-note">刻意不接业务：挑战的发起与判分都在服务端，3D 侧不该有第二套状态。</div>`,
+  },
+};
+
+const featureDialog = $('feature-dialog');
+
+function findNearest() {
+  if (state.mode !== 'walk' || state.modal) return null;
+  let best = null;
+  let bestD = Infinity;
+  for (const it of interactions) {
+    if (!it.object) continue;
+    it.object.getWorldPosition(tmpV);
+    const d = Math.hypot(tmpV.x - state.pos.x, tmpV.z - state.pos.z);
+    if (d <= (it.radius || 2.5) && d < bestD) { bestD = d; best = it; }
+  }
+  return best;
+}
+
+function interact() {
+  if (!state.ready || state.modal || !state.nearest) return;
+  const it = state.nearest;
+  let result;
+  try {
+    result = it.action();
+  } catch (err) {
+    result = { ok: false, message: String((err && err.message) || err) };
+  }
+  const copy = FEATURE_COPY[it.id];
+  if (!copy) { toast(it.label); return; }
+
+  $('feature-title').textContent = copy.title;
+  $('feature-sub').textContent = copy.sub;
+  $('feature-body').innerHTML = copy.body() +
+    (copy.action
+      ? `<p style="margin-top:16px"><a class="btn primary" style="display:inline-block;padding:9px 17px;border-radius:6px;background:var(--accent);color:#fff;text-decoration:none;font-size:14px" href="${copy.action.href}">${copy.action.label}</a></p>`
+      : '');
+
+  if (it.id === 'arena.bell' && result && typeof result.strikes === 'number') {
+    const el = $('bellState');
+    if (el) el.innerHTML = '<span class="tag">当前状态</span> 已敲响 ' + result.strikes + ' 次（本地计数）';
+  }
+  openDialog(featureDialog);
+}
+
+function openDialog(dlg) {
+  state.modal = true;
+  for (const k of Object.keys(keys)) keys[k] = false;
+  drag = null;
+  $('interact').hidden = true;
+  dlg.showModal();
+}
+
+function closeDialogs() {
+  for (const d of [featureDialog, $('rules-dialog')]) {
+    if (d.open) d.close();
+  }
+  /* dialog 的 close 事件是异步派发的，等它回来再放开输入会有几帧窗口期：
+     这段窗口里按 Esc 会被当成"还有面板开着"而吞掉。这里直接同步复位。 */
+  state.modal = false;
+  if (state.mode === 'walk') canvas.focus();
+}
+for (const d of [featureDialog, $('rules-dialog')]) {
+  d.addEventListener('close', () => {
+    state.modal = false;
+    for (const k of Object.keys(keys)) keys[k] = false;
+    if (state.mode === 'walk') canvas.focus();
+  });
+}
+
+function toast(message) {
+  const el = $('toast');
+  el.textContent = message;
+  el.hidden = false;
+  clearTimeout(toast.timer);
+  toast.timer = setTimeout(() => { el.hidden = true; }, 4200);
+}
+
+/* ---------- 按钮 ---------- */
+
+$('walk').onclick = () => { if (state.mode !== 'walk') walk(); };
+$('exit').onclick = () => setView(state.view);
+$('rules').onclick = () => openDialog($('rules-dialog'));
+$('close-rules').onclick = () => $('rules-dialog').close();
+$('close-feature').onclick = () => featureDialog.close();
+$('interact').onclick = interact;
+for (const b of document.querySelectorAll('.guide button')) {
+  b.onclick = () => setView(b.dataset.view);
+}
+
+/* ---------- 尺寸与主循环 ---------- */
+
+function resize() {
+  const w = innerWidth;
+  const h = innerHeight;
+  renderer.setSize(w, h, false);
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+  if (state.mode === 'walk') {
+    $('touch').hidden = !(matchMedia('(pointer: coarse)').matches || innerWidth < 700);
+  }
+}
+addEventListener('resize', resize);
+resize();
+
+let last = performance.now();
+let hint = null;
+
+function frame(now) {
+  const dt = Math.min((now - last) / 1000, 0.06);
+  last = now;
+
+  if (state.mode === 'walk' && !state.modal) {
+    let f = 0;
+    let r = 0;
+    if (keys.KeyW || keys.ArrowUp) f += 1;
+    if (keys.KeyS || keys.ArrowDown) f -= 1;
+    if (keys.KeyD || keys.ArrowRight) r += 1;
+    if (keys.KeyA || keys.ArrowLeft) r -= 1;
+    if (f || r) {
+      const len = Math.hypot(f, r) || 1;
+      const speed = (keys.ShiftLeft || keys.ShiftRight ? 6.6 : 4.2) * dt / len;
+      const sin = Math.sin(state.yaw);
+      const cos = Math.cos(state.yaw);
+      state.pos.x += (-sin * f + cos * r) * speed;
+      state.pos.z += (-cos * f - sin * r) * speed;
+      collide(state.pos);
+      applyWalk();
+      updateLocation();
+    }
+    if (keys.KeyJ) { state.yaw += dt * 1.6; applyWalk(); }
+    if (keys.KeyL) { state.yaw -= dt * 1.6; applyWalk(); }
+  }
+
+  arena.update(dt);
+
+  if (state.mode === 'walk') {
+    const near = findNearest();
+    state.nearest = near;
+    const key = near ? near.id : null;
+    if (key !== hint) {
+      hint = key;
+      const btn = $('interact');
+      if (near) {
+        btn.textContent = near.prompt;
+        btn.hidden = false;
+      } else {
+        btn.hidden = true;
+      }
+    }
+  } else {
+    state.nearest = null;
+    if (hint !== null) { hint = null; $('interact').hidden = true; }
+  }
+
+  renderer.render(scene, camera);
+  requestAnimationFrame(frame);
+}
+
+/* 先同步画一帧，避免 rAF 启动前空一帧 */
+const wantedView = new URLSearchParams(location.search).get('view');
+setView(Object.hasOwn(PRESETS, wantedView) ? wantedView : 'entrance');
+arena.update(0);
+renderer.render(scene, camera);
+state.ready = true;
+loading.hidden = true;
+requestAnimationFrame(frame);
+
+/* 供本机自动化检查用（与预览页同名的几个钩子，脚本可以复用） */
+window.__arena = {
+  scene,
+  arena,
+  renderer,
+  camera,
+  state,
+  get mode() { return state.mode; },
+  get view() { return state.view; },
+  get counts() {
+    let meshes = 0;
+    scene.traverse((o) => { if (o.isMesh) meshes++; });
+    return {
+      meshes,
+      colliders: colliders.length,
+      interactions: interactions.length,
+      memory: { ...renderer.info.memory },
+    };
+  },
+  get env() { return envState; },
+  get dialogOpen() { return featureDialog.open || $('rules-dialog').open; },
+  get location() { return $('location').textContent; },
+  setView,
+  walk,
+  interact,
+  close: closeDialogs,
+  standNear(id) {
+    const it = interactions.find((x) => x.id === id);
+    if (!it) return null;
+    const p = new THREE.Vector3();
+    it.object.getWorldPosition(p);
+    const d = (it.radius || 2.5) - 0.7;
+    state.pos.x = p.x - d;
+    state.pos.z = p.z;
+    collide(state.pos);
+    applyWalk();
+    updateLocation();
+    return [state.pos.x, state.pos.z];
+  },
+};
+</script>
+</body>
+</html>
