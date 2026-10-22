@@ -88,15 +88,6 @@ const MATERIAL_SPEC = {
     color: 0xc0994f, roughness: 0.42, metalness: 0.6, envMapIntensity: 1.4,
     emissive: 0x3a2c16, emissiveIntensity: 0.34,
   },
-  /* 牌坊柱头的铜箍：和锣同一种暖金属，但**不要**锣那层自发光——
-     锣一直吊在檐影里，需要一点兜底才不像泥；柱头是站在光下的，
-     再发光只会读成"套了一圈金塑料"。 */
-  brass: { color: 0xb08a45, roughness: 0.38, metalness: 0.72, envMapIntensity: 1.15 },
-  /* 柱身专用漆面钢：metal_dark（0x454b47 / 0.54）做横梁、围栏那种细杆很好，
-     但立成 2.7m 的柱子就是一块没有转折的黑板——背光面上连倒角都读不出来。
-     这里把明度提一档、粗糙度压到 0.44，柱子的两个可见面才有明暗差、
-     0.018 的倒角才拉得出一条高光。偏一点橄榄，和识别色是同一族。 */
-  post_steel: { color: 0x535c50, roughness: 0.44, metalness: 0.08, envMapIntensity: 0.9 },
   ground_paving: { color: 0xbdb6a6, roughness: 0.82, metalness: 0.0 },
   ground_lawn: { color: 0x7e8a71, roughness: 0.95, metalness: 0.0 },
   leaf: { color: 0x5a6a47, roughness: 0.92, metalness: 0.0 },
@@ -111,7 +102,7 @@ const MATERIAL_SPEC = {
    oak_light / oak_flat / brick_grey 不在此列——它们的 roughnessMap 由异步 PBR 贴图接管。 */
 const ROUGH_NOISE_IDS = new Set([
   'metal_dark', 'metal_frame', 'roof_bluegrey', 'stone_light', 'stone_light_in',
-  'arena_olive', 'rope_dark', 'rope_cream', 'canvas_olive', 'bronze', 'brass', 'post_steel',
+  'arena_olive', 'rope_dark', 'rope_cream', 'canvas_olive', 'bronze',
   'ground_paving', 'ground_lawn', 'ring_canvas',
 ]);
 
@@ -1652,28 +1643,42 @@ export function createDistrict(ctx = {}) {
      绿化交给隔壁社交广场，这里保持硬质场地 + 灯柱 + 围栏。 */
 
   /* ---------- 柱子 ----------
-   * 场地里所有承重柱共用一套语汇，从下往上：
-   *   两级石座 → 金属法兰 → 柱身（下段 / 喉箍 / 上段）→ 石帽
+   * 和社交广场亭廊柱同一套做法（js/features/social/social-district.js 的 buildPavilion）：
    *
-   * 之前每根柱子就是一个方盒 + 一块石帽：远看四根方管，近看一条没有转折的边。
-   * 柱子是这种场地里最容易被盯着看的东西——人站在台前、眼睛正好平齐柱身，
-   * 它一"素"，整场就露馅。
+   *   深色垫板（1.64×，18mm，压在石础脚下）
+   *   石柱础（1.32×）
+   *   涂装柱身（1.0×，倒角 0.010）
+   *   石柱头箍（1.36×，套在柱身外面，梁坐在它上面）
    *
-   * 这里不加面数、只加"转折"：
-   *   1. 三段材质对比（亮石 / 暗金属 / 亮金属），交界处自然形成横线，柱子有了比例；
-   *   2. 倒角从 0.008 放到 0.018（柱宽的 10%），方管变八角，四条棱各自吃一条高光；
-   *   3. 喉箍把柱身断成 1.3 : 1.25 两段，眼睛读得出"这是一件装起来的构件"。
-   * 每根柱子 7 个网格（原来 3 个），六根柱子共 +24 个 draw call——换来的是整场的前景质量。
+   * 两个板块并排（neighbor.offset = 21），柱子是离眼睛最近、最容易被横向比较的构件，
+   * 构造和比例不一致非常扎眼。所以这里不是"另起一套更好看的"，是把广场那套尺寸
+   * 按柱径等比重算一遍：`k = size / 0.22`，0.22 就是广场亭廊柱的柱径——
+   * 牌坊柱正好 0.22，于是它和亭廊柱一模一样；擂台柱 0.18 是同一套件的 0.82 倍。
+   *
+   * 三处照抄的地方，都是"不一致会露馅"的地方：
+   *   1. 倒角用绝对值 0.014 / 0.010 / 0.008，不跟着柱径缩；
+   *   2. 石料用 stone_light（0xcfc8ba）——两个板块里唯一完全同色的一档，
+   *      竞技场的 stone_light_in 是 0xc3bcac，比广场那档暗，接缝处会看出来；
+   *   3. 柱头是**套箍**，不是压在柱顶上的帽子：柱子一直伸到梁底，石箍包住最上面 9cm。
    */
-  function column(x, z, baseY, segs, tag) {
-    let y = baseY;
-    for (const s of segs) {
-      add(beveledBoxGeometry(THREE, s.w, s.h, s.w, s.b, 1), M[s.mat], x, y + s.h / 2, z, {
-        name: (tag || 'arena:post') + (s.part ? ':' + s.part : ''),
-      });
-      y += s.h;
-    }
-    return y;
+  function column(x, z, baseY, size, top, capGap) {
+    const k = size / 0.22;
+    const plinthH = 0.12 * k;
+    const capH = 0.09 * k;
+    add(boxGeo(0.36 * k, 0.018, 0.36 * k), M.metal_dark, x, baseY + 0.009, z, {
+      name: 'arena:post-seat', cast: false,
+    });
+    add(beveledBoxGeometry(THREE, 0.29 * k, plinthH, 0.29 * k, 0.014, 1), M.stone_light, x,
+      baseY + plinthH / 2, z, { name: 'arena:post-plinth' });
+    const shaftH = top - baseY - plinthH;
+    add(beveledBoxGeometry(THREE, size, shaftH, size, 0.01, 1), M.metal_dark, x,
+      baseY + plinthH + shaftH / 2, z, { name: 'arena:post' });
+    /* capGap：石箍顶面离柱顶还有多远。擂台柱和牌坊柱都是 0——箍顶与柱顶齐平，
+       梁直接坐在箍上；柱身其实一直顶到梁底，石箍只是套在最上面 9cm 的一圈。
+       留着这个参数：以后给牌坊加檐、或擂台换梁高，只动它，不用改调用签名。 */
+    const capBottom = top - (capGap || 0) - capH;
+    add(beveledBoxGeometry(THREE, 0.30 * k, capH, 0.30 * k, 0.008, 1), M.stone_light, x,
+      capBottom + capH / 2, z, { name: 'arena:post-cap' });
   }
 
   /* ---------- 擂台 ---------- */
@@ -1767,21 +1772,12 @@ export function createDistrict(ctx = {}) {
     const padH = 0.8;
     const padCy = ropeY0 + 0.2;
     const S = L.post.size;
-    /* 7 段刚好落满 2.83（= postH + 0.08，柱帽顶正好顶住横梁底面）。
-       石座两级向外张、法兰收回来、喉箍再张开一点——宽度这么一张一收，
-       柱子才有"座 / 身 / 头"三段，而不是一根等宽的杆。 */
-    const POST_SEGS = [
-      { w: 0.340, h: 0.055, mat: 'stone_light', b: 0.014, part: 'plinth' },
-      { w: 0.285, h: 0.050, mat: 'stone_light_in', b: 0.012, part: 'plinth' },
-      { w: 0.215, h: 0.050, mat: 'roof_bluegrey', b: 0.008, part: 'flange' },
-      { w: S, h: 1.300, mat: 'post_steel', b: 0.018, part: 'shaft' },
-      { w: S + 0.018, h: 0.055, mat: 'metal_frame', b: 0.010, part: 'collar' },
-      { w: S - 0.008, h: 1.250, mat: 'post_steel', b: 0.017, part: 'shaft' },
-      { w: S + 0.090, h: 0.070, mat: 'stone_light_in', b: 0.014, part: 'cap' },
-    ];
+    /* 柱顶必须落在 2.83（= postH + 0.08）：横梁底面就在那儿，
+       高一点梁会浮、低一点梁会插进石箍。 */
+    const postTop = topY + postH + 0.08;
     for (const px of postXs) {
       for (const pz of postZs) {
-        column(px, pz, topY, POST_SEGS, 'arena:post');
+        column(px, pz, topY, S, postTop, 0);
         add(beveledBoxGeometry(THREE, 0.245, padH, 0.245, 0.022, 1), M.canvas_olive, px, padCy, pz, {
           name: 'arena:post-pad',
         });
@@ -1935,21 +1931,10 @@ export function createDistrict(ctx = {}) {
     for (const sz of [-1, 1]) {
       const z = G.z + sz * halfSpan;
       /* 牌坊柱站在进场主路上（路面 y = 0.045），所以整根从 0.045 起。
-         比擂台柱多元两件事：一段石础（牌坊的柱子本来就落在石础上），
-         和柱头那道铜箍——它和 1.5m 外的锣是同一族暖金属，
-         门洞这一片不然全是墨绿和蓝灰。 */
-      const GP = G.post;
-      const GATE_SEGS = [
-        { w: 0.420, h: 0.080, mat: 'stone_light', b: 0.016, part: 'plinth' },
-        { w: 0.340, h: 0.060, mat: 'stone_light_in', b: 0.014, part: 'plinth' },
-        { w: 0.270, h: 0.120, mat: 'stone_light_in', b: 0.012, part: 'base' },
-        { w: 0.245, h: 0.050, mat: 'roof_bluegrey', b: 0.008, part: 'flange' },
-        { w: GP, h: 1.300, mat: 'post_steel', b: 0.020, part: 'shaft' },
-        { w: GP + 0.018, h: 0.060, mat: 'metal_frame', b: 0.010, part: 'collar' },
-        { w: GP - 0.008, h: 1.195, mat: 'post_steel', b: 0.019, part: 'shaft' },
-        { w: GP + 0.024, h: 0.090, mat: 'brass', b: 0.010, part: 'capital' },
-      ];
-      column(G.x, z, 0.045, GATE_SEGS, 'arena:gate-post');
+         柱径 0.22 正好等于广场亭廊柱，于是它拿到的就是亭廊柱原尺寸的一套件
+         （k = 1），只是更高。柱顶停在梁底 3.00：梁坐 3.10 ± 0.10，
+         柱身和石箍都在 3.00 收齐，不让柱头伸进梁里。 */
+      column(G.x, z, 0.045, G.post, G.height - 0.05, 0);
       blockBox(0.28, G.height, 0.28, G.x, z, 'arena:gate-post');
       contactShadow(G.x, z, 1.05, 1.05, 0.049, 0.8);
     }
