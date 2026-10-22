@@ -22,7 +22,9 @@ export const ARENA_LAYOUT = {
   neighbor: { districtId: 'social', offset: [21, 0, 0] },
   ring: { cx: 1.8, cz: 0, size: 7.2, base: 0.55, cap: 0.08 },
   post: { size: 0.18, height: 2.75, inset: 0.36 },
-  rope: { levels: 3, from: 0.5, step: 0.4, radius: 0.045 },
+  /* radius 收到 0.03（直径 6cm）：0.045 时站在台前三米看是一根水管。
+     真实围绳包布后也就 3~4cm，靠下垂的弧线和分色去辨识，不靠粗。 */
+  rope: { levels: 3, from: 0.5, step: 0.4, radius: 0.03 },
   step: { count: 2, width: 3.4, rise: 0.18, run: 0.44 },
   gate: { x: -8.6, z: 0, span: 4.0, post: 0.22, height: 3.05 },
   /* 锣不挂在门洞正中：吊到 2.0m 高、直径 0.68，正中挂着就是给进场的人一个"撞头"。
@@ -40,7 +42,10 @@ export const ARENA_LAYOUT = {
      否则围栏会横在门洞前面，人从牌坊穿过去还得再钻一道栏杆。 */
   fence: { height: 0.95, gap: 4.2 },
   lamp: { x: 8.6, z: 7.6, height: 3.1 },
-  lawn: { w: 36, d: 32 },
+  /* 草地铺得很远（200×180），不是为了让人看见，而是为了让地平线消失在雾里。
+     36×32 那种尺寸会在 18m 处露出一条"草地到此为止"的硬边，
+     那一下就把整个场地读成摆在一张桌子上的模型。 */
+  lawn: { w: 200, d: 180 },
 };
 
 /* 材质 ID 沿用统一风格文档，宿主传 materials 时按 ID 克隆复用。
@@ -81,7 +86,19 @@ const MATERIAL_SPEC = {
   ground_lawn: { color: 0x7e8a71, roughness: 0.95, metalness: 0.0 },
   leaf: { color: 0x5a6a47, roughness: 0.92, metalness: 0.0 },
   soil: { color: 0x5a5045, roughness: 0.98, metalness: 0.0 },
+  /* 台面帆布：不加这层，7.3m 见方的台面就是一块抛光石灰板，
+     真实擂台是帆布绷在木框上——有经纬、有擦痕、边角吃灰。 */
+  ring_canvas: { color: 0xffffff, roughness: 0.87, metalness: 0.0, envMapIntensity: 0.4 },
 };
+
+/* 哪些材质要挂粗糙度噪声。绳子、布、金属、石材都需要：均匀的 roughness
+   会让高光变成一条平滑的亮带，这是"CG 味"最直接的来源。
+   oak_light / oak_flat / brick_grey 不在此列——它们的 roughnessMap 由异步 PBR 贴图接管。 */
+const ROUGH_NOISE_IDS = new Set([
+  'metal_dark', 'metal_frame', 'roof_bluegrey', 'stone_light', 'stone_light_in',
+  'arena_olive', 'rope_dark', 'rope_cream', 'canvas_olive', 'bronze',
+  'ground_paving', 'ground_lawn', 'ring_canvas',
+]);
 
 const PBR_GROUPS = {
   brick_grey: { set: 'brick', normalScale: 0.08 },
@@ -510,6 +527,70 @@ export function createDistrict(ctx = {}) {
   const L = ARENA_LAYOUT;
   const owner = createResourceOwner();
   const M = resolveMaterials(THREE, ctx.materials, owner);
+
+  /* 微表面贴图的惰性状态。必须声明在 dressMaterials 之前：
+     生成器是函数声明（会提升），但这些 let 不会——放到函数体后面就是 TDZ 报错。 */
+  let ropeNormalTex = null;
+  let ropeNormalDone = false;
+  let weaveNormalTex = null;
+  let weaveNormalDone = false;
+
+  /* 微表面贴图在闭包里生成（要 owner 与 THREE），材质已经建好，这里补挂：
+     - 台面帆布：一张不重复的底色 + 一张 32×32 重复的经纬法线；
+     - 粗糙度噪声：所有无机材质共一份，只为打散高光。 */
+  (function dressMaterials() {
+    const canvasMap = makeRingCanvasMap();
+    const weave = weaveNormal();
+    const rc = M.ring_canvas;
+    if (rc) {
+      if (canvasMap) rc.map = canvasMap;
+      if (weave) {
+        rc.normalMap = weave;
+        rc.normalScale = new THREE.Vector2(0.95, 0.95);
+      }
+      rc.needsUpdate = true;
+    }
+    /* 包布件（护角垫、棚顶、束带）也铺一层经纬：这些面在 1~3m 处是画面主体，
+       光溜溜的一块橄榄绿会立刻暴露"这是模型"。这里要单独的 repeat——
+       它们的 UV 是按米算的，用台面那份 48×48 会细到看不见。 */
+    if (weave && M.canvas_olive) {
+      const fabric = weave.clone();
+      fabric.needsUpdate = true;
+      fabric.repeat.set(12, 12);
+      owner.ownTexture(fabric);
+      M.canvas_olive.normalMap = fabric;
+      M.canvas_olive.normalScale = new THREE.Vector2(0.7, 0.7);
+      M.canvas_olive.needsUpdate = true;
+    }
+    const noise = makeRoughnessNoise();
+    if (noise) {
+      for (const id of ROUGH_NOISE_IDS) {
+        const m = M[id];
+        if (!m) continue;
+        m.roughnessMap = noise;
+        m.needsUpdate = true;
+      }
+    }
+
+    /* 围绳的麻花法线。中间那道绳用的是识别色 arena_olive，
+       那块材质还要去贴台面色带和台心圆圈，不能带绳子纹理——所以克隆一份单独给绳子。 */
+    const braid = ropeNormal();
+    if (!braid) return;
+    for (const id of ['rope_dark', 'rope_cream']) {
+      const m = M[id];
+      if (!m) continue;
+      m.normalMap = braid;
+      m.normalScale = new THREE.Vector2(0.8, 0.8);
+      m.needsUpdate = true;
+    }
+    const mid = M.arena_olive.clone();
+    mid.name = 'rope_mid';
+    mid.normalMap = braid;
+    mid.normalScale = new THREE.Vector2(0.8, 0.8);
+    mid.needsUpdate = true;
+    owner.ownMaterial(mid);
+    M.rope_mid = mid;
+  })();
   const root = new THREE.Group();
   root.name = 'district:arena';
   root.userData = { districtId: 'arena', stage: 'b-first-delivery' };
@@ -580,6 +661,31 @@ export function createDistrict(ctx = {}) {
     ], 3));
     g.setAttribute('uv', new THREE.Float32BufferAttribute([0, 1, 0.5, 0, 1, 1], 2));
     g.computeVertexNormals();
+    g.userData.__arenaCached = true;
+    geoCache.set(key, g);
+    return g;
+  }
+
+  /* 围绳：沿抛物线下垂的管子。
+     直圆柱是"钢杆"，不是绳子——真实围绳在两根柱之间会往下坠 4~6cm，
+     侧看的那条弧线才是围绳的辨识特征。UV 沿管长 0–1、绕管一周 0–1，
+     正好把斜纹法线铺成麻花。 */
+  function ropeGeometry(span, sag, radius) {
+    const key = 'rope' + span.toFixed(3) + '|' + sag.toFixed(3) + '|' + radius.toFixed(3);
+    let g = geoCache.get(key);
+    if (g) return g;
+    const segs = 22;
+    const pts = [];
+    for (let i = 0; i <= segs; i++) {
+      const t = i / segs;
+      const x = (t - 0.5) * span;
+      /* 抛物线：两端为 0、中点为 -sag。用抛物线不用悬链线——
+         6.5m 跨度上两者差别不到 1mm，抛物线省一次 cosh。 */
+      const y = -sag * (1 - Math.pow(2 * t - 1, 2));
+      pts.push(new THREE.Vector3(x, y, 0));
+    }
+    const curve = new THREE.CatmullRomCurve3(pts);
+    g = new THREE.TubeGeometry(curve, segs, radius, 7, false);
     g.userData.__arenaCached = true;
     geoCache.set(key, g);
     return g;
@@ -735,6 +841,78 @@ export function createDistrict(ctx = {}) {
     s.name = 'dressing:lantern-glow';
     root.add(s);
     return s;
+  }
+
+  /* ---------- 墙脚积灰 ----------
+   * 真实建筑最脏的地方永远是离地 30cm 以内：雨水溅泥、扫帚带土。
+   * 缺这一条，竖直面就是从上到下一样干净的模型。做法是给立面贴一张
+   * 底部深、顶部透明的渐变片，成本两个三角形。 */
+  let grimeTex = null;
+
+  function grimeTexture() {
+    if (grimeTex) return grimeTex;
+    if (typeof document === 'undefined') return null;
+    const W = 64;
+    const H = 128;
+    const canvas = document.createElement('canvas');
+    canvas.width = W;
+    canvas.height = H;
+    const g = canvas.getContext('2d');
+    if (!g) return null;
+    const grd = g.createLinearGradient(0, H, 0, 0);
+    grd.addColorStop(0, 'rgba(52,46,36,0.66)');
+    grd.addColorStop(0.28, 'rgba(56,50,40,0.34)');
+    grd.addColorStop(0.62, 'rgba(60,54,44,0.10)');
+    grd.addColorStop(1, 'rgba(60,54,44,0)');
+    g.fillStyle = grd;
+    g.fillRect(0, 0, W, H);
+    // 打散渐变：几条溅点与横向浅斑，免得看起来像一层滤镜
+    for (let i = 0; i < 60; i++) {
+      const x = Math.random() * W;
+      const y = H - Math.random() * Math.random() * H;
+      g.fillStyle = Math.random() > 0.55
+        ? 'rgba(40,35,27,' + (0.05 + Math.random() * 0.12).toFixed(3) + ')'
+        : 'rgba(150,142,126,' + (0.02 + Math.random() * 0.05).toFixed(3) + ')';
+      g.beginPath();
+      g.ellipse(x, y, 1 + Math.random() * 5, 0.6 + Math.random() * 2.4, 0, 0, Math.PI * 2);
+      g.fill();
+    }
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.wrapS = THREE.RepeatWrapping;
+    tex.wrapT = THREE.ClampToEdgeWrapping;
+    grimeTex = owner.ownTexture(tex);
+    return grimeTex;
+  }
+
+  /* 一段墙脚灰：w 沿立面宽度、h 从地面往上。
+     faceX/faceZ 是立面的法线方向（只取 ±1 之一）。 */
+  function grimeSkirt(x, z, w, h, normal, opacity) {
+    const tex = grimeTexture();
+    if (!tex) return null;
+    const mat = new THREE.MeshBasicMaterial({
+      map: tex,
+      transparent: true,
+      opacity: opacity == null ? 0.85 : opacity,
+      depthWrite: false,
+      toneMapped: false,
+      side: THREE.DoubleSide,
+    });
+    mat.name = 'grime';
+    owner.ownMaterial(mat);
+    const v = Math.max(1, Math.round(w / 1.2));
+    const t = tex.clone();
+    t.repeat.set(v, 1);
+    t.needsUpdate = true;
+    if (!owner.ownTexture(t)) return null;
+    mat.map = t;
+    mat.needsUpdate = true;
+    const rotY = normal[0] !== 0 ? (normal[0] > 0 ? Math.PI / 2 : -Math.PI / 2) : (normal[1] > 0 ? 0 : Math.PI);
+    const mesh = add(planeGeo(w, h), mat, x + normal[0] * 0.004, h / 2 + 0.012, z + normal[1] * 0.004, {
+      rotY, cast: false, receive: false, name: 'dressing:grime',
+    });
+    mesh.renderOrder = 2;
+    return mesh;
   }
 
   /* ---------- 纹理：铺装 / 标识 / 挂幡 ---------- */
@@ -932,8 +1110,11 @@ export function createDistrict(ctx = {}) {
     tex.colorSpace = THREE.SRGBColorSpace;
     tex.anisotropy = 4;
     if (!owner.ownTexture(tex)) return null;
+    /* 布是有透光的：背光那几面如果只靠漫反射，会暗成一块黑板。
+       一点自发光当假次表面散射，刚好把布料和金属区分开。 */
     const mat = new THREE.MeshStandardMaterial({
       map: tex, roughness: 0.86, metalness: 0.0, side: THREE.DoubleSide,
+      emissive: 0x3b3f26, emissiveIntensity: 0.42, envMapIntensity: 0.5,
     });
     mat.name = 'banner:' + text;
     mat.userData.uvUnit = 0;
@@ -963,12 +1144,17 @@ export function createDistrict(ctx = {}) {
     const tex = new THREE.CanvasTexture(canvas);
     tex.wrapS = THREE.RepeatWrapping;
     tex.wrapT = THREE.RepeatWrapping;
-    tex.repeat.set(18, 16);
+    /* 每 2m 一个循环：和铺装石板的尺度对得上，远处交给 mipmap 抹平 */
+    tex.repeat.set(Math.round(L.lawn.w / 2), Math.round(L.lawn.d / 2));
     tex.colorSpace = THREE.SRGBColorSpace;
     tex.anisotropy = 8;
     if (!owner.ownTexture(tex)) return null;
+    /* vertexColors：草地 140×120 铺满整个画面下三分之一，
+       只靠 2m 一张的重复贴图，中景是一整块均匀的绿绒布——照片里草坪永远有色斑：
+       剪过的深浅、被踩秃的偏黄、背阴处的偏冷。斑驳挂在顶点色上（低频、不重复），
+       贴图只管近景的碎叶，两层叠起来才不像一块布。 */
     const mat = new THREE.MeshStandardMaterial({
-      map: tex, color: 0x5e6b49, roughness: 0.97, metalness: 0.0,
+      map: tex, color: 0x6a7358, roughness: 0.97, metalness: 0.0, vertexColors: true,
     });
     mat.name = 'lawn';
     owner.ownMaterial(mat);
@@ -1022,13 +1208,227 @@ export function createDistrict(ctx = {}) {
     return mat;
   }
 
+  /* ---------- 微表面：法线 / 粗糙度 / 颗粒 ----------
+   * 照片感和"干净模型"的差距大半在表面有没有微观起伏：同一个平面，加一点点法线扰动，
+   * 高光就会沿着纹理断开，而不是糊成一整块亮面；加一点粗糙度噪声，
+   * 金属才不会像塑料。这里几个贴图共用一套"高度场求梯度"的写法，纹理都是可平铺的。
+   * 注意法线图不能当 sRGB 采样，colorSpace 要留 NoColorSpace。 */
+  function heightToNormal(size, heightFn, k) {
+    if (typeof document === 'undefined') return null;
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    const g = canvas.getContext('2d');
+    if (!g) return null;
+    const img = g.createImageData(size, size);
+    const d = img.data;
+    const e = 1 / size;
+    for (let j = 0; j < size; j++) {
+      const v = (j + 0.5) / size;
+      for (let i = 0; i < size; i++) {
+        const u = (i + 0.5) / size;
+        const dx = (heightFn(u + e, v) - heightFn(u - e, v)) / (2 * e);
+        const dy = (heightFn(u, v + e) - heightFn(u, v - e)) / (2 * e);
+        const nx = -dx * k;
+        const ny = -dy * k;
+        const len = Math.sqrt(nx * nx + ny * ny + 1);
+        const o = (j * size + i) * 4;
+        d[o] = Math.round((nx / len * 0.5 + 0.5) * 255);
+        d[o + 1] = Math.round((ny / len * 0.5 + 0.5) * 255);
+        d[o + 2] = Math.round((1 / len * 0.5 + 0.5) * 255);
+        d[o + 3] = 255;
+      }
+    }
+    g.putImageData(img, 0, 0);
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.wrapS = THREE.RepeatWrapping;
+    tex.wrapT = THREE.RepeatWrapping;
+    tex.anisotropy = 4;
+    tex.colorSpace = THREE.NoColorSpace;
+    return owner.ownTexture(tex);
+  }
+
+  /* 绳子的麻花纹：沿绳轴（u）走斜纹。三股绳的脊线在 (u, v) 平面上是斜的，
+     所以高度场写成 sin(u*N + v)，法线出来就是一圈缠上去的斜棱。
+     （状态变量 ropeNormalTex / ropeNormalDone 声明在 createDistrict 顶部） */
+  function ropeNormal() {
+    if (!ropeNormalDone) {
+      ropeNormalDone = true;
+      ropeNormalTex = heightToNormal(128, (u, v) => Math.sin(2 * Math.PI * (6 * u + v)), 0.012);
+      if (ropeNormalTex) {
+        /* 40 次重复 = 每 16cm 一个循环、每股棱约 2.7cm。
+           太密（60+）在 2m 内就落到 mip 里糊平了，等于没加。 */
+        ropeNormalTex.repeat.set(40, 2);
+        ropeNormalTex.needsUpdate = true;
+      }
+    }
+    return ropeNormalTex;
+  }
+
+  /* 台面帆布：经纬交错的凹凸。sin*sin 出来是棋盘状的起落，正是帆布的读法。 */
+  function weaveNormal() {
+    if (!weaveNormalDone) {
+      weaveNormalDone = true;
+      weaveNormalTex = heightToNormal(256,
+        (u, v) => Math.sin(2 * Math.PI * 48 * u) * Math.sin(2 * Math.PI * 48 * v), 0.0016);
+      if (weaveNormalTex) {
+        weaveNormalTex.repeat.set(48, 48);
+        weaveNormalTex.anisotropy = 8;
+        weaveNormalTex.needsUpdate = true;
+      }
+    }
+    return weaveNormalTex;
+  }
+
+  /* 粗糙度噪声：低频斑块 + 细颗粒。只求"不是一整块光滑面"。
+     底必须是接近白的（0.94 左右）——roughnessMap 是和材质 roughness 相乘的，
+     底色一深，等于把全场材质的粗糙度按比例削掉，画面会突然变成塑料。 */
+  function makeRoughnessNoise() {
+    if (typeof document === 'undefined') return null;
+    const size = 256;
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    const g = canvas.getContext('2d');
+    if (!g) return null;
+    g.fillStyle = '#f0f0f0';
+    g.fillRect(0, 0, size, size);
+    for (let i = 0; i < 220; i++) {
+      const x = Math.random() * size;
+      const y = Math.random() * size;
+      const r = 5 + Math.random() * 46;
+      const grd = g.createRadialGradient(x, y, 0, x, y, r);
+      const up = Math.random() > 0.5;
+      grd.addColorStop(0, up ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.06)');
+      grd.addColorStop(1, 'rgba(128,128,128,0)');
+      g.fillStyle = grd;
+      g.fillRect(x - r, y - r, r * 2, r * 2);
+    }
+    const img = g.getImageData(0, 0, size, size);
+    const d = img.data;
+    for (let i = 0; i < d.length; i += 4) {
+      const n = (Math.random() - 0.5) * 7;
+      d[i] += n; d[i + 1] += n; d[i + 2] += n;
+    }
+    g.putImageData(img, 0, 0);
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.wrapS = THREE.RepeatWrapping;
+    tex.wrapT = THREE.RepeatWrapping;
+    tex.repeat.set(4, 4);
+    tex.colorSpace = THREE.NoColorSpace;
+    return owner.ownTexture(tex);
+  }
+
+  /* 台面帆布底色：整块只铺一张（不重复），所以脏迹、边角积灰和划痕不会出现平铺规律。
+     边上一圈压暗是帆布最真实的地方——中间踩得发白，四周吃灰。 */
+  function makeRingCanvasMap() {
+    if (typeof document === 'undefined') return null;
+    const size = 512;
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    const g = canvas.getContext('2d');
+    if (!g) return null;
+
+    g.fillStyle = '#bdb49d';
+    g.fillRect(0, 0, size, size);
+
+    // 大块色差
+    for (let i = 0; i < 90; i++) {
+      const x = Math.random() * size;
+      const y = Math.random() * size;
+      const r = 30 + Math.random() * 110;
+      const grd = g.createRadialGradient(x, y, 0, x, y, r);
+      const dark = Math.random() > 0.45;
+      grd.addColorStop(0, dark ? 'rgba(126,118,98,0.045)' : 'rgba(255,252,240,0.05)');
+      grd.addColorStop(1, 'rgba(128,120,100,0)');
+      g.fillStyle = grd;
+      g.fillRect(x - r, y - r, r * 2, r * 2);
+    }
+
+    // 边角积灰：四条边各一道向内渐隐的暗带
+    for (const side of ['n', 's', 'w', 'e']) {
+      const len = 74;
+      let grd;
+      if (side === 'n') grd = g.createLinearGradient(0, 0, 0, len);
+      else if (side === 's') grd = g.createLinearGradient(0, size, 0, size - len);
+      else if (side === 'w') grd = g.createLinearGradient(0, 0, len, 0);
+      else grd = g.createLinearGradient(size, 0, size - len, 0);
+      grd.addColorStop(0, 'rgba(104,96,78,0.30)');
+      grd.addColorStop(1, 'rgba(104,96,78,0)');
+      g.fillStyle = grd;
+      g.fillRect(0, 0, size, size);
+    }
+
+    // 滑步留下的擦痕：中心区域几十道细短弧线
+    g.lineCap = 'round';
+    for (let i = 0; i < 46; i++) {
+      const x = size * 0.5 + (Math.random() - 0.5) * size * 0.68;
+      const y = size * 0.5 + (Math.random() - 0.5) * size * 0.68;
+      const a0 = Math.random() * Math.PI * 2;
+      const a1 = a0 + (Math.random() - 0.5) * 1.5;
+      const r = 8 + Math.random() * 34;
+      g.strokeStyle = Math.random() > 0.4
+        ? 'rgba(255,253,244,' + (0.05 + Math.random() * 0.07).toFixed(3) + ')'
+        : 'rgba(112,104,86,' + (0.04 + Math.random() * 0.05).toFixed(3) + ')';
+      g.lineWidth = 0.6 + Math.random() * 2.2;
+      g.beginPath();
+      g.moveTo(x + Math.cos(a0) * r, y + Math.sin(a0) * r);
+      g.quadraticCurveTo(x, y, x + Math.cos(a1) * r, y + Math.sin(a1) * r);
+      g.stroke();
+    }
+
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.anisotropy = 8;
+    return owner.ownTexture(tex);
+  }
+
   /* ---------- 场地与通路 ---------- */
+
+  /* 草地的低频斑驳：两段值噪声叠到顶点色上。
+     用顶点色而不是第二张贴图——一张 200m 见方的图要么分辨率不够、要么显存吃不消，
+     而顶点色天然不重复、也不受 repeat 影响，插值出来正好是"一大片颜色慢慢变化"的感觉，
+     正是照片里草坪该有的样子：剪过的深浅、被踩黄的斑、背阴处偏冷。 */
+  function lawnMottle(geo) {
+    const pos = geo.attributes.position;
+    const n = pos.count;
+    const colors = new Float32Array(n * 3);
+    const h2 = (x, z) => {
+      const s = Math.sin(x * 127.1 + z * 311.7) * 43758.5453;
+      return s - Math.floor(s);
+    };
+    const noise = (x, z) => {
+      const xi = Math.floor(x), zi = Math.floor(z);
+      const xf = x - xi, zf = z - zi;
+      const u = xf * xf * (3 - 2 * xf);
+      const v = zf * zf * (3 - 2 * zf);
+      const a = h2(xi, zi), b = h2(xi + 1, zi);
+      const c = h2(xi, zi + 1), e = h2(xi + 1, zi + 1);
+      return (a * (1 - u) + b * u) * (1 - v) + (c * (1 - u) + e * u) * v;
+    };
+    for (let i = 0; i < n; i++) {
+      /* 平面绕 X 转了 -90°，几何的 y 就是世界的 -z */
+      const x = pos.getX(i);
+      const z = -pos.getY(i);
+      const t = 0.62 * noise(x / 11.5, z / 11.5) + 0.38 * noise(x / 4.3 + 21.7, z / 4.3 - 8.3);
+      /* 暗斑偏冷（背阴）、亮斑偏黄（晒处、被踩枯）——真实草坪的色差几乎都在这条轴上 */
+      const k = 0.87 + t * 0.24;
+      colors[i * 3] = k * (0.93 + t * 0.14);
+      colors[i * 3 + 1] = k;
+      colors[i * 3 + 2] = k * (1.07 - t * 0.18);
+    }
+    geo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+    return geo;
+  }
 
   function buildSite() {
     const lawnMat = makeLawnMaterial() || M.ground_lawn;
     /* 草地固定在 y=-0.055：与社交广场的草地（-0.04）错开 15mm，
        两块并排时不会 z-fighting。重叠部分被对方的草地盖住，两边都是草，看不出来。 */
-    add(new THREE.PlaneGeometry(L.lawn.w, L.lawn.d), lawnMat, 0, -0.055, 0, {
+    const lawnGeo = new THREE.PlaneGeometry(L.lawn.w, L.lawn.d, 46, 40);
+    lawnMottle(lawnGeo);
+    add(lawnGeo, lawnMat, 0, -0.055, 0, {
       rotX: -Math.PI / 2, name: 'site:lawn', cast: false,
     });
     /* 三块地面压成三档明度：主场地最亮、擂台圈地中间、进场主路最浅（人走得多，磨得发白）。
@@ -1095,9 +1495,24 @@ export function createDistrict(ctx = {}) {
     /* 落地阴影：只在台基四周露出来一圈。没有它，7.2m 见方的台子读起来是"贴"在铺装上
        而不是压在上面——这是整个场地最显眼的一处悬浮感。 */
     contactShadow(R.cx, R.cz, R.size + 2.6, R.size + 2.6, 0.032, 0.9);
+    /* 台基四周的墙脚灰：立面本身只有一种石材，没有这一条，
+       7.2m 长的一段石头从上到下一样干净，怎么看都是模型。
+       台基的倒角切掉了 14mm，所以贴片放在 hb-16mm 处再往外 4mm，正好落在平面上。 */
+    const hb = half;
+    grimeSkirt(R.cx, R.cz + hb - 0.016, R.size, 0.46, [0, 1], 0.82);
+    grimeSkirt(R.cx, R.cz - hb + 0.016, R.size, 0.46, [0, -1], 0.82);
+    grimeSkirt(R.cx + hb - 0.016, R.cz, R.size, 0.46, [1, 0], 0.82);
+    grimeSkirt(R.cx - hb + 0.016, R.cz, R.size, 0.46, [-1, 0], 0.82);
     // 台面：整块石材，不做地砖式分缝
     ringTop = add(beveledBoxGeometry(THREE, R.size + 0.1, R.cap, R.size + 0.1, 0.006, 1.2), M.stone_light_in,
       R.cx, R.base + R.cap / 2, R.cz, { name: 'arena:ring-top' });
+
+    /* 帆布面：单独一张平面压在台面上，UV 是干净的 0–1，
+       所以能直接铺一张"不重复"的底色贴图（beveledBox 的 UV 是按米重算的，贴不上整张图）。
+       真实擂台就是帆布绷在木框上——这一层把台面从"抛光石灰板"拉回织物。 */
+    add(planeGeo(R.size + 0.1, R.size + 0.1), M.ring_canvas, R.cx, topY + 0.004, R.cz, {
+      rotX: -Math.PI / 2, cast: false, receive: true, name: 'arena:ring-canvas',
+    });
 
     // 台面外沿的橄榄色色带：4 条贴在台面边缘，作为这块场地的识别色
     const bandY = topY + 0.004;
@@ -1114,19 +1529,20 @@ export function createDistrict(ctx = {}) {
     }
 
     // 台心：两道同心圈 + 中心圆点。全部是贴地薄片，不参与碰撞
-    add(new THREE.RingGeometry(1.34, 1.46, 64), M.arena_olive, R.cx, topY + 0.008, R.cz, {
+    add(new THREE.RingGeometry(1.34, 1.46, 64), M.arena_olive, R.cx, topY + 0.010, R.cz, {
       rotX: -Math.PI / 2, name: 'arena:ring-mark-outer', cast: false,
     });
-    add(new THREE.RingGeometry(0.86, 0.94, 64), M.arena_olive, R.cx, topY + 0.008, R.cz, {
+    add(new THREE.RingGeometry(0.86, 0.94, 64), M.arena_olive, R.cx, topY + 0.010, R.cz, {
       rotX: -Math.PI / 2, name: 'arena:ring-mark-inner', cast: false,
     });
-    add(new THREE.CircleGeometry(0.26, 32), M.arena_olive, R.cx, topY + 0.008, R.cz, {
+    add(new THREE.CircleGeometry(0.26, 32), M.arena_olive, R.cx, topY + 0.010, R.cz, {
       rotX: -Math.PI / 2, name: 'arena:ring-mark-dot', cast: false,
     });
 
     /* 台面内圈一道乳白赛线：把台心那组圈收进一个框，远看就是"这块台上要比一场"。
-       比再画一组圆圈便宜，也把台面从"一整块石灰板"里救回来。 */
-    const lineY = topY + 0.006;
+       比再画一组圆圈便宜，也把台面从"一整块石灰板"里救回来。
+       y 要抬到帆布面（+0.004）之上，否则会被帆布盖住。 */
+    const lineY = topY + 0.008;
     const lineInset = 0.62;
     const lineW = 0.07;
     const lineLen = R.size - lineInset * 2;
@@ -1209,29 +1625,31 @@ export function createDistrict(ctx = {}) {
       }
     }
 
-    // 三道围绳：橄榄色包布，不是钢丝——钢丝在这个尺度上直接消失
+    // 三道围绳：包布的三股绳，不是钢丝——钢丝在这个尺度上直接消失
     /* 三层分色：下深、中橄榄、上米白。全用一个橄榄色时，三道绳在逆光下糊成一块绿板，
        结构完全读不出来；分色之后站在场外就能数清是三道。 */
-    const ropeMats = [M.rope_dark, M.arena_olive, M.rope_cream];
+    const ropeMats = [M.rope_dark, M.rope_mid || M.arena_olive, M.rope_cream];
+    const ropeGeo = ropeGeometry(span, 0.042, L.rope.radius);
     for (let i = 0; i < L.rope.levels; i++) {
       const y = ropeY0 + i * L.rope.step;
-      const mat = ropeMats[i] || M.arena_olive;
+      const mat = ropeMats[i] || M.rope_mid || M.arena_olive;
+      /* ropeGeo 的曲线本身沿 X 铺开（span 就是跨度）。
+         所以南北两道绳（z = ±postR）不转，东西两道绳（x = ±postR）绕 Y 转 90°。
+         早先这两行是反的：每道绳都从场地中线往一边长出去，
+         半个擂台没有绳、另一半的绳穿出界，站在正面看还有一根"竖线"——
+         那是绳管正对着镜头，透视收成一条。 */
       for (const pz of postZs) {
-        add(cylGeo(L.rope.radius, L.rope.radius, span, 10), mat, R.cx, y, pz, {
-          rotZ: Math.PI / 2, name: 'arena:rope',
-        });
+        add(ropeGeo, mat, R.cx, y, pz, { name: 'arena:rope' });
       }
       for (const px of postXs) {
-        add(cylGeo(L.rope.radius, L.rope.radius, span, 10), mat, px, y, R.cz, {
-          rotX: Math.PI / 2, name: 'arena:rope',
-        });
+        add(ropeGeo, mat, px, y, R.cz, { rotY: Math.PI / 2, name: 'arena:rope' });
       }
     }
     // 绳扣：每根柱上三道小箍，让围绳"挂"在柱子上而不是穿过去
     for (const px of postXs) {
       for (const pz of postZs) {
         for (let i = 0; i < L.rope.levels; i++) {
-          add(cylGeo(L.rope.radius + 0.035, L.rope.radius + 0.035, 0.07, 12), M.metal_frame, px,
+          add(cylGeo(L.rope.radius + 0.016, L.rope.radius + 0.016, 0.06, 12), M.metal_frame, px,
             ropeY0 + i * L.rope.step, pz, { name: 'arena:rope-clamp', cast: false });
         }
       }
@@ -1638,6 +2056,394 @@ export function createDistrict(ctx = {}) {
     colliders.push({ name: 'lamp', type: 'cylinder', center: [x, H / 2, z], radius: 0.2, height: H });
   }
 
+  /* ---------- 植被与空气 ---------- */
+
+  /* 草叶贴图：一簇二十多片细叶，宽窄、倾角、明度都随机。
+     叶子必须画细——一片叶子占 2~3px 的时候是草，占到 10px 就变成灌木。
+     颜色贴着草坪材质取，太饱和会比地面跳出来，反而假。 */
+  function makeGrassTexture() {
+    if (typeof document === 'undefined') return null;
+    const S = 128;
+    const canvas = document.createElement('canvas');
+    canvas.width = S;
+    canvas.height = S;
+    const g = canvas.getContext('2d');
+    if (!g) return null;
+    g.clearRect(0, 0, S, S);
+    const colors = ['#45532e', '#4d5c35', '#55643c', '#5d6c43', '#66754a', '#7a764f'];
+    for (let i = 0; i < 34; i++) {
+      const x0 = 4 + Math.random() * (S - 8);
+      const h = S * (0.36 + Math.random() * 0.6);
+      const lean = (Math.random() - 0.5) * 36;
+      const w = 1.1 + Math.random() * 1.5;
+      g.fillStyle = colors[i % colors.length];
+      g.globalAlpha = 0.82 + Math.random() * 0.18;
+      g.beginPath();
+      g.moveTo(x0 - w / 2, S);
+      g.quadraticCurveTo(x0 + lean * 0.25 - w * 0.4, S - h * 0.62, x0 + lean, S - h * 0.97);
+      g.quadraticCurveTo(x0 + lean * 0.25 + w * 0.4, S - h * 0.62, x0 + w / 2, S);
+      g.closePath();
+      g.fill();
+    }
+    g.globalAlpha = 1;
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.anisotropy = 4;
+    return owner.ownTexture(tex);
+  }
+
+  /* 一簇草 = 三张绕 Y 交错的单面片。法线全部朝上：叶片用真实法线时，
+     背光那几片会黑成一条缝，朝上反而均匀亮，远看更像一丛草。 */
+  function grassClumpGeometry(w, h, planes) {
+    const key = 'g' + w + '|' + h + '|' + planes;
+    let g = geoCache.get(key);
+    if (g) return g;
+    const pos = [];
+    const nor = [];
+    const uv = [];
+    const idx = [];
+    const hw = w / 2;
+    for (let p = 0; p < planes; p++) {
+      const a = (p / planes) * Math.PI;
+      const ca = Math.cos(a);
+      const sa = Math.sin(a);
+      const base = pos.length / 3;
+      const corners = [[-hw, 0], [hw, 0], [hw, h], [-hw, h]];
+      for (const [x, y] of corners) {
+        pos.push(x * ca, y, x * sa);
+        nor.push(0, 1, 0);
+      }
+      uv.push(0, 0, 1, 0, 1, 1, 0, 1);
+      idx.push(base, base + 1, base + 2, base, base + 2, base + 3);
+    }
+    g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    g.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
+    g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+    g.setIndex(idx);
+    g.userData.__arenaCached = true;
+    geoCache.set(key, g);
+    return g;
+  }
+
+  /* 铺装边缘的杂草：硬质场地和草地之间最容易露馅的地方就是这条缝——
+     没有这一圈，草地就只是一块绿色的平面。用 InstancedMesh，一次 draw call。 */
+  function buildGrass() {
+    const tex = makeGrassTexture();
+    if (!tex) return;
+    const mat = new THREE.MeshStandardMaterial({
+      map: tex, alphaTest: 0.42, side: THREE.DoubleSide,
+      roughness: 0.94, metalness: 0.0, envMapIntensity: 0.35,
+    });
+    mat.name = 'grass';
+    owner.ownMaterial(mat);
+
+    const halfW = L.site.w / 2;
+    const halfD = L.site.d / 2;
+    const spots = [];
+    const band = 0.95;
+    // 北 / 南：铺装外沿一条带，越靠外越稀
+    for (let i = 0; i < 92; i++) {
+      const sz = Math.random() > 0.5 ? 1 : -1;
+      const t = Math.random();
+      const z = sz * (halfD + 0.1 + t * t * band);
+      spots.push([(Math.random() - 0.5) * (halfW + band) * 2, z, 0.75 + Math.random() * 0.5]);
+    }
+    // 东：同一条带
+    for (let i = 0; i < 56; i++) {
+      const t = Math.random();
+      const x = halfW + 0.1 + t * t * band;
+      spots.push([x, (Math.random() - 0.5) * halfD * 2, 0.75 + Math.random() * 0.5]);
+    }
+    /* 场地内侧、贴着围栏根的零星杂草：浇不上水、也没人拔，
+       这一小撮是"有人在用这块场地"的证据，比任何贴图都管用。
+       西边（牌坊与缺口）不放——那是进场动线，长草就成荒场了。 */
+    for (let i = 0; i < 34; i++) {
+      const edge = Math.floor(Math.random() * 3);
+      let x, z;
+      if (edge === 0) { x = (Math.random() - 0.5) * halfW * 2; z = -halfD + 0.08 + Math.random() * 0.2; }
+      else if (edge === 1) { x = (Math.random() - 0.5) * halfW * 2; z = halfD - 0.08 - Math.random() * 0.2; }
+      else { x = halfW - 0.08 - Math.random() * 0.2; z = (Math.random() - 0.5) * halfD * 2; }
+      spots.push([x, z, 0.42 + Math.random() * 0.34]);
+    }
+
+    const geo = grassClumpGeometry(0.3, 0.28, 3);
+    const inst = new THREE.InstancedMesh(geo, mat, spots.length);
+    inst.name = 'site:grass';
+    inst.castShadow = false;
+    inst.receiveShadow = false;
+    const m = new THREE.Matrix4();
+    const q = new THREE.Quaternion();
+    const v = new THREE.Vector3();
+    const up = new THREE.Vector3(0, 1, 0);
+    spots.forEach(([x, z, s], i) => {
+      q.setFromAxisAngle(up, Math.random() * Math.PI * 2);
+      v.set(s, s * (0.8 + Math.random() * 0.6), s);
+      m.compose(new THREE.Vector3(x, -0.055, z), q, v);
+      inst.setMatrixAt(i, m);
+    });
+    inst.instanceMatrix.needsUpdate = true;
+    inst.computeBoundingSphere();
+    root.add(inst);
+  }
+
+  /* 空气里的浮尘：白天的场地上其实一直有，只是平时看不见；
+     镜头里有几粒在光里飘，画面立刻从"模型"变成"现场"。
+     用 Points 而不是粒子系统——一个 draw call、每帧只改 240 个坐标。 */
+  function makeDustTexture() {
+    if (typeof document === 'undefined') return null;
+    const S = 64;
+    const canvas = document.createElement('canvas');
+    canvas.width = S;
+    canvas.height = S;
+    const g = canvas.getContext('2d');
+    if (!g) return null;
+    const grd = g.createRadialGradient(S / 2, S / 2, 0, S / 2, S / 2, S / 2);
+    grd.addColorStop(0, 'rgba(255,250,238,0.95)');
+    grd.addColorStop(0.35, 'rgba(255,246,228,0.35)');
+    grd.addColorStop(1, 'rgba(255,240,220,0)');
+    g.fillStyle = grd;
+    g.fillRect(0, 0, S, S);
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    return owner.ownTexture(tex);
+  }
+
+  let dustGeo = null;
+  let dustPhase = null;
+  let dustSpeed = null;
+
+  function buildDust() {
+    const tex = makeDustTexture();
+    if (!tex) return;
+    const N = 240;
+    const pos = new Float32Array(N * 3);
+    dustPhase = new Float32Array(N);
+    dustSpeed = new Float32Array(N);
+    for (let i = 0; i < N; i++) {
+      pos[i * 3] = (Math.random() - 0.5) * 19;
+      pos[i * 3 + 1] = 0.25 + Math.random() * 3.2;
+      pos[i * 3 + 2] = (Math.random() - 0.5) * 17;
+      dustPhase[i] = Math.random() * Math.PI * 2;
+      dustSpeed[i] = 0.035 + Math.random() * 0.06;
+    }
+    dustGeo = new THREE.BufferGeometry();
+    dustGeo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    dustGeo.userData.__arenaDisposable = true;
+    const mat = new THREE.PointsMaterial({
+      map: tex,
+      size: 0.042,
+      sizeAttenuation: true,
+      transparent: true,
+      depthWrite: false,
+      opacity: 0.5,
+      blending: THREE.AdditiveBlending,
+      color: 0xfff4e2,
+      toneMapped: false,
+    });
+    mat.name = 'dust';
+    owner.ownMaterial(mat);
+    const pts = new THREE.Points(dustGeo, mat);
+    pts.name = 'dressing:dust';
+    pts.frustumCulled = false;
+    root.add(pts);
+
+    animated.push((t, dt) => {
+      const arr = dustGeo.attributes.position.array;
+      for (let i = 0; i < dustPhase.length; i++) {
+        const k = i * 3;
+        arr[k + 1] += dustSpeed[i] * dt;
+        if (arr[k + 1] > 3.6) arr[k + 1] = 0.2;
+        // 横向轻微摆动，避免整体像在下雨
+        arr[k] += Math.sin(t * 0.5 + dustPhase[i]) * 0.5 * dt;
+      }
+      dustGeo.attributes.position.needsUpdate = true;
+    });
+  }
+
+  /* 场地外的三层植被。
+     草地铺远之后，背景其实变成了一整片饱和的绿 + 一排等高的绿球，那是最"低模"的一帧。
+     照片里的远景永远有三层：近处矮灌（暗、贴地）、中景乔木（有干、有冠）、
+     远处山脊（被空气洗成灰绿、几乎和天接上）——层次本身就在替雾做透视。
+     三层共用一个 leafMat、各自一个 InstancedMesh，共 4 个 draw call（含树干）。
+     西侧一律不放：那边是并排的社交广场。 */
+  function buildTreeLine() {
+    // 固定种子：每次加载树的分布都一样，截图之间才可比
+    let seed = 20261022;
+    const rnd = () => {
+      seed = (seed * 1664525 + 1013904223) % 4294967296;
+      return seed / 4294967296;
+    };
+
+    const leafMat = new THREE.MeshStandardMaterial({
+      /* 平滑着色而不是 flatShading：三十米外的树冠，平面着色会把每个面片
+         都照出来，一眼就是低模；平滑之后它只是"一团比草地暗的绿"，
+         配合雾正好是照片里远景植被的样子。 */
+      color: 0xffffff, roughness: 0.98, metalness: 0.0, envMapIntensity: 0.22,
+    });
+    leafMat.name = 'treeline-leaf';
+    owner.ownMaterial(leafMat);
+
+    const m = new THREE.Matrix4();
+    const q = new THREE.Quaternion();
+    const v = new THREE.Vector3();
+    const p = new THREE.Vector3();
+    const up = new THREE.Vector3(0, 1, 0);
+    const col = new THREE.Color();
+
+    /** 铺一层 InstancedMesh，items 里每项是 {pos, scale, rotY, rgb} */
+    const layer = (name, geo, items, castShadow) => {
+      const mesh = new THREE.InstancedMesh(geo, leafMat, items.length);
+      mesh.name = 'dressing:' + name;
+      mesh.castShadow = !!castShadow;
+      mesh.receiveShadow = false;
+      items.forEach((it, i) => {
+        q.setFromAxisAngle(up, it.rotY || 0);
+        p.set(it.pos[0], it.pos[1], it.pos[2]);
+        v.set(it.scale[0], it.scale[1], it.scale[2]);
+        m.compose(p, q, v);
+        mesh.setMatrixAt(i, m);
+        col.setRGB(it.rgb[0], it.rgb[1], it.rgb[2]);
+        mesh.setColorAt(i, col);
+      });
+      mesh.instanceMatrix.needsUpdate = true;
+      if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+      mesh.computeBoundingSphere();
+      root.add(mesh);
+      return mesh;
+    };
+
+    /* ---- 第一层：矮灌。围栏外 12~26m 撒一圈 0.5~1.1m 高的暗绿团块。
+       这一层是专门补"围栏后面那片空草地"的——没有它，围栏和树带之间
+       是三十米宽的纯绿平面，一眼就是没做完。 ---- */
+    const blobGeo = sphereGeo(1, 10, 7);
+    const scrubs = [];
+    for (let i = 0; i < 54; i++) {
+      const ang = (i / 54) * Math.PI * 2 + rnd() * 0.28;
+      // 西侧（cos < 0 且靠近 -x）跳过：那是通往社交广场的方向
+      if (Math.cos(ang) < -0.55) continue;
+      const r = 12 + rnd() * 14;
+      const s = 0.45 + rnd() * 0.62;
+      const t = 0.52 + rnd() * 0.3;
+      scrubs.push({
+        pos: [Math.cos(ang) * r, s * 0.52, Math.sin(ang) * r],
+        // 压扁成扁椭圆：灌不是球，是贴地摊开的一坨
+        scale: [s * (1.1 + rnd() * 0.5), s * (0.55 + rnd() * 0.2), s * (1.1 + rnd() * 0.5)],
+        rotY: rnd() * Math.PI * 2,
+        rgb: [0.082 * t, 0.104 * t, 0.070 * t],
+      });
+    }
+    layer('scrub', blobGeo, scrubs, false);
+
+    /* ---- 第二层：乔木下的灌丛。26~42m、1.2~3.2m 高、彼此重叠，
+       专门用来把"树冠底下那一条透亮的草地缝"堵死。
+       真实树带的基部是不透光的，能看见后面亮草地的时候，
+       那排树冠就变成了一排浮在空中的棉花球。 ---- */
+    const under = [];
+    for (let i = 0; i < 132; i++) {
+      const ang = (i / 132) * Math.PI * 2 + (rnd() - 0.5) * 0.3;
+      if (Math.cos(ang) < -0.5 && Math.abs(Math.sin(ang)) < 0.75) continue;
+      const r = 25 + rnd() * 17;
+      const h = 1.2 + rnd() * 2.0;
+      const w = 1.5 + rnd() * 2.1;
+      const t = 0.6 + rnd() * 0.36;
+      under.push({
+        pos: [Math.cos(ang) * r, h * 0.42, Math.sin(ang) * r],
+        scale: [w, h * 0.62, w * 0.9],
+        rotY: rnd() * Math.PI * 2,
+        // 比树冠更暗一档：这是背光的下层，压深才有"树带"而不是"绿的堆"
+        rgb: [0.072 * t, 0.098 * t, 0.058 * t],
+      });
+    }
+    layer('understory', blobGeo, under, false);
+
+    /* ---- 第三层：乔木。两圈，近圈 30~40m、远圈 48~62m，
+       远圈的活靠雾把它洗淡，所以颜色不用单独调。 ---- */
+    const spots = [];
+    for (let i = 0; i < 96; i++) {
+      const side = i % 4;
+      let x, z;
+      if (side === 0) { x = -20 + rnd() * 78; z = -(30 + rnd() * 11); }
+      else if (side === 1) { x = -20 + rnd() * 78; z = 30 + rnd() * 11; }
+      else if (side === 2) { x = 34 + rnd() * 26; z = -52 + rnd() * 104; }
+      else { x = -20 + rnd() * 80; z = (rnd() > 0.5 ? 1 : -1) * (46 + rnd() * 16); }
+      spots.push({
+        x, z,
+        h: 3.4 + rnd() * 4.2,
+        w: 1.05 + rnd() * 1.35,
+        tone: 0.62 + rnd() * 0.5,
+        twist: rnd() * Math.PI * 2,
+      });
+    }
+
+    const trunkItems = [];
+    const lobeItems = [];
+    spots.forEach((s) => {
+      trunkItems.push({
+        pos: [s.x, s.h * 0.28, s.z],
+        scale: [1, s.h * 0.56, 1],
+        rotY: s.twist,
+        rgb: [0.75, 0.72, 0.68],
+      });
+      /* 五团树冠错开堆叠：单球在远处就是"绿球"，
+         五团高低错位之后轮廓才有进有出，读得出是丛而不是球。 */
+      const lobes = [
+        [0, s.h * 0.74, 0, s.w, s.w * 0.92],
+        [s.w * 0.66, s.h * 0.56, s.w * 0.26, s.w * 0.8, s.w * 0.72],
+        [-s.w * 0.56, s.h * 0.62, -s.w * 0.34, s.w * 0.74, s.w * 0.68],
+        [s.w * 0.18, s.h * 0.95, -s.w * 0.46, s.w * 0.62, s.w * 0.58],
+        [-s.w * 0.3, s.h * 0.86, s.w * 0.5, s.w * 0.56, s.w * 0.5],
+      ];
+      const t = s.tone;
+      lobes.forEach(([dx, dy, dz, rw, rh], k) => {
+        // 冠内的明暗：朝上的团亮一点、下沿的团压暗，单棵树上也有体积
+        const sh = 0.82 + (k === 0 ? 0.24 : 0) + (dz < 0 ? -0.06 : 0.03);
+        lobeItems.push({
+          pos: [s.x + dx, dy, s.z + dz],
+          scale: [rw, rh, rw * 0.94],
+          rotY: s.twist + k * 0.7,
+          // 每棵树的明度单独抖一点，否则九十棵是同一个绿
+          rgb: [0.112 * t * sh, 0.163 * t * sh, 0.094 * t * sh],
+        });
+      });
+    });
+    layer('treeline-canopy', sphereGeo(1, 10, 7), lobeItems, false);
+    const trunkMesh = new THREE.InstancedMesh(cylGeo(0.13, 0.2, 1, 6), M.soil, trunkItems.length);
+    trunkMesh.name = 'dressing:treeline-trunk';
+    trunkMesh.castShadow = false;
+    trunkMesh.receiveShadow = false;
+    trunkItems.forEach((it, i) => {
+      q.setFromAxisAngle(up, it.rotY);
+      p.set(it.pos[0], it.pos[1], it.pos[2]);
+      v.set(1, it.scale[1], 1);
+      m.compose(p, q, v);
+      trunkMesh.setMatrixAt(i, m);
+    });
+    trunkMesh.instanceMatrix.needsUpdate = true;
+    trunkMesh.computeBoundingSphere();
+    root.add(trunkMesh);
+
+    /* ---- 第三层：远山脊。76~96m 处一圈又扁又宽的大丘，
+       颜色被刻意调成灰绿——距离一远、雾一盖，它只剩一道比天略深的轮廓线。
+       有这一层，地平线才不是"草地和天空硬碰硬"的一条直线。 ---- */
+    const ridge = [];
+    for (let i = 0; i < 30; i++) {
+      const ang = (i / 30) * Math.PI * 2 + rnd() * 0.16;
+      const r = 76 + rnd() * 20;
+      const w = 16 + rnd() * 16;
+      const h = 4.5 + rnd() * 6.5;
+      const t = 0.86 + rnd() * 0.2;
+      ridge.push({
+        pos: [Math.cos(ang) * r, -0.5, Math.sin(ang) * r],
+        scale: [w, h, w * 0.8],
+        rotY: rnd() * Math.PI * 2,
+        rgb: [0.3 * t, 0.355 * t, 0.325 * t],
+      });
+    }
+    layer('far-ridge', sphereGeo(1, 9, 6), ridge, false);
+  }
+
+
   /* ---------- 交互桥接 ---------- */
 
   /**
@@ -1664,6 +2470,9 @@ export function createDistrict(ctx = {}) {
   /* ---------- 组装 ---------- */
 
   buildSite();
+  buildGrass();
+  buildTreeLine();
+  buildDust();
   buildRing();
   buildGate();
   buildDesk();
@@ -1704,7 +2513,8 @@ export function createDistrict(ctx = {}) {
     dispose() {
       if (!owner.dispose()) return;
       root.traverse((o) => {
-        if (o.isMesh && o.geometry && o.geometry.userData && o.geometry.userData.__arenaDisposable) {
+        /* Points 与 InstancedMesh 的几何也归本模块所有，别只看 isMesh */
+        if ((o.isMesh || o.isPoints) && o.geometry && o.geometry.userData && o.geometry.userData.__arenaDisposable) {
           o.geometry.dispose();
           o.geometry.userData.__arenaDisposable = false;
         }
