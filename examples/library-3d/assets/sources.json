@@ -38,6 +38,14 @@
       "license": "Apache-2.0",
       "notice": "../licenses/PDFjs-Apache-2.0.txt",
       "configuration": "Local worker and isEvalSupported:false; no document sent to a third-party viewer."
+    },
+    {
+      "name": "fflate",
+      "version": "0.8.2",
+      "source": "Three.js r170 examples/jsm/libs/fflate.module.js",
+      "license": "MIT",
+      "notice": "../licenses/fflate-MIT.txt",
+      "configuration": "EXR ZIP decompression, bundled through the existing Three addon"
     }
   ],
   "documents": {
@@ -45,8 +53,16 @@
     "license": "Original repository document provenance applies. No new third-party study documents added or downloaded."
   },
   "lighting": {
-    "method": "Library-specific realtime directional sun, sky environment, fill lights, cached shadow map, optional SSAO",
-    "baked": false,
-    "classroomLightmapsReused": false
+    "method": "Realtime sun direct/specular and dynamic objects; R1 occluded diffuse sky + sun indirect baked with Cycles, UV1 atlas",
+    "baked": true,
+    "classroomLightmapsReused": false,
+    "bakedScope": "47 R1 furniture/floor/window-wall receivers only",
+    "atlasConfig": "r1-lighting/r1-bake.json",
+    "bakeBasis": "c75a5e2; approved geometry ed40ec2",
+    "bakeSoftware": "Blender 4.5.3 / Cycles OptiX / compositor OpenImageDenoise",
+    "skyModel": "Uniform linear RGB (.78,.86,1), gain 3.5; artistic lighting parameter, not measured HDR irradiance",
+    "directSunBaked": false,
+    "lightmapUV": "Separate UV1, existing UV0 retained",
+    "generativeImagesUsed": false
   }
 }

@@ -1,0 +1,30 @@
+{
+  "base": "a35beb567bb45528465717a46076ddf23930c24d",
+  "checkedMain": "3ba52d832e57098eabd462247f8098d628615754",
+  "branch": "feature/c-library-facilities",
+  "originalAssetsUnchangedSHA256": {
+    "assets/wenku-library.glb": "9bbcd6676913ec6e43a5d02dfc99dde332664624a49e41b3432bbfd8c7ba73e1",
+    "Library_Editable.blend": "bb10a6b0029285bd7c37142dbfa15e929acc2d06222790d38250227618f55093",
+    "assets/r1-lighting/r1-bake.json": "5f901f048514de841ded6ffbe8a153f74f5755a4b5ebcbfbd4818c119ac7e6e5",
+    "assets/r1-lighting/r1-receivers-30704e41.glb": "30704e4134720f32f52e0207ff6f1a527acf2aac207ec72a8967bc4ad5523b66",
+    "assets/r1-lighting/r1-indirect-dcc8cbb9.exr": "dcc8cbb9546218b2420d6c084305d0bf3caa97745f28e919cdce760d5b1f2755"
+  },
+  "runtimeFilesSHA256": {
+    "src/facilities.js": "2fef2c2ca35c0a7482884f104e072406c6c3fedaf13fde79130d7491576baf77",
+    "src/architecture.js": "87852c95c1ae8c1a8a1b87dadd8b0efeadbe4f6346214afc25322b601e6491da",
+    "src/app.js": "055cf69d3c7dd90df9e7298684c857c8904ceff1cfe7968c15b083824342c996",
+    "src/interaction-guide.js": "0fd0e0ade44d454885392166c2f80f255db98219d7772cf0ec74525395358c88",
+    "index.html": "d62b6633a0e574c4bc03e515dd9323b0539d9ec259432e308bb854128a614084",
+    "app.bundle.js": "bf2e24334dbd8585ef2f9d2cc0795d950f7535bfddd3c8b1cb9ca34b6d199081"
+  },
+  "testChecks": {
+    "facilities-results.json": 6,
+    "acceptance-results.json": 23,
+    "book-details-results.json": 8,
+    "interaction-results.json": 21,
+    "reading-shelf-results.json": 15,
+    "r1-lighting-results.json": 11
+  },
+  "newFacilities": "six types, three planters, two real catalogue interactions, no new R1 receivers",
+  "scope": "C library only; no A/B/D, server or historical evidence; original GLB/Blender/bake preserved"
+}

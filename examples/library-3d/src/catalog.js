@@ -3,6 +3,7 @@ const root=new URL('../../',document.baseURI);
 const labels={queued:'排队中',parsing:'解析中',parsed:'已解析，检索未配置',indexing:'索引中',ready:'可阅读与检索',failed:'处理失败'};
 let cat='exam',page=0,items=[],manifest={},privateDocs=[],epoch=0,readerEpoch=0,pdf=null,loadingTask=null,renderTask=null,currentPage=1,pdfBusy=false,sessionEpoch=0;
 let pause=()=>{},resume=()=>{},report=()=>{},invalidateSession=()=>{};
+let activePublic=null,publicReadable=false,renderedPage=1;
 const catalog=$('library-dialog'),reader=$('reader-dialog');
 function el(tag,text,cls){const node=document.createElement(tag);if(text!==undefined)node.textContent=text;if(cls)node.className=cls;return node;}
 function row(title,detail,label,action){const r=el('article',undefined,'result'),d=el('div');d.append(el('h3',title),el('p',detail));const b=el('button',label);b.onclick=action;r.append(d,b);return r;}
@@ -24,12 +25,13 @@ function renderResults(){
  }
  $('page-number').textContent=`${page+1} / ${max}`;$('prev').disabled=page===0;$('next').disabled=page>=max-1;
 }
-function showReader(title){pause();if(!reader.open)reader.showModal();$('reader-title').textContent=title;$('reader-status').textContent='正在检查资料文件…';$('reader-tools').hidden=true;$('pdf-canvas').hidden=true;$('document-text').hidden=true;$('document-text').textContent='';$('reader-content').querySelectorAll('a').forEach(n=>n.remove());$('reader-content').scrollTop=0;$('reader-content').scrollLeft=0;$('pdf-zoom').value='1';$('zoom-label').hidden=false;}
-async function clearPdf(){const ticket=++readerEpoch;renderTask?.cancel();renderTask=null;const old=loadingTask;loadingTask=null;pdf=null;pdfBusy=false;if(old)await old.destroy().catch(()=>{});if(ticket===readerEpoch){$('pdf-canvas').width=1;$('pdf-canvas').height=1;}return ticket;}
-async function openPublic(item){
+function bookmarkState(readable=false){publicReadable=readable;for(const id of ['reader-bookmark','reader-notes']){$(id).hidden=!activePublic||!readable;$(id).disabled=!readable;}}
+function showReader(title){$('reader-save-status').hidden=true;$('reader-save-status').textContent='';activePublic=null;bookmarkState();pause();if(!reader.open)reader.showModal();$('reader-title').textContent=title;$('reader-status').textContent='正在检查资料文件…';$('reader-tools').hidden=true;$('pdf-canvas').hidden=true;$('document-text').hidden=true;$('document-text').textContent='';$('reader-content').querySelectorAll('a').forEach(n=>n.remove());$('reader-content').scrollTop=0;$('reader-content').scrollLeft=0;$('pdf-zoom').value='1';$('zoom-label').hidden=false;}
+async function clearPdf(){activePublic=null;bookmarkState();const ticket=++readerEpoch;renderTask?.cancel();renderTask=null;const old=loadingTask;loadingTask=null;pdf=null;pdfBusy=false;if(old)await old.destroy().catch(()=>{});if(ticket===readerEpoch){$('pdf-canvas').width=1;$('pdf-canvas').height=1;}return ticket;}
+async function openPublic(item,startPage=1){
  const ticket=await clearPdf();if(ticket!==readerEpoch)return;showReader(item.raw.title);
  try{
-  const url=publicUrl(item.raw.link||'');
+  const url=publicUrl(item.raw.link||'');activePublic=item;
   if(!item.local){$('reader-status').textContent='此条目由外站托管，本馆没有本地全文，可能需要在原站登录。';const a=el('a','前往资料来源');a.href=url.href;a.target='_blank';a.rel='noopener';a.style.cssText='display:inline-block;padding:24px';$('reader-content').append(a);return;}
   const response=await fetch(url,{method:'HEAD',signal:AbortSignal.timeout(20000)});if(ticket!==readerEpoch)return;
   if(!response.ok)throw Error(response.status===404?'目录已收录，但实际文件不存在（404）。请返回选择其他资料。':`资料服务返回 ${response.status}，请稍后重试。`);
@@ -40,23 +42,23 @@ async function openPublic(item){
    if(!window.pdfjsLib)throw Error('阅读器未加载，请刷新页面后重试。');
    pdfjsLib.GlobalWorkerOptions.workerSrc=new URL('vendor/pdfjs/pdf.worker.min.js',document.baseURI).href;
    $('reader-status').textContent='正在加载 PDF…';loadingTask=pdfjsLib.getDocument({url:url.href,isEvalSupported:false});
-   const loaded=await loadingTask.promise;if(ticket!==readerEpoch){await loaded.destroy();return;}pdf=loaded;currentPage=1;$('reader-tools').hidden=false;await renderPdf();
+   const loaded=await loadingTask.promise;if(ticket!==readerEpoch){await loaded.destroy();return;}pdf=loaded;currentPage=Math.max(1,Math.min(pdf.numPages,Math.trunc(startPage)||1));$('reader-tools').hidden=false;await renderPdf();
   }else if(path.endsWith('.html')){
    const response=await fetch(url,{signal:AbortSignal.timeout(20000)});if(!response.ok)throw Error('资料读取失败');const text=await response.text();if(ticket!==readerEpoch)return;
-   $('document-text').textContent=new DOMParser().parseFromString(text,'text/html').body.textContent;$('document-text').hidden=false;$('reader-status').textContent='已读取资料正文。';$('reader-tools').hidden=false;$('pdf-prev').hidden=$('pdf-next').hidden=true;$('zoom-label').hidden=true;$('pdf-page').textContent='文本资料';
+   $('document-text').textContent=new DOMParser().parseFromString(text,'text/html').body.textContent;$('document-text').hidden=false;$('reader-status').textContent='已读取资料正文。';$('reader-tools').hidden=false;$('pdf-prev').hidden=$('pdf-next').hidden=true;$('zoom-label').hidden=true;$('pdf-page').textContent='文本资料';renderedPage=1;bookmarkState(true);
   }else{
    $('reader-status').textContent='文件已核验。此格式需要使用 Word / Excel 等应用打开，不提供虚假的页内预览。';const a=el('a','下载文件');a.href=url.href;a.download='';a.style.cssText='display:inline-block;padding:24px';$('reader-content').append(a);
   }
  }catch(e){if(ticket===readerEpoch){$('reader-status').textContent=e.message||'资料打开失败，请返回后重试';report('资料未打开：'+$('reader-status').textContent);}}
 }
 async function renderPdf(){
- if(!pdf||pdfBusy)return;pdfBusy=true;const ticket=readerEpoch;$('pdf-prev').hidden=$('pdf-next').hidden=false;$('pdf-prev').disabled=$('pdf-next').disabled=true;$('pdf-zoom').disabled=true;
+ if(!pdf||pdfBusy)return;pdfBusy=true;bookmarkState();const ticket=readerEpoch;$('pdf-prev').hidden=$('pdf-next').hidden=false;$('pdf-prev').disabled=$('pdf-next').disabled=true;$('pdf-zoom').disabled=true;
  try{
   const p=await pdf.getPage(currentPage);if(ticket!==readerEpoch)return;
   const raw=p.getViewport({scale:1}),zoom=Number($('pdf-zoom').value),width=Math.min(1000,Math.max(220,$('reader-content').clientWidth-32))*zoom,scale=width/raw.width*Math.min(devicePixelRatio,1.5),viewport=p.getViewport({scale});
   const canvas=$('pdf-canvas');canvas.width=Math.ceil(viewport.width);canvas.height=Math.ceil(viewport.height);canvas.style.width=width+'px';canvas.style.maxWidth=zoom>1?'none':'calc(100% - 16px)';canvas.hidden=false;
   renderTask=p.render({canvasContext:canvas.getContext('2d'),viewport});await renderTask.promise;if(ticket!==readerEpoch)return;renderTask=null;
-  $('pdf-page').textContent=`第 ${currentPage} / ${pdf.numPages} 页`;$('reader-status').textContent='已显示实际 PDF 页面。可翻页或打开原文件。';
+  $('pdf-page').textContent=`第 ${currentPage} / ${pdf.numPages} 页`;$('reader-status').textContent='已显示实际 PDF 页面。可翻页或打开原文件。';renderedPage=currentPage;bookmarkState(true);
  }catch(e){if(ticket===readerEpoch&&e.name!=='RenderingCancelledException')$('reader-status').textContent='页面渲染失败：'+e.message;}
  finally{if(ticket===readerEpoch){pdfBusy=false;$('pdf-zoom').disabled=false;$('pdf-prev').disabled=currentPage<=1;$('pdf-next').disabled=!pdf||currentPage>=pdf.numPages;}}
 }
@@ -99,5 +101,11 @@ export async function initCatalog(callbacks){
  function sessionChanged(){sessionEpoch++;epoch++;privateDocs=[];$('private-results').replaceChildren();if(reader.open){reader.close();$('document-text').textContent='';}if(cat==='private'&&catalog.open)loadPrivate();}
  invalidateSession=sessionChanged;api?.onAuthChange(sessionChanged);addEventListener('storage',e=>{if(e.key==='xwy_token'||e.key==='xwy_user')sessionChanged();});
  selectCategory('exam');
- return {open(id){pause();if(!catalog.open)catalog.showModal();if(id)selectCategory(id);$('search').focus();},close(){reader.close();catalog.close();},snapshot:()=>({category:cat,results:items.length,reader:reader.open,catalog:catalog.open,pdfPages:pdf?.numPages||0,pdfPage:currentPage}),dispose(){clearPdf();epoch++;sessionEpoch++;}};
+ return {open(id){pause();if(!catalog.open)catalog.showModal();if(id)selectCategory(id);$('search').focus();},
+  recommendations(){return WG_WenkuCat.CATS.flatMap(c=>WG_WenkuCat.query({cat:c.id}).filter(i=>available(i)&&/\.(pdf|html)$/i.test(i.raw.link)).slice(0,2).map(i=>({...i,category:c.name}))).slice(0,6);},
+  readableItems(){return WG_WenkuCat.query({}).filter(i=>available(i)&&/\.(pdf|html)$/i.test(i.raw.link));},
+  findPublic(link){return WG_WenkuCat.query({}).find(i=>i.local&&i.raw.link===link&&/\.(pdf|html)$/i.test(i.raw.link));},
+  currentPublic(){return activePublic&&publicReadable?{link:activePublic.raw.link,page:renderedPage}:null;},
+  read(item,startPage=1){const known=WG_WenkuCat.query({}).find(i=>i.raw.link===item.raw.link);if(known)return openPublic(known,startPage);},
+  close(){reader.close();catalog.close();},snapshot:()=>({category:cat,results:items.length,reader:reader.open,catalog:catalog.open,pdfPages:pdf?.numPages||0,pdfPage:currentPage}),dispose(){clearPdf();epoch++;sessionEpoch++;}};
 }

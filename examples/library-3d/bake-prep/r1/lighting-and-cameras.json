@@ -1,0 +1,23 @@
+{
+  "runtimeSourceCommit": "ed40ec23998352bd6060f797cc834afe2944efc2",
+  "units": "metres, Y-up; Blender uses (X,-Z,Y)",
+  "cameras": [
+    {"id":"overall","runtimePreset":"sample","eye":[2.7,1.7,-5.2],"target":[9,1.25,-4.6]},
+    {"id":"chair-close","runtimePreset":"chair","eye":[4.55,1,-7.1],"target":[5.62,0.48,-5.63]},
+    {"id":"backlit","runtimePreset":null,"eye":[4.2,1.65,-3.1],"target":[8.2,0.9,-4.5],"capture":"Existing walk setPose + deterministic production pointer drag; no bundle patch"}
+  ],
+  "projection":{"verticalFOVDegrees":55,"near":0.08,"far":180,"width":1440,"height":960,"devicePixelRatio":1,"quality":"high","exposure":1,"toneMapping":"ACESFilmic","outputColorSpace":"sRGB"},
+  "environment":{"repositoryPath":"examples/campus-3d-v5/assets/sky.hdr","backgroundIntensity":0.9,"environmentIntensity":0.4,"runtimeProcessing":"RGBELoader + PMREM","includedInGLB":false,"includedInLocalBlend":false},
+  "runtimeLights": [
+    {"kind":"HemisphereLight","skyColor":"#e0ebf0","groundColor":"#a89d82","intensity":0.38},
+    {"kind":"DirectionalLight","color":"#fff1dc","intensity":2.65,"position":[18,23,17],"target":[0,0,0],"castShadow":true,"shadowMap":[2048,2048],"normalBias":0.025,"bias":-0.00016,"orthographic":{"left":-27,"right":27,"top":24,"bottom":-22,"near":1,"far":90}},
+    {"kind":"PointLight","color":"#fff0d7","intensity":16,"position":[5,3.5,-4],"distance":15,"decay":2,"castShadow":false},
+    {"kind":"PointLight","color":"#fff0d7","intensity":16,"position":[5,3.5,3],"distance":15,"decay":2,"castShadow":false},
+    {"kind":"SpotLight","name":"R1 window sky approximation","color":"#eaf0f2","intensity":26,"position":[11.35,2.4,-6.1],"target":[6.6,0.4,-4.5],"distance":8,"angleRadians":0.86,"penumbra":0.95,"decay":2,"castShadow":true,"shadowMap":[1024,1024],"near":0.12,"normalBias":0.001,"bias":-0.00002,"purpose":"Existing realtime approximation, not a measured luminaire or baked indirect solution"}
+  ],
+  "emissive":{"material":"Linear LED diffuser","baseColor":"#fff3dd","emissiveColor":"#ffebc7","emissiveIntensity":1.4,"localFixtures":6,"runtimeNote":"Visible emissive surface; standard Three rendering does not cast area illumination from it","localBlendDefault":"Excluded from render for initial daylight study; geometry/material retained in separate collection"},
+  "glass":{"sample":{"x":12,"z":-5.8,"meshThickness":0.012,"transmission":0.96,"ior":1.5,"roughness":0.008,"metalness":0,"side":"FrontSide","castShadow":false,"depthWrite":false,"attenuationDistance":6,"attenuationColor":"#e8f0e9"},"otherPanes":{"color":"#d4e7e7","opacity":0.14,"roughness":0.09,"metalness":0.1,"side":"DoubleSide","castShadow":false,"depthWrite":false},"runtimeOnly":"One polished-pane r170 base-LOD transmission sampling hook is not portable to GLB/Blender","bakeDecision":"Planner must test glass transmission/shadow rays; do not replace panes with opaque blockers or bake a lightmap onto the glass"},
+  "treeShadowReference":{"tree":623,"position":[16,-0.3,-4],"detail":"approved near LOD","leaves":4480,"leafAlphaCutoff":0.45,"doubleSided":true,"runtimeShadow":"Cached sun/local shadow includes it; no wind animation. Runtime far LOD is not the preparation geometry"},
+  "localBlendLighting":"No world or lights intentionally. Geometry preparation only; select material preview to inspect. Planner supplies an actual calibrated lighting rig using these references. Blender inspection lights in the old full blend were not the runtime lighting rig.",
+  "baked":false
+}

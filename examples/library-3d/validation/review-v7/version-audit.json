@@ -1,0 +1,30 @@
+{
+  "parentPR": 42,
+  "parentSHA": "c75a5e2ce1f3313e4965f890c58a407ea6675233",
+  "checkedMain": "b625413ac1f5eee07011590e2a3c9025ee81191d",
+  "originalAssetsSHA256": {
+    "examples/library-3d/assets/wenku-library.glb": "9bbcd6676913ec6e43a5d02dfc99dde332664624a49e41b3432bbfd8c7ba73e1",
+    "examples/library-3d/Library_Editable.blend": "bb10a6b0029285bd7c37142dbfa15e929acc2d06222790d38250227618f55093"
+  },
+  "runtimeAssets": {
+    "r1-bake.json": {
+      "bytes": 676,
+      "sha256": "137240848c8bd1e1985abbc32be45c8cc0ef3d28b9ca71802c71a9727d8481e5"
+    },
+    "r1-indirect-dcc8cbb9.exr": {
+      "bytes": 8408146,
+      "sha256": "dcc8cbb9546218b2420d6c084305d0bf3caa97745f28e919cdce760d5b1f2755"
+    },
+    "r1-receivers-30704e41.glb": {
+      "bytes": 2734836,
+      "sha256": "30704e4134720f32f52e0207ff6f1a527acf2aac207ec72a8967bc4ad5523b66"
+    }
+  },
+  "runtimeFilesSHA256": {
+    "examples/library-3d/src/app.js": "a8bce2e4ef3fc7f4a996cff0fd00f8ce9b5d19fdb867cc28cde42cc207666de5",
+    "examples/library-3d/src/r1-lighting.js": "e86520f2b81b8f1f320484060edab932b49370bc251714d8862ab7f232368b0b",
+    "examples/library-3d/app.bundle.js": "74c5e9c2d5e7569d0c9bfe91e9bbde21e951dc3275bbd4f331b595f7afa8b53b",
+    "server/server.js": "a9c7e572eb70be45e96158c0eef3a6a56dbadd17300699ec592eb8c889318e9d"
+  },
+  "scope": "C R1 only; server change limited to R1 public asset allowlist/MIME; original #41 test and A/B/D source unchanged"
+}

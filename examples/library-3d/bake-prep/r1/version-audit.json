@@ -1,0 +1,113 @@
+{
+  "baseCommit": "38de7b5d12a08e0b333769075f5f49b3f944a6c5",
+  "acceptedRuntimeCommit": "ed40ec23998352bd6060f797cc834afe2944efc2",
+  "repositoryRules": "No AGENTS.md found in ancestor chain or repository at this base; read examples/library-3d/README.md and validation/review-v5/D_图书馆衔接说明.md",
+  "unchangedRuntimeFiles": [
+    {
+      "path": "examples/library-3d/src/app.js",
+      "gitBlob": "55da1dfcd6e7890b24fc40de25989ab3780bc09a",
+      "workingTreeSHA256": "79153455de458d858e0b055c7ffab9d6f424ee42def5e1d904a20e45fcafd11a"
+    },
+    {
+      "path": "examples/library-3d/src/architecture.js",
+      "gitBlob": "a95c2f6178ff06164502d9a7387e30f68ba1058a",
+      "workingTreeSHA256": "4afde978e3701167265a911ecc36325165117fd049d907aa2dd197a0fe48eb5f"
+    },
+    {
+      "path": "examples/library-3d/src/catalog.js",
+      "gitBlob": "41a4709e6d6c7813450658bfd14309a0391db8ad",
+      "workingTreeSHA256": "2c3c4536d81186a9c8ad0c8b5880a064a35bc2d473d24c1ee008763492994ab0"
+    },
+    {
+      "path": "examples/library-3d/src/chairs.js",
+      "gitBlob": "62715ae47eddb8fad1156c9024894895da66ca6a",
+      "workingTreeSHA256": "711a7f0668d292eca0f438828f8a02b2d883a76a935f237774cecb210df899b1"
+    },
+    {
+      "path": "examples/library-3d/src/landscape.js",
+      "gitBlob": "7f943ac9e8438084a7b4e1b0516423891e70d916",
+      "workingTreeSHA256": "c6cd42d3e39e0a2b70736cea54b91f4265feef3117fe5561028e922236715fcf"
+    },
+    {
+      "path": "examples/library-3d/src/navigation.js",
+      "gitBlob": "ccdd0627f1aaaad3c8142871b72a3e85ebff4b86",
+      "workingTreeSHA256": "02f01b1b6d1eb5569531982699e1b04752970fec443e6caa5e02d4ea1b4aa8e3"
+    },
+    {
+      "path": "examples/library-3d/src/rendering.js",
+      "gitBlob": "afc6f8dfa3adbd2bb9b29d1061b3ac9b52d31836",
+      "workingTreeSHA256": "6b07a795613d71a50e38f79559ca09c22124e8f835fb728866f2790aad135f3e"
+    },
+    {
+      "path": "examples/library-3d/app.bundle.js",
+      "gitBlob": "33cfa52d1f52e673abcb182aa754504c65243f90",
+      "workingTreeSHA256": "904bdb96d41f04978c5636e8152e2915bd2a2fbd87eca3adacc558590a2f043d"
+    }
+  ],
+  "approvedAssets": [
+    {
+      "path": "examples/library-3d/assets/wenku-library.glb",
+      "bytes": 24997512,
+      "sha256": "9bbcd6676913ec6e43a5d02dfc99dde332664624a49e41b3432bbfd8c7ba73e1",
+      "identicalToAcceptedDelivery": true
+    },
+    {
+      "path": "examples/library-3d/Library_Editable.blend",
+      "bytes": 25357653,
+      "sha256": "bb10a6b0029285bd7c37142dbfa15e929acc2d06222790d38250227618f55093",
+      "identicalToAcceptedDelivery": true
+    }
+  ],
+  "existingExternalResources": [
+    {
+      "path": "examples/campus-3d-v5/assets/wood-color.jpg",
+      "bytes": 595257,
+      "sha256": "8fdec14fd3c06de907693c9c3241037dc93327ad907296371a2f74a0becd8187"
+    },
+    {
+      "path": "examples/campus-3d-v5/assets/wood-normal.jpg",
+      "bytes": 623607,
+      "sha256": "9e8dd65e443d92107caa4cd30403d78946a8b8c5a6029e6446c7368865b1d1c0"
+    },
+    {
+      "path": "examples/campus-3d-v5/assets/wood-roughness.jpg",
+      "bytes": 520649,
+      "sha256": "a8670e80f203bd031ac3c80f0f606383be51a0ee108e016fa19cad6b9bd373e7"
+    },
+    {
+      "path": "examples/campus-3d-v5/assets/stone-normal.jpg",
+      "bytes": 192757,
+      "sha256": "fcda391b57a816d646ae15544688be53790478da5cd48dbe514b3c6901415e61"
+    },
+    {
+      "path": "examples/campus-3d-v5/assets/stone-roughness.jpg",
+      "bytes": 318550,
+      "sha256": "c7f026a611b7859903c61ec7fd4574944157223e9e7796413dd6e2a66eaeac7a"
+    },
+    {
+      "path": "examples/campus-3d-v5/assets/brick-color.jpg",
+      "bytes": 722173,
+      "sha256": "e20bb6a284e612c4b3fd67e501fb1578705de3559872434e98be832c42671b85"
+    },
+    {
+      "path": "examples/campus-3d-v5/assets/brick-normal.jpg",
+      "bytes": 1068884,
+      "sha256": "d35e7be27c840ba20d68d10276a5954190ec5a3b2d8c8fd6672a6f7c6386e1df"
+    },
+    {
+      "path": "examples/campus-3d-v5/assets/brick-roughness.jpg",
+      "bytes": 477096,
+      "sha256": "6d36270393e4c90ffad99939a192f2f783b3b819ccc5a58c24f19c05c3b0e51d"
+    },
+    {
+      "path": "examples/campus-3d-v5/assets/sky.hdr",
+      "bytes": 1435119,
+      "sha256": "fd94c84997b8a3c353b62c2125a9b44e19509956986a126e472684432a02d798"
+    }
+  ],
+  "notes": [
+    "Source meshes and images were reused; no full-library export was performed.",
+    "Old full blend actually has five cameras: exterior plus four inspection views; old wording about four cameras was incomplete.",
+    "The local GLB is embedded/self-contained. HDR remains a referenced existing repository resource and is included once in the delivery reference-resources folder."
+  ]
+}

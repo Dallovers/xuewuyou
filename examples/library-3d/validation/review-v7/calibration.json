@@ -1,0 +1,12 @@
+{
+  "whiteUnitSkyDiffuseBakeMean": [
+    1.0,
+    1.0,
+    1.0
+  ],
+  "min": 1.0,
+  "max": 1.0,
+  "expectedLambertWhiteRadiance": 1,
+  "threeLightMapRGBInterpretation": "irradiance; Lambert BRDF divides by pi",
+  "requiredIntensityScale": 3.141592653589793
+}

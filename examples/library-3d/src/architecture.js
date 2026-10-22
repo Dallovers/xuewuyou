@@ -3,6 +3,8 @@ import {RoundedBoxGeometry} from 'three/addons/geometries/RoundedBoxGeometry.js'
 import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
 import {createLandscape} from './landscape.js';
 import {bentwoodChairFactory} from './chairs.js';
+import {createBookDetails} from './books.js';
+import {createFacilities} from './facilities.js';
 
 export const dimensions={width:24,depth:18,clearHeight:4.4,doorWidth:2.8,mainAisle:3,units:'metres'};
 export const colliders=[],shelves=[],seats=[];
@@ -11,6 +13,7 @@ export const materials={};
 let samplePane;
 let bentwoodChair;
 const r1Maps={};
+const bookDetails=createBookDetails();
 export function r1ReviewResources(){return {textures:Object.values(r1Maps),materials:[materials.previousSampleGlass].filter(Boolean)};}
 export function setR1Look(mode='final'){
  if(!['baseline','contact','final'].includes(mode))return false;
@@ -101,9 +104,7 @@ function makeShelf(g,id,label,x,z){
  box(shelf,'Oak category sign backing',x,2.48,z,3.02,.4,.04,materials.wood);
  sign(shelf,label,x,2.48,z+.03,2.95,.36);obstacle(x,z,w+.06,d,'shelf '+id);
  shelves.push({id,label,x,z,approach:{x,z:z+1.05}});
- const palette=[0x536d64,0x647782,0x928263,0x814f47,0xa2a092,0x3e5050];
- const count=4*29,inst=new T.InstancedMesh(new T.BoxGeometry(1,1,1),new T.MeshStandardMaterial({name:'Clothbound book spines',roughness:.87}),count);inst.name='Instanced books '+id;inst.castShadow=true;inst.receiveShadow=true;const dummy=new T.Object3D();
- for(let i=0;i<count;i++){const row=Math.floor(i/29),col=i%29,seed=(i*37+id.length*17)%97,height=.27+seed/97*.14;dummy.position.set(x-1.43+col*.101,.13+row*.48+height/2,z+.025);dummy.rotation.z=(i%13===0?.06:0);dummy.scale.set(.07+seed/97*.025,height,.30+seed/97*.07);dummy.updateMatrix();inst.setMatrixAt(i,dummy.matrix);inst.setColorAt(i,new T.Color(palette[i%palette.length]));}shelf.add(inst);
+ bookDetails.shelf(shelf,id,x,z);
 }
 function makeReadingTable(g,index,x,z){
  const wood=index===1?materials.sampleWood:materials.wood,fabric=index===1?materials.sampleFabric:materials.fabric;
@@ -123,10 +124,10 @@ function makeReadingTable(g,index,x,z){
   seats.push({id,label:'阅览位 '+id,x:cx,z:cz,yaw:side===1?0:Math.PI,approach:{x:cx,z:cz+side*.85}});
   box(table,'Recessed desktop power outlet',cx,.782,z+side*.12,.22,.007,.07,materials.metal);
  }
- box(table,'Reading book paper block',x+.55,.795,z+.35,.24,.024,.32,materials.paper);box(table,'Reading book cover',x+.55,.81,z+.35,.25,.004,.33,materials.fabric);
+ bookDetails.guide(table,index,x+.55,z+.35);
 }
 // Merge only repeated decorative construction within each named group; architecture remains editable.
-function batchStatic(g){for(const child of [...g.children])if(child.isGroup)batchStatic(child);const batches=new Map();for(const child of g.children){if(!child.isMesh||child.isInstancedMesh)continue;const key=child.material.uuid;const list=batches.get(key)||[];list.push(child);batches.set(key,list);}for(const list of batches.values()){if(list.length<3)continue;const geometries=list.map(m=>{m.updateMatrix();return m.geometry.clone().applyMatrix4(m.matrix);});const geometry=mergeGeometries(geometries);geometries.forEach(g=>g.dispose());if(!geometry)continue;const mesh=new T.Mesh(geometry,list[0].material);mesh.name=list[0].material.name+' construction';mesh.castShadow=!mesh.material.transparent;mesh.receiveShadow=true;mesh.userData.components=list.map(m=>m.name);list.forEach(m=>g.remove(m));g.add(mesh);}}
+function batchStatic(g){if(g.userData.bookGuide)return;for(const child of [...g.children])if(child.isGroup)batchStatic(child);const batches=new Map();for(const child of g.children){if(!child.isMesh||child.isInstancedMesh||Array.isArray(child.material))continue;const key=child.material.uuid;const list=batches.get(key)||[];list.push(child);batches.set(key,list);}for(const list of batches.values()){if(list.length<3)continue;const geometries=list.map(m=>{m.updateMatrix();return m.geometry.clone().applyMatrix4(m.matrix);});const geometry=mergeGeometries(geometries);geometries.forEach(g=>g.dispose());if(!geometry)continue;const mesh=new T.Mesh(geometry,list[0].material);mesh.name=list[0].material.name+' construction';mesh.castShadow=!mesh.material.transparent;mesh.receiveShadow=true;mesh.userData.components=list.map(m=>m.name);list.forEach(m=>g.remove(m));g.add(mesh);}}
 export function createBuilding(){
  const structure=group('Structure stone and real window openings'),furniture=group('Furniture bookcases and reading desks'),roof=group('Roof editable zinc and clerestory'),site=group('Library forecourt');
  box(structure,'Continuous accessible floor',0,-.14,0,24.4,.28,18.4,materials.floor);
@@ -150,13 +151,17 @@ export function createBuilding(){
  for(const x of [-9,-5.1,5.4,9])for(const z of [-5,1.3,6]){box(structure,'Suspended linear light housing',x,4.25,z,2.74,.07,.09,materials.metal);box(structure,'Suspended linear light',x,4.21,z,2.7,.015,.075,materials.light);for(const dx of [-1.12,1.12])box(structure,'Light suspension rod',x+dx,4.36,z,.008,.23,.008,materials.metal,.002);}
  for(const [id,label,x,z] of [['exam','考研真题卷',-8.1,-4.8],['book','教材习题集',-3.6,-4.8],['ielts','雅思备考库',-8.1,.2],['topic','专题与心得',-3.6,.2]])makeShelf(furniture,id,label,x,z);
  makeReadingTable(furniture,1,6.6,-4.5);makeReadingTable(furniture,2,6.6,1.3);
- const welcome=group('Welcome and catalogue desk',furniture);box(welcome,'Oak enquiry desk',-7,.5,6.3,3.7,1,.8,materials.wood);box(welcome,'Stone enquiry counter',-7,1.04,6.3,3.85,.08,.9,materials.stone);sign(welcome,'馆 藏 检 索',-7,1.6,6.3,2.5,.4);obstacle(-7,6.3,3.85,.9,'welcome desk');
+ const welcome=group('Welcome and catalogue desk',furniture);box(welcome,'Oak enquiry desk',-7,.5,6.3,3.7,1,.8,materials.wood);box(welcome,'Stone enquiry counter',-7,1.04,6.3,3.85,.08,.9,materials.stone);
+ for(const x of [-8.2,-5.8])box(welcome,'Catalogue header mounting post',x,1.5,6.1,.022,.85,.025,materials.metal);
+ box(welcome,'Catalogue header oak backing',-7,2.05,6.1,2.65,.32,.045,materials.wood);
+ sign(welcome,'馆 藏 检 索',-7,2.05,6.126,2.5,.28);obstacle(-7,6.3,3.85,.9,'welcome desk');
  box(structure,'Rear grey brick accent',0,2.15,-8.79,5.2,4.3,.07,materials.brick);sign(structure,'学 无 忧  ·  阅 读 与 思 考',0,2.5,-8.73,4.5,.52);
  box(site,'Accessible forecourt',0,-.16,16,40,.28,14.1,materials.floor);box(site,'Site ground',0,-.37,0,100,.12,80,new T.MeshStandardMaterial({name:'Landscape ground',color:0x8e9c83,roughness:1}));
  for(const x of [-9,9]){box(site,'Courtyard planter',x,.28,12.5,2.6,.56,1.1,materials.brick);box(site,'Planter soil',x,.57,12.5,2.4,.025,.95,new T.MeshStandardMaterial({name:'Planting soil',color:0x514d3d,roughness:1}));obstacle(x,12.5,2.6,1.1,'planter');for(let i=0;i<5;i++)box(site,'Forecourt bench timber slat',x,.45,16.2+(i-2)*.10,3,.07,.085,materials.wood);for(const dx of [-1.2,1.2])box(site,'Bench leg',x+dx,.21,16.2,.08,.42,.4,materials.metal);obstacle(x,16.2,3,.5,'bench');}
  for(const x of [-19.95,19.95])box(site,'Courtyard stone edge',x,-.065,16,.10,.11,14.1,materials.stone);
  createLandscape(site,materials.wood,obstacle);
  const door=makeDoor(structure);
+ createFacilities({parent:building,materials,box,sign,obstacle});
  batchStatic(building);
  // Bounded window-sky approximation for R1 only. The low-bias cached local
  // shadow resolves feet much smaller than the full-site sun shadow texels.
