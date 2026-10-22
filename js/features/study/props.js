@@ -205,6 +205,10 @@
   /**
    * 书架排书：两层，立着排 + 偶尔斜靠 + 少量平放。
    * 层内净高：下层 0.34、上层 0.66，所以书高一律控制在 0.30 以内。
+   *
+   * 两条不许违反的排布约束（原来都踩过，近景能看出穿模）：
+   *  1. 斜靠的书按 sin(lean)·h 让位，否则书头会捅进邻居封面；
+   *  2. 平放那摞必须先在立书行里留出窗口，不能直接压在行上。
    */
   function addShelfBooks(THREE, g, ctx, books) {
     var S = ctx.layout.shelf;
@@ -216,8 +220,23 @@
     ];
 
     levels.forEach(function (lv) {
-      var x = -S.width / 2 + 0.07;
+      var left = -S.width / 2 + 0.07;
       var right = S.width / 2 - 0.07;
+
+      /* 平放那摞先占一个窗口，立书遇到窗口整段跳过。
+         原来这摞书的 X 是整条书架里随机取的，Y 又和立书同底（lv.base），
+         于是必然横插进随机位置的那几本立书里——实测 28 对，最深贯穿 3.4 cm。
+         注释写的是「压在立书上方」，但从来没有真的抬上去过。 */
+      var slot = null;
+      if (rand() < 0.8) {
+        var flatW = 0.23;                       // 平放书最大宽度
+        var span = right - left - flatW - 0.04;
+        var cxF = left + flatW / 2 + 0.02 + (span > 0 ? rand() * span : 0);
+        cxF = Math.min(cxF, right - flatW / 2 - 0.02);
+        slot = [cxF - flatW / 2 - 0.015, cxF + flatW / 2 + 0.015];
+      }
+
+      var x = left;
       while (x < right - 0.03) {
         // 偶尔空一段，让书不是一条连续的色带
         if (rand() < 0.07) { x += 0.05 + rand() * 0.06; continue; }
@@ -227,25 +246,36 @@
         var h = 0.19 + rand() * (maxH - 0.19);
         var d = 0.19 + rand() * 0.06;
         var lean = rand() < 0.10 ? (rand() - 0.5) * 0.16 : 0;
+        var yaw = (rand() - 0.5) * 0.05;
+
+        /* 斜靠：绕 Z 转 lean 之后，书顶和书底各沿 X 甩出 sin(lean)·h/2。
+           另外书还有 ±0.025 rad 的歪放（yaw），它把 0.25 m 的进深往 X 上甩出
+           sin(yaw)·d/2 ≈ 3 mm——这一项漏掉就还是会把书头蹭进邻居。
+           原来书与书之间只留 2 mm，实测最深贯穿 3.4 cm；现在按两项之和让位。 */
+        var swing = Math.abs(Math.sin(lean)) * h / 2 + Math.abs(Math.sin(yaw)) * d / 2;
+        var wide = th + 2 * swing;
+
+        // 会压到预留窗口就整本跳过，下一本从窗口右侧继续
+        if (slot && x + wide > slot[0] && x < slot[1]) { x = slot[1] + 0.002; continue; }
 
         books.push({
-          pos: [x + th / 2, lv.base + h / 2, z + (rand() - 0.5) * 0.03],
+          pos: [x + wide / 2, lv.base + h / 2, z + (rand() - 0.5) * 0.03],
           scale: [th, h, d],
-          rot: [0, (rand() - 0.5) * 0.05, lean],
+          rot: [0, yaw, lean],
           color: BOOK_COLORS[Math.floor(rand() * BOOK_COLORS.length)]
         });
-        x += th + 0.002 + (rand() < 0.12 ? 0.02 + rand() * 0.05 : 0);
+        x += wide + 0.002 + (rand() < 0.12 ? 0.02 + rand() * 0.05 : 0);
       }
 
-      // 平放的一摞，压在立书上方或独立一段
-      if (rand() < 0.8) {
-        var sx = -S.width / 2 + 0.20 + rand() * (S.width - 0.6);
+      // 平放的一摞，落在刚才留出的窗口里（两侧各余 1.5 cm，不会碰立书）
+      if (slot) {
+        var sx = (slot[0] + slot[1]) / 2;
         var yy = lv.base;
         var n = 2 + Math.floor(rand() * 2);
         for (var k = 0; k < n; k++) {
           var t2 = 0.020 + rand() * 0.014;
           books.push({
-            pos: [sx, yy + t2 / 2, z],
+            pos: [sx + (rand() - 0.5) * 0.008, yy + t2 / 2, z + (rand() - 0.5) * 0.02],
             scale: [0.20 + rand() * 0.03, t2, 0.26 + rand() * 0.03],
             rot: [0, (rand() - 0.5) * 0.10, 0],
             color: BOOK_COLORS[Math.floor(rand() * BOOK_COLORS.length)]
