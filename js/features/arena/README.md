@@ -1,7 +1,10 @@
 # 好友竞技场 · 擂台（板块 A 第二批）
 
 社交广场 README 里写着「好友挑战（`arena`）未改动，独立竞技场美术放第二批」，这就是那批：
-**能单独预览、能和社交广场并排预览、能按同一套 `createDistrict` 契约挂载的擂台空间 + 三个实物交互点。**
+**能从主站进入、能单独预览、能和社交广场并排预览、能按同一套 `createDistrict` 契约挂载的擂台空间 + 三个实物交互点。**
+
+第二版补了入口与外壳：主站「校园互动 → 好友竞技场 → 进入 3D 好友竞技场」进独立页，
+页面外壳（顶部工具条 / 左侧引导条 / 底部状态条 / 纸色对话框）照知识图书馆那一套，3D 画面本身没动。
 
 不含：登台对打动画、观众 NPC、比分接线（面板仍是主站原有 DOM）、夜间照明、移动端适配。
 
@@ -10,11 +13,32 @@
 | 文件 | 说明 |
 | --- | --- |
 | `arena-district.js` | 空间与交互的源码。ESM，导出 `createDistrict(ctx)` 和 `ARENA_LAYOUT` |
-| `preview.html` | 独立预览页（自带相机与行走，**只用于本板块自测，不进主站**）。`?with=social` 可与广场并排 |
+| `index.html` | **主站入口页**（图书馆式外壳）。三个检视机位 + 「进入漫游」+ 按 E 打开的纸色对话框 |
+| `arena.css` | 入口页的样式。变量与类名对齐 `examples/library-3d/library.css`，改动请两边一起看 |
+| `preview.html` | 自测页（深色 HUD，**不进主站**）。`?with=social` 可与广场并排，`?x/z/yaw/pitch` 精确定位，验收脚本靠它 |
 | `previews/*.png` | 本机真实浏览器截图（headless + CDP 驱动）。按仓库 `.gitignore`，`previews/` 不入库，只留本地 |
-| `../../../css/feature-arena.css` | 只服务本板块的 HUD 与面板外框，类名统一 `.arena-ui` 前缀 |
+| `../../../css/feature-arena.css` | 只服务自测页的 HUD 与面板外框，类名统一 `.arena-ui` 前缀 |
 | `../../../examples/campus-3d-v5/assets/*.jpg`、`sky.hdr` | 运行期依赖的 PBR 贴图与天空图（同仓库 CC0 素材）。按相对路径取，缺失时自动退回纯色 |
-| `../../../vendor/three/addons/loaders/RGBELoader.js` | **本批新增**。仓库内 vendor/three（r170）只有 `three.module.js`，缺这个 addon 时 `sky.hdr` 加载失败、环境反射为空，金属度高的柱、围绳、锣面会发死黑。文件取自 `three@0.170.0/examples/jsm/loaders/RGBELoader.js` 原样，11,377 字节 |
+| `../../../vendor/three/addons/loaders/RGBELoader.js` | 仓库内 vendor/three（r170）只有 `three.module.js`，缺这个 addon 时 `sky.hdr` 加载失败、环境反射为空，金属度高的柱、围绳、锣面会发死黑。文件取自 `three@0.170.0/examples/jsm/loaders/RGBELoader.js` 原样，11,377 字节 |
+
+## 主站入口
+
+| 位置 | 内容 |
+| --- | --- |
+| `js/campus-registry.js` | arena 地点新增 `{label:'进入 3D 竞技场', view:'arena3d'}` |
+| `js/app.js` | `view === 'arena3d'` → 整页跳转 `js/features/arena/index.html`（与图书馆同样是独立页，不在同页加载第二套引擎） |
+| `index.html` | 校园互动 → 好友竞技场 tab 里加「进入 3D 好友竞技场」；全部功能入口加「3D 竞技场」按钮；`app.js?v=55 → 56` |
+| `js/features/arena/index.html` | 左上角「返回主站」回 `index.html#community` |
+
+服务端静态白名单**没改**：页面在 `js/` 下、样式在 `js/features/arena/`、three 在 `vendor/`、贴图走
+`examples/campus-3d-v5/assets`（该路径原本就对图书馆放行），都在既有白名单内。
+
+## 入口页操作
+
+- 外观检视：拖动旋转、滚轮缩放；左侧三个机位（西侧牌坊 / 擂台正面 / 报名处）
+- 进入漫游：WASD / 方向键移动、Shift 加速、拖动转向、J/L 转向、E 交互、Esc 回到外观
+- 顶部「挑战规则」是静态规则卡；按 E 打开的是该交互点的说明（纸色对话框），不是业务面板
+
 
 ## 尺寸与坐标
 
@@ -44,15 +68,19 @@ ESM 需要 http，不能直接双击 HTML：
 ```powershell
 # 在仓库根目录
 python -m http.server 8099
-# 打开
+# 主站入口页（新的，图书馆式外壳）
+http://127.0.0.1:8099/js/features/arena/index.html
+# 自测页（深色 HUD，带 ?with=social / ?x / ?yaw 等参数）
 http://127.0.0.1:8099/js/features/arena/preview.html
 # 和社交广场并排看
 http://127.0.0.1:8099/js/features/arena/preview.html?with=social
 ```
 
-操作：WASD / 方向键移动，Shift 加速，拖动看向，J / L 转向，E 交互，Esc 关闭面板。
+入口页操作：拖动旋转 / 滚轮缩放 →「进入漫游」→ WASD、Shift、拖动、J/L、E、Esc。
 
-参数：
+自测页操作：WASD / 方向键移动，Shift 加速，拖动看向，J / L 转向，E 交互，Esc 关闭面板。
+
+自测页参数：
 
 | 参数 | 作用 |
 | --- | --- |
@@ -161,8 +189,25 @@ WG_Community.open('friends');
 
 碰撞体 19 个：擂台台基、台阶、牌坊双柱、报名处、对战牌、看台 ×4（南北各两排）、围栏 ×5（西侧两段 + 南/北/东）、灯柱 ×4。
 
+## 入口页自测（2026-10-22 加壳后重跑）
+
+同一套 CDP 真实按键，1440×900，驱动 `js/features/arena/index.html`：
+
+| 检查项 | 结果 | 数据 |
+| --- | --- | --- |
+| 三个检视机位 | 通过 | `?view=entrance/ring/desk` 分别对应「竞技场前庭 / 擂台正面 / 报名处」，机位按钮 `aria-pressed` 同步 |
+| 场景规模 | 通过 | 182 mesh / 19 碰撞体 / 3 交互点（与自测页一致，说明挂载参数没变） |
+| 环境反射 | 通过 | `env.ok = true`、`source = 'sky.hdr'` |
+| 进入漫游 | 通过 | `mode = walk`，顶部按钮变「漫游中」，底部出现「回到外观」，小屏出现六个移动按钮 |
+| 靠近提示 | 通过 | 站到台阶前出现「按 E 发起好友挑战」 |
+| 按 E 打开对话框 | 通过 | 擂台 / 报名处 / 开赛锣三个标题都对；锣的敲击次数在对话框里实时显示 |
+| Esc 退回外观 | 通过 | `mode` 回到 `inspect`（**修过一个真实缺陷**：`dialog.close()` 的 `close` 事件是异步的，那几帧里按 Esc 会被当成"面板还开着"吞掉，现在关面板时同步复位） |
+| 主站入口 | 通过 | `#arena3dEntry` 文案「进入 3D 好友竞技场」、`href=js/features/arena/index.html`；功能入口里 `[data-nav="arena3d"]` 1 个 |
+| 控制台 | 0 条错误 | — |
+
 截图（本地 `previews/`，按仓库约定不入库）：`01-solo-default.png`（单开默认）、`02-with-social.png`（并排总览）、
-`03-steps-hint.png`（台阶前提示）、`04-desk.png`（报名处）、`05-gate-bell.png`（牌坊与锣）、`06-panel.png`（按 E 后的面板）。
+`03-steps-hint.png`（台阶前提示）、`04-desk.png`（报名处）、`05-gate-bell.png`（牌坊与锣）、`06-panel.png`（按 E 后的面板）；
+入口页：`07-entry-entrance.png`、`08-entry-ring.png`、`09-entry-desk.png`（三个检视机位）、`10-entry-walk.png`（漫游中的提示）、`11-entry-dialog.png`（按 E 的纸色对话框）。
 
 **headless 的帧数不作为性能结论**，性能以宿主（D）的统一环境为准。
 
@@ -184,11 +229,13 @@ WG_Community.open('friends');
 - **锣只响不判**：本地计数 + 2.4 秒阻尼摆动，不写服务端、不发 Socket 事件。
 - **树被移除了**：第一版在场地内放了树，从并排机位读过去像「擂台里有几个绿球」。绿化交给旁边的社交广场，本板块只留草坪。
 - **只有白天**：4 根灯柱只有 `emissiveIntensity` 的呼吸（0.26±0.08）供观感，没有实际照明、没有夜景。
-- **未接主站**：本批只做独立预览与并排预览，`index.html` 与主站场景一行未改（改动范围待定）。
-- **未做移动端适配**：预览页按桌面设计，HUD 有小屏降级但不是验收项。
+- **只接了入口，没接业务 DOM**：主站是整页跳到 `index.html` 的 3D 页，页内的对话框只解释「主站里这一步会调用什么」，
+  并在末尾给一个回主站的链接；没有把社区面板嵌进 3D 页（社区 panel 仍是主站 DOM，两套页面不共享渲染树）。
+- **移动端只保证不崩**：入口页有六个移动/转向按钮与小屏降级，但没在物理手机上验收。
 
 ## 待确认的两件事
 
-1. **`vendor/three/addons/loaders/RGBELoader.js` 能不能入库**。它是 three r170 官方原文件、11KB，但属于「往 vendor 里加文件」，需要维护者点头。不允许的话，并排预览的天空要换方案（改成不依赖 RGBELoader 的 LDR equirect，或由宿主统一提供环境图）。
-2. **主站怎么组合两个 district**。预览页是「一个场景挂两个 district、碰撞与交互合并」，主站现在走 `js/campus-registry.js` 的配置 + `StudyAppBridge` 视图，接入方式还没定。
-   按 `ARENA_LAYOUT.neighbor.offset = [21, 0, 0]` 摆是最省事的，但要不要让两个板块共用一份地面材质、要不要合并成一次渲染批次，得等主站那边的 3D 宿主定了再说。
+1. **`vendor/three/addons/loaders/RGBELoader.js` 能不能入库**。它是 three r170 官方原文件、11KB，但属于「往 vendor 里加文件」，需要维护者点头。
+   不允许的话，入口页要改成不依赖 RGBELoader 的 LDR equirect，或由宿主统一提供环境图。（PR #71 已按"先入库、待确认"合并，这里保留提醒。）
+2. **要不要和社交广场同场景连通**。入口页是独立页（和图书馆一致）；`?with=social` 的自测页证明两块地在同一场景里能无缝接缝，
+   按 `ARENA_LAYOUT.neighbor.offset = [21, 0, 0]` 摆即可。但「从广场走过去」需要主站那边有一个能同时挂多个 district 的宿主，现在还没有。
