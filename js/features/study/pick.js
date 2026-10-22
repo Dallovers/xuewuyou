@@ -60,7 +60,45 @@
        不能"每次随机"，否则你会以为书自己在换内容。 */
     eggEvery: 6,                        // 大约每 6 本里有 1 本
     eggTitle: '寝室长和凡越欠我三顿饭',
-    eggAuthor: '作者刘福超'
+    eggAuthor: '作者刘福超',
+
+    /* 每本书的书名。按实例 id 散列取，**同一本书永远是同一个名字**——
+       随机取名会让"我刚看的那本《边城》"下次变成别的，反而更怪。
+       名字只影响三处：准星提示、拿着时的提示、翻开后左右页的页眉。
+       不往封面贴字：封面是实例化的一块板，一张贴图铺满所有实例，
+       要做成每本不同就得给每本书单独一张贴图，几十张 512² 不划算。 */
+    bookNames: [
+      '高等数学（上）', '高等数学（下）', '线性代数', '概率论与数理统计', '离散数学',
+      '大学物理', '大学化学', '理论力学', '材料力学', '电路分析基础',
+      '数据结构与算法', '算法导论', '计算机组成原理', '计算机网络', '操作系统导论',
+      '数据库系统概念', '编译原理', '软件工程', '人工智能导论', '机器学习',
+      '深度学习', '统计学习方法', '数字图像处理', '计算机图形学', '人机交互概论',
+      '中国哲学简史', '西方哲学史', '美学散步', '艺术的故事', '西方美术史',
+      '世界建筑史', '中国建筑史', '建筑：形式、空间和秩序', '园冶', '街道的美学',
+      '乡土中国', '江村经济', '万历十五年', '中国历代政治得失', '叫魂',
+      '边城', '围城', '平凡的世界', '活着', '白鹿原',
+      '城南旧事', '呼兰河传', '骆驼祥子', '四世同堂', '家',
+      '瓦尔登湖', '人类简史', '枪炮、病菌与钢铁', '自私的基因', '时间简史',
+      '寂静的春天', '万物简史', '宇宙的琴弦', '七堂极简物理课', '元素的盛宴',
+      '数学之美', '数学分析', '具体数学', '怎样解题', '从一到无穷大',
+      '设计中的设计', '写给大家看的设计书', '室内设计资料集', '住宅设计解剖书', '家具结构设计',
+      '木工全书', '木材学', '色彩设计法则', '字体设计手册', '版式设计原理',
+      '手绘表现技法', '素描的诀窍', '水彩基础', '摄影构图学', '光影的艺术',
+      '英语语法新思维', '考研英语词汇', '雅思真题集', '托福核心词汇', '学术写作指南',
+      '日语入门', '法语速成', '德语基础教程', '拉丁语入门', '古代汉语',
+      '唐诗三百首', '宋词选', '古文观止', '诗经', '楚辞',
+      '沉思录', '苏东坡传', '月亮与六便士', '小王子', '夜航西飞',
+      '百年孤独', '局外人', '悉达多', '变形记', '老人与海',
+      '追风筝的人', '解忧杂货店', '挪威的森林', '雪国', '古都',
+      '刀锋', '我与地坛', '病隙碎笔', '文化苦旅', '山居笔记',
+      '费曼物理学讲义', '物理世界奇遇记', '上帝掷骰子吗', '黑洞与时间弯曲', '果壳中的宇宙',
+      '经济学原理', '国富论', '就业、利息和货币通论', '思考，快与慢', '贫穷的本质',
+      '社会学的想象力', '乌合之众', '娱乐至死', '技术垄断', '理解媒介',
+      '心理学与生活', '社会心理学', '认知心理学', '发展心理学', '变态心理学',
+      '教育学原理', '陶行知教育名篇', '给教师的建议', '学习之道', '刻意练习',
+      '中国美术史', '书法概论', '篆刻入门', '中国画技法', '陶瓷工艺学',
+      '音乐欣赏十五讲', '西方音乐史', '和声学基础', '曲式分析', '乐理入门'
+    ]
   };
 
   function isDescendant(obj, maybeParent) {
@@ -146,7 +184,15 @@
       if (!src) return null;
       var gi = src.byId[h.instanceId];
       if (gi === undefined) return null;
-      return { label: src.label, src: src, ids: src.groups[gi], distance: +h.distance.toFixed(3) };
+      var group = src.groups[gi];
+      return {
+        label: src.label,
+        // 书带书名，杯 / 笔没有；界面按 name 有没有决定要不要加书名号
+        name: src.label === '书' ? bookNameOf(group[0]) : null,
+        src: src,
+        ids: group,
+        distance: +h.distance.toFixed(3)
+      };
     }
 
     function hideInstances(src, ids) {
@@ -250,6 +296,7 @@
         src: src,
         ids: ids,
         label: target.label,
+        name: target.name || null,
         saved: hideInstances(src, ids),
         pickYaw: cameraYaw(),
         baseQuat: baseQuat,
@@ -286,8 +333,15 @@
       return (((id * 2654435761) >>> 0) % SPEC.eggEvery) === 0;
     }
 
-    function pageTexture(kind, title, author) {
-      var key = kind + '|' + title + '|' + (author || '');
+    /** 书名：同样用实例 id 定，换一个乘数，免得"书名"和"是不是彩蛋"两件事相关 */
+    function bookNameOf(id) {
+      var n = SPEC.bookNames.length;
+      if (!n) return '';
+      return SPEC.bookNames[(((id * 2246822519) >>> 0) % n)];
+    }
+
+    function pageTexture(kind, title, author, bookName) {
+      var key = kind + '|' + title + '|' + (author || '') + '|' + (bookName || '');
       if (pageTexCache[key]) return pageTexCache[key];
       var W = 512, H = 1280;                       // 页高比页宽约 2.5:1
       var cv = document.createElement('canvas');
@@ -309,6 +363,19 @@
           'px "Microsoft YaHei","PingFang SC","Noto Sans CJK SC","Source Han Sans SC",sans-serif';
       }
       var txt = title || '';
+
+      /* 页眉：书名。左右两页都印，像真书的天头——这样翻开哪一页都知道自己拿的是哪本。
+         放在大标题上方，字号压到 26 px，只是"标一下"，不跟正文抢。 */
+      if (bookName) {
+        g.font = font(26, false);
+        g.fillStyle = 'rgba(52,48,42,0.52)';
+        g.textAlign = 'center';
+        g.textBaseline = 'top';
+        g.fillText('《' + bookName + '》', W / 2, 40);
+        g.fillStyle = 'rgba(52,48,42,0.20)';
+        g.fillRect(W * 0.33, 80, W * 0.34, 2);
+      }
+
       if (kind === 'title') {
         var fs = 64;
         g.font = font(fs, true);
@@ -399,7 +466,7 @@
         /* 左页印标题，右页纯正文。
            贴图是 canvas 现画的，字形来自系统字体，不额外带字体文件。 */
         var mat = new THREE.MeshStandardMaterial({
-          map: pageTexture(sign < 0 ? 'title' : 'body', titleTxt, authorTxt),
+          map: pageTexture(sign < 0 ? 'title' : 'body', titleTxt, authorTxt, held.name),
           roughness: 0.9,
           metalness: 0
         });
@@ -486,11 +553,12 @@
       h.src.mesh.instanceMatrix.needsUpdate = true;
 
       var label = h.label;
+      var bookName = h.name || null;
       h.group.traverse(function (n) {
         if (n.isMesh && n.material && n.material.dispose) n.material.dispose();
       });
       h.group.removeFromParent();
-      return { ok: true, mode: 'drop', label: label, surfaceY: +surfaceY.toFixed(3) };
+      return { ok: true, mode: 'drop', label: label, name: bookName, surfaceY: +surfaceY.toFixed(3) };
     }
 
     function take() {
@@ -519,7 +587,7 @@
       held = null;
       inspecting = false;
       inspectW = 0;
-      var out = { ok: true, mode: 'putback', label: h.label, parts: h.saved.length };
+      var out = { ok: true, mode: 'putback', label: h.label, name: h.name || null, parts: h.saved.length };
       disposeHeld(h, true);      // restore=true：把 saved 里的矩阵一条条写回实例
       return out;
     }
@@ -572,8 +640,9 @@
       }
 
       var t = probe();
-      var next = t ? { label: t.label, distance: t.distance } : null;
-      var changed = (!aim && next) || (aim && !next) || (aim && next && (aim.label !== next.label || Math.abs(aim.distance - next.distance) > 0.25));
+      var next = t ? { label: t.label, name: t.name || null, distance: t.distance } : null;
+      var changed = (!aim && next) || (aim && !next) ||
+        (aim && next && (aim.label !== next.label || Math.abs(aim.distance - next.distance) > 0.25));
       aim = next;
       if (changed) onAim(next);
     }
@@ -660,6 +729,7 @@
       getAim: function () { return aim; },
       isHolding: function () { return !!held; },
       getHeldLabel: function () { return held ? held.label : null; },
+      getHeldName: function () { return held ? (held.name || null) : null; },
       getHeldPartCount: function () { return held ? held.ids.length : 0; },
       setInspect: function (on) { inspecting = !!on && !!held; },
       isInspecting: function () { return inspecting; },
