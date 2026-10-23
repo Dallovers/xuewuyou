@@ -310,7 +310,7 @@ var WG_App = (function () {
     if (state.currentModule !== level) { currentDiff = ''; currentForm = 'all'; }
     state.currentModule = level;
     $('modTitle').textContent = level.name;
-    $('modSub').textContent = (level.group || '模块') + ' · 选择子模块开始刷题';
+    $('modSub').textContent = (level.group || '模块') + ' · 选择章节开始练习';
     var subGrid = $('subGrid');
     if (!subGrid) { showView('home'); return; }
     var html = '';
@@ -319,7 +319,7 @@ var WG_App = (function () {
     var allCount = 0;
     keys.forEach(function (tk) { allCount += countTopic(tk); });
     if (!keys.length) allCount = moduleCount(level);
-    html += '<div class="mod-card' + (allCount === 0 ? ' mod-card-empty' : '') + '" data-mode="all">' +
+    html += '<div class="mod-card' + (allCount === 0 ? ' mod-card-empty' : '') + '" data-mode="all" tabindex="0" role="button">' +
       '<div class="mod-tag">混合</div>' +
       '<div class="mod-name">全部知识点</div>' +
       '<div class="mod-meta">' + (allCount === 0 ? '当前筛选下无题' : '共 ' + allCount + ' 题，随机混合抽题') + '</div>' +
@@ -329,7 +329,7 @@ var WG_App = (function () {
       var cnt = countTopic(tk);
       var total = GAOSHU_BANK[tk] ? GAOSHU_BANK[tk].problems.length : 0;
       var filtered = (currentDiff || currentForm !== 'all');
-      html += '<div class="mod-card' + (cnt === 0 ? ' mod-card-empty' : '') + '" data-topic="' + tk + '">' +
+      html += '<div class="mod-card' + (cnt === 0 ? ' mod-card-empty' : '') + '" data-topic="' + tk + '" tabindex="0" role="button">' +
         '<div class="mod-tag">' + (level.group || '') + '</div>' +
         '<div class="mod-name">' + tk + '</div>' +
         '<div class="mod-meta">' + cnt + ' 题' +
@@ -562,7 +562,7 @@ var WG_App = (function () {
             '<span class="mod-diff mod-diff-' + (l.diff || 2) + '">' + diffTxt + '</span></div>' +
             '<div class="mod-foot">' +
             (starStr ? '<span class="mod-stars">' + starStr + '</span>' : '<span class="mod-stars mod-stars-none">未练习</span>') +
-            '<span class="mod-go">开始练习 →</span>' +
+            '<span class="mod-go">' + (l.type === 'gaoshu' ? '查看章节' : '开始练习') + ' →</span>' +
             '</div>' +
             '</div>';
         }).join('');
@@ -572,7 +572,7 @@ var WG_App = (function () {
         return '<div class="mod-subgroup">' +
           '<div class="msg-head">' +
           '<h4 class="msg-name"><span class="msg-dot"></span>' + g + '</h4>' +
-          '<span class="msg-meta">' + items.length + ' 关 · ' + gTotal + ' 题</span>' +
+          '<span class="msg-meta">' + items.length + ' 个模块 · ' + gTotal + ' 题</span>' +
           '</div>' +
           '<div class="mod-grid">' + cards + '</div>' +
           '</div>';
@@ -621,7 +621,7 @@ var WG_App = (function () {
     if (cont) {
       var s = subjectSummary(cont);
       if (titleEl) {
-        titleEl.textContent = cont.name;
+        titleEl.textContent = cont.name + '课程';
         titleEl.style.color = cont.color;
       }
       if (descEl) {
@@ -641,7 +641,7 @@ var WG_App = (function () {
       if (backEl) backEl.classList.remove('hidden');
     } else {
       if (titleEl) {
-        titleEl.textContent = '全科题库';
+        titleEl.textContent = '课程目录';
         /* 跟 index.html 里的 #bankTitle/#bankDesc 保持同一个主色令牌 */
         titleEl.style.color = 'var(--acc)';
       }
@@ -656,6 +656,20 @@ var WG_App = (function () {
       if (backEl) backEl.classList.add('hidden');
     }
 
+    var subjects = $('courseSubjects');
+    if (subjects) {
+      subjects.replaceChildren();
+      [{ id: '', name: '全部学科' }].concat(CONTINENTS.filter(function (c) {
+        return c.unlocked && getLevelsOf(c.id).length > 0;
+      })).forEach(function (c) {
+        var tab = document.createElement('button');
+        tab.type = 'button';
+        tab.textContent = c.name;
+        tab.setAttribute('aria-pressed', String((bankFilter || '') === c.id));
+        tab.onclick = function () { renderBank(c.id); };
+        subjects.appendChild(tab);
+      });
+    }
     renderModCards('bankGrid', bankFilter);
     showView('bank');
   }
@@ -1931,6 +1945,11 @@ var WG_App = (function () {
     /* 模块详情：子模块点击 */
     var subGrid = $('subGrid');
     if (subGrid) {
+      subGrid.addEventListener('keydown', function (e) {
+        if (e.key !== 'Enter' && e.key !== ' ') return;
+        var card = e.target.closest('.mod-card');
+        if (card) { e.preventDefault(); card.click(); }
+      });
       subGrid.addEventListener('click', function (e) {
         var card = e.target.closest ? e.target.closest('.mod-card') : null;
         if (!card) return;

@@ -1,0 +1,20 @@
+{
+  "passed": true,
+  "checks": [
+    "homepage keeps the 3D campus entrance",
+    "sidebar opens a normal course directory",
+    "course view contains no map, canvas, photos or decorative header image",
+    "all available subjects have visible modules",
+    "subject filter shows only its own modules",
+    "keyboard opens chapters and practice settings without a map",
+    "question count and difficulty/form filters still work",
+    "chapter entry actually starts an exercise",
+    "English practice still opens",
+    "IELTS practice still opens",
+    "390px course rows fit without horizontal scrolling",
+    "390px chapters and filters fit without horizontal scrolling",
+    "no uncaught browser errors or missing site assets"
+  ],
+  "errors": [],
+  "missing": []
+}
