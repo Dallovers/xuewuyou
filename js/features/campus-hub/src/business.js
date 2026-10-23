@@ -1,12 +1,17 @@
-export function createBusinessBridge({clearInput,status}){
+import {ENTRIES} from './layout.js';
+export function createBusinessBridge({clearInput,status,route}){
  const dialog=document.querySelector('#business'),frame=document.querySelector('#business-frame'),message=document.querySelector('#business-status');let generation=0,timer;
  const visible=e=>e&&e.getBoundingClientRect().width>0&&getComputedStyle(e).visibility!=='hidden';
- function close(){generation++;clearTimeout(timer);frame.removeAttribute('src');dialog.close();clearInput();document.querySelector('#world').focus({preventScroll:true});status();}
+ const guide=document.querySelector('#campus-guide');
+ for(const entry of ENTRIES){const button=document.createElement('button');button.type='button';button.dataset.guidePlace=entry.id;const title=document.createElement('strong'),description=document.createElement('span');title.textContent=entry.label;description.textContent=entry.description;button.append(title,description);button.onclick=()=>{close();route(entry.id);};guide.querySelector('nav').append(button);}
+ function close(){generation++;clearTimeout(timer);frame.removeAttribute('src');frame.hidden=false;guide.hidden=true;dialog.close();clearInput();document.querySelector('#world').focus({preventScroll:true});status();}
  document.querySelector('#close-business').onclick=close;
  dialog.addEventListener('cancel',e=>{e.preventDefault();close();});
  async function openFeature(name,options={}){
-  if(!['community','study','rooms','wenku'].includes(name))return{ok:false,message:'未知校园功能'};
+  if(!['community','study','rooms','wenku','campus-guide'].includes(name))return{ok:false,message:'未知校园功能'};
   const current=++generation;clearTimeout(timer);clearInput();dialog.showModal();status();document.querySelector('#business-title').textContent=name==='community'?'校园同伴':name==='wenku'?'学习资料':'自习室';message.textContent='正在打开原有功能…';
+  if(name==='campus-guide'){frame.onload=null;frame.removeAttribute('src');frame.hidden=true;guide.hidden=false;document.querySelector('#business-title').textContent='从庭院出发';message.textContent='选择目的地，沿校园步道前往。';guide.querySelector('button')?.focus();return{ok:true};}
+  guide.hidden=true;frame.hidden=false;
   frame.onload=()=>{
    if(current!==generation)return;clearTimeout(timer);
    try{

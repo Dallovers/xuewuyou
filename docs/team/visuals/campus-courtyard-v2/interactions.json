@@ -1,0 +1,337 @@
+{
+  "passed": true,
+  "checks": [
+    "courtyard has seven real interaction points",
+    "basin blocks walking while four-metre east corridor remains clear",
+    "real walking and E switch water off",
+    "E switches water on again",
+    "water-edge seat enters seated camera",
+    "walking does not slide a seated visitor",
+    "Esc stands up",
+    "pergola bench is usable",
+    "physical book opens original wenku document",
+    "directory opens accessible route choices",
+    "directory pauses movement",
+    "directory really walks to courtyard-facing study entrance",
+    "390px guide has no horizontal overflow",
+    "guide Esc closes modal",
+    "no uncaught browser errors"
+  ],
+  "errors": [],
+  "snapshot": {
+    "ready": true,
+    "mode": "walk",
+    "pos": [
+      5.2,
+      0,
+      13.5
+    ],
+    "yaw": -0.25,
+    "path": null,
+    "modal": false,
+    "returnRestored": false,
+    "seated": false,
+    "frames": 2672,
+    "entries": [
+      {
+        "id": "classroom",
+        "label": "教学楼",
+        "description": "进入现有教室",
+        "at": [
+          0,
+          -24
+        ],
+        "outside": [
+          0,
+          -22
+        ],
+        "path": "examples/campus-3d-v5/index.html?view=classroom"
+      },
+      {
+        "id": "library",
+        "label": "图书馆",
+        "description": "检索馆藏与阅读",
+        "at": [
+          -24,
+          1
+        ],
+        "outside": [
+          -22,
+          1
+        ],
+        "path": "examples/library-3d/index.html"
+      },
+      {
+        "id": "study",
+        "label": "自习室",
+        "description": "进入自习空间",
+        "at": [
+          -21.4,
+          20.7
+        ],
+        "outside": [
+          -19.5,
+          20.7
+        ],
+        "path": "js/features/study/preview.html"
+      },
+      {
+        "id": "social",
+        "label": "社交广场",
+        "description": "好友、留言与休息",
+        "at": [
+          9,
+          11
+        ],
+        "outside": [
+          7,
+          11
+        ],
+        "path": "js/features/social/preview.html"
+      },
+      {
+        "id": "arena",
+        "label": "竞技场",
+        "description": "好友挑战与报名",
+        "at": [
+          31,
+          2
+        ],
+        "outside": [
+          29,
+          2
+        ],
+        "path": "js/features/arena/index.html"
+      }
+    ],
+    "nearest": null,
+    "avatar": {
+      "asset": "student-anime.vrm",
+      "avatar": "anime",
+      "visible": true,
+      "position": [
+        5.2,
+        0,
+        13.5
+      ],
+      "yaw": 4.718098165818441,
+      "height": 1.72,
+      "clip": "idle",
+      "time": 0.7611999999284743,
+      "action": {
+        "current": null,
+        "elapsed": 0,
+        "height": 0,
+        "airborne": false,
+        "phase": "grounded"
+      },
+      "joints": {
+        "head": [
+          5.208644874899661,
+          1.471787107247367,
+          13.499812115767984
+        ],
+        "hips": [
+          5.196192484380366,
+          0.9632622939326319,
+          13.500021738048897
+        ],
+        "leftUpperArm": [
+          5.228528831102349,
+          1.3536216984110356,
+          13.614767750368868
+        ],
+        "leftLowerArm": [
+          5.282779020864119,
+          1.1385629277252622,
+          13.689619993322127
+        ],
+        "leftHand": [
+          5.238773057626161,
+          0.914298446061731,
+          13.69404866513701
+        ],
+        "rightUpperArm": [
+          5.227154750488853,
+          1.353560483195527,
+          13.384690012782489
+        ],
+        "rightLowerArm": [
+          5.280507719247169,
+          1.138462230592566,
+          13.309308353454579
+        ],
+        "rightHand": [
+          5.236452086470436,
+          0.9141955327760608,
+          13.305524771022819
+        ],
+        "leftUpperLeg": [
+          5.201528358086055,
+          0.9210337974054478,
+          13.582153640168164
+        ],
+        "leftLowerLeg": [
+          5.1294722971751945,
+          0.5521884958263796,
+          13.585884343118815
+        ],
+        "leftFoot": [
+          5.18998045751385,
+          0.11399000209761728,
+          13.58021990966906
+        ],
+        "leftToes": [
+          5.069123711445404,
+          0.05258843825465809,
+          13.584774268770346
+        ],
+        "rightUpperLeg": [
+          5.200547099891818,
+          0.9209900927629927,
+          13.417854438319043
+        ],
+        "rightLowerLeg": [
+          5.128334153190006,
+          0.5521737936196903,
+          13.41429379762748
+        ],
+        "rightFoot": [
+          5.18911340615994,
+          0.11400001408378613,
+          13.418861517428253
+        ],
+        "rightToes": [
+          5.068212540997535,
+          0.05259844179223906,
+          13.415687404097312
+        ],
+        "leftMiddleProximal": [
+          5.228923334189712,
+          0.8440669569688467,
+          13.699668666234047
+        ],
+        "leftMiddleDistal": [
+          5.221602680891866,
+          0.7807258449362996,
+          13.697579484645278
+        ],
+        "rightMiddleProximal": [
+          5.230527045551837,
+          0.8434860397887376,
+          13.300416285392556
+        ],
+        "rightMiddleDistal": [
+          5.226878846985337,
+          0.7798431214056868,
+          13.30293461461743
+        ]
+      },
+      "meshes": 13,
+      "triangles": 36470,
+      "skinned": 13,
+      "texturedMaterials": 20,
+      "head": [
+        0.4439374990273776,
+        0.5503996959111668,
+        0.444041820737492,
+        0.5502785818725583
+      ],
+      "leg": [
+        -0.22382048901726492,
+        0.028453811213443474,
+        -0.002164218704176937,
+        0.9742125473348551
+      ],
+      "arm": [
+        -0.16241247483141918,
+        -0.19816935373959726,
+        0.4746897342643987,
+        0.842033694195839
+      ],
+      "bounds": [
+        0.35000506051117597,
+        1.72,
+        1.4804307627468134
+      ]
+    },
+    "boxes": 77,
+    "render": {
+      "frame": 2699,
+      "calls": 269,
+      "triangles": 322408,
+      "points": 0,
+      "lines": 0
+    }
+  },
+  "courtyard": {
+    "waterOn": true,
+    "reducedMotion": false,
+    "interactionCount": 7,
+    "points": [
+      {
+        "id": "courtyard.water-switch",
+        "label": "关闭庭院流水",
+        "position": [
+          4.25,
+          0.8,
+          11
+        ]
+      },
+      {
+        "id": "courtyard.water-seat-east-1",
+        "label": "坐下 · 水边长椅",
+        "position": [
+          6.68,
+          0.55,
+          2.6
+        ]
+      },
+      {
+        "id": "courtyard.water-seat-east-2",
+        "label": "坐下 · 水边长椅",
+        "position": [
+          6.68,
+          0.55,
+          8.3
+        ]
+      },
+      {
+        "id": "courtyard.reading-seat",
+        "label": "坐下 · 阅读廊架",
+        "position": [
+          -13.48,
+          0.55,
+          3
+        ]
+      },
+      {
+        "id": "courtyard.garden-seat",
+        "label": "坐下 · 阅读廊架",
+        "position": [
+          -11.5,
+          0.55,
+          0.42000000000000004
+        ]
+      },
+      {
+        "id": "courtyard.reading-book",
+        "label": "翻阅桌上导读 · 打开学习资料",
+        "position": [
+          -10.8,
+          0.85,
+          3.3
+        ]
+      },
+      {
+        "id": "courtyard.directory",
+        "label": "查看校园导览",
+        "position": [
+          -6.1,
+          1.4,
+          -9.1
+        ]
+      }
+    ]
+  }
+}
