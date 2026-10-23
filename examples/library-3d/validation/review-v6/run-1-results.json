@@ -1,0 +1,122 @@
+{
+  "date": "2026-10-21T01:59:17.703Z",
+  "errors": [],
+  "failedResources": [],
+  "stages": {
+    "baseline": {
+      "mode": "baseline",
+      "localFillCandela": 0,
+      "contactShadowMap": 1024,
+      "globalExposure": 1,
+      "graphics": {
+        "quality": "high",
+        "exposure": 1,
+        "pixelRatio": 1,
+        "ambientOcclusion": true,
+        "buffer": [
+          1440,
+          960
+        ],
+        "samples": 113,
+        "fps": 54.8,
+        "mean_ms": 18.26283185882906,
+        "p95_ms": 18.100000023841858,
+        "max_ms": 162.70000004768372,
+        "drawCalls": 213,
+        "triangles": 252181,
+        "shadowUpdates": 2,
+        "submit_ms": 1
+      }
+    },
+    "contact": {
+      "mode": "contact",
+      "localFillCandela": 26,
+      "contactShadowMap": 1024,
+      "globalExposure": 1,
+      "graphics": {
+        "quality": "high",
+        "exposure": 1,
+        "pixelRatio": 1,
+        "ambientOcclusion": true,
+        "buffer": [
+          1440,
+          960
+        ],
+        "samples": 240,
+        "fps": 58.1,
+        "mean_ms": 17.219583333532015,
+        "p95_ms": 18.09999990463257,
+        "max_ms": 162.70000004768372,
+        "drawCalls": 213,
+        "triangles": 252181,
+        "shadowUpdates": 3,
+        "submit_ms": 1.6999999284744263
+      }
+    },
+    "final": {
+      "mode": "final",
+      "localFillCandela": 26,
+      "contactShadowMap": 1024,
+      "globalExposure": 1,
+      "graphics": {
+        "quality": "high",
+        "exposure": 1,
+        "pixelRatio": 1,
+        "ambientOcclusion": true,
+        "buffer": [
+          1440,
+          960
+        ],
+        "samples": 240,
+        "fps": 60,
+        "mean_ms": 16.667083333432675,
+        "p95_ms": 18,
+        "max_ms": 18.5,
+        "drawCalls": 213,
+        "triangles": 252181,
+        "shadowUpdates": 4,
+        "submit_ms": 1.2999999523162842
+      }
+    }
+  },
+  "seatingCycles": 24,
+  "fluid": {
+    "quality": "fluid",
+    "exposure": 1,
+    "pixelRatio": 0.85,
+    "ambientOcclusion": false,
+    "buffer": [
+      1224,
+      816
+    ],
+    "samples": 73,
+    "fps": 41.3,
+    "mean_ms": 24.197260273646002,
+    "p95_ms": 18.399999976158142,
+    "max_ms": 574.8999999761581,
+    "drawCalls": 103,
+    "triangles": 153176,
+    "shadowUpdates": 4,
+    "submit_ms": 1.100000023841858
+  },
+  "explicitDisposeStopsRendering": true,
+  "disposeChecks": [
+    {
+      "call": 1,
+      "before": 535,
+      "after": 535
+    },
+    {
+      "call": 2,
+      "before": 535,
+      "after": 535
+    },
+    {
+      "call": 3,
+      "before": 535,
+      "after": 535
+    }
+  ],
+  "repeatedDisposeStopsRendering": true,
+  "passed": true
+}

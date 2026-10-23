@@ -1,0 +1,12 @@
+AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+
+718 !== 717
+
+    at D:\文档\xuewuyou-项目资料\Codex工作区\2026-10-18\3d-pbr-v-ray-corona-unreal\work\review-pr26-v5\examples\library-3d\tests\round4-review.cjs:7:142 {
+  generatedMessage: true,
+  code: 'ERR_ASSERTION',
+  actual: 718,
+  expected: 717,
+  operator: 'strictEqual',
+  diff: 'simple'
+}
