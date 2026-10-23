@@ -7,20 +7,23 @@ import {createNavigation} from './navigation.js';
 import {ENTRIES,SITE_EXIT,START,groundAt} from './layout.js';
 import {readReturn,makeReturn,restorePose,KEY} from './return-state.js';
 import {createBusinessBridge} from './business.js';
+import {createVisualEffects} from './visual-effects.js';
+import {createSkyEnvironment} from './sky-environment.js';
 
 const $=selector=>document.querySelector(selector),canvas=$('#world'),scene=new T.Scene(),camera=new T.PerspectiveCamera(49,innerWidth/innerHeight,.1,350);
 const renderer=new T.WebGLRenderer({canvas,antialias:true,powerPreference:'high-performance'});
-renderer.outputColorSpace=T.SRGBColorSpace;renderer.toneMapping=T.ACESFilmicToneMapping;renderer.toneMappingExposure=.92;renderer.shadowMap.enabled=true;renderer.shadowMap.type=T.PCFSoftShadowMap;renderer.shadowMap.autoUpdate=false;
+renderer.outputColorSpace=T.SRGBColorSpace;renderer.toneMapping=T.ACESFilmicToneMapping;renderer.toneMappingExposure=.87;renderer.shadowMap.enabled=true;renderer.shadowMap.type=T.PCFShadowMap;renderer.shadowMap.autoUpdate=false;
 scene.background=new T.Color(0xd4ddd8);scene.fog=new T.Fog(0xd4ddd8,145,270);
-scene.add(new T.HemisphereLight(0xe3edf1,0x88967a,1.1));const sun=new T.DirectionalLight(0xffefd9,2.5);sun.position.set(-40,62,35);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);Object.assign(sun.shadow.camera,{left:-65,right:65,top:65,bottom:-65,near:1,far:170});sun.shadow.normalBias=.025;sun.shadow.bias=-.00003;scene.add(sun);scene.add(sun.target);
+scene.add(new T.HemisphereLight(0xe3edf1,0x686c5c,.36));const sun=new T.DirectionalLight(0xffefd9,2.6);sun.position.set(-40,62,35);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);sun.shadow.radius=2.2;Object.assign(sun.shadow.camera,{left:-65,right:65,top:65,bottom:-65,near:1,far:170});sun.shadow.normalBias=.016;sun.shadow.bias=-.00002;scene.add(sun);scene.add(sun.target);
+const effects=createVisualEffects(renderer,scene,camera,sun);
 const orbit=new OrbitControls(camera,canvas);orbit.enableDamping=true;orbit.minDistance=8;orbit.maxDistance=180;orbit.maxPolarAngle=Math.PI*.49;
 const state={ready:false,mode:'overview',...START,seated:null,path:null,frames:0,returnRestored:false};
-const keys=new Set(),clock=new T.Clock();let world,avatar,navigation,drag,nearest,disposed=false,toastTimer,lastShadow=0,studentYaw=0,lastX=0,lastZ=START.z,cameraCheck=0,cameraDistance=5.3,cameraBoxes=[];
+const keys=new Set(),clock=new T.Clock();let world,avatar,sky,navigation,drag,nearest,disposed=false,toastTimer,lastShadow=0,studentYaw=0,lastX=0,lastZ=START.z,cameraCheck=0,cameraDistance=5.3,cameraBoxes=[];
 const ray=new T.Raycaster(),aim=new T.Vector3(),direction=new T.Vector3(),targetCamera=new T.Vector3();
 const bridge=createBusinessBridge({clearInput,route:goTo,status:()=>{if(bridge.paused)avatar?.cancelAction();}});
 function clearInput(){keys.clear();drag=null;state.path=null;}
 function toast(text){$('#toast').textContent=text;$('#toast').hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('#toast').hidden=true,4200);}
-function resize(){const q=$('#quality').value,ratio=q==='high'?1.5:q==='fluid'?.8:innerWidth<700?.9:1;renderer.setPixelRatio(Math.min(devicePixelRatio,ratio));renderer.setSize(innerWidth,innerHeight);camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.shadowMap.needsUpdate=true;}
+function resize(){const q=$('#quality').value,ratio=q==='high'?1.5:q==='fluid'?.8:innerWidth<700?.9:1;renderer.setPixelRatio(Math.min(devicePixelRatio,ratio));renderer.setSize(innerWidth,innerHeight);camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();effects.resize(innerWidth,innerHeight,q);world?.courtyard.configureQuality(q,innerWidth);renderer.shadowMap.needsUpdate=true;}
 function setMode(mode){if(!state.ready)return;clearInput();avatar.cancelAction();state.seated=null;state.mode=mode;orbit.enabled=mode==='overview';$('#overview').setAttribute('aria-pressed',String(mode==='overview'));$('#walk').textContent=mode==='overview'?'开始漫游':'漫游中';$('#touch').hidden=mode!=='walk'||!(matchMedia('(pointer:coarse)').matches||innerWidth<700);$('#actions').hidden=mode!=='walk';$('#places').hidden=mode==='walk'&&innerWidth<700;if(mode==='overview'){camera.position.set(56,57,68);orbit.target.set(3,1,-4);orbit.update();}else{canvas.focus();updateCamera(.1);}}
 function stand(){if(!state.seated)return;state.seated=null;clearInput();toast('已起身');}
 function goTo(id){if(!state.ready||bridge.paused)return;stand();setMode('walk');const entry=ENTRIES.find(e=>e.id===id)||(id===SITE_EXIT.id?SITE_EXIT:null);if(!entry)return;const goal={x:entry.outside[0],z:entry.outside[1]};const route=navigation.route(state,goal);if(!route){toast('暂时找不到通路，请换个站位重试。');return;}state.path=route;toast('正在前往'+entry.label+(id===SITE_EXIT.id?'，走近后按 E 返回网站。':'，走近后按 E 进入。'));}
@@ -55,12 +58,12 @@ function frame(){
   }
   const dx=state.x-lastX,dz=state.z-lastZ,moving=Math.hypot(dx,dz)>.0001;if(moving){const angle=Math.atan2(dx,dz);studentYaw+=Math.atan2(Math.sin(angle-studentYaw),Math.cos(angle-studentYaw))*(1-Math.exp(-dt*18));}
   avatar.setVisible(!state.seated);avatar.update({position:{x:state.x,z:state.z,groundY:groundAt(state.x,state.z)},yaw:studentYaw,dt:paused?0:dt,moving:!paused&&moving,sprinting:keys.has('ShiftLeft')||keys.has('ShiftRight')||!!state.path});lastX=state.x;lastZ=state.z;
-  world.update(paused?0:dt);if(state.mode==='overview')orbit.update();else updateCamera(dt);
+  world.update(paused?0:dt);effects.fitShadow(state);if(state.mode==='overview')orbit.update();else updateCamera(dt);
   findNearest();$('#enter').disabled=!nearest;$('#enter').textContent=nearest?'E · '+nearest.label:'走近入口或互动设施';$('#jump').disabled=!!avatar.actionState.current||!!state.seated;
   $('#location').textContent=state.seated?(state.seated.label||'社交广场 · 休息'):state.z<-15?'教学楼前庭':state.x<-20&&state.z<15?'图书馆前庭':state.x<-20&&state.z>=15?'自习室前庭':state.x>28?'竞技场':state.x>7&&state.z<14?'社交广场':'中央庭院';
   $('#instructions').textContent=state.mode==='overview'?'拖动旋转 · 滚轮缩放 · 进入漫游后可行走':state.seated?'拖动环顾 · E / Esc 起身':'WASD 移动 · Shift 快跑 · 空格跳跃 · E 互动';
   if(!paused&&(moving||avatar.actionState.current)&&performance.now()-lastShadow>110){renderer.shadowMap.needsUpdate=true;lastShadow=performance.now();}state.frames++;
- }renderer.render(scene,camera);
+ }effects.render();
 }
 $('#overview').onclick=()=>setMode('overview');$('#walk').onclick=()=>setMode('walk');$('#directory').onclick=()=>{$('#places').hidden=!$('#places').hidden;};$('#enter').onclick=activate;$('#jump').onclick=()=>{jump();canvas.focus();};$('#quality').onchange=resize;$('#retry').onclick=()=>location.reload();
 for(const entry of [...ENTRIES,SITE_EXIT]){const b=document.createElement('button');b.textContent=entry.label;b.dataset.place=entry.id;const span=document.createElement('span');span.textContent='前往';b.append(span);b.onclick=()=>goTo(entry.id);$('#destinations').append(b);}
@@ -76,11 +79,12 @@ canvas.onpointerdown=e=>{if(bridge.paused||state.mode!=='walk')return;canvas.foc
 canvas.onpointermove=e=>{if(drag?.id!==e.pointerId||bridge.paused)return;state.yaw+=(e.clientX-drag.x)*.004;state.pitch=T.MathUtils.clamp(state.pitch+(e.clientY-drag.y)*.003,-.45,.7);drag.x=e.clientX;drag.y=e.clientY;};canvas.onpointerup=canvas.onpointercancel=()=>drag=null;
 for(const b of document.querySelectorAll('[data-key]')){b.onpointerdown=e=>{e.preventDefault();b.setPointerCapture(e.pointerId);keys.add(b.dataset.key);state.path=null;};b.onpointerup=b.onpointercancel=()=>keys.delete(b.dataset.key);}
 addEventListener('resize',resize);document.addEventListener('visibilitychange',()=>{clearInput();clock.getDelta();if(state.ready)renderer.setAnimationLoop(document.hidden?null:frame);});
-function dispose(){if(disposed)return;disposed=true;clearInput();clearTimeout(toastTimer);renderer.setAnimationLoop(null);bridge.dispose();avatar?.dispose();world?.dispose();orbit.dispose();sun.shadow.dispose();scene.environment?.dispose();if(scene.background?.isTexture)scene.background.dispose();renderer.dispose();renderer.forceContextLoss();}
+function dispose(){if(disposed)return;disposed=true;clearInput();clearTimeout(toastTimer);renderer.setAnimationLoop(null);bridge.dispose();avatar?.dispose();world?.dispose();effects.dispose();sky?.dispose();orbit.dispose();sun.shadow.dispose();scene.environment?.dispose();if(scene.background?.isTexture)scene.background.dispose();renderer.dispose();renderer.forceContextLoss();}
 addEventListener('pagehide',dispose);addEventListener('pageshow',e=>{if(e.persisted)location.reload();});
 async function init(){try{
- resize();const hdr=await new RGBELoader().loadAsync(new URL('../../../examples/campus-3d-v5/assets/sky.hdr',document.baseURI).href),pmrem=new T.PMREMGenerator(renderer);scene.environment=pmrem.fromEquirectangular(hdr).texture;scene.environmentIntensity=.5;hdr.mapping=T.EquirectangularReflectionMapping;scene.background=hdr;pmrem.dispose();
+ resize();const hdr=await new RGBELoader().loadAsync(new URL('../../../examples/campus-3d-v5/assets/sky.hdr',document.baseURI).href),pmrem=new T.PMREMGenerator(renderer);scene.environment=pmrem.fromEquirectangular(hdr).texture;scene.environmentIntensity=.5;sky=createSkyEnvironment(hdr);scene.add(sky.mesh);pmrem.dispose();
  world=await createWorld(scene,(name,options)=>name==='exit-site'?exitSite():bridge.openFeature(name,options),text=>$('#progress').textContent=text);navigation=createNavigation(world.boxes);
+ world.courtyard.configureQuality($('#quality').value,innerWidth);
  cameraBoxes=[...world.boxes,...world.cameraObstacles].map(b=>new T.Box3(new T.Vector3(b.minX,b.minY??0,b.minZ),new T.Vector3(b.maxX,b.maxY??(b.id?.startsWith('academy')?18:b.id==='library'?6:b.id==='study'?4.2:b.id==='bench'?.5:b.id==='lamp'?4:3),b.maxZ)));
  $('#progress').textContent='加载校园人物…';avatar=await createStudentAvatar(scene);
  const record=readReturn(sessionStorage);if(record){Object.assign(state,restorePose(record,navigation));state.returnRestored=!!record.pending;record.pending=false;sessionStorage.setItem(KEY,JSON.stringify(record));}studentYaw=Number.isFinite(record?.heading)?record.heading:Math.PI-state.yaw;lastX=state.x;lastZ=state.z;state.ready=true;
@@ -88,4 +92,5 @@ async function init(){try{
  }catch(error){console.error(error);$('#loading strong').textContent='校园暂时无法加载';$('#progress').textContent=error.message;$('#retry').hidden=false;}}
 window.__campusHub={snapshot:()=>({ready:state.ready,mode:state.mode,pos:[state.x,groundAt(state.x,state.z),state.z],yaw:state.yaw,path:state.path,modal:bridge.paused,returnRestored:state.returnRestored,seated:!!state.seated,frames:state.frames,entries:ENTRIES,nearest:nearest?.id||null,avatar:avatar?.snapshot(),boxes:world?.boxes.length,render:renderer.info.render}),route:id=>goTo(id),setPose:(x,z,yaw=0)=>{if(!navigation||navigation.blocked(x,z))return false;clearInput();setMode('walk');Object.assign(state,{x,z,yaw});lastX=x;lastZ=z;return true;},blocked:(x,z)=>navigation?.blocked(x,z),entry:id=>{const e=ENTRIES.find(e=>e.id===id);if(e)enterScene(e);},openFeature:(...args)=>bridge.openFeature(...args),dispose};
 window.__campusHub.courtyard=()=>world?.courtyard.snapshot();
+window.__campusHub.visuals=()=>({...effects.snapshot(),memory:{...renderer.info.memory},programs:renderer.info.programs.length,water:world?.courtyard.snapshot().water});
 init();

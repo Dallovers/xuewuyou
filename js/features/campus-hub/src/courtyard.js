@@ -1,18 +1,17 @@
 import * as T from 'three';
 import {RoundedBoxGeometry} from 'three/addons/geometries/RoundedBoxGeometry.js';
 import {SITE_EXIT} from './layout.js';
+import {createWaterSurface} from './water-surface.js';
 
 // Metres, Y up. Keep a four-metre route east of the water garden.
-export function createCourtyard(openFeature,leafMap){
+export function createCourtyard(openFeature,leafMap,surfaces){
  const root=new T.Group();root.name='Central courtyard water and reading garden';
  const boxes=[],interactions=[],batches=new Map(),cube=new T.BoxGeometry(1,1,1);
  const stone=new T.MeshStandardMaterial({name:'Honed limestone',color:0xc5c1b2,roughness:.78});
  const edge=stone.clone();edge.name='Limestone cut edges';edge.color.setHex(0xb4b2a7);
  const bronze=new T.MeshStandardMaterial({name:'Bronze fittings',color:0x394844,roughness:.48,metalness:.55});
  const wood=new T.MeshStandardMaterial({name:'Oiled ash timber',color:0x9c7951,roughness:.62});
- const grain=document.createElement('canvas');grain.width=512;grain.height=128;const gc=grain.getContext('2d');gc.fillStyle='#ddd5c3';gc.fillRect(0,0,512,128);
- for(let i=0;i<110;i++){gc.strokeStyle=i%7===0?'#94877436':'#aa9a8324';gc.lineWidth=i%9===0?1.2:.5;gc.beginPath();for(let x=0;x<=512;x+=8){const y=(i*17.13)%128+Math.sin(x*.023+i)*1.6;x===0?gc.moveTo(x,y):gc.lineTo(x,y);}gc.stroke();}
- const grainMap=new T.CanvasTexture(grain);grainMap.colorSpace=T.SRGBColorSpace;grainMap.wrapS=grainMap.wrapT=T.RepeatWrapping;grainMap.anisotropy=4;wood.map=grainMap;
+ surfaces.apply(stone,'stone',{normal:.16,color:0xe0d9c7});surfaces.apply(edge,'stone',{normal:.20,color:0xc6c2b6});surfaces.apply(wood,'wood',{meters:1.6,normal:.15,color:0xe0d1b6});
  const soil=new T.MeshStandardMaterial({name:'Mulched planting bed',color:0x615c49,roughness:1});
  const leaf=new T.MeshStandardMaterial({name:'Mixed low planting',color:0x718164,roughness:.95});
  const shrubLeaf=new T.MeshStandardMaterial({name:'Evergreen groundcover leaves',color:0x9ca985,map:leafMap,alphaTest:.48,side:T.DoubleSide,roughness:.95});
@@ -45,8 +44,7 @@ export function createCourtyard(openFeature,leafMap){
   for(let i=0;i<5;i++)part(copingShort,stone,[-1.52+i*.76,.39,5.5+s*4.12]);
  }
  obstacle('water',0,5.5,4.36,8.56,.43);
- const waterMaterial=new T.MeshPhysicalMaterial({name:'Shallow courtyard water',color:0x647f7b,roughness:.22,metalness:.12,transparent:true,opacity:.87,clearcoat:1,clearcoatRoughness:.17});
- const water=new T.Mesh(new T.PlaneGeometry(3.76,7.92),waterMaterial);water.name='Courtyard shallow water';water.rotation.x=-Math.PI/2;water.position.set(0,.285,5.5);root.add(water);
+ const waterSurface=createWaterSurface(reduced);root.add(waterSurface.mesh);
  // Narrow stone borders and slotted drainage give the paving a construction scale.
  for(const s of [-1,1]){
   box('Water paving border',s*2.78,.014,5.5,.18,.012,10.1,edge,0,false);
@@ -55,7 +53,7 @@ export function createCourtyard(openFeature,leafMap){
   for(let j=0;j<55;j++)box('Drain cross strip',s*3.35,.025,.55+j*.18,.11,.012,.024,bronze,0,false);
  }
  // Three low recirculating arcs; geometry is static, only droplets move at 20 Hz.
- const streamMaterial=new T.MeshBasicMaterial({color:0xb3d5d0,transparent:true,opacity:.50,depthWrite:false});
+ const streamMaterial=new T.MeshPhysicalMaterial({color:0xc9ded8,transparent:true,opacity:.24,depthWrite:false,roughness:.10,metalness:0,clearcoat:.8});
  const streams=new T.Group();streams.name='Courtyard recirculating streams';root.add(streams);
  const curves=[];
  for(const x of [-1,0,1]){
@@ -64,7 +62,7 @@ export function createCourtyard(openFeature,leafMap){
   const curve=new T.CatmullRomCurve3(points);curves.push(curve);
   const mesh=new T.Mesh(new T.TubeGeometry(curve,24,.018,5,false),streamMaterial);mesh.name='Low water arc';streams.add(mesh);
  }
- const droplets=new T.InstancedMesh(new T.SphereGeometry(.027,5,4),streamMaterial,30);droplets.name='Recirculating water droplets';streams.add(droplets);
+ const droplets=new T.InstancedMesh(new T.SphereGeometry(.011,5,4),streamMaterial,30);droplets.name='Recirculating water droplets';streams.add(droplets);
  const rings=new T.InstancedMesh(new T.TorusGeometry(.16,.006,4,28),streamMaterial,9);rings.name='Water landing ripples';rings.rotation.x=-Math.PI/2;rings.position.set(0,.296,0);streams.add(rings);
  for(let i=0;i<9;i++){dummy.position.set([-1,0,1][i%3],-3.52,0);dummy.scale.setScalar(.55+Math.floor(i/3)*.65);dummy.rotation.set(0,0,0);dummy.updateMatrix();rings.setMatrixAt(i,dummy.matrix);}rings.instanceMatrix.needsUpdate=true;
  box('Water control plinth',4.25,.38,11.0,.28,.76,.24,stone);
@@ -122,7 +120,7 @@ export function createCourtyard(openFeature,leafMap){
  // Ground planting is clustered and low; no additional canopy trees.
  const shrubGeo=new T.IcosahedronGeometry(1,2),grassGeo=new T.ConeGeometry(.045,.43,4),leafGeo=new T.PlaneGeometry(1,1);
  let seed=241;const rand=()=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296;};
- for(const [x,z,w,d]of [[-16.9,3,1.0,8.0],[-12,-2.2,5.7,.9],[10,23,5.2,8.6]]){
+ for(const [x,z,w,d]of [[-16.9,3,1.0,8.0],[-12,-2.2,5.7,.9]]){
   box('Mulched perennial bed',x,.03,z,w,.04,d,soil,0,false);
   for(const s of [-1,1])box('Planting stone edge',x+s*w/2,.095,z,.11,.17,d,edge);
   for(let i=0;i<24;i++){
@@ -166,6 +164,7 @@ export function createCourtyard(openFeature,leafMap){
   batch.matrices.forEach((m,i)=>mesh.setMatrixAt(i,m));mesh.instanceMatrix.needsUpdate=true;mesh.castShadow=batch.cast;mesh.receiveShadow=true;root.add(mesh);
  }
  function update(dt){
+  waterSurface.update(dt);
   if(disposed||!waterOn||dt<=0)return;time+=dt;waterTicks+=dt;
   if(waterTicks<.05)return;waterTicks=0;
   for(let i=0;i<30;i++){
@@ -174,5 +173,5 @@ export function createCourtyard(openFeature,leafMap){
   }droplets.instanceMatrix.needsUpdate=true;
  }
  update(.05);
- return{root,boxes,interactions,cameraObstacles:[{id:'courtyard.pergola-roof',minX:-14.85,maxX:-9.15,minZ:-.50,maxZ:6.50,minY:2.74,maxY:3.06}],update,dispose(){disposed=true;},snapshot:()=>({waterOn,reducedMotion:reduced,interactionCount:interactions.length,points:interactions.map(i=>({id:i.id,label:i.label,position:i.object.getWorldPosition(new T.Vector3()).toArray()}))})};
+ return{root,boxes,interactions,cameraObstacles:[{id:'courtyard.pergola-roof',minX:-14.85,maxX:-9.15,minZ:-.50,maxZ:6.50,minY:2.74,maxY:3.06}],configureQuality:(quality,width)=>waterSurface.configure(quality,width),update,dispose(){disposed=true;waterSurface.dispose();},snapshot:()=>({waterOn,reducedMotion:reduced,water:waterSurface.snapshot(),interactionCount:interactions.length,points:interactions.map(i=>({id:i.id,label:i.label,position:i.object.getWorldPosition(new T.Vector3()).toArray()}))})};
 }

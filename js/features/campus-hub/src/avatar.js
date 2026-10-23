@@ -76,7 +76,8 @@ export async function createStudentAvatar(scene){
  model.scale.setScalar(1.72/height);model.updateMatrixWorld(true);
  const scaledBounds=new T.Box3().setFromObject(model);model.position.y=-scaledBounds.min.y;
  model.updateMatrixWorld(true);vrm?.springBoneManager?.reset();
- const shadow=new T.Mesh(new T.CircleGeometry(.28,24),new T.MeshBasicMaterial({color:0x18221c,transparent:true,opacity:.18,depthWrite:false}));
+ const contactCanvas=document.createElement('canvas');contactCanvas.width=contactCanvas.height=128;const cc=contactCanvas.getContext('2d'),fade=cc.createRadialGradient(64,64,4,64,64,62);fade.addColorStop(0,'rgba(255,255,255,.85)');fade.addColorStop(.4,'rgba(255,255,255,.35)');fade.addColorStop(1,'rgba(255,255,255,0)');cc.fillStyle=fade;cc.fillRect(0,0,128,128);const contactMap=new T.CanvasTexture(contactCanvas);
+ const shadow=new T.Mesh(new T.PlaneGeometry(.90,.64),new T.MeshBasicMaterial({color:0x18221c,map:contactMap,transparent:true,opacity:.18,depthWrite:false}));
  shadow.rotation.x=-Math.PI/2;shadow.position.y=.018;root.add(shadow);
  let expressionTime=0;
  const probeNames=['head','hips','leftUpperArm','leftLowerArm','leftHand','rightUpperArm','rightLowerArm','rightHand','leftUpperLeg','leftLowerLeg','leftFoot','leftToes','rightUpperLeg','rightLowerLeg','rightFoot','rightToes','leftMiddleProximal','leftMiddleDistal','rightMiddleProximal','rightMiddleDistal'];
@@ -98,6 +99,6 @@ export async function createStudentAvatar(scene){
    }
   },
   setVisible(value){root.visible=!!value;},
-  dispose(){scene.remove(root);mixer.stopAllAction();mixer.uncacheRoot(model);if(vrm)VRMUtils.deepDispose(model);else gltf.scene.traverse(n=>{if(n.isMesh){n.geometry.dispose();for(const material of Array.isArray(n.material)?n.material:[n.material])material.dispose();}});shadow.geometry.dispose();shadow.material.dispose();}
+  dispose(){scene.remove(root);mixer.stopAllAction();mixer.uncacheRoot(model);if(vrm)VRMUtils.deepDispose(model);else gltf.scene.traverse(n=>{if(n.isMesh){n.geometry.dispose();for(const material of Array.isArray(n.material)?n.material:[n.material])material.dispose();}});shadow.geometry.dispose();shadow.material.dispose();contactMap.dispose();}
  };
 }
