@@ -14,6 +14,7 @@ node server/scripts/campus-preview-dev.cjs
 打开 http://127.0.0.1:4184/js/features/campus-hub/index.html 。主站“今日校园”也增加了“进入 3D 校园庭院”。本地服务仅监听回环地址，使用 `server/data/campus-hub-preview` 隔离账号和学习数据，不连接线上账号库；不能直接双击 HTML 运行。
 
 - “看总图”拖动旋转、滚轮缩放；“开始漫游”进入第三人称。
+- 总览底部“开始漫游 · 开启互动”和 E 也可进入漫游；点击开门、起身或拿书工具后会将控制交回场景。普通校园按钮上的焦点不阻断 E / WASD；输入框、选择框和业务面板仍优先处理输入。
 - WASD / 方向键移动，Shift 快跑，拖动转向，空格跳跃，E 进入或互动；手机提供方向、跳跃和进入按钮。
 - 选择地点可沿碰撞允许的路线自动步行，手动移动取消路线。
 - “地点 → 校园出口”可走到南侧步道的出口牌，按 E 退出 3D，回到原网站首页。右上角“返回网站”可直接返回，加载期间也能点击。只清除本标签页的校园返回票据，原登录与网站数据保持；离开页面沿原生命周期释放渲染器。
@@ -109,7 +110,7 @@ npm run shells --prefix js/features/campus-hub
 
 ## 验收
 
-保持本地服务运行后执行 `npm test --prefix js/features/campus-hub`。`test:interiors` 验证原门扇与实际键盘进屋、教室设备/答题/坐位、PDF/书签/计时、自习实体拿书翻页和坐起、签到/好友/留言/竞技入口、390px。`tests/browser.cjs` 验证五处实际步行路线、五轮业务开关与 GPU 资源稳定、原 `#studyModalMask` 两级 Esc、真实触屏移动、五轮返回网站/后退、原独立图书馆与代理模拟的 `/xuewuyou/` 子路径。
+保持本地服务运行后执行 `npm test --prefix js/features/campus-hub`。`test:input` 使用实际地点按钮步行到图书馆、点击开门后直接按键，不调用 setPose 或主动聚焦画布，防止测试掩盖焦点故障。`test:interiors` 验证原门扇与实际键盘进屋、教室设备/答题/坐位、PDF/书签/计时、自习实体拿书翻页和坐起、签到/好友/留言/竞技入口、390px。`tests/browser.cjs` 验证五处实际步行路线、五轮业务开关与 GPU 资源稳定、原 `#studyModalMask` 两级 Esc、真实触屏移动、五轮返回网站/后退、原独立图书馆与代理模拟的 `/xuewuyou/` 子路径。
 
 本轮证据见 [连续室内 v6](../../../docs/team/visuals/campus-interiors-v6/README.md)，旧跳页模式的 v1 报告只作历史记录。自动化使用本机 Edge / D3D11 headless；Windows 本机 Node 的 libuv 定时器异常用单 CPU 亲和性的 Node 22.14.0 运行测试规避，不需更改服务器。390px 模拟与无头帧间隔采样不等于实体手机性能验收；本地双账号 HTTP 回归也不等于所有业务的双浏览器 UI 或线上部署验收。
 
