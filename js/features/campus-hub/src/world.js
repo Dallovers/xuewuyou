@@ -27,7 +27,8 @@ export async function createWorld(scene,openFeature,progress,getPose){
  plane('Campus service road',0,43.8,1000,5,mat(0x777c76),-.03);
  root.add(createCampusContext(surfaces));
  paving(-2,10,43,50);paving(-12,-19,36,9);paving(-24,1,10,7);paving(-27,15,15,7);paving(-13,30,18,5);paving(3,37,9,10);paving(20,-10,8,8);
- for(const [x,z,w,d]of [[-12,3,10,14]]){plane('Courtyard lawn island',x,z,w,d,lawn,.02);for(const s of [-1,1]){box(root,'Low lawn stone edge',x+s*w/2,.04,z,.10,.08,d,stone);box(root,'Low lawn stone edge',x,.04,z+s*d/2,w,.08,.10,stone);}}
+ // 庭院中间那块 10×14 的草坪岛（连同四周 8 cm 石边）已撤除：它整个落在 D(-2,10,43,50) 这块大铺地范围内，
+ // 直接让下面的连续白石铺地露出来即可 —— 板缝按世界坐标投影，接得上，不需要再叠一层（同高会共面闪烁）。
  const leafMap=await new T.TextureLoader().loadAsync(new URL('../social/assets/generated/camphor-leaf-v1.png',document.baseURI).href);leafMap.colorSpace=T.SRGBColorSpace;textures.add(leafMap);
  const courtyard=createCourtyard(openFeature,leafMap,surfaces,pavingMaterial);root.add(courtyard.root);boxes.push(...courtyard.boxes);interactions.push(...courtyard.interactions);
  function bench(x,z,angle=0){const g=new T.Group();g.position.set(x,0,z);g.rotation.y=angle;root.add(g);for(const s of [-1,1])box(g,'Bench stone support',s*.65,.21,0,.20,.42,.45,stone);for(let i=0;i<4;i++)box(g,'Warm timber bench slat',0,.46,(i-1.5)*.12,1.85,.055,.10,wood);boxes.push({id:'bench',minX:x-(angle?.33:1),maxX:x+(angle?.33:1),minZ:z-(angle?1:.33),maxZ:z+(angle?1:.33)});}
