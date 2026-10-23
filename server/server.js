@@ -563,6 +563,7 @@ require('./learning')({ route, authUser, sendJson, readBody, store, syncReviews:
 require('./practice')({ route, authUser, sendJson, readBody, store });
 require('./campus')({ route, authUser, sendJson, readBody, store, studyRooms });
 const community = require('./community')({route,authUser,sendJson,readBody,store,syncReviews:integrations.syncReviews});
+const campusLive = require('./campus/presence')({authUser,store});
 require('./questions')({ route, authUser, sendJson, readBody });
 
 /* 管理员后台最后挂载：它要用到 cleanPresence，也要保证 authUser 已带上封号判定 */
@@ -656,7 +657,7 @@ const server = http.createServer(async (req, res) => {
   serveStatic(req, res);
 });
 
-studyRooms.attach(community.attach(server));
+studyRooms.attach(campusLive.attach(community.attach(server)));
 server.requestTimeout = 30000;
 async function start(port=PORT,host=process.env.HOST || '127.0.0.1') {
   await store.init();
@@ -678,5 +679,5 @@ if (require.main === module) start().then(() => {
 
 
 
-if (require.main === module) process.on('SIGTERM', async () => { server.close(); studyRooms.close(); await integrations.close(); await community.close(); await store.close(); process.exit(0); });
-module.exports = { server, integrations, community,studyRooms, admin, start, routes };
+if (require.main === module) process.on('SIGTERM', async () => { server.close(); campusLive.close(); studyRooms.close(); await integrations.close(); await community.close(); await store.close(); process.exit(0); });
+module.exports = { server, integrations, community,studyRooms,campusLive, admin, start, routes };

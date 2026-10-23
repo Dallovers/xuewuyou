@@ -1,0 +1,321 @@
+{
+  "passed": true,
+  "checks": [
+    "complete academy, library furniture and study contents share one campus",
+    "closed academy entrance blocks actual walking",
+    "walking enters academy without page navigation",
+    "classroom partition door opens and allows real passage",
+    "equipment controls operate real projector and blinds",
+    "original classroom sample answer is saved in existing browser records",
+    "classroom chair places seated camera and offers learning controls",
+    "return to courtyard walks out through actual academy entrance",
+    "walking enters full library in same campus",
+    "physical shelf opens original catalogue with no second 3D renderer",
+    "library reads actual local document and enables bookmarking",
+    "original bookmarks and notes are available in campus panel",
+    "physical guidebook opens existing recommendations and random draw",
+    "library seat supports real seated view",
+    "original reading timer runs in 2D panel without 3D duplication",
+    "study room is entered through its courtyard-facing door",
+    "original study book can be physically picked up",
+    "picked book opens with original page geometry",
+    "held book returns to source position",
+    "B local seat and C sit/stand are preserved",
+    "C stands up without leaving stale local seat state",
+    "study furniture aisles lead back through real courtyard doorway",
+    "physical study check-in connects original real rooms panel",
+    "campus action opens original friends business",
+    "campus action opens original posts business",
+    "campus action opens original arena business",
+    "390px in-room controls remain on screen",
+    "no uncaught browser errors or missing room resources"
+  ],
+  "errors": [],
+  "failed": [],
+  "final": {
+    "ready": true,
+    "mode": "walk",
+    "pos": [
+      -26,
+      0,
+      1
+    ],
+    "yaw": -1.5707963267948966,
+    "path": null,
+    "modal": false,
+    "returnRestored": false,
+    "seated": false,
+    "frames": 1754,
+    "interior": "library",
+    "rooms": {
+      "academySeats": 24,
+      "librarySeats": 8,
+      "shelves": 4,
+      "equipment": {
+        "blinds": 1,
+        "blindsTarget": 1,
+        "lights": 0.18,
+        "lightsTarget": 0.18,
+        "projector": 1,
+        "projectorTarget": 1,
+        "screenVisible": true
+      },
+      "doors": [
+        {
+          "id": "entry",
+          "open": 1,
+          "target": 1,
+          "blocked": false
+        },
+        {
+          "id": "classroom",
+          "open": 1,
+          "target": 1,
+          "blocked": false
+        },
+        {
+          "id": "library",
+          "open": 1,
+          "target": 1,
+          "blocked": false
+        }
+      ]
+    },
+    "picker": {
+      "held": false,
+      "open": false,
+      "aim": null
+    },
+    "entries": [
+      {
+        "id": "classroom",
+        "label": "教学楼",
+        "description": "进入现有教室",
+        "at": [
+          0,
+          -24
+        ],
+        "outside": [
+          0,
+          -22
+        ],
+        "path": "examples/campus-3d-v5/index.html?view=classroom"
+      },
+      {
+        "id": "library",
+        "label": "图书馆",
+        "description": "检索馆藏与阅读",
+        "at": [
+          -24,
+          1
+        ],
+        "outside": [
+          -22,
+          1
+        ],
+        "path": "examples/library-3d/index.html"
+      },
+      {
+        "id": "study",
+        "label": "自习室",
+        "description": "进入自习空间",
+        "at": [
+          -21.4,
+          20.7
+        ],
+        "outside": [
+          -19.5,
+          20.7
+        ],
+        "path": "js/features/study/preview.html"
+      },
+      {
+        "id": "social",
+        "label": "社交广场",
+        "description": "好友、留言与休息",
+        "at": [
+          9,
+          11
+        ],
+        "outside": [
+          7,
+          11
+        ],
+        "path": "js/features/social/preview.html"
+      },
+      {
+        "id": "arena",
+        "label": "竞技场",
+        "description": "好友挑战与报名",
+        "at": [
+          31,
+          2
+        ],
+        "outside": [
+          29,
+          2
+        ],
+        "path": "js/features/arena/index.html"
+      }
+    ],
+    "nearest": "library",
+    "avatar": {
+      "asset": "student-anime.vrm",
+      "avatar": "anime",
+      "visible": false,
+      "position": [
+        -26,
+        0,
+        1
+      ],
+      "yaw": -4.690516304171859,
+      "height": 1.72,
+      "clip": "idle",
+      "time": 0.4075666269063954,
+      "action": {
+        "current": null,
+        "elapsed": 0,
+        "height": 0,
+        "airborne": false,
+        "phase": "grounded"
+      },
+      "joints": {
+        "head": [
+          -26.010352088532816,
+          1.4716380123092783,
+          1.0003654631344359
+        ],
+        "hips": [
+          -25.996193333089774,
+          0.9631580026427566,
+          0.9999167247267811
+        ],
+        "leftUpperArm": [
+          -26.03007286360659,
+          1.3534502549737015,
+          0.885536295829412
+        ],
+        "leftLowerArm": [
+          -26.08462472923619,
+          1.1385023380571964,
+          0.8105849566472352
+        ],
+        "leftHand": [
+          -26.04111406523435,
+          0.9141384656940829,
+          0.8062988580401418
+        ],
+        "rightUpperArm": [
+          -26.024972944398947,
+          1.3533889507930044,
+          1.115892074376837
+        ],
+        "rightLowerArm": [
+          -26.076156761865544,
+          1.1384010434307816,
+          1.1930711433116028
+        ],
+        "rightHand": [
+          -26.0325010831247,
+          0.9140353965846321,
+          1.195308176724218
+        ],
+        "leftUpperLeg": [
+          -26.002713768528835,
+          0.9209134348553544,
+          0.9178786407133506
+        ],
+        "leftLowerLeg": [
+          -25.9310887901528,
+          0.552009492301266,
+          0.9121694743454707
+        ],
+        "leftFoot": [
+          -25.988420226012945,
+          0.11338174997978956,
+          0.9176515503251251
+        ],
+        "leftToes": [
+          -25.867652887125043,
+          0.05198016859047627,
+          0.9111444029324095
+        ],
+        "rightUpperLeg": [
+          -25.999077105507574,
+          0.9208697298451538,
+          1.0821405208862616
+        ],
+        "rightLowerLeg": [
+          -25.9271256138305,
+          0.5519958127853195,
+          1.084945303613954
+        ],
+        "rightFoot": [
+          -25.984836905762617,
+          0.11339402713548347,
+          1.0819249301691367
+        ],
+        "rightToes": [
+          -25.863900529682894,
+          0.05199245760954351,
+          1.0831445382628913
+        ],
+        "leftMiddleProximal": [
+          -26.031409072181745,
+          0.8438840362538708,
+          0.8007138974728336
+        ],
+        "leftMiddleDistal": [
+          -26.024236454992828,
+          0.7805269115001545,
+          0.802830836019741
+        ],
+        "rightMiddleProximal": [
+          -26.026561172129497,
+          0.8433120821253137,
+          1.2002036223660166
+        ],
+        "rightMiddleDistal": [
+          -26.023145986502694,
+          0.7796614636638394,
+          1.1975564208834255
+        ]
+      },
+      "meshes": 13,
+      "triangles": 36470,
+      "skinned": 13,
+      "texturedMaterials": 20,
+      "head": [
+        0.44708819336724565,
+        0.5478431751480854,
+        0.4471928964159469,
+        0.5477211937169564
+      ],
+      "leg": [
+        -0.22175767649002667,
+        0.028861398840855715,
+        -0.0010735857921332311,
+        0.9746740026050179
+      ],
+      "arm": [
+        -0.16241247483141918,
+        -0.19816935373959726,
+        0.4746897342643987,
+        0.842033694195839
+      ],
+      "bounds": [
+        0.3582175574082882,
+        1.72,
+        1.4845558362826965
+      ]
+    },
+    "boxes": 185,
+    "render": {
+      "frame": 1842,
+      "calls": 56,
+      "triangles": 129376,
+      "points": 64,
+      "lines": 0
+    }
+  }
+}

@@ -11,7 +11,7 @@ export function createBusinessBridge({clearInput,status,route,equipment}){
  document.querySelector('#close-business').onclick=close;
  dialog.addEventListener('cancel',e=>{e.preventDefault();close();});
  async function openFeature(name,options={}){
-  if(!['community','study','rooms','wenku','bank','library','courses','equipment','campus-guide','note'].includes(name))return{ok:false,message:'未知校园功能'};
+  if(!['account','community','study','rooms','wenku','bank','library','courses','equipment','campus-guide','note'].includes(name))return{ok:false,message:'未知校园功能'};
   const current=++generation;clearTimeout(timer);clearInput();dialog.showModal();status();document.querySelector('#business-title').textContent=name==='community'?'校园同伴':name==='wenku'?'学习资料':'自习室';message.textContent='正在打开原有功能…';
   note.hidden=true;guide.hidden=true;tools.hidden=true;libraryChannel='';
   if(name==='courses'||name==='equipment'){frame.onload=null;frame.removeAttribute('src');frame.hidden=true;tools.hidden=false;document.querySelector('#business-title').textContent=name==='courses'?'课程与学习':'教室设备';message.textContent='关闭后回到当前站位。';renderRoomTools(tools,name,{equipment:equipment(),openFeature,notify:text=>message.textContent=text});return{ok:true};}
@@ -23,7 +23,7 @@ export function createBusinessBridge({clearInput,status,route,equipment}){
    try{
     const win=frame.contentWindow;
     if(name==='library'){const until=Date.now()+18000;while(!win.__libraryPanel?.ready&&Date.now()<until&&current===generation)await new Promise(r=>setTimeout(r,80));if(current!==generation)return;if(!win.__libraryPanel?.ready)throw Error('资料界面未就绪');}
-    else {if(!win?.StudyAppBridge?.navTo)throw Error('功能入口未就绪');if(name==='community'&&options.tab&&win.WG_Community?.open)win.WG_Community.open(options.tab);else win.StudyAppBridge.navTo(name);}
+    else {if(!win?.StudyAppBridge?.navTo)throw Error('功能入口未就绪');if(name==='account'){win.StudyAppBridge.navTo('home');win.document.querySelector('#nickBtn')?.click();document.querySelector('#business-title').textContent='校园账号';}else if(name==='community'&&options.tab&&win.WG_Community?.open)win.WG_Community.open(options.tab);else win.StudyAppBridge.navTo(name);}
     message.textContent='关闭后回到当前站位。';
     win.document.addEventListener('keydown',event=>{
      if(event.key!=='Escape')return;

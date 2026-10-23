@@ -11,8 +11,8 @@ const CLIPS={
  prototype:{idle:['CharacterArmature|Idle_Neutral','CharacterArmature|Idle'],walk:['CharacterArmature|Walk'],run:['CharacterArmature|Run'],wave:['CharacterArmature|Wave'],punch:['CharacterArmature|Punch_Left']}
 };
 
-export async function createStudentAvatar(scene){
- const avatar=new URLSearchParams(location.search).get('avatar')||'anime';
+export async function createStudentAvatar(scene,options={}){
+ const avatar=options.variant||new URLSearchParams(location.search).get('avatar')||'anime';
  const variant=Object.hasOwn(CLIPS,avatar)?avatar:'anime';
  const asset=variant==='anime'?'student-anime.vrm':variant==='prototype'?'student-hoodie.glb':variant==='formal'?'student-formal.glb':'student-robot.glb';
  const loader=new GLTFLoader();
@@ -83,15 +83,16 @@ export async function createStudentAvatar(scene){
  const probeNames=['head','hips','leftUpperArm','leftLowerArm','leftHand','rightUpperArm','rightLowerArm','rightHand','leftUpperLeg','leftLowerLeg','leftFoot','leftToes','rightUpperLeg','rightLowerLeg','rightFoot','rightToes','leftMiddleProximal','leftMiddleDistal','rightMiddleProximal','rightMiddleDistal'];
  function jointPositions(){if(!vrm)return undefined;model.updateMatrixWorld(true);return Object.fromEntries(probeNames.map(name=>[name,vrm.humanoid.getRawBoneNode(name)?.getWorldPosition(new T.Vector3()).toArray()]));}
  return{
-  root,model,height:1.72,clips:[...actions.keys()],
-  get actionState(){return gestures.snapshot();},get locksMovement(){return gestures.locksMovement;},get jumpHeight(){return gestures.height;},
+  root,model,variant,height:1.72,clips:[...actions.keys()],
+  get clip(){return activeName;},get actionState(){return gestures.snapshot();},get locksMovement(){return gestures.locksMovement;},get jumpHeight(){return gestures.height;},
   act(name,ground=0){return gestures.start(name,ground);},cancelAction(){gestures.cancel();},
   snapshot(){let meshes=0,triangles=0,skinned=0;let head=vrm?.humanoid.getRawBoneNode('head'),leg=vrm?.humanoid.getRawBoneNode('leftUpperLeg'),arm=vrm?.humanoid.getRawBoneNode('rightUpperArm');model.traverse(n=>{if(n.isMesh){meshes++;triangles+=(n.geometry.index?.count||n.geometry.attributes.position.count)/3;if(n.isSkinnedMesh)skinned++;}if(!head&&/head/i.test(n.name))head=n;if(!leg&&/upper.?leg|thigh/i.test(n.name))leg=n;});return{asset,avatar:variant,visible:root.visible,position:root.position.toArray(),yaw:root.rotation.y,height:1.72,clip:activeName,time:active?.time,action:gestures.snapshot(),joints:jointPositions(),meshes,triangles,skinned,texturedMaterials:[...adjusted].filter(m=>m.map).length,head:head?.quaternion.toArray(),leg:leg?.quaternion.toArray(),arm:arm?.quaternion.toArray(),bounds:new T.Box3().setFromObject(model).getSize(new T.Vector3()).toArray()};},
-  update({position,yaw,dt,moving=false,sprinting=false}){
+  update({position,yaw,dt,moving=false,sprinting=false,remoteState=null}){
    root.position.set(position.x,0,position.z);root.rotation.y=yaw;
-   const ground=position.groundY||0;gestures.update(dt,ground);root.position.y=ground+gestures.height;
-   shadow.position.y=.018-gestures.height;shadow.material.opacity=.18/(1+gestures.height);shadow.scale.setScalar(1+gestures.height*.35);
-   play(gestures.current||(moving?(sprinting?'run':'walk'):'idle'));
+   const ground=position.groundY||0;if(!remoteState)gestures.update(dt,ground);const height=remoteState?.height??gestures.height;root.position.y=ground+height;
+   shadow.position.y=.018-height;shadow.material.opacity=.18/(1+height);shadow.scale.setScalar(1+height*.35);
+   play(remoteState?.clip||gestures.current||(moving?(sprinting?'run':'walk'):'idle'));
+   if(remoteState?.clip==='jump'&&active)active.time=Math.min(remoteState.time,active.getClip().duration-.001);
    mixer.update(dt);
    if(vrm){
     expressionTime+=dt;const blink=expressionTime%4.6;vrm.expressionManager.setValue('blink',blink<.16?Math.sin(blink/.16*Math.PI):0);

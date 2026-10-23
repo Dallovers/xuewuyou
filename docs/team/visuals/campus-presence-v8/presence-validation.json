@@ -1,0 +1,28 @@
+{
+  "passed": true,
+  "checks": [
+    "two authenticated browser contexts render each other as actual 3D avatars",
+    "real W movement is synchronized and interpolated in the other renderer",
+    "real jump height and native character animation reach the other browser",
+    "leaving shared campus removes the peer immediately without exiting 3D",
+    "rejoining restores one peer without duplicates",
+    "network loss clears stale peer",
+    "connection recovery returns both characters without page refresh",
+    "390px online controls fit the viewport",
+    "closing a real browser context leaves no ghost model",
+    "guest stays single player with no invented online users",
+    "guest login uses existing account dialog inside campus",
+    "no uncaught browser errors"
+  ],
+  "errors": [],
+  "final": {
+    "joined": true,
+    "wanted": true,
+    "selfId": "2b934554-205c-412f-b63c-9634cc72ff75",
+    "players": 1,
+    "loaded": 0,
+    "remoteRevision": 80,
+    "peers": [],
+    "status": "同场 1 人 · 等待同学加入"
+  }
+}
