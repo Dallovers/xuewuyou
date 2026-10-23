@@ -14,7 +14,7 @@ const assert=require('node:assert/strict');
  try{
   await page.goto('http://127.0.0.1:4184/js/features/campus-hub/index.html');
   await page.waitForFunction(()=>window.__campusHub?.snapshot().ready&&window.__campusHub.snapshot().frames>3,null,{timeout:120000});
-  check('courtyard has seven real interaction points',await page.evaluate(()=>window.__campusHub.courtyard().interactionCount===7));
+  check('courtyard has eight real interaction points including site exit',await page.evaluate(()=>window.__campusHub.courtyard().interactionCount===8));
   await page.screenshot({path:path.join(out,'overview.png')});
   check('basin blocks walking while four-metre east corridor remains clear',await page.evaluate(()=>window.__campusHub.blocked(0,5.5)&&[3,4,5,6].every(x=>!window.__campusHub.blocked(x,5.5))));
   await pose(4.25,12.65,0);await page.keyboard.down('KeyW');await page.waitForTimeout(220);await page.keyboard.up('KeyW');await pressAt('courtyard.water-switch');

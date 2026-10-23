@@ -4,7 +4,7 @@ import {RGBELoader} from 'three/addons/loaders/RGBELoader.js';
 import {createWorld} from './world.js';
 import {createStudentAvatar} from './avatar.js';
 import {createNavigation} from './navigation.js';
-import {ENTRIES,START,groundAt} from './layout.js';
+import {ENTRIES,SITE_EXIT,START,groundAt} from './layout.js';
 import {readReturn,makeReturn,restorePose,KEY} from './return-state.js';
 import {createBusinessBridge} from './business.js';
 
@@ -23,7 +23,8 @@ function toast(text){$('#toast').textContent=text;$('#toast').hidden=false;clear
 function resize(){const q=$('#quality').value,ratio=q==='high'?1.5:q==='fluid'?.8:innerWidth<700?.9:1;renderer.setPixelRatio(Math.min(devicePixelRatio,ratio));renderer.setSize(innerWidth,innerHeight);camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.shadowMap.needsUpdate=true;}
 function setMode(mode){if(!state.ready)return;clearInput();avatar.cancelAction();state.seated=null;state.mode=mode;orbit.enabled=mode==='overview';$('#overview').setAttribute('aria-pressed',String(mode==='overview'));$('#walk').textContent=mode==='overview'?'开始漫游':'漫游中';$('#touch').hidden=mode!=='walk'||!(matchMedia('(pointer:coarse)').matches||innerWidth<700);$('#actions').hidden=mode!=='walk';$('#places').hidden=mode==='walk'&&innerWidth<700;if(mode==='overview'){camera.position.set(56,57,68);orbit.target.set(3,1,-4);orbit.update();}else{canvas.focus();updateCamera(.1);}}
 function stand(){if(!state.seated)return;state.seated=null;clearInput();toast('已起身');}
-function goTo(id){if(!state.ready||bridge.paused)return;stand();setMode('walk');const entry=ENTRIES.find(e=>e.id===id),goal={x:entry.outside[0],z:entry.outside[1]};const route=navigation.route(state,goal);if(!route){toast('暂时找不到通路，请换个站位重试。');return;}state.path=route;toast('正在前往'+entry.label+'，走近后按 E 进入。');}
+function goTo(id){if(!state.ready||bridge.paused)return;stand();setMode('walk');const entry=ENTRIES.find(e=>e.id===id)||(id===SITE_EXIT.id?SITE_EXIT:null);if(!entry)return;const goal={x:entry.outside[0],z:entry.outside[1]};const route=navigation.route(state,goal);if(!route){toast('暂时找不到通路，请换个站位重试。');return;}state.path=route;toast('正在前往'+entry.label+(id===SITE_EXIT.id?'，走近后按 E 返回网站。':'，走近后按 E 进入。'));}
+function exitSite(){clearInput();try{sessionStorage.removeItem(KEY);}catch{}location.assign(new URL('../../../index.html#home',document.baseURI).href);return{ok:true};}
 function enterScene(entry){
  try{const record=makeReturn(entry,{...state,heading:studentYaw});sessionStorage.setItem(KEY,JSON.stringify(record));const url=new URL('../../../'+entry.path,document.baseURI);url.searchParams.set('campusTicket',record.ticket);url.searchParams.set('campusScene',entry.id);clearInput();location.assign(url.href);}catch{toast('无法保存返回位置，请检查浏览器存储权限。');}
 }
@@ -62,7 +63,8 @@ function frame(){
  }renderer.render(scene,camera);
 }
 $('#overview').onclick=()=>setMode('overview');$('#walk').onclick=()=>setMode('walk');$('#directory').onclick=()=>{$('#places').hidden=!$('#places').hidden;};$('#enter').onclick=activate;$('#jump').onclick=()=>{jump();canvas.focus();};$('#quality').onchange=resize;$('#retry').onclick=()=>location.reload();
-for(const entry of ENTRIES){const b=document.createElement('button');b.textContent=entry.label;b.dataset.place=entry.id;const span=document.createElement('span');span.textContent='前往';b.append(span);b.onclick=()=>goTo(entry.id);$('#destinations').append(b);}
+for(const entry of [...ENTRIES,SITE_EXIT]){const b=document.createElement('button');b.textContent=entry.label;b.dataset.place=entry.id;const span=document.createElement('span');span.textContent='前往';b.append(span);b.onclick=()=>goTo(entry.id);$('#destinations').append(b);}
+$('#site-exit').onclick=e=>{if(e.button!==0||e.ctrlKey||e.metaKey||e.shiftKey||e.altKey)return;e.preventDefault();exitSite();};
 addEventListener('keydown',e=>{
  if(e.target.closest?.('input,textarea,select,[contenteditable=true]')||bridge.paused)return;
  if(e.code==='Escape'){stand();clearInput();return;}
@@ -78,7 +80,7 @@ function dispose(){if(disposed)return;disposed=true;clearInput();clearTimeout(to
 addEventListener('pagehide',dispose);addEventListener('pageshow',e=>{if(e.persisted)location.reload();});
 async function init(){try{
  resize();const hdr=await new RGBELoader().loadAsync(new URL('../../../examples/campus-3d-v5/assets/sky.hdr',document.baseURI).href),pmrem=new T.PMREMGenerator(renderer);scene.environment=pmrem.fromEquirectangular(hdr).texture;scene.environmentIntensity=.5;hdr.mapping=T.EquirectangularReflectionMapping;scene.background=hdr;pmrem.dispose();
- world=await createWorld(scene,(...args)=>bridge.openFeature(...args),text=>$('#progress').textContent=text);navigation=createNavigation(world.boxes);
+ world=await createWorld(scene,(name,options)=>name==='exit-site'?exitSite():bridge.openFeature(name,options),text=>$('#progress').textContent=text);navigation=createNavigation(world.boxes);
  cameraBoxes=[...world.boxes,...world.cameraObstacles].map(b=>new T.Box3(new T.Vector3(b.minX,b.minY??0,b.minZ),new T.Vector3(b.maxX,b.maxY??(b.id?.startsWith('academy')?18:b.id==='library'?6:b.id==='study'?4.2:b.id==='bench'?.5:b.id==='lamp'?4:3),b.maxZ)));
  $('#progress').textContent='加载校园人物…';avatar=await createStudentAvatar(scene);
  const record=readReturn(sessionStorage);if(record){Object.assign(state,restorePose(record,navigation));state.returnRestored=!!record.pending;record.pending=false;sessionStorage.setItem(KEY,JSON.stringify(record));}studentYaw=Number.isFinite(record?.heading)?record.heading:Math.PI-state.yaw;lastX=state.x;lastZ=state.z;state.ready=true;

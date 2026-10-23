@@ -2,6 +2,7 @@ export const VERSION='campus-hub-v1';
 export const BOUNDS={minX:-49,maxX:56,minZ:-46,maxZ:42};
 export const START={x:0,z:30,yaw:0,pitch:0};
 export const STUDY_PLACEMENT={x:-27,z:24,yaw:Math.PI/2};
+export const SITE_EXIT={id:'site-exit',label:'校园出口',description:'返回网站首页',at:[0,37.2],outside:[0,35.3]};
 // Scene names are local route IDs, not replacements for stable business IDs.
 export const ENTRIES=[
  {id:'classroom',label:'教学楼',description:'进入现有教室',at:[0,-24],outside:[0,-22],path:'examples/campus-3d-v5/index.html?view=classroom'},

@@ -1,5 +1,6 @@
 import * as T from 'three';
 import {RoundedBoxGeometry} from 'three/addons/geometries/RoundedBoxGeometry.js';
+import {SITE_EXIT} from './layout.js';
 
 // Metres, Y up. Keep a four-metre route east of the water garden.
 export function createCourtyard(openFeature,leafMap){
@@ -148,6 +149,17 @@ export function createCourtyard(openFeature,leafMap){
  const sign=new T.Mesh(new T.PlaneGeometry(1.17,1.48),signMat);sign.position.set(-6.1,1.48,-9.543);root.add(sign);
  obstacle('directory',-6.1,-9.6,1.38,.6,2.3);
  point('directory','查看校园导览',-6.1,1.4,-9.1,()=>openFeature('campus-guide',{from:'courtyard.directory'}),1.9);
+ // A campus wayfinding marker at the south promenade, with the walkway open.
+ const exitCanvas=document.createElement('canvas');exitCanvas.width=768;exitCanvas.height=384;const ec=exitCanvas.getContext('2d');
+ ec.fillStyle='#e1e3d7';ec.fillRect(0,0,768,384);ec.fillStyle='#315448';ec.font='bold 70px Microsoft YaHei';ec.fillText('返回网站',65,145);ec.font='35px Microsoft YaHei';ec.fillText('离开 3D 校园 · 回到学无忧首页',65,225);ec.font='28px Microsoft YaHei';ec.fillText('走近后按 E，或点击屏幕上的返回网站',65,305);
+ const exitMap=new T.CanvasTexture(exitCanvas);exitMap.colorSpace=T.SRGBColorSpace;exitMap.anisotropy=4;
+ const exitMaterial=new T.MeshStandardMaterial({name:'Site exit enamel',map:exitMap,roughness:.72});
+ box('South exit marker base',-2.05,.09,37.3,1.75,.18,.50,stone);
+ for(const x of [-2.73,-1.37])box('South exit marker post',x,.75,37.3,.065,1.35,.065,bronze);
+ box('South exit marker frame',-2.05,1.43,37.3,1.72,.90,.09,bronze);
+ const exitFace=new T.Mesh(new T.PlaneGeometry(1.60,.8),exitMaterial);exitFace.position.set(-2.05,1.43,37.247);exitFace.rotation.y=Math.PI;root.add(exitFace);
+ obstacle('site-exit-marker',-2.05,37.3,1.75,.50,1.9);
+ point('site-exit','返回网站首页',SITE_EXIT.at[0],1,SITE_EXIT.at[1],()=>openFeature('exit-site'),2.3);
  // Batch all repeated construction pieces by geometry/material/shadow state.
  for(const batch of batches.values()){
   const mesh=new T.InstancedMesh(batch.geometry,batch.material,batch.matrices.length);mesh.name='Courtyard · '+batch.material.name;
