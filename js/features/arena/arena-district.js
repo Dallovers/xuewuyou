@@ -6,7 +6,8 @@
  * 边界（与社交广场同一套契约）：
  *   - 只产出本板块的 THREE.Group，不自建 renderer、不启动 RAF、不改公共相机与输入。
  *   - root 保持单位变换；与社交广场并排时由宿主按 ARENA_LAYOUT.neighbor.offset 摆放。
- *   - 台基是碰撞体，目前不能登台：挑战在 DOM 面板里作答，3D 侧只负责"走到擂台前把它打开"。
+ *   - 台基碰撞沿围护四条铺、西门留空：人可以走台阶上台面（第十三轮），
+ *     但台上只有"走上去、站着"，挑战仍在 DOM 面板里作答，3D 侧不写第二套状态。
  *   - 不伪造战绩数据：对战牌只有场地标识，没有从接口读到的比分。
  *
  * 坐标约定：米制，Y 向上；站点中心为原点，X 向东，Z 向南。
@@ -26,7 +27,11 @@ export const ARENA_LAYOUT = {
      原来这里是 rope: { levels: 3, from: 0.5, step: 0.4, radius: 0.03 } 的三道围绳，
      连同绳的麻花法线、抛物线下垂几何一起删掉了——那套是拳击台的语汇。 */
   rail: { top: 1.02, band: 0.52 },
-  step: { count: 2, width: 3.4, rise: 0.18, run: 0.44 },
+  /* 台阶：3 跑，起 0.21，正好 0.63 = base 0.55 + cap 0.08，最后一跑和台面齐平。
+     早先是 2 跑、起 0.18，最高只到 0.36，离台面差 0.27——那 27cm 不是踏步，
+     是人得爬上去的一段立面，所以那时台阶只用来"走到台边把面板打开"。
+     西门做成真能走之后，必须凑到台面高度，否则门口还是断的。 */
+  step: { count: 3, width: 3.4, rise: 0.21, run: 0.44 },
   gate: { x: -8.6, z: 0, span: 4.0, post: 0.22, height: 3.05 },
   /* 锣不挂在门洞正中：吊到 2.0m 高、直径 0.68，正中挂着就是给进场的人一个"撞头"。
      偏到门洞北侧（z=-1.5），南侧还留 2.8m 净宽，敲锣和进场互不挡。 */
@@ -1859,8 +1864,9 @@ export function createDistrict(ctx = {}) {
       }
     }
 
-    /* 台阶：只有西侧，两跑。外侧一跑矮、踏面长，内侧一跑高、踏面短，
-       从进场方向看是"往上走三级"的关系，不是一摞盒子。 */
+    /* 台阶：只有西侧，三跑。外侧一跑矮、踏面长，内侧一跑高、踏面短，
+       从进场方向看是"往上走三级"的关系，不是一摞盒子。
+       三跑正好 0.63 = 台面高，最后一跑和台面齐平，人从西门走上来不用迈高差。 */
     let stepAnchor = null;
     for (let i = 0; i < L.step.count; i++) {
       const w = L.step.run * (L.step.count - i);
@@ -1873,14 +1879,24 @@ export function createDistrict(ctx = {}) {
       if (i === 0) stepAnchor = m;
     }
 
-    // 碰撞：台基整体一个盒（含台面），台阶一个盒，柱子已在台基范围内
-    colliders.push({
-      name: 'arena:ring', type: 'box',
-      center: [R.cx, (R.base + R.cap) / 2, R.cz],
-      half: [(R.size + 0.1) / 2, (R.base + R.cap) / 2, (R.size + 0.1) / 2],
-    });
-    blockBox(L.step.run * L.step.count + 0.04, L.step.rise * L.step.count, L.step.width,
-      R.cx - half - (L.step.run * L.step.count) / 2, R.cz, 'arena:step');
+    /* 台基碰撞：原来是整块一个盒（含台面），人走到台边就被挡住，台上永远上不去。
+       第十二轮在西侧开了门，这一轮把门做成真能走的：
+       台基碰撞改成沿围护的四条、宽 0.30，**门洞那一段不铺**；台阶不再单独挡人。
+       于是人从台阶上、穿门洞、站到台面；另三边照旧挡，围护的线和碰撞的线是同一条。
+       台的立面（0.63 高那圈）也因此有碰撞，人从侧面撞上去不会被穿。 */
+    const ringHalf = R.size / 2;
+    const railBand = 0.30;
+    const gateHalfW = L.step.width / 2;
+    for (const sz of [-1, 1]) {
+      blockBox(R.size, R.base + R.cap, railBand, R.cx, R.cz + sz * (ringHalf - railBand / 2), 'arena:ring-rail');
+    }
+    blockBox(railBand, R.base + R.cap, R.size - railBand * 2,
+      R.cx + ringHalf - railBand / 2, R.cz, 'arena:ring-rail');
+    const westSeg = ringHalf - gateHalfW;
+    for (const sz of [-1, 1]) {
+      blockBox(railBand, R.base + R.cap, westSeg,
+        R.cx - ringHalf + railBand / 2, R.cz + sz * (gateHalfW + westSeg / 2), 'arena:ring-rail');
+    }
 
     /* 交互点挂在最外一跑台阶上，不挂台心：
        台心到台阶口约 4.5m，半径得放到接近 5m 才够，那样看台第一排（距台心 4.5m）也会被误触发。
@@ -1900,8 +1916,8 @@ export function createDistrict(ctx = {}) {
   /* ---------- 答题台 ----------
    * 两座，南北相对，摆在台面上。这是全场地最直接的一句"这是知识竞赛"——
    * 比在柱子上挂学科牌有效，因为它占住了台面，而台面原本是空白的。
-   * 选手不能登台（见 README「未完成」），但两座空着的台子读成"人还没上来"，
-   * 不是"这里没有比赛"：台面上的牌和灯是开着灯的。
+   * 第十三轮之前人上不了台，那两座空台子照样读成"人还没上来"，
+   * 不是"这里没有比赛"：台面上的牌和灯是开着灯的。现在人能站上来了，台子还是空的。
    *
    * **为什么沿 Z 分列而不是沿 X**：预设的"擂台正面"机位是从西侧斜看进来的，
    * 沿 X 摆的时候两座台子正好一前一后叠成一根柱子，画面里像台心多了个怪东西。

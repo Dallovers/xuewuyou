@@ -481,6 +481,24 @@ function resize() {
 window.addEventListener('resize', resize);
 resize();
 
+/* 台面高度：这是自由飞的自测页，?h 是给验收脚本精确摆机位用的绝对高度——
+   给了就完全按它的来，一厘米都不动；没给才把地面高度叠上去，
+   这样人从西门走台阶上台面时相机跟着抬，不会穿进石材里。 */
+function arenaGroundAt(x, z) {
+  const lx = x - arenaOffset[0];
+  const lz = z - arenaOffset[2];
+  const half = L.ring.size / 2;
+  const top = L.ring.base + L.ring.cap;
+  if (Math.abs(lx - L.ring.cx) <= half && Math.abs(lz - L.ring.cz) <= half) return top;
+  if (Math.abs(lz - L.ring.cz) <= L.step.width / 2) {
+    const x0 = L.ring.cx - half - L.step.run * L.step.count;
+    if (lx >= x0 && lx <= L.ring.cx - half) {
+      return Math.min(top, Math.ceil((lx - x0) / L.step.run) * L.step.rise);
+    }
+  }
+  return 0;
+}
+
 function tick(now) {
   const dt = Math.min((now - last) / 1000, 0.1);
   last = now;
@@ -503,7 +521,7 @@ function tick(now) {
     if (keys.KeyL) yaw -= dt * 1.6;
   }
 
-  camera.position.set(PLAYER.x, PLAYER.y, PLAYER.z);
+  camera.position.set(PLAYER.x, PLAYER.y + (qs.has('h') ? 0 : arenaGroundAt(PLAYER.x, PLAYER.z)), PLAYER.z);
   camera.rotation.set(pitch, yaw, 0, 'YXZ');
 
   for (const w of worlds) w.district.update(dt);
