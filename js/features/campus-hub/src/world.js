@@ -1,17 +1,16 @@
 import * as T from 'three';
-import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
-import {MeshoptDecoder} from 'meshoptimizer';
-import {BUILDING_BOXES,STUDY_PLACEMENT} from './layout.js';
+import {STUDY_PLACEMENT} from './layout.js';
 import {worldBoxes} from './navigation.js';
 import {createCourtyard} from './courtyard.js';
 import {loadSurfaces} from './surface-materials.js';
 import {createCampusContext} from './campus-context.js';
 import {createWhitePaving} from './paving-material.js';
 import {faceSocialCourtyard} from './social-placement.js';
+import {createInteriors} from './interiors.js';
 
-export async function createWorld(scene,openFeature,progress){
+export async function createWorld(scene,openFeature,progress,getPose){
  const root=new T.Group();root.name='Campus shared public ground';scene.add(root);
- const boxes=BUILDING_BOXES.map(b=>({...b})),districts=[],interactions=[],owned=new Set(),textures=new Set();
+ const boxes=[],districts=[],interactions=[],owned=new Set(),textures=new Set();
  progress('正在准备庭院材质…');const surfaces=await loadSurfaces();
  const mat=(color,opts={})=>{const m=new T.MeshStandardMaterial({color,roughness:.8,...opts});owned.add(m);return m;};
  const stone=mat(0xe2dfd2),wood=mat(0xb39265),metal=mat(0x34473e,{metalness:.2,roughness:.5}),lawn=mat(0x7e8d69),soil=mat(0x80735b);
@@ -37,31 +36,29 @@ export async function createWorld(scene,openFeature,progress){
   box(root,'Bronze pedestrian lamp',x,1.95,z,.10,3.9,.10,metal);box(root,'Lamp overhang',x+.24,3.85,z,.58,.10,.17,metal);box(root,'Lamp diffuser',x+.28,3.78,z,.42,.035,.13,mat(0xfff5dc,{emissive:0xffefd0,emissiveIntensity:.45}));
   boxes.push({id:'lamp',minX:x-.1,maxX:x+.1,minZ:z-.1,maxZ:z+.1});
  }
- progress('加载现有建筑外壳…');
- const loader=new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
- const shells=await Promise.all(['academy','library'].map(id=>loader.loadAsync(new URL('assets/'+id+'-shell.glb',document.baseURI).href)));
- shells[0].scene.position.set(0,0,-30);shells[1].scene.position.set(-34,0,1);shells[1].scene.rotation.y=Math.PI/2;
- const upgraded=new Set();for(const {scene:s}of shells){s.traverse(n=>{if(n.isMesh){n.castShadow=n.receiveShadow=true;const materials=Array.isArray(n.material)?n.material:[n.material];for(const m of materials){m.envMapIntensity=.6;if(upgraded.has(m))continue;upgraded.add(m);
-  const kind=/limestone|Honed.*stone/i.test(m.name)?'stone':/Grey (masonry|brick)/i.test(m.name)?'brick':null;
-  if(kind){for(const old of [m.map,m.normalMap,m.roughnessMap])if(old)textures.add(old);surfaces.apply(m,kind,{normal:kind==='brick'?.25:.12,meters:kind==='brick'?1:2});}
-  if(/architectural glass/i.test(m.name)){m.roughness=.09;m.envMapIntensity=1.0;}
- }}});root.add(s);}
+ progress('加载教学楼与图书馆完整室内…');
+ const interiors=await createInteriors(openFeature,getPose);for(const building of interiors.roots)root.add(building);boxes.push(...interiors.boxes);interactions.push(...interiors.interactions);
  progress('连接自习室、社交广场和竞技场…');
  // Runtime imports preserve each author's import.meta.url asset bases.
  const [study,social,arena,landscape]=await Promise.all([
   import(new URL('../study/district.js?v=study-roof-88',document.baseURI).href),import(new URL('../social/social-district.js?campus=hub1',document.baseURI).href),import(new URL('../arena/arena-district.js?campus=arena89-round4',document.baseURI).href),import(new URL('../social/social-landscape.js',document.baseURI).href)
  ]);
  const studyDistrict=study.createDistrict({THREE:T,openFeature,mode:'runtime'});studyDistrict.root.position.set(STUDY_PLACEMENT.x,0,STUDY_PLACEMENT.z);studyDistrict.root.rotation.y=STUDY_PLACEMENT.yaw;
- // The indoor room is a shell in this view. Its original page retains picking,
- // reading and seating. Outdoor collision uses the measured exterior footprint.
- root.add(studyDistrict.root);districts.push(studyDistrict);
+ // Reuse B's room furniture and measured doorway/furniture colliders.
+ // The host owns camera/input and adapts the original picker and local seats.
+ root.add(studyDistrict.root);districts.push(studyDistrict);boxes.push(...worldBoxes(T,studyDistrict));
+ for(const item of studyDistrict.interactions){
+  if(item.id.startsWith('study.seat.')){const original=item.action;item.action=()=>{const result=original();if(result.mode!=='sit')return result;const node=item.object;node.updateWorldMatrix(true,false);const s=studyDistrict.root.userData.parts.seats.userData.seats.find(s=>item.id==='study.seat.'+s.id),yaw=s.kind==='window'?Math.PI/2:s.id.endsWith('n')?Math.PI:0;const direction=new T.Vector3(-Math.sin(yaw),0,-Math.cos(yaw)).transformDirection(studyDistrict.root.matrixWorld);return{ok:true,kind:'seat',label:'自习座位 '+s.id+' · 本地',position:node.getWorldPosition(new T.Vector3()).add(new T.Vector3(0,1.18,0)).toArray(),directions:[direction.toArray()],feature:'study',onStand:original};};}
+  interactions.push(item);
+ }
+
  // Camera obstruction includes the new eaves/ridge; navigation keeps the
  // ground-level wall footprint so the overhang never blocks pedestrians.
  studyDistrict.root.updateMatrixWorld(true);
  const roofBounds=new T.Box3(),roof=studyDistrict.root.getObjectByName('Roof');
  roof?.traverse(n=>{if(n.isMesh&&!['RainPipe','RainHopper'].includes(n.name))roofBounds.union(new T.Box3().setFromObject(n));});
  const cameraObstacles=[...courtyard.cameraObstacles,...(roofBounds.isEmpty()?[]:[{id:'study-roof',minX:roofBounds.min.x,maxX:roofBounds.max.x,minY:roofBounds.min.y,maxY:roofBounds.max.y,minZ:roofBounds.min.z,maxZ:roofBounds.max.z}])];
- boxes.find(b=>b.id==='study').maxY=roof?.getObjectByName('RoofPlate')?.position.y??4.2;
+
  // Exterior-only warm timber screen and entrance canopy; retain B's room,
  // door opening, interior, picking and seat implementation unchanged.
  const studyExterior=new T.Group();studyExterior.name='Study entrance exterior';studyDistrict.root.add(studyExterior);
@@ -81,5 +78,5 @@ export async function createWorld(scene,openFeature,progress){
   const add=(geo,m,px,py,pz,opts={})=>{const mesh=new T.Mesh(geo,m);mesh.position.set(px,py,pz);mesh.name=opts.name||'Tree';mesh.castShadow=mesh.receiveShadow=true;tree.add(mesh);return mesh;};
   landscape.buildCampusTree({THREE:T,root:tree,add,M:{leaf,bark,soil},x:0,z:0,leafCount:2400,seedOffset:100+i*197});boxes.push({id:'tree',minX:x-.35,maxX:x+.35,minZ:z-.35,maxZ:z+.35});
  }
- return{root,boxes,cameraObstacles,interactions,districts,courtyard,pavingSnapshot:()=>({name:pavingMaterial.name,meshes:pavingMeshes.length,materials:[...new Set(pavingMeshes.map(m=>m.material.uuid))].length}),update(dt){courtyard.update(dt);for(const d of districts)d.update?.(dt);},dispose(){courtyard.dispose();for(const d of districts)d.dispose?.();const geos=new Set(),mats=new Set(owned),maps=new Set([...textures,...surfaces.textures]);root.traverse(n=>{if(n.geometry)geos.add(n.geometry);for(const m of n.material?(Array.isArray(n.material)?n.material:[n.material]):[]){mats.add(m);for(const v of Object.values(m))if(v?.isTexture)maps.add(v);}});for(const g of geos)g.dispose();for(const t of maps)t.dispose();for(const m of mats)m.dispose();scene.remove(root);}};
+ return{root,boxes,interiors,study:studyDistrict,inside(p){const q=studyDistrict.root.worldToLocal(new T.Vector3(p.x,0,p.z));return Math.abs(q.x)<5.95&&Math.abs(q.z)<4.45?'study':interiors.inside(p);},enter(id){if(id==='classroom'||id==='library')return interiors.open(id);if(id==='study')return{ok:true,message:'自习室入口开放，可以直接走进房间。'};return openFeature('community',{tab:id==='arena'?'arena':'friends'});},cameraObstacles,interactions,districts,courtyard,pavingSnapshot:()=>({name:pavingMaterial.name,meshes:pavingMeshes.length,materials:[...new Set(pavingMeshes.map(m=>m.material.uuid))].length}),update(dt){interiors.update(dt);courtyard.update(dt);for(const d of districts)d.update?.(dt);},dispose(){interiors.dispose();courtyard.dispose();for(const d of districts)d.dispose?.();const geos=new Set(),mats=new Set(owned),maps=new Set([...textures,...surfaces.textures]);root.traverse(n=>{if(n.geometry)geos.add(n.geometry);for(const m of n.material?(Array.isArray(n.material)?n.material:[n.material]):[]){mats.add(m);for(const v of Object.values(m))if(v?.isTexture)maps.add(v);}});for(const g of geos)g.dispose();for(const t of maps)t.dispose();for(const m of mats)m.dispose();scene.remove(root);}};
 }

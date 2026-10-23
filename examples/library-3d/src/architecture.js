@@ -29,9 +29,9 @@ const textureRoot=new URL('../campus-3d-v5/assets/',document.baseURI);
 const geoCache=new Map();
 function group(name,parent=building){const g=new T.Group();g.name=name;parent.add(g);return g;}
 function obstacle(x,z,w,d,id){const c={x,z,w,d,id,minX:x-w/2,maxX:x+w/2,minZ:z-d/2,maxZ:z+d/2};colliders.push(c);return c;}
-export async function loadMaterials(){
+export async function loadMaterials({assetRoot=textureRoot}={}){
  const loader=new T.TextureLoader();
- async function tex(file,color=false){const t=await loader.loadAsync(new URL(file+'.jpg',textureRoot).href);t.wrapS=t.wrapT=T.RepeatWrapping;t.anisotropy=4;if(color)t.colorSpace=T.SRGBColorSpace;return t;}
+ async function tex(file,color=false){const t=await loader.loadAsync(new URL(file+'.jpg',assetRoot).href);t.wrapS=t.wrapT=T.RepeatWrapping;t.anisotropy=4;if(color)t.colorSpace=T.SRGBColorSpace;return t;}
  const [wood,wn,wr,sn,sr,brick,bn,br]=await Promise.all([tex('wood-color',true),tex('wood-normal'),tex('wood-roughness'),tex('stone-normal'),tex('stone-roughness'),tex('brick-color',true),tex('brick-normal'),tex('brick-roughness')]);
  const mat=(name,color,extra={})=>new T.MeshStandardMaterial({name,color,roughness:.8,...extra});
  function surface(kind){const canvas=document.createElement('canvas');canvas.width=canvas.height=1024;const c=canvas.getContext('2d');const shades=kind==='stone'?['#d0cbbd','#cdc8b9','#cecabc','#d2cdbf']:['#c0c3bd','#c5c7c0','#c2c5be','#c4c6c0'];c.fillStyle=kind==='stone'?'#b6b2a7':'#9fa69d';c.fillRect(0,0,1024,1024);for(let row=0;row<2;row++)for(let col=0;col<2;col++){c.fillStyle=shades[row*2+col];c.fillRect(col*512+1,row*512+1,510,510);}for(let i=0;i<14000;i++){c.fillStyle=i%2?'rgba(255,255,249,.07)':'rgba(78,84,73,.035)';c.fillRect(i*61%1024,i*131%1024,kind==='stone'?3:2,1);}const t=new T.CanvasTexture(canvas);t.colorSpace=T.SRGBColorSpace;t.wrapS=t.wrapT=T.RepeatWrapping;t.anisotropy=8;return t;}
@@ -128,7 +128,7 @@ function makeReadingTable(g,index,x,z){
 }
 // Merge only repeated decorative construction within each named group; architecture remains editable.
 function batchStatic(g){if(g.userData.bookGuide)return;for(const child of [...g.children])if(child.isGroup)batchStatic(child);const batches=new Map();for(const child of g.children){if(!child.isMesh||child.isInstancedMesh||Array.isArray(child.material))continue;const key=child.material.uuid;const list=batches.get(key)||[];list.push(child);batches.set(key,list);}for(const list of batches.values()){if(list.length<3)continue;const geometries=list.map(m=>{m.updateMatrix();return m.geometry.clone().applyMatrix4(m.matrix);});const geometry=mergeGeometries(geometries);geometries.forEach(g=>g.dispose());if(!geometry)continue;const mesh=new T.Mesh(geometry,list[0].material);mesh.name=list[0].material.name+' construction';mesh.castShadow=!mesh.material.transparent;mesh.receiveShadow=true;mesh.userData.components=list.map(m=>m.name);list.forEach(m=>g.remove(m));g.add(mesh);}}
-export function createBuilding(){
+export function createBuilding({sharedSite=false}={}){
  const structure=group('Structure stone and real window openings'),furniture=group('Furniture bookcases and reading desks'),roof=group('Roof editable zinc and clerestory'),site=group('Library forecourt');
  box(structure,'Continuous accessible floor',0,-.14,0,24.4,.28,18.4,materials.floor);
  // Mipmapped physical-scale joints avoid flickering subpixel raised strips.
@@ -156,10 +156,12 @@ export function createBuilding(){
  box(welcome,'Catalogue header oak backing',-7,2.05,6.1,2.65,.32,.045,materials.wood);
  sign(welcome,'馆 藏 检 索',-7,2.05,6.126,2.5,.28);obstacle(-7,6.3,3.85,.9,'welcome desk');
  box(structure,'Rear grey brick accent',0,2.15,-8.79,5.2,4.3,.07,materials.brick);sign(structure,'学 无 忧  ·  阅 读 与 思 考',0,2.5,-8.73,4.5,.52);
+ if(!sharedSite){
  box(site,'Accessible forecourt',0,-.16,16,40,.28,14.1,materials.floor);box(site,'Site ground',0,-.37,0,100,.12,80,new T.MeshStandardMaterial({name:'Landscape ground',color:0x8e9c83,roughness:1}));
  for(const x of [-9,9]){box(site,'Courtyard planter',x,.28,12.5,2.6,.56,1.1,materials.brick);box(site,'Planter soil',x,.57,12.5,2.4,.025,.95,new T.MeshStandardMaterial({name:'Planting soil',color:0x514d3d,roughness:1}));obstacle(x,12.5,2.6,1.1,'planter');for(let i=0;i<5;i++)box(site,'Forecourt bench timber slat',x,.45,16.2+(i-2)*.10,3,.07,.085,materials.wood);for(const dx of [-1.2,1.2])box(site,'Bench leg',x+dx,.21,16.2,.08,.42,.4,materials.metal);obstacle(x,16.2,3,.5,'bench');}
  for(const x of [-19.95,19.95])box(site,'Courtyard stone edge',x,-.065,16,.10,.11,14.1,materials.stone);
  createLandscape(site,materials.wood,obstacle);
+ }
  const door=makeDoor(structure);
  createFacilities({parent:building,materials,box,sign,obstacle});
  batchStatic(building);

@@ -825,9 +825,11 @@
       enable: function () {
         if (enabled) return;
         enabled = true;
-        window.addEventListener('keydown', onKey);
-        window.addEventListener('mousedown', onMouseDown);
-        window.addEventListener('mouseup', onMouseUp);
+        if (!o.externalInput) {
+          window.addEventListener('keydown', onKey);
+          window.addEventListener('mousedown', onMouseDown);
+          window.addEventListener('mouseup', onMouseUp);
+        }
         if (o.dom) o.dom.addEventListener('contextmenu', onContextMenu);
       },
       disable: function () {

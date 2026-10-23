@@ -1,0 +1,377 @@
+{
+  "passed": true,
+  "checks": [
+    "service pavilion faces west into central courtyard",
+    "interaction anchors follow rotated physical desk and board",
+    "new fixtures block walking and former fixture positions are clear",
+    "west approach walks to social.desk",
+    "courtyard-facing desk opens original friends tab",
+    "west approach walks to social.board",
+    "courtyard-facing board opens original posts tab",
+    "opened panel freezes visitor position",
+    "closing restores courtyard control and releases iframe",
+    "no uncaught browser errors"
+  ],
+  "errors": [],
+  "social": {
+    "name": "district:social",
+    "features": {},
+    "plaqueNormals": [],
+    "serviceFacing": [
+      -1,
+      0,
+      -1.2246467991473532e-16
+    ],
+    "interactions": [
+      {
+        "id": "social.desk",
+        "disabled": false,
+        "position": [
+          10.8,
+          0.665,
+          -0.6499999999999999
+        ]
+      },
+      {
+        "id": "social.board",
+        "disabled": false,
+        "position": [
+          7.800000000000001,
+          1.55,
+          -2.6000000000000005
+        ]
+      },
+      {
+        "id": "social.challenge",
+        "disabled": false,
+        "position": [
+          22.2,
+          0.73,
+          5
+        ]
+      },
+      {
+        "id": "social.bench.1",
+        "disabled": false,
+        "position": [
+          21.1,
+          0,
+          -3
+        ]
+      },
+      {
+        "id": "social.bench.2",
+        "disabled": false,
+        "position": [
+          23.9,
+          0,
+          0.10000000000000009
+        ]
+      },
+      {
+        "id": "social.bench.3",
+        "disabled": false,
+        "position": [
+          24.3,
+          0,
+          2.9
+        ]
+      },
+      {
+        "id": "social.fountain",
+        "disabled": false,
+        "position": [
+          23.6,
+          0.36,
+          -3
+        ]
+      }
+    ]
+  },
+  "final": {
+    "ready": true,
+    "mode": "walk",
+    "pos": [
+      5.5,
+      0,
+      -0.5
+    ],
+    "yaw": 1.5707963267948966,
+    "path": null,
+    "modal": false,
+    "returnRestored": false,
+    "seated": false,
+    "frames": 389,
+    "interior": null,
+    "rooms": {
+      "academySeats": 24,
+      "librarySeats": 8,
+      "shelves": 4,
+      "equipment": {
+        "blinds": 0,
+        "blindsTarget": 0,
+        "lights": 1,
+        "lightsTarget": 1,
+        "projector": 0,
+        "projectorTarget": 0,
+        "screenVisible": false
+      },
+      "doors": [
+        {
+          "id": "entry",
+          "open": 0,
+          "target": 0,
+          "blocked": true
+        },
+        {
+          "id": "classroom",
+          "open": 0,
+          "target": 0,
+          "blocked": true
+        },
+        {
+          "id": "library",
+          "open": 0,
+          "target": 0,
+          "blocked": true
+        }
+      ]
+    },
+    "picker": {
+      "held": false,
+      "open": false,
+      "aim": null
+    },
+    "entries": [
+      {
+        "id": "classroom",
+        "label": "教学楼",
+        "description": "进入现有教室",
+        "at": [
+          0,
+          -24
+        ],
+        "outside": [
+          0,
+          -22
+        ],
+        "path": "examples/campus-3d-v5/index.html?view=classroom"
+      },
+      {
+        "id": "library",
+        "label": "图书馆",
+        "description": "检索馆藏与阅读",
+        "at": [
+          -24,
+          1
+        ],
+        "outside": [
+          -22,
+          1
+        ],
+        "path": "examples/library-3d/index.html"
+      },
+      {
+        "id": "study",
+        "label": "自习室",
+        "description": "进入自习空间",
+        "at": [
+          -21.4,
+          20.7
+        ],
+        "outside": [
+          -19.5,
+          20.7
+        ],
+        "path": "js/features/study/preview.html"
+      },
+      {
+        "id": "social",
+        "label": "社交广场",
+        "description": "好友、留言与休息",
+        "at": [
+          9,
+          11
+        ],
+        "outside": [
+          7,
+          11
+        ],
+        "path": "js/features/social/preview.html"
+      },
+      {
+        "id": "arena",
+        "label": "竞技场",
+        "description": "好友挑战与报名",
+        "at": [
+          31,
+          2
+        ],
+        "outside": [
+          29,
+          2
+        ],
+        "path": "js/features/arena/index.html"
+      }
+    ],
+    "nearest": null,
+    "avatar": {
+      "asset": "student-anime.vrm",
+      "avatar": "anime",
+      "visible": true,
+      "position": [
+        5.5,
+        0,
+        -0.5
+      ],
+      "yaw": 1.5714197921901756,
+      "height": 1.72,
+      "clip": "idle",
+      "time": 1.2509000002145765,
+      "action": {
+        "current": null,
+        "elapsed": 0,
+        "height": 0,
+        "airborne": false,
+        "phase": "grounded"
+      },
+      "joints": {
+        "head": [
+          5.485660308564409,
+          1.4731691790391561,
+          -0.4998510771159318
+        ],
+        "hips": [
+          5.503807576933058,
+          0.9648157141132879,
+          -0.5000023738927653
+        ],
+        "leftUpperArm": [
+          5.473880246652799,
+          1.3549498262970692,
+          -0.6153792910801931
+        ],
+        "leftLowerArm": [
+          5.426428983140349,
+          1.139690787733553,
+          -0.6941710324000175
+        ],
+        "leftHand": [
+          5.471831578597876,
+          0.9156650726256056,
+          -0.6955043836948298
+        ],
+        "rightUpperArm": [
+          5.474085020499482,
+          1.3548883692009106,
+          -0.3843650171885851
+        ],
+        "rightLowerArm": [
+          5.426773514678836,
+          1.1395878946139908,
+          -0.30560259223261976
+        ],
+        "rightHand": [
+          5.4721789715043005,
+          0.9155615004161068,
+          -0.3044687966433144
+        ],
+        "leftUpperLeg": [
+          5.499362917846511,
+          0.9225356074694808,
+          -0.5821607842922369
+        ],
+        "leftLowerLeg": [
+          5.567398680925572,
+          0.5529291999275588,
+          -0.5860451864835895
+        ],
+        "leftFoot": [
+          5.5140995571174365,
+          0.1137778483284913,
+          -0.5819787984072472
+        ],
+        "leftToes": [
+          5.634977914885829,
+          0.05237630913535661,
+          -0.5859184486582912
+        ],
+        "rightUpperLeg": [
+          5.499508587207698,
+          0.9224919016510023,
+          -0.41785871681822
+        ],
+        "rightLowerLeg": [
+          5.567700122875048,
+          0.552915785313055,
+          -0.4138264575146874
+        ],
+        "rightFoot": [
+          5.514190100039566,
+          0.11378986255363127,
+          -0.4178691534580912
+        ],
+        "rightToes": [
+          5.635073270988445,
+          0.05238831383055982,
+          -0.4140802158271119
+        ],
+        "leftMiddleProximal": [
+          5.48244095772074,
+          0.845492329281843,
+          -0.700432930498339
+        ],
+        "leftMiddleDistal": [
+          5.489924172344199,
+          0.7821882487800984,
+          -0.6978545769198953
+        ],
+        "rightMiddleProximal": [
+          5.478794212332905,
+          0.8448896157890738,
+          -0.2996982125725943
+        ],
+        "rightMiddleDistal": [
+          5.482615515812472,
+          0.7812643574321267,
+          -0.30239942646444234
+        ]
+      },
+      "meshes": 13,
+      "triangles": 36470,
+      "skinned": 13,
+      "texturedMaterials": 20,
+      "head": [
+        0.4543609303825536,
+        0.5418240679203059,
+        0.45446723104110026,
+        0.5417032031264448
+      ],
+      "leg": [
+        -0.21304447717101438,
+        0.02884235614591296,
+        -0.0012164625218134828,
+        0.9766159322296514
+      ],
+      "arm": [
+        -0.16241248969538166,
+        -0.19816935268735034,
+        0.4746897342643979,
+        0.8420336941958374
+      ],
+      "bounds": [
+        0.3484323870563939,
+        1.72,
+        1.479052794383286
+      ]
+    },
+    "boxes": 185,
+    "render": {
+      "frame": 688,
+      "calls": 1,
+      "triangles": 1,
+      "points": 0,
+      "lines": 0
+    }
+  }
+}

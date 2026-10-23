@@ -11,8 +11,8 @@ building.userData={design:DESIGN,source:'Rebuilt geometry guided by three genera
 const loader=new T.TextureLoader(),units=new Map();
 function material(name,color,extra={},unit=2){const m=new T.MeshStandardMaterial({name,color,roughness:.82,...extra});units.set(m,unit);return m;}
 function tiledStoneTexture(){const canvas=document.createElement('canvas');canvas.width=canvas.height=1024;const c=canvas.getContext('2d');c.fillStyle='#abaea6';c.fillRect(0,0,1024,1024);const colors=['#deded5','#dcdcd2','#dfdfd7','#ddddd4','#e0dfd7','#deded5','#dcddd3','#dfded6','#ddddd3'];for(let y=0;y<3;y++)for(let x=0;x<3;x++){c.fillStyle=colors[y*3+x];const left=Math.round(x*1024/3),top=Math.round(y*1024/3),right=Math.round((x+1)*1024/3),bottom=Math.round((y+1)*1024/3);c.fillRect(left+1,top+1,right-left-2,bottom-top-2);}const t=new T.CanvasTexture(canvas);t.colorSpace=T.SRGBColorSpace;t.wrapS=t.wrapT=T.RepeatWrapping;t.anisotropy=8;return t;}
-export async function loadMaterials(){
- async function tex(name,color=false){const t=await loader.loadAsync('assets/'+name+'.jpg');t.wrapS=t.wrapT=T.RepeatWrapping;t.anisotropy=8;if(color)t.colorSpace=T.SRGBColorSpace;return t;}
+export async function loadMaterials({assetRoot}={}){
+ async function tex(name,color=false){const path=assetRoot?new URL(name+'.jpg',assetRoot).href:'assets/'+name+'.jpg';const t=await loader.loadAsync(path);t.wrapS=t.wrapT=T.RepeatWrapping;t.anisotropy=8;if(color)t.colorSpace=T.SRGBColorSpace;return t;}
  const [brick,bn,br,stone,sn,sr,wood,wn,wr]=await Promise.all([tex('brick-color',true),tex('brick-normal'),tex('brick-roughness'),tex('stone-color',true),tex('stone-normal'),tex('stone-roughness'),tex('wood-color',true),tex('wood-normal'),tex('wood-roughness')]);
  materials.brick=material('Grey masonry',0xc0c6c3,{map:brick,normalMap:bn,normalScale:new T.Vector2(.10,.10),roughnessMap:br},1.7);
  materials.stone=material('Pale limestone',0xd6d1c4,{normalMap:sn,normalScale:new T.Vector2(.025,.025),roughness:.81},3);

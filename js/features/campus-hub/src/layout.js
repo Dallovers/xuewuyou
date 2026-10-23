@@ -21,6 +21,7 @@ export const BUILDING_BOXES=[
 ];
 export function groundAt(x,z){
  const local=z+30;
+ if(local<4.05&&local>-12.2&&Math.abs(x)<23.9)return .6;
  if(Math.abs(x)<=10&&local>=4&&local<=10.59)return Math.max(0,Math.min(.6,(10.59-local)/1.8*.6));
  if(x>=9.25&&x<=11.15&&local>=3.9&&local<=10.25)return .6;
  if(x>=11.15&&x<=21.95&&local>=8.4&&local<=10.25)return .03+.57*(21.95-x)/10.8;
