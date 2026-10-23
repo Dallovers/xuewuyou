@@ -4,6 +4,8 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>社交广场 · 板块 A 预览</title>
+<link rel="stylesheet" href="./preview-activities.css" />
+<link rel="stylesheet" href="./preview-community.css" />
 <link rel="stylesheet" href="../../../css/feature-social.css" />
 <style>
   html, body { margin: 0; height: 100%; background: #1d2320; overflow: hidden; }
@@ -12,12 +14,12 @@
 </style>
 </head>
 <body>
-<canvas id="view"></canvas>
+<canvas id="view" tabindex="0" aria-label="社交广场，WASD 行走，E 互动"></canvas>
 
 <div class="social-ui" id="ui" hidden>
   <div class="social-ui__badge">
     <b>社交广场 · 板块 A</b>
-    <span>第一交付：简化空间 + 三个实物交互点。背景立面为占位体量。</span>
+    <span>WASD 移动 · 拖动环顾 · 服务台找搭子，留言板贴便签 · 靠近按 E</span>
   </div>
 
   <div class="social-ui__crosshair"></div>
@@ -46,13 +48,14 @@
 <script type="importmap">
 {
   "imports": {
-    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
-    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+    "three": "./assets/vendor/three-r160/three.module.js",
+    "three/addons/": "./assets/vendor/three-r160/"
   }
 }
 </script>
 
 <script type="module">
+import {createPreviewCommunity} from './preview-community.js';
 const fatal = document.getElementById('fatal');
 function fail(err) {
   fatal.hidden = false;
@@ -62,9 +65,10 @@ function fail(err) {
   console.error(err);
 }
 
-let THREE, createDistrict, SOCIAL_LAYOUT;
+let THREE, createDistrict, SOCIAL_LAYOUT, createPreviewActivities;
 try {
   THREE = await import('three');
+  ({createPreviewActivities}=await import('./preview-activities.js'));
   ({ createDistrict, SOCIAL_LAYOUT } = await import('./social-district.js'));
 } catch (err) {
   fail(err);
@@ -90,20 +94,23 @@ renderer.toneMappingExposure = 0.86;
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0xc6dae4);
-scene.fog = new THREE.Fog(0xc6dae4, 46, 112);
+scene.fog = new THREE.Fog(0xc6dae4, 30, 70);
 
 /* 天空 HDR → 环境反射（IBL）。
    没有环境贴图时，metalness 偏高的材质（亭廊立柱、窗框、栏杆）只能渲染成死黑，
    这是之前"塑料/发灰"最直接的来源。加载失败就退回纯色背景，预览照常跑。 */
 let envState = { ok: false, reason: 'not-started' };
+let previewHDR=null,previewEnvironmentTarget=null;
 try {
   const { RGBELoader } = await import('three/addons/loaders/RGBELoader.js');
   const hdr = await new RGBELoader().loadAsync('../../../examples/campus-3d-v5/assets/sky.hdr');
+  previewHDR=hdr;
   hdr.mapping = THREE.EquirectangularReflectionMapping;
   scene.background = hdr;
   const pmrem = new THREE.PMREMGenerator(renderer);
   pmrem.compileEquirectangularShader();
-  scene.environment = pmrem.fromEquirectangular(hdr).texture;
+  previewEnvironmentTarget=pmrem.fromEquirectangular(hdr);
+  scene.environment=previewEnvironmentTarget.texture;
   pmrem.dispose();
   envState = { ok: true, source: 'sky.hdr' };
 } catch (err) {
@@ -123,15 +130,18 @@ const camera = new THREE.PerspectiveCamera(CAMERA_FOV, 1, 0.1, 240);
 camera.rotation.order = 'YXZ';
 
 // 有 IBL 之后半球光要压下来，否则整体过曝、阴影细节被冲掉
-const hemi = new THREE.HemisphereLight(0xdfeaf2, 0x6f7564, envState.ok ? 0.42 : 1.05);
+const hemi = new THREE.HemisphereLight(0xdfeaf2, 0x6f7564, envState.ok ? 0.24 : 1.05);
 scene.add(hemi);
 
-const sun = new THREE.DirectionalLight(0xfff3de, envState.ok ? 2.2 : 2.1);
+const sun = new THREE.DirectionalLight(0xfff3de, envState.ok ? 3.2 : 2.1);
 sun.position.set(-7.2 + 16, 24, -1.0 + 13);
 // 主光指向亭廊样板中心，阴影相机只覆盖样板范围：
 // 跨度从 52m 收到 20m，2048 贴图下每像素从 2.5cm 变成 1cm，近景接触阴影才有细节
 sun.target.position.set(-7.2, 1.6, -1.0);
 sun.castShadow = true;
+// All district geometry is static: render its shadow map once, not again for the AO pass.
+sun.shadow.autoUpdate = false;
+sun.shadow.needsUpdate = true;
 sun.shadow.mapSize.set(2048, 2048);
 sun.shadow.camera.near = 1;
 sun.shadow.camera.far = 60;
@@ -146,15 +156,43 @@ sun.shadow.radius = 2;
 scene.add(sun.target);
 scene.add(sun);
 
-const fill = new THREE.DirectionalLight(0xdce8ef, envState.ok ? 0.16 : 0.6);
+const fill = new THREE.DirectionalLight(0xdce8ef, envState.ok ? 0.08 : 0.6);
 fill.position.set(-14, 9, -10);
 scene.add(fill);
 
+/* Preview rendering only: no business/UI changes. Exposure remains 0.86. */
+let previewRendering = null;
+if (qs.get('ao') !== '0') {
+  try {
+    const { createSocialPreviewRendering } = await import('./preview-rendering.js');
+    previewRendering = createSocialPreviewRendering(renderer,scene,camera);
+  } catch (err) { console.warn('[social] 接触阴影不可用，回退标准渲染',err); }
+}
+function renderPreview() { if (previewRendering) previewRendering.render(); else renderer.render(scene,camera); }
+
 /* ---------- 空间 ---------- */
 
-const district = createDistrict({ THREE, mode: 'preview' });
+// This adapter belongs to this standalone preview; D's public host supplies its own openFeature.
+const communityPreview = createPreviewCommunity({
+  onPause() {
+    panelOpen=true; dragging=false;
+    for(const k of Object.keys(keys)) keys[k]=false;
+    hintEl.classList.remove('is-on');
+  },
+  onResume() { closePanel(); },
+});
+const openPreviewFeature = (name, options) => communityPreview.openFeature(name, options);
+const district = createDistrict({ THREE, mode: 'preview', openFeature: openPreviewFeature });
 scene.add(district.root);
-district.ready.then((r) => console.log('[preview] PBR 贴图', r, '环境', envState));
+let previewDisposed=false;
+const districtAssetsReady=district.ready;
+district.ready=districtAssetsReady.then(async r=>{
+  const {installSocialSkyFog}=await import('./preview-fog.js');
+  if(previewDisposed)return r;
+  installSocialSkyFog(district.root,scene.background);
+  sun.shadow.needsUpdate=true;
+  console.log('[preview] PBR 贴图',r,'环境',envState);return r;
+});
 
 /* ---------- 第一人称行走（预览自用） ---------- */
 
@@ -173,6 +211,7 @@ const keys = Object.create(null);
 let dragging = false;
 let lastX = 0, lastY = 0;
 let panelOpen = false;
+let activities=null;
 
 canvas.addEventListener('pointerdown', (e) => {
   if (panelOpen) return;
@@ -196,6 +235,11 @@ canvas.addEventListener('pointerup', (e) => {
 canvas.addEventListener('pointercancel', () => { dragging = false; });
 
 window.addEventListener('keydown', (e) => {
+  if(e.code==='Escape' && panelOpen && !communityPreview.opened){e.preventDefault();closePanel();return;}
+  if(e.target.closest?.('input,textarea,select,button,dialog'))return;
+  if(e.repeat && e.code==='KeyE')return;
+  if(activities?.seated && (e.code==='KeyE'||e.code==='Escape')){e.preventDefault();activities.stand();return;}
+  if(activities?.seated)return;
   if (e.code === 'Escape') {
     if (panelOpen) closePanel();
     return;
@@ -268,6 +312,10 @@ const panelEl = document.getElementById('panel');
 const panelTitle = document.getElementById('panelTitle');
 const panelSub = document.getElementById('panelSub');
 const panelBody = document.getElementById('panelBody');
+activities=createPreviewActivities({player:PLAYER,ui,onStand(){
+  for(const k of Object.keys(keys))keys[k]=false;
+  current=findNearest();hintShown=undefined;canvas.focus();
+}});
 
 let current = null;
 let hintShown = null;
@@ -288,369 +336,62 @@ function findNearest() {
   return best;
 }
 
-const LIVE = typeof window.WG_Community !== 'undefined' && typeof window.WG_Community.open === 'function';
+const LIVE = true; // Main-site iframe adapter; the backend may still require login or retry.
 
 const PANEL_COPY = {
-  'social.desk': {
-    title: '学习搭子',
-    sub: '服务台 → 真实搭子列表',
-    body: () => `
-      <p>在主站中，这里会调用：</p>
-      <code>WG_Community.open('friends')</code>
-      <p>它内部会依次执行 <b>tab('friends')</b> → <b>StudyAppBridge.navTo('community')</b> → <b>WG_Community.load()</b>，
-      这条链路已在 main 分支确认存在，不需要等公共 openFeature 落地。</p>
-      <p><span class="social-ui__tag">验收闭环</span> 搭子列表 → 发申请 → 另一账号接受 → 好友列表更新</p>
-      <div class="social-ui__note">本页是独立预览，没有主站的社区 DOM，所以上面这段调用意图在这里会返回 <b>no-bridge</b>；下方是直连同一套 <code>/api/community</code> 接口的真实数据视图。</div>
-      <div id="realPanel" class="social-ui__real">正在读取真实数据…</div>`,
+  'social.challenge': {
+    title: '双人竞技桌',
+    sub: '竞技功能暂不接入',
+    body: () => `<p>这里保留竞技桌，本轮先开放学习搭子和校园留言。</p>`,
   },
-  'social.board': {
-    title: '校园留言',
-    sub: '公告栏 → 真实留言板',
-    body: () => `
-      <p>在主站中，这里会调用：</p>
-      <code>WG_Community.open('posts')</code>
-      <p>展板是独立可替换件（<b>board:panel</b>），文字不烘进墙体贴图；贴纸、便签由 <b>js/community.js</b> 渲染，3D 侧只负责打开。</p>
-      <p><span class="social-ui__tag">验收闭环</span> 查看留言 → 发布留言 → 另一账号可见</p>
-      <div class="social-ui__note">留言面板的样式仍由主站现有 CSS 提供，本板块不改 .sticky-note / .note-thread。下面是直连接口的真实数据视图。</div>
-      <div id="realPanel" class="social-ui__real">正在读取真实数据…</div>`,
-  },
-  'social.fountain': {
-    title: '广场喷泉',
-    sub: '场景设施 → 水流开关',
-    body: () => `
-      <p>池体几何是独立模块：外壁 / 内壁 / 顶环 / 池底 / 喷嘴，水面目前是静态占位片
-      （<b>fountain:water-placeholder</b>）。</p>
-      <p>按统一风格约定，<b>水面与水流效果尚未实现</b>，本板块只提交开关状态，不写水面 shader 或粒子。</p>
-      <p id="fountainState"><span class="social-ui__tag">当前状态</span> 水流：关闭</p>
-      <div class="social-ui__note">喷泉状态与好友业务完成度无关，不复用同一套状态字段。</div>`,
-  },
+
 };
 
-/* ---------- 真实业务直连（修复版） ----------
- * 替换 preview.html 中从本注释到 closePanel() 结束的整段。
- * 修复：收到邀请可接受/拒绝、发出邀请可取消、目录逐个邀请；
- *       401 清失效会话并重登；面板/账号版本 + AbortController 防串页。
- */
-const API_BASE = qs.get('api') || 'http://127.0.0.1:3000';
-let authToken = localStorage.getItem('social.preview.token') || '';
-let authName = localStorage.getItem('social.preview.name') || '';
-
-let panelVersion = 0;
-let currentKind = null;
-let authVersion = 0;
-let panelAbort = null;
-const panelTimers = new Set();
-
-function beginPanelScope(kind) {
-  panelVersion++;
-  currentKind = kind;
-  if (panelAbort) panelAbort.abort();
-  panelAbort = new AbortController();
-  for (const id of panelTimers) clearTimeout(id);
-  panelTimers.clear();
-}
-
-function endPanelScope() {
-  panelVersion++;
-  currentKind = null;
-  if (panelAbort) { panelAbort.abort(); panelAbort = null; }
-  for (const id of panelTimers) clearTimeout(id);
-  panelTimers.clear();
-}
-
-function later(fn, ms) {
-  const id = setTimeout(() => { panelTimers.delete(id); fn(); }, ms);
-  panelTimers.add(id);
-  return id;
-}
-
-function dropSession() {
-  authToken = '';
-  authName = '';
-  localStorage.removeItem('social.preview.token');
-  localStorage.removeItem('social.preview.name');
-  authVersion++;
-}
-
-async function apiCall(method, path, body, signal) {
-  const res = await fetch(API_BASE + '/api/community/' + path, {
-    method,
-    signal,
-    headers: Object.assign(
-      { 'Content-Type': 'application/json' },
-      authToken ? { Authorization: 'Bearer ' + authToken } : {},
-    ),
-    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
-  });
-  let data = null;
-  try { data = await res.json(); } catch (_) {}
-  if (!res.ok) {
-    const err = new Error((data && data.error) || ('HTTP ' + res.status));
-    err.status = res.status;
-    err.code = data && data.code;
-    throw err;
-  }
-  return data;
-}
-
-function escHtml(value) {
-  return String(value).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-}
-
-const REAL_STYLE = 'margin-top:10px;padding:10px;border:1px solid rgba(0,0,0,.14);border-radius:6px;background:rgba(255,255,255,.5)';
-const REAL_INPUT = 'flex:1;min-width:0;padding:4px 6px;border:1px solid rgba(0,0,0,.2);border-radius:4px;font:inherit';
-
-function renderLogin(box, note) {
-  const myVersion = panelVersion;
-  box.innerHTML =
-    '<div class="social-ui__note">' + escHtml(note || '未登录：直连接口需要云端账号，登录后才能读真实好友与留言。') + '</div>' +
-    '<div style="display:flex;gap:6px;margin-top:6px">' +
-    '<input id="realUser" placeholder="账号" autocomplete="username" style="' + REAL_INPUT + '">' +
-    '<input id="realPass" type="password" placeholder="密码" autocomplete="current-password" style="' + REAL_INPUT + '">' +
-    '<button id="realLogin" type="button">登录</button></div>' +
-    '<div id="realMsg" style="margin-top:6px;font-size:12px"></div>';
-
-  document.getElementById('realLogin').onclick = async () => {
-    const u = document.getElementById('realUser').value.trim();
-    const p = document.getElementById('realPass').value;
-    const msg = document.getElementById('realMsg');
-    msg.textContent = '登录中…';
-    try {
-      const res = await fetch(API_BASE + '/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: u, password: p }),
-      });
-      const data = await res.json().catch(() => null);
-      if (!res.ok || !data || !data.token) throw new Error((data && data.error) || ('HTTP ' + res.status));
-      if (myVersion !== panelVersion || !box.isConnected) return;
-      authToken = data.token;
-      authName = u;
-      authVersion++;
-      localStorage.setItem('social.preview.token', authToken);
-      localStorage.setItem('social.preview.name', authName);
-      renderReal(currentKind || 'friends');
-    } catch (e) {
-      msg.textContent = '登录失败：' + e.message;
-    }
-  };
-}
-
-async function renderReal(kind) {
-  const box = document.getElementById('realPanel');
-  if (!box) return;
-
-  const myVersion = panelVersion;
-  const myKind = currentKind;
-  const myAuth = authVersion;
-  const myToken = authToken;
-  const signal = panelAbort ? panelAbort.signal : undefined;
-  const alive = () => myVersion === panelVersion && myKind === currentKind &&
-    myAuth === authVersion && myToken === authToken && box.isConnected;
-
-  box.setAttribute('style', REAL_STYLE);
-
-  if (!authToken) {
-    renderLogin(box);
-    return;
-  }
-
-  box.innerHTML = '<div class="social-ui__note">读取中…</div>';
-  try {
-    if (kind === 'friends') {
-      const home = await apiCall('GET', 'home', undefined, signal);
-      if (!alive()) return;
-
-      const friends = home.friends || [];
-      const requests = home.requests || [];
-      const incoming = requests.filter((r) => r.to === home.uid);
-      const outgoing = requests.filter((r) => r.from === home.uid);
-      const pending = new Set(requests.map((r) => r.person.id));
-      const directory = (home.directory || []).filter((p) => !p.isFriend && !pending.has(p.id));
-
-      let html = '<div><b>已登录 ' + escHtml(authName) + '</b> · 学习搭子 ' + friends.length +
-        ' · 待处理 ' + requests.length +
-        ' <button id="realLogout" type="button" style="float:right">退出</button></div>';
-
-      html += '<div style="margin-top:4px">' + (friends.length
-        ? friends.map((p) => '<span style="margin-right:6px">· ' + escHtml(p.nick) + '</span>').join('')
-        : '<em>还没有学习搭子</em>') + '</div>';
-
-      if (incoming.length) {
-        html += '<div class="social-ui__note">收到的邀请：</div>';
-        html += incoming.map((r) =>
-          '<div style="margin:4px 0">' + escHtml(r.person.nick) +
-          ' <button data-req="' + escHtml(r.id) + '" data-act="accept" type="button">接受</button>' +
-          ' <button data-req="' + escHtml(r.id) + '" data-act="reject" type="button">拒绝</button></div>'
-        ).join('');
-      }
-
-      if (outgoing.length) {
-        html += '<div class="social-ui__note">发出的邀请：</div>';
-        html += outgoing.map((r) =>
-          '<div style="margin:4px 0">等待 ' + escHtml(r.person.nick) +
-          ' <button data-req="' + escHtml(r.id) + '" data-act="cancel" type="button">取消</button></div>'
-        ).join('');
-      }
-
-      html += '<div class="social-ui__note">目录（可逐个邀请）：</div>';
-      html += directory.length
-        ? directory.map((p) =>
-          '<div style="margin:4px 0">' + escHtml(p.nick) +
-          ' <button data-invite="' + escHtml(p.id) + '" type="button">邀请</button></div>'
-        ).join('')
-        : '<div class="social-ui__note">暂无可邀请的同学</div>';
-
-      html += '<div style="margin-top:6px"><button id="realRefresh" type="button">刷新列表</button></div>' +
-        '<div id="realMsg" style="margin-top:6px;font-size:12px"></div>';
-
-      box.innerHTML = html;
-
-      const msg = () => document.getElementById('realMsg');
-
-      document.getElementById('realLogout').onclick = () => {
-        dropSession();
-        renderLogin(box, '已退出，请重新登录。');
-      };
-      document.getElementById('realRefresh').onclick = () => renderReal('friends');
-
-      box.querySelectorAll('[data-req]').forEach((btn) => {
-        btn.onclick = async () => {
-          const id = btn.getAttribute('data-req');
-          const act = btn.getAttribute('data-act');
-          btn.disabled = true;
-          if (msg()) msg().textContent = act === 'accept' ? '接受中…' : act === 'reject' ? '拒绝中…' : '取消中…';
-          try {
-            await apiCall('PUT', 'request', { id: id, action: act }, signal);
-            if (alive()) renderReal('friends');
-          } catch (e) {
-            if (!alive()) return;
-            if (e.status === 401) { dropSession(); renderLogin(box, '登录已失效，请重新登录。'); return; }
-            if (msg()) msg().textContent = '操作失败：' + e.message;
-            btn.disabled = false;
-          }
-        };
-      });
-
-      box.querySelectorAll('[data-invite]').forEach((btn) => {
-        btn.onclick = async () => {
-          const to = btn.getAttribute('data-invite');
-          btn.disabled = true;
-          if (msg()) msg().textContent = '发送中…';
-          try {
-            await apiCall('POST', 'request', { to: to, message: '一起学习吧' }, signal);
-            if (alive()) renderReal('friends');
-          } catch (e) {
-            if (!alive()) return;
-            if (e.status === 401) { dropSession(); renderLogin(box, '登录已失效，请重新登录。'); return; }
-            if (msg()) msg().textContent = '发送失败：' + e.message;
-            btn.disabled = false;
-          }
-        };
-      });
-    } else {
-      const r = await apiCall('GET', 'posts?mode=all', undefined, signal);
-      if (!alive()) return;
-
-      const all = r.posts || [];
-      const recent = all.slice(-3).reverse();
-
-      box.innerHTML =
-        '<div><b>已登录 ' + escHtml(authName) + '</b> · 公告栏 ' + all.length + ' 条' +
-        ' <button id="realLogout" type="button" style="float:right">退出</button></div>' +
-        '<div style="margin-top:4px">' + (recent.length
-          ? recent.map((p) => '<div style="margin:2px 0"><b>' + escHtml(p.author.nick) + '</b> ' +
-              escHtml((p.text || '').slice(0, 50)) + '</div>').join('')
-          : '<em>还没有留言</em>') + '</div>' +
-        '<div style="display:flex;gap:6px;margin-top:6px">' +
-        '<input id="realPost" placeholder="写一条真留言" maxlength="200" style="' + REAL_INPUT + '">' +
-        '<button id="realSend" type="button">发布</button></div>' +
-        '<div style="margin-top:6px"><button id="realRefresh" type="button">刷新留言</button></div>' +
-        '<div id="realMsg" style="margin-top:6px;font-size:12px"></div>';
-
-      const msg = () => document.getElementById('realMsg');
-
-      document.getElementById('realLogout').onclick = () => {
-        dropSession();
-        renderLogin(box, '已退出，请重新登录。');
-      };
-      document.getElementById('realRefresh').onclick = () => renderReal('posts');
-
-      document.getElementById('realSend').onclick = async () => {
-        const input = document.getElementById('realPost');
-        const text = input.value.trim();
-        if (!text) { if (msg()) msg().textContent = '请先写点什么'; return; }
-        if (msg()) msg().textContent = '发布中…';
-        try {
-          await apiCall('POST', 'posts', { text: text }, signal);
-          input.value = '';
-          if (msg()) msg().textContent = '已发布（真实写入）';
-          later(() => { if (alive()) renderReal('posts'); }, 600);
-        } catch (e) {
-          if (!alive()) return;
-          if (e.status === 401) { dropSession(); renderLogin(box, '登录已失效，请重新登录。'); return; }
-          if (msg()) msg().textContent = '发布失败：' + e.message;
-        }
-      };
-    }
-  } catch (e) {
-    if (!alive()) return;
-    if (e.status === 401) {
-      dropSession();
-      renderLogin(box, '登录已失效，请重新登录。');
-      return;
-    }
-    box.innerHTML = '<div class="social-ui__note">读取失败：' + escHtml(e.message) +
-      '<br>接口：' + escHtml(API_BASE) +
-      (e.status ? '<br>HTTP ' + e.status : '（网络异常或后端未启动）') + '</div>';
-  }
-}
-
 function openPanel(it, result) {
-  const kind = it.id === 'social.desk' ? 'friends' : it.id === 'social.board' ? 'posts' : null;
-  beginPanelScope(kind);
-
   const copy = PANEL_COPY[it.id] || { title: it.label, sub: '', body: () => '' };
   panelTitle.textContent = copy.title;
   panelSub.textContent = copy.sub;
   panelBody.innerHTML = copy.body();
-
-  if (it.id === 'social.fountain' && result && typeof result.on === 'boolean') {
-    const el = document.getElementById('fountainState');
-    if (el) {
-      el.innerHTML = '<span class="social-ui__tag' + (result.on ? '' : ' is-warn') + '">当前状态</span> 水流：' +
-        (result.on ? '开启（水面效果未实现）' : '关闭');
-    }
-  }
-
   panelEl.hidden = false;
   panelOpen = true;
   hintEl.classList.remove('is-on');
-
-  if (kind) renderReal(kind);
 }
 
 function closePanel() {
-  endPanelScope();
+  if(communityPreview.opened){communityPreview.close();return;}
   panelEl.hidden = true;
   panelOpen = false;
   current = null;
+  // 必须清掉提示缓存：否则下一帧算出的 key 与缓存相同，提示不会重新出现
+  // （E → Esc → 原地不动时会停在"面板关了但提示也没了"的状态）
   hintShown = undefined;
+  // 关闭后恢复行走：清空按键并交回指针
   for (const k of Object.keys(keys)) keys[k] = false;
   dragging = false;
   canvas.focus && canvas.focus();
 }
 
-
 document.getElementById('panelClose').addEventListener('click', closePanel);
 panelEl.addEventListener('pointerdown', (e) => e.stopPropagation());
 
-function trigger(it) {
+async function trigger(it) {
+  if(it.id==='social.challenge'){openPanel(it);return;}
   let result;
   try {
-    result = it.action();
+    result = await it.action();
   } catch (err) {
     result = { ok: false, message: String(err && err.message || err) };
+  }
+  if(result?.ok && result.kind==='seat'){
+    for(const k of Object.keys(keys))keys[k]=false;
+    const facing=activities.sit(result);if(facing!==null){yaw=facing;pitch=-.08;}
+    current=null;hintShown=undefined;hintEl.classList.remove('is-on');return;
+  }
+  if(result?.ok && result.kind==='fountain'){activities.notify(result.message);hintShown=undefined;return;}
+  if(it.id==='social.desk'||it.id==='social.board'){
+    // The real panel owns its loading/error state. A close during load is cancellation.
+    if(!result?.ok && !['closed','already-open','main-site-unavailable'].includes(result?.reason)) activities.notify(result?.message||'暂时无法打开社区');
+    return;
   }
   openPanel(it, result);
 }
@@ -667,6 +408,7 @@ function resize() {
   const w = window.innerWidth;
   const h = window.innerHeight;
   renderer.setSize(w, h, false);
+  if (previewRendering) previewRendering.resize(w,h);
   camera.aspect = w / h;
   camera.updateProjectionMatrix();
 }
@@ -677,7 +419,7 @@ function tick(now) {
   const dt = Math.min((now - last) / 1000, 0.1);
   last = now;
 
-  if (!panelOpen) {
+  if (!panelOpen && !activities.seated) {
     let f = 0, r = 0;
     if (keys.KeyW || keys.ArrowUp) f += 1;
     if (keys.KeyS || keys.ArrowDown) f -= 1;
@@ -695,12 +437,13 @@ function tick(now) {
     if (keys.KeyL) yaw -= dt * 1.6;
   }
 
+  activities.update(dt);
   camera.position.set(PLAYER.x, PLAYER.y, PLAYER.z);
   camera.rotation.set(pitch, yaw, 0, 'YXZ');
 
   district.update(dt);
 
-  if (!panelOpen) {
+  if (!panelOpen && !activities.seated) {
     const near = findNearest();
     current = near;
     const key = near ? near.id : null;
@@ -727,10 +470,10 @@ function tick(now) {
       '\nyaw ' + (yaw * 180 / Math.PI).toFixed(1) + '°  pitch ' + (pitch * 180 / Math.PI).toFixed(1) + '°' +
       '\nfov ' + CAMERA_FOV.toFixed(1) + '° ≈' + EQUIV_MM + 'mm  fps ' + fps +
       '\n碰撞体 ' + district.colliders.length + '  交互点 ' + district.interactions.length +
-      '\n' + (LIVE ? '真实模块在线' : '预览替身（未接主站）');
+      '\n' + (LIVE ? '主站好友 / 留言面板 · 竞技暂未接入' : '预览替身（未接主站）');
   }
 
-  renderer.render(scene, camera);
+  renderPreview();
   rafId = requestAnimationFrame(tick);
 }
 
@@ -738,7 +481,7 @@ function tick(now) {
 camera.position.set(PLAYER.x, PLAYER.y, PLAYER.z);
 camera.rotation.set(pitch, yaw, 0, 'YXZ');
 district.update(0);
-renderer.render(scene, camera);
+renderPreview();
 
 ui.hidden = false;
 // 截图用：?hud=0 隐藏所有覆盖层，不改交互与入口
@@ -753,6 +496,7 @@ window.__social = {
   camera,
   get current() { return current; },
   get panelOpen() { return panelOpen; },
+  get seated() { return activities.seated; },
   get fov() { return CAMERA_FOV; },
   get env() { return envState; },
   interact() { if (current) trigger(current); return current ? current.id : null; },
@@ -761,10 +505,18 @@ window.__social = {
 
 /* 离开页面时清理，避免预览页反复热重载后堆积定时器与 WebGL 上下文 */
 window.addEventListener('beforeunload', () => {
+  previewDisposed=true;
   cancelAnimationFrame(rafId);
+  communityPreview.dispose();
+  activities.dispose();
   district.dispose();
+  if (previewRendering) previewRendering.dispose();
+  if(previewEnvironmentTarget)previewEnvironmentTarget.dispose();
+  if(previewHDR)previewHDR.dispose();
+  scene.environment=null;scene.background=null;
   renderer.dispose();
+  renderer.forceContextLoss();
 });
 </script>
-</body>
+<script src="../campus-hub/return-bridge.js"></script></body>
 </html>

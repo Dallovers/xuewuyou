@@ -1,0 +1,12 @@
+{
+  "passed": true,
+  "checks": [
+    "south exit is reachable by actual walking route",
+    "E leaves 3D for original website page",
+    "only campus return ticket is cleared",
+    "390px exit is visible and clickable while loading",
+    "exit preserves Pages subpath",
+    "no uncaught errors"
+  ],
+  "errors": []
+}

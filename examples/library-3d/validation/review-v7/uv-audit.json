@@ -1,0 +1,15 @@
+{
+  "receiverCount": 47,
+  "uvRasterSize": 1024,
+  "coveredPixels": 504976,
+  "overlapPixels": 0,
+  "maxCoverage": 1,
+  "uv0AndGeometryMaxError": {
+    "POSITION": 0.0,
+    "NORMAL": 0.0003614276647567749,
+    "TEXCOORD_0": 1.1920928955078125e-07
+  },
+  "floorSurfaceAreaBefore": 921.2409521379402,
+  "floorSurfaceAreaAfter": 921.2409521401595,
+  "normalNote": "Blender split-normal encoding introduces small quantization; positions and UV0 checked separately."
+}

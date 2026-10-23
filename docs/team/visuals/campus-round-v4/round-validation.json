@@ -1,0 +1,290 @@
+{
+  "passed": true,
+  "checks": [
+    "shared outdoor paving uses one white material across district roots",
+    "arena89 model has two podiums without old boxing ropes",
+    "both podium plaques face approaching visitors from the west",
+    "shared arena has no private lawn or distant backdrop",
+    "fountain water and coping are circular in runtime scene",
+    "circular basin blocks its edge without rectangular ghost corners",
+    "actual W movement stops at the round pool edge",
+    "new arena note opens a readable paused host modal",
+    "picked note loses its interaction prompt and modal Esc resumes",
+    "390px circular water keeps the lightweight rendering path",
+    "updated scene has no browser, shader or missing-asset errors"
+  ],
+  "errors": [],
+  "failed": [],
+  "scene": {
+    "courtyard": {
+      "waterOn": true,
+      "fountain": {
+        "shape": "circle",
+        "center": [
+          -0.6,
+          5.5
+        ],
+        "radius": 3.14,
+        "copingSegments": 24,
+        "jets": 7
+      },
+      "reducedMotion": false,
+      "water": {
+        "shape": "circle",
+        "radius": 2.75,
+        "reflection": true,
+        "reflectionFrames": 2,
+        "size": 768
+      },
+      "interactionCount": 8,
+      "points": [
+        {
+          "id": "courtyard.water-switch",
+          "label": "关闭庭院流水",
+          "position": [
+            4.25,
+            0.8,
+            11
+          ]
+        },
+        {
+          "id": "courtyard.water-seat-east-1",
+          "label": "坐下 · 水边长椅",
+          "position": [
+            6.68,
+            0.55,
+            2.6
+          ]
+        },
+        {
+          "id": "courtyard.water-seat-east-2",
+          "label": "坐下 · 水边长椅",
+          "position": [
+            6.68,
+            0.55,
+            8.3
+          ]
+        },
+        {
+          "id": "courtyard.reading-seat",
+          "label": "坐下 · 阅读廊架",
+          "position": [
+            -13.48,
+            0.55,
+            3
+          ]
+        },
+        {
+          "id": "courtyard.garden-seat",
+          "label": "坐下 · 阅读廊架",
+          "position": [
+            -11.5,
+            0.55,
+            0.42000000000000004
+          ]
+        },
+        {
+          "id": "courtyard.reading-book",
+          "label": "翻阅桌上导读 · 打开学习资料",
+          "position": [
+            -10.8,
+            0.85,
+            3.3
+          ]
+        },
+        {
+          "id": "courtyard.directory",
+          "label": "查看校园导览",
+          "position": [
+            -6.1,
+            1.4,
+            -9.1
+          ]
+        },
+        {
+          "id": "courtyard.site-exit",
+          "label": "返回网站首页",
+          "position": [
+            0,
+            1,
+            37.2
+          ]
+        }
+      ]
+    },
+    "visuals": {
+      "contactAO": true,
+      "aoScale": 0.5,
+      "shadowSpan": 136,
+      "targets": 5,
+      "memory": {
+        "geometries": 855,
+        "textures": 114
+      },
+      "programs": 109,
+      "water": {
+        "shape": "circle",
+        "radius": 2.75,
+        "reflection": true,
+        "reflectionFrames": 2,
+        "size": 768
+      },
+      "paving": {
+        "name": "Campus unified warm-white stone paving",
+        "meshes": 43,
+        "materials": 1
+      }
+    },
+    "districts": [
+      {
+        "name": "study",
+        "features": {},
+        "plaqueNormals": [],
+        "interactions": [
+          {
+            "id": "study.entry",
+            "disabled": false
+          },
+          {
+            "id": "study.seat.island1.wn",
+            "disabled": false
+          },
+          {
+            "id": "study.seat.island1.en",
+            "disabled": false
+          },
+          {
+            "id": "study.seat.island1.ws",
+            "disabled": false
+          },
+          {
+            "id": "study.seat.island1.es",
+            "disabled": false
+          },
+          {
+            "id": "study.seat.island2.wn",
+            "disabled": false
+          },
+          {
+            "id": "study.seat.island2.en",
+            "disabled": false
+          },
+          {
+            "id": "study.seat.island2.ws",
+            "disabled": false
+          },
+          {
+            "id": "study.seat.island2.es",
+            "disabled": false
+          },
+          {
+            "id": "study.seat.island3.wn",
+            "disabled": false
+          },
+          {
+            "id": "study.seat.island3.en",
+            "disabled": false
+          },
+          {
+            "id": "study.seat.island3.ws",
+            "disabled": false
+          },
+          {
+            "id": "study.seat.island3.es",
+            "disabled": false
+          },
+          {
+            "id": "study.seat.window.1",
+            "disabled": false
+          },
+          {
+            "id": "study.seat.window.2",
+            "disabled": false
+          },
+          {
+            "id": "study.seat.window.3",
+            "disabled": false
+          },
+          {
+            "id": "study.seat.window.4",
+            "disabled": false
+          }
+        ]
+      },
+      {
+        "name": "district:social",
+        "features": {},
+        "plaqueNormals": [],
+        "interactions": [
+          {
+            "id": "social.desk",
+            "disabled": false
+          },
+          {
+            "id": "social.board",
+            "disabled": false
+          },
+          {
+            "id": "social.challenge",
+            "disabled": false
+          },
+          {
+            "id": "social.bench.1",
+            "disabled": false
+          },
+          {
+            "id": "social.bench.2",
+            "disabled": false
+          },
+          {
+            "id": "social.bench.3",
+            "disabled": false
+          },
+          {
+            "id": "social.fountain",
+            "disabled": false
+          }
+        ]
+      },
+      {
+        "name": "district:arena",
+        "features": {
+          "dressing:contact-shadow": 6,
+          "dressing:grime": 4,
+          "arena:podium": 2,
+          "dressing:lantern-glow": 7
+        },
+        "plaqueNormals": [
+          [
+            -1,
+            0,
+            -3.4450928483976665e-16
+          ],
+          [
+            -1,
+            0,
+            2.220446049250313e-16
+          ]
+        ],
+        "interactions": [
+          {
+            "id": "arena.ring",
+            "disabled": false
+          },
+          {
+            "id": "arena.bell",
+            "disabled": false
+          },
+          {
+            "id": "arena.roster",
+            "disabled": false
+          },
+          {
+            "id": "arena.note",
+            "disabled": false
+          }
+        ]
+      }
+    ]
+  }
+}

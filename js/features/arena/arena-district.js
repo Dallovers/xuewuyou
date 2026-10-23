@@ -1532,7 +1532,7 @@ export function createDistrict(ctx = {}) {
        两块并排时不会 z-fighting。重叠部分被对方的草地盖住，两边都是草，看不出来。 */
     const lawnGeo = new THREE.PlaneGeometry(L.lawn.w, L.lawn.d, 46, 40);
     lawnMottle(lawnGeo);
-    add(lawnGeo, lawnMat, 0, -0.055, 0, {
+    if (!ctx.sharedSite) add(lawnGeo, lawnMat, 0, -0.055, 0, {
       rotX: -Math.PI / 2, name: 'site:lawn', cast: false,
     });
     /* 三块地面压成三档明度：主场地最亮、擂台圈地中间、进场主路最浅（人走得多，磨得发白）。
@@ -1546,7 +1546,7 @@ export function createDistrict(ctx = {}) {
        只有铺装之外那圈才露出来。 */
     const fadeBand = 0.9;
     const fadeMat = makeEdgeFadeMaterial(L.site.w, L.site.d, fadeBand);
-    if (fadeMat) {
+    if (fadeMat && !ctx.sharedSite) {
       const fade = add(planeGeo(L.site.w + fadeBand, L.site.d + fadeBand * 2), fadeMat, fadeBand / 2, 0.016, 0, {
         rotX: -Math.PI / 2, cast: false, receive: false, name: 'site:edge-fade',
       });
@@ -1899,17 +1899,15 @@ export function createDistrict(ctx = {}) {
       add(boxGeo(0.52, 0.055, 0.56), M.metal_dark, 0.02, 0.855, 0, {
         parent: g, name: 'arena:podium-apron', cast: false,
       });
-      /* 甲乙牌：立在台面上，**朝西**（正对进场方向）。
-         牌子是给围观的人认人的，对手不需要看；朝西之后，从牌坊走过来的第一眼
-         就是"甲 / 乙"两块牌，而不是两个木箱子的侧面。
-         局部 -Z 在两组里都被旋转到了世界 -X，所以两座用同一套局部坐标。 */
+      // Both plaques face world -X; opposite podium rotations need opposite local faces.
+      const plaqueZ = sgn > 0 ? -1 : 1;
       const face = makeSignMaterial({ title: text, w: 0.36, h: 0.24 });
-      add(boxGeo(0.40, 0.28, 0.024), M.metal_dark, 0, 1.06, -0.295, {
+      add(boxGeo(0.40, 0.28, 0.024), M.metal_dark, 0, 1.06, plaqueZ * 0.295, {
         parent: g, name: 'arena:podium-plaque',
       });
       if (face) {
-        add(new THREE.PlaneGeometry(0.36, 0.24), face, 0, 1.06, -0.309, {
-          rotY: Math.PI, parent: g, name: 'arena:podium-plaque-face', cast: false,
+        add(new THREE.PlaneGeometry(0.36, 0.24), face, 0, 1.06, plaqueZ * 0.309, {
+          rotY: sgn > 0 ? Math.PI : 0, parent: g, name: 'arena:podium-plaque-face', cast: false,
         });
       }
       /* 小灯：台面后侧一盏，加一张加色光晕。
@@ -2930,9 +2928,11 @@ export function createDistrict(ctx = {}) {
   /* ---------- 组装 ---------- */
 
   buildSite();
-  buildGrass();
-  buildTreeLine();
-  buildDust();
+  if (!ctx.sharedSite) {
+    buildGrass();
+    buildTreeLine();
+    buildDust();
+  }
   buildRing();
   buildPodiums();
   buildGate();

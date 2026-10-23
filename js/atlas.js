@@ -115,7 +115,13 @@ window.WG_Atlas = (function () {
   function render() {
     var config=currentConfig();if(!config)return;var root=$(config.id);if(!root)return;
     var focused=root.contains(document.activeElement)?document.activeElement.dataset.mapId||document.activeElement.dataset.atlasFocus:null;
-    dispose();root.replaceChildren();heading(root,config);if(state.view==='home')stats(root);
+    dispose();root.replaceChildren();
+    if(state.view==='home'){
+      var progressHead=make(root,'div',undefined,'campus-home-progress-head');make(progressHead,'h2','今天的学习足迹').id='campusProgressTitle';
+      var sync=button(progressHead,'同步学习状态',function(){refreshSnapshot(true);},'btn ghost');sync.id='atlasRefresh';
+      stats(root);mission(root);var syncNote=make(root,'p',snapshotNote(),'atlas-live-note');syncNote.id='atlasSyncNote';syncNote.setAttribute('role','status');syncNote.setAttribute('aria-live','polite');return;
+    }
+    heading(root,config);
     if(state.view==='bank'){
       var tabs=make(root,'div',undefined,'atlas-course-tabs');[['','全部课程'],['study','数学'],['english','英语'],['ielts','雅思']].forEach(function(c){var b=button(tabs,c[1],function(){StudyAppBridge.openBank(c[0]||null);},'');b.setAttribute('aria-pressed',String((state.continent||'')===c[0]));});
     }

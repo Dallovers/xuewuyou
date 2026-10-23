@@ -1,0 +1,291 @@
+{
+  "passed": true,
+  "checks": [
+    "five entries and one campus canvas load",
+    "real W movement follows the campus ground",
+    "existing higher anime jump works in public campus",
+    "walkable route reaches classroom",
+    "original scene really renders classroom",
+    "returns outside classroom",
+    "restores camera and character headings classroom",
+    "walkable route reaches library",
+    "original scene really renders library",
+    "returns outside library",
+    "restores camera and character headings library",
+    "walkable route reaches study",
+    "original scene really renders study",
+    "returns outside study",
+    "restores camera and character headings study",
+    "walkable route reaches social",
+    "original scene really renders social",
+    "returns outside social",
+    "restores camera and character headings social",
+    "walkable route reaches arena",
+    "original scene really renders arena",
+    "returns outside arena",
+    "restores camera and character headings arena",
+    "repeat enter/return 1",
+    "repeat enter/return 2",
+    "repeat enter/return 3",
+    "repeat enter/return 4",
+    "repeat enter/return 5",
+    "original rooms panel pauses campus input",
+    "business iframe hides 3D entrances",
+    "closing destroys business iframe document",
+    "390px controls fit and touch targets are usable",
+    "mobile movement changes actual position",
+    "browser back/BFCache restores a live single campus",
+    "Pages subpath keeps scene assets and entry prefix",
+    "Pages subpath returns to same campus prefix",
+    "no uncaught browser errors",
+    "no missing or forbidden scene assets"
+  ],
+  "errors": [],
+  "failed": [],
+  "final": {
+    "ready": true,
+    "mode": "walk",
+    "pos": [
+      -22,
+      0,
+      1
+    ],
+    "yaw": 0,
+    "path": null,
+    "modal": false,
+    "returnRestored": true,
+    "seated": false,
+    "frames": 5,
+    "entries": [
+      {
+        "id": "classroom",
+        "label": "教学楼",
+        "description": "进入现有教室",
+        "at": [
+          0,
+          -24
+        ],
+        "outside": [
+          0,
+          -22
+        ],
+        "path": "examples/campus-3d-v5/index.html?view=classroom"
+      },
+      {
+        "id": "library",
+        "label": "图书馆",
+        "description": "检索馆藏与阅读",
+        "at": [
+          -24,
+          1
+        ],
+        "outside": [
+          -22,
+          1
+        ],
+        "path": "examples/library-3d/index.html"
+      },
+      {
+        "id": "study",
+        "label": "自习室",
+        "description": "进入自习空间",
+        "at": [
+          -21.4,
+          20.7
+        ],
+        "outside": [
+          -19.5,
+          20.7
+        ],
+        "path": "js/features/study/preview.html"
+      },
+      {
+        "id": "social",
+        "label": "社交广场",
+        "description": "好友、留言与休息",
+        "at": [
+          9,
+          11
+        ],
+        "outside": [
+          7,
+          11
+        ],
+        "path": "js/features/social/preview.html"
+      },
+      {
+        "id": "arena",
+        "label": "竞技场",
+        "description": "好友挑战与报名",
+        "at": [
+          31,
+          2
+        ],
+        "outside": [
+          29,
+          2
+        ],
+        "path": "js/features/arena/index.html"
+      }
+    ],
+    "nearest": "library",
+    "avatar": {
+      "asset": "student-anime.vrm",
+      "avatar": "anime",
+      "visible": true,
+      "position": [
+        -22,
+        0,
+        1
+      ],
+      "yaw": 3.141592653589793,
+      "height": 1.72,
+      "clip": "idle",
+      "time": 0.12210000002384187,
+      "action": {
+        "current": null,
+        "elapsed": 0,
+        "height": 0,
+        "airborne": false,
+        "phase": "grounded"
+      },
+      "joints": {
+        "head": [
+          -21.99990449255306,
+          1.4739429149305356,
+          1.018010350151627
+        ],
+        "hips": [
+          -22.000000000000004,
+          0.9652496681810935,
+          0.996192422327203
+        ],
+        "leftUpperArm": [
+          -22.11546148305204,
+          1.3552940553289057,
+          1.026505751509147
+        ],
+        "leftLowerArm": [
+          -22.272147513248076,
+          1.1887581034874353,
+          1.0766204307746592
+        ],
+        "leftHand": [
+          -22.37963358423607,
+          0.9871451990767478,
+          1.0695722958853866
+        ],
+        "rightUpperArm": [
+          -21.88438717969732,
+          1.3552524345272283,
+          1.0264644695766634
+        ],
+        "rightLowerArm": [
+          -21.727742933682254,
+          1.1886603127432513,
+          1.0765228273729255
+        ],
+        "rightHand": [
+          -21.620285369145268,
+          0.9870428770322786,
+          1.0691710657723392
+        ],
+        "leftUpperLeg": [
+          -22.082157930813185,
+          0.9229482672545632,
+          1.0004389145573622
+        ],
+        "leftLowerLeg": [
+          -22.084330778198,
+          0.5497095774651043,
+          0.9563820250824677
+        ],
+        "leftFoot": [
+          -22.082587412337656,
+          0.10959895690823251,
+          1.0012244486454387
+        ],
+        "leftToes": [
+          -22.08530369707704,
+          0.046338215397220356,
+          0.8812746770086155
+        ],
+        "rightUpperLeg": [
+          -21.917855798243295,
+          0.9229186758088888,
+          1.0004095320780642
+        ],
+        "rightLowerLeg": [
+          -21.915537963794677,
+          0.5496933456416457,
+          0.9562469808142191
+        ],
+        "rightFoot": [
+          -21.917265135612684,
+          0.10959730434820114,
+          1.0012328911820663
+        ],
+        "rightToes": [
+          -21.914546469064447,
+          0.046336819919630914,
+          0.8812830378718334
+        ],
+        "leftMiddleProximal": [
+          -22.417944836738442,
+          0.9272029271340022,
+          1.0690870835434536
+        ],
+        "leftMiddleDistal": [
+          -22.446191639324226,
+          0.8700226489468808,
+          1.0706954872090797
+        ],
+        "rightMiddleProximal": [
+          -21.582044932161125,
+          0.9270922379774,
+          1.071321668748079
+        ],
+        "rightMiddleDistal": [
+          -21.553891412636602,
+          0.8699839425230689,
+          1.0753334475945844
+        ]
+      },
+      "meshes": 13,
+      "triangles": 36470,
+      "skinned": 13,
+      "texturedMaterials": 20,
+      "head": [
+        0.45846388910161856,
+        0.5383512108442592,
+        0.4585358825447418,
+        0.5382691419623514
+      ],
+      "leg": [
+        -0.17974675737930018,
+        0.019639828998377767,
+        -0.0007517736470500349,
+        0.9835165525449149
+      ],
+      "arm": [
+        -0.11429344070755335,
+        -0.13945634359925202,
+        0.3099134646585457,
+        0.9335108874365995
+      ],
+      "bounds": [
+        1.4788812343002817,
+        1.72,
+        0.348238969921694
+      ]
+    },
+    "boxes": 76,
+    "render": {
+      "frame": 26,
+      "calls": 84,
+      "triangles": 291758,
+      "points": 64,
+      "lines": 0
+    }
+  }
+}

@@ -1,0 +1,15 @@
+import {NodeIO} from '@gltf-transform/core';
+import {ALL_EXTENSIONS} from '@gltf-transform/extensions';
+import {dedup,weld,simplify,textureCompress,meshopt} from '@gltf-transform/functions';
+import {MeshoptEncoder,MeshoptDecoder,MeshoptSimplifier} from 'meshoptimizer';
+import sharp from 'sharp';
+import {readFile,writeFile} from 'node:fs/promises';
+import {fileURLToPath} from 'node:url';
+import {createHash} from 'node:crypto';
+await Promise.all([MeshoptEncoder.ready,MeshoptSimplifier.ready]);
+const io=new NodeIO().registerExtensions(ALL_EXTENSIONS).registerDependencies({'meshopt.encoder':MeshoptEncoder,'meshopt.decoder':MeshoptDecoder});
+const report=JSON.parse(await readFile(new URL('../assets/shell-sources.json',import.meta.url),'utf8'));
+for(const entry of report){const url=new URL('../assets/'+entry.id+'-shell.glb',import.meta.url),doc=await io.read(fileURLToPath(url));
+ await doc.transform(dedup(),weld(),simplify({simplifier:MeshoptSimplifier,ratio:.65,error:.001}),textureCompress({encoder:sharp,resize:[512,512],targetFormat:'webp'}),meshopt({encoder:MeshoptEncoder,level:'medium'}));
+ const bytes=await io.writeBinary(doc);await writeFile(url,bytes);entry.uncompressedShellBytes=entry.bytes;entry.bytes=bytes.length;entry.sha256=createHash('sha256').update(bytes).digest('hex');entry.optimization='weld; mesh simplification ratio .65 / error .001; textures max 512px WebP; meshopt medium';console.log(entry.id,bytes.length,'bytes');
+}await writeFile(new URL('../assets/shell-sources.json',import.meta.url),JSON.stringify(report,null,2));

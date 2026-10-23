@@ -1,0 +1,101 @@
+{
+  "blender": "4.5.3 LTS",
+  "approvedFileAudit": {
+    "sha256": "bb10a6b0029285bd7c37142dbfa15e929acc2d06222790d38250227618f55093",
+    "objects": 10688,
+    "packedImages": 28,
+    "unpackedImages": [],
+    "cameras": [
+      "Library exterior inspection camera",
+      "Window sample",
+      "Tree 623 sample",
+      "Bentwood chair sample",
+      "Distant tree sample"
+    ],
+    "localSpotlights": [
+      "R1 window sky approximation"
+    ]
+  },
+  "subsetSourceSHA256": "e00a490b0db716f678bfea01b4162bbed65982e01dabfa276dd0c240045d9c42",
+  "meshObjects": 4645,
+  "materials": 17,
+  "packedImages": 14,
+  "unpackedImages": [],
+  "cameraCount": 3,
+  "lights": 0,
+  "lightmapUV": false,
+  "baked": false,
+  "outputSHA256": "a91c0a8434a77d7c980a3127b59a41c372262d40623d71df86dc5fe8bace967e",
+  "outputBytes": 13495955,
+  "packedImageFiles": [
+    {
+      "name": "Approved sage weave height (EXT_materials_bump)",
+      "sha256": "ce65abd4b089051dbd32c6aa8449922a4661c8fe5af58f363de372ef64fab971"
+    },
+    {
+      "name": "Image_0",
+      "sha256": "cdcddb92993fe9485b19deb415811670d5858ab691f8d5ed5ebff60617460ae8"
+    },
+    {
+      "name": "Image_1",
+      "sha256": "2855e8a2cd8b356a31871c35f8970d0259dfe8c954663f9ea8b8b1cfd222ca43"
+    },
+    {
+      "name": "Image_10",
+      "sha256": "55db7472fe1110957ab1926652bbe0ed5640dd66325d8e952706272a159bacbc"
+    },
+    {
+      "name": "Image_11",
+      "sha256": "dce4ae3f8a53060c20fe24369701f8609efe19f22b064e2996fe99c3c2486d4e"
+    },
+    {
+      "name": "Image_12",
+      "sha256": "59b2bbbbe133d234fc7c82edd01fe3fdb94e18c2d53027f227b1d9b18e754a03"
+    },
+    {
+      "name": "Image_13",
+      "sha256": "ca34112d8d850fe96fdb8b3277bea87f88c9dc8923eec827b9ab5cab9d6a08ea"
+    },
+    {
+      "name": "Image_2",
+      "sha256": "a740303c9cc4c2b5a83ae61512f294aeeaec2f3bcea11c749596f301efee3fd8"
+    },
+    {
+      "name": "Image_3",
+      "sha256": "ebcf2733e6873fcb792b1037c84e5f61cd53080f47353815fca732d360c5f871"
+    },
+    {
+      "name": "Image_4",
+      "sha256": "2f79b145dc69f7143a5bdd2723b6425657b2e784282f1bc30bfa9fca38839035"
+    },
+    {
+      "name": "Image_5",
+      "sha256": "cef230e06794f3aef14983993a7fd76634333f51d361b60f5931cc5e473e5f90"
+    },
+    {
+      "name": "Image_6",
+      "sha256": "b2dd6663437f73e780afee8829baf1bba8edb3a7f42f22117ba3d8acec680f1b"
+    },
+    {
+      "name": "Image_8",
+      "sha256": "55db7472fe1110957ab1926652bbe0ed5640dd66325d8e952706272a159bacbc"
+    },
+    {
+      "name": "Image_9",
+      "sha256": "5372d09ca4ef6eb29fe94d2a80ce349c12ff25c395749ef369d91333c65fde00"
+    }
+  ],
+  "restoredBumpExtensions": [
+    {
+      "material": "Sage woven upholstery",
+      "heightSHA256": "ce65abd4b089051dbd32c6aa8449922a4661c8fe5af58f363de372ef64fab971",
+      "factor": 0.003,
+      "uvScale": [
+        24,
+        24
+      ],
+      "note": "Existing extension restored as Blender Bump; shading is not asserted pixel-identical to Three."
+    }
+  ],
+  "expandedObjectRecords": "Full per-object record retained in local delivery R1_Local_Editable.validation.json; GLB source IDs and bounds are in objects-and-materials.json."
+}

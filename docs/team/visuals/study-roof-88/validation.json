@@ -1,0 +1,42 @@
+{
+  "passed": true,
+  "source": "PR #88 / 382c5832dc924f02cb89d3474c6d481a058b169e",
+  "checks": [
+    "B contract: 86 PASS and no FAIL",
+    "four roof slopes have finite upward normals",
+    "all four slopes have standing seams",
+    "six planters and matching low roof proportions",
+    "roof toggle hides the entire new roof",
+    "real W input crosses the open doorway into outdoors",
+    "no uncaught errors"
+  ],
+  "geometry": {
+    "roof": {
+      "eave": 3.86,
+      "width": 13.58,
+      "depth": 10.58,
+      "rise": 0.80408,
+      "slope": 0.152,
+      "overhang": 0.55
+    },
+    "seams": 82,
+    "directions": {
+      "north": 23,
+      "south": 23,
+      "east": 18,
+      "west": 18
+    },
+    "finite": true,
+    "up": true,
+    "plants": 6
+  },
+  "exit": {
+    "x": 3.3,
+    "z": 6.1549,
+    "yawDeg": 180,
+    "pitchDeg": 0,
+    "eyeHeight": 1.62,
+    "seated": false
+  },
+  "errors": []
+}

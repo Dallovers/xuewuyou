@@ -1,0 +1,33 @@
+{
+  "passed": true,
+  "checks": [
+    {
+      "url": "/js/features/campus-hub/index.html",
+      "status": 200
+    },
+    {
+      "url": "/examples/campus-3d-v5/index.html",
+      "status": 200
+    },
+    {
+      "url": "/examples/campus-3d-v5/assets/characters/student-anime.vrm",
+      "status": 200
+    },
+    {
+      "url": "/examples/campus-3d-v5/Classroom_Lighting_v5.blend",
+      "status": 403
+    },
+    {
+      "url": "/examples/campus-3d-v5/tools/build-anime-motion.mjs",
+      "status": 403
+    },
+    {
+      "url": "/server/server.js",
+      "status": 403
+    },
+    {
+      "url": "/examples/library-3d/bake-prep/r1/r1-local.glb",
+      "status": 403
+    }
+  ]
+}

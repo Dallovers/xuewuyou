@@ -13,7 +13,7 @@
 <link rel="stylesheet" href="css/style.css?v=21">
 <link rel="stylesheet" href="css/integrations.css?v=1">
 <link rel="stylesheet" href="css/whiteboard.css?v=1">
-<link rel="stylesheet" href="css/atlas.css?v=3">
+<link rel="stylesheet" href="css/atlas.css?v=4">
 <link rel="stylesheet" href="css/community.css?v=2">
 <link rel="stylesheet" href="css/message-wall-art.css?v=1">
 <link rel="stylesheet" href="css/study-rooms.css?v=1">
@@ -23,6 +23,7 @@
 <link rel="stylesheet" href="vendor/katex/katex.min.css">
 <link rel="stylesheet" href="css/question.css?v=6">
 <link rel="stylesheet" href="css/ui-polish.css?v=4">
+<link rel="stylesheet" href="css/campus-home.css?v=1">
 <script src="vendor/katex/katex.min.js" defer></script>
 <script src="vendor/katex/contrib/auto-render.min.js" defer></script>
   <!-- PDF.js 用于 AI 划词模式 -->
@@ -166,6 +167,29 @@
 
   <!-- ===== 视图：首页 ===== -->
   <div id="view-home" class="hidden">
+    <section class="campus-home-feature" id="campusHomeFeature" aria-labelledby="campusTitle">
+      <a class="campus-home-hero" id="campusHubEntry" href="js/features/campus-hub/index.html" aria-labelledby="campusTitle campusEntryAction" aria-describedby="campusEntryDescription">
+        <picture class="campus-home-picture">
+          <source media="(max-width: 640px)" srcset="vendor/campus-home/campus-courtyard-cover-mobile-v1.webp">
+          <img src="vendor/campus-home/campus-courtyard-cover-v1.webp" width="1600" height="900" alt="灰砖与浅石材教学楼围合的开放庭院，白石步道连接圆形喷泉和木质亭廊" fetchpriority="high" decoding="async">
+        </picture>
+        <div class="campus-home-copy">
+          <p class="campus-home-today">今日校园</p>
+          <h1 id="campusTitle">走进你的<br>3D 开放校园</h1>
+          <p id="campusEntryDescription">去教室练题、图书馆阅读，<br class="campus-mobile-break">也去广场遇见同伴。</p>
+          <span class="campus-home-action" id="campusEntryAction">进入 3D 校园<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12h15M13 5l7 7-7 7"/></svg></span>
+        </div>
+        <span class="campus-home-scene-note">自由漫游 · 可进入室内</span>
+      </a>
+      <p class="campus-home-caption">校园概念封面 · 点击进入实时 3D 场景。手机也可使用，流畅度取决于设备。</p>
+    </section>
+    <nav class="campus-home-shortcuts" id="campusHomeShortcuts" aria-label="直接开始学习">
+      <button type="button" data-nav="bank"><strong>课程地图</strong><span>挑个章节，开始练习</span></button>
+      <button type="button" data-nav="wenku"><strong>学习资料</strong><span>阅读讲义，整理笔记</span></button>
+      <button type="button" data-nav="rooms"><strong>自习室</strong><span>和同伴一起专注</span></button>
+      <button type="button" data-nav="community" data-community-entry="friends"><strong>学习搭子</strong><span>找到同行的同学</span></button>
+    </nav>
+    <section id="campusAtlas" class="atlas-workspace" aria-labelledby="campusProgressTitle"></section>
     <details class="feature-directory" id="featureDirectory">
       <summary>全部功能入口<span>查看课程地图、学情报告、AI 助手等功能</span></summary>
       <div class="feature-directory-grid">
@@ -176,7 +200,6 @@
       </div>
       <p>题目白板仍在练习与挑战复盘的每道题旁；拍照搜题和自由提问可通过右下角 AI 助手打开。</p>
     </details>
-    <section id="campusAtlas" class="atlas-workspace" aria-labelledby="campusTitle"></section>
   </div>
 
   <!-- ===== 视图：题库 ===== -->
@@ -1056,9 +1079,10 @@
 <script src="js/study-rooms.js?v=3" defer></script>
 <script src="js/campus-registry.js?v=6" defer></script>
 <script src="js/atlas-assets.js?v=3" defer></script>
-<script src="js/atlas.js?v=8" defer></script>
+<script src="js/atlas.js?v=9" defer></script>
 <script src="js/ux.js?v=1" defer></script>
 <script src="js/campus-interactions.js?v=1" defer></script>
+<script src="js/campus-hub-entry.js?v=2" defer></script>
 </body>
 </html>
 

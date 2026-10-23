@@ -16,12 +16,12 @@
  * 所以宿主里那句同步的 `const district = createDistrict(...)` 拿得到模型。
  */
 import './core.js';
-import './materials.js';
+import './materials.js?v=study-roof-88';
 import './furniture.js';
 import './shell.js';
-import './props.js';
-import './room.js';
-import './colliders.js';
+import './props.js?v=study-roof-88';
+import './room.js?v=study-roof-88';
+import './colliders.js?v=study-roof-88';
 
 /* 碰撞体只在 colliders.js 里生成一份：宿主、预览页的走动、契约检查都引用它，
    避免出现「契约说走得到、真进去却卡住」的两套判定。 */

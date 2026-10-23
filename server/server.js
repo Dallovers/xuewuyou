@@ -563,6 +563,7 @@ require('./learning')({ route, authUser, sendJson, readBody, store, syncReviews:
 require('./practice')({ route, authUser, sendJson, readBody, store });
 require('./campus')({ route, authUser, sendJson, readBody, store, studyRooms });
 const community = require('./community')({route,authUser,sendJson,readBody,store,syncReviews:integrations.syncReviews});
+const campusLive = require('./campus/presence')({authUser,store});
 require('./questions')({ route, authUser, sendJson, readBody });
 
 /* 管理员后台最后挂载：它要用到 cleanPresence，也要保证 authUser 已带上封号判定 */
@@ -593,7 +594,7 @@ const MIME = {
   '.svg': 'image/svg+xml', '.ico': 'image/x-icon', '.wav': 'audio/wav', '.mp3': 'audio/mpeg',
   '.pdf': 'application/pdf', '.woff': 'font/woff', '.woff2': 'font/woff2',
   '.wasm': 'application/wasm', '.mjs': 'application/javascript', '.ttf': 'font/ttf',
-  '.hdr': 'application/octet-stream', '.glb': 'model/gltf-binary'
+  '.hdr': 'application/octet-stream', '.exr': 'application/octet-stream', '.glb': 'model/gltf-binary'
 };
 
 function serveStatic(req, res) {
@@ -609,9 +610,10 @@ function serveStatic(req, res) {
    * 但仍然不放进目录里扩散，避免以后有人把备份、日志之类的东西丢进来就被伺服出去。 */
   const ALLOWED_ROOTS = ['index.html', 'admin.html', 'js', 'css', 'audio', 'data', 'vendor'];
   const publicPath = parts.join('/');
-  const libraryAsset = /^examples\/library-3d\/(?:index\.html|library\.css|app\.bundle\.js|assets\/(?:catalog-availability\.json|wenku-library\.glb)|vendor\/pdfjs\/(?:pdf\.min\.js|pdf\.worker\.min\.js))$/.test(publicPath);
+  const libraryAsset = /^examples\/library-3d\/(?:index\.html|library\.css|app\.bundle\.js|assets\/(?:catalog-availability\.json|wenku-library\.glb|r1-lighting\/(?:r1-bake\.json|r1-receivers-[a-f0-9]{8}\.glb|r1-indirect-[a-f0-9]{8}\.exr))|vendor\/pdfjs\/(?:pdf\.min\.js|pdf\.worker\.min\.js))$/.test(publicPath);
   const libraryMaterial = /^examples\/campus-3d-v5\/assets\/(?:[a-z]+-(?:color|normal|roughness)\.jpg|sky\.hdr)$/.test(publicPath);
-  if (relative.startsWith('..') || path.isAbsolute(relative) || parts.some(p => p.startsWith('.')) || !(ALLOWED_ROOTS.includes(parts[0]) || libraryAsset || libraryMaterial)) return sendError(res, 403, '禁止访问');
+  const academyAsset = /^examples\/campus-3d-v5\/(?:index\.html|style\.css|app\.bundle\.js|assets\/(?:classroom-baked\.glb|lightmaps\/(?:day-open|day-closed|led)\.hdr|characters\/student-(?:anime\.vrm|anime-motion\.json|robot\.glb|formal\.glb|hoodie\.glb)))$/.test(publicPath);
+  if (relative.startsWith('..') || path.isAbsolute(relative) || parts.some(p => p.startsWith('.')) || !(ALLOWED_ROOTS.includes(parts[0]) || libraryAsset || libraryMaterial || academyAsset)) return sendError(res, 403, '禁止访问');
   fs.readFile(filePath, (err, buf) => {
     if (err) return sendError(res, 404, '文件不存在');
     const ext = path.extname(filePath).toLowerCase();
@@ -655,7 +657,7 @@ const server = http.createServer(async (req, res) => {
   serveStatic(req, res);
 });
 
-studyRooms.attach(community.attach(server));
+studyRooms.attach(campusLive.attach(community.attach(server)));
 server.requestTimeout = 30000;
 async function start(port=PORT,host=process.env.HOST || '127.0.0.1') {
   await store.init();
@@ -677,5 +679,5 @@ if (require.main === module) start().then(() => {
 
 
 
-if (require.main === module) process.on('SIGTERM', async () => { server.close(); studyRooms.close(); await integrations.close(); await community.close(); await store.close(); process.exit(0); });
-module.exports = { server, integrations, community,studyRooms, admin, start, routes };
+if (require.main === module) process.on('SIGTERM', async () => { server.close(); campusLive.close(); studyRooms.close(); await integrations.close(); await community.close(); await store.close(); process.exit(0); });
+module.exports = { server, integrations, community,studyRooms,campusLive, admin, start, routes };

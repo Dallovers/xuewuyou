@@ -1,0 +1,14 @@
+{
+  "source_sha256": "f101b6a89f71ee884b56703f575be9c0a781cda3839420a8550aab46c7d20bab",
+  "source_archive": "source.json.gz",
+  "blender": "4.5.3 LTS (67807e1800cc)",
+  "cycles_samples": 32,
+  "distance_m": 0.6,
+  "atlas": [
+    2048,
+    2048
+  ],
+  "margin_px": 8,
+  "mesh_binding": "100 static social architectural meshes; other exact runtime meshes used as occluders",
+  "notes": "AO only; no borrowed lightmap, no AI image, no baked directional sunlight or GI. Runtime verifies scene and per-mesh signatures."
+}

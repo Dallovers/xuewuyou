@@ -1,0 +1,31 @@
+Blender 4.5.3 LTS (hash 67807e1800cc built 2025-09-09 01:33:33)
+Fra:1 Mem:261.41M (Peak 261.41M) | Time:165:41:55.79 | Mem:0.00M, Peak:0.00M | Scene | Synchronizing object | SocialAOAtlas
+Fra:1 Mem:261.42M (Peak 261.42M) | Time:165:41:55.79 | Mem:0.00M, Peak:0.00M | Scene | Synchronizing object | Occluder-4
+Fra:1 Mem:261.48M (Peak 261.48M) | Time:165:41:55.79 | Mem:0.00M, Peak:0.00M | Scene | Synchronizing object | Occluder-8
+Fra:1 Mem:261.82M (Peak 261.82M) | Time:165:41:55.79 | Mem:0.00M, Peak:0.00M | Scene | Synchronizing object | Occluder-12
+Fra:1 Mem:261.90M (Peak 261.90M) | Time:165:41:55.79 | Mem:0.00M, Peak:0.00M | Scene | Synchronizing object | Occluder-15
+Fra:1 Mem:262.33M (Peak 262.33M) | Time:165:41:55.79 | Mem:0.00M, Peak:0.00M | Scene | Synchronizing object | PreviewSun
+Fra:1 Mem:262.34M (Peak 262.34M) | Time:165:41:55.79 | Mem:0.00M, Peak:0.00M | Scene | Synchronizing object | Occluder-16
+Fra:1 Mem:266.91M (Peak 266.91M) | Time:165:41:55.79 | Mem:0.00M, Peak:0.00M | Scene | Initializing
+Fra:1 Mem:266.91M (Peak 266.91M) | Time:165:41:55.79 | Mem:0.00M, Peak:0.00M | Scene | Updating Images | Loading social-contact-ao
+Fra:1 Mem:311.66M (Peak 886.06M) | Time:165:42:04.08 | Mem:0.00M, Peak:0.00M | Scene | Synchronizing object | SocialAOAtlas
+Fra:1 Mem:311.66M (Peak 886.06M) | Time:165:42:04.08 | Mem:0.00M, Peak:0.00M | Scene | Synchronizing object | Occluder-2
+Fra:1 Mem:311.80M (Peak 886.06M) | Time:165:42:04.08 | Mem:0.00M, Peak:0.00M | Scene | Synchronizing object | Occluder-3
+Fra:1 Mem:311.95M (Peak 886.06M) | Time:165:42:04.08 | Mem:0.00M, Peak:0.00M | Scene | Synchronizing object | Occluder-4
+Fra:1 Mem:311.98M (Peak 886.06M) | Time:165:42:04.08 | Mem:0.00M, Peak:0.00M | Scene | Synchronizing object | Occluder-7
+Fra:1 Mem:311.99M (Peak 886.06M) | Time:165:42:04.08 | Mem:0.00M, Peak:0.00M | Scene | Synchronizing object | Occluder-8
+Fra:1 Mem:311.99M (Peak 886.06M) | Time:165:42:04.08 | Mem:0.00M, Peak:0.00M | Scene | Synchronizing object | Occluder-12
+Fra:1 Mem:312.01M (Peak 886.06M) | Time:165:42:04.08 | Mem:0.00M, Peak:0.00M | Scene | Synchronizing object | Occluder-13
+Fra:1 Mem:312.01M (Peak 886.06M) | Time:165:42:04.08 | Mem:0.00M, Peak:0.00M | Scene | Synchronizing object | Occluder-15
+Fra:1 Mem:312.19M (Peak 886.06M) | Time:165:42:04.08 | Mem:0.00M, Peak:0.00M | Scene | Synchronizing object | Occluder-16
+Fra:1 Mem:312.18M (Peak 886.06M) | Time:165:42:04.08 | Mem:0.00M, Peak:0.00M | Scene | Synchronizing object | PreviewSun
+Fra:1 Mem:315.15M (Peak 886.06M) | Time:165:42:04.08 | Mem:0.00M, Peak:0.00M | Scene | Initializing
+Fra:1 Mem:315.15M (Peak 886.06M) | Time:165:42:04.08 | Mem:0.00M, Peak:0.00M | Scene | Updating Images | Loading social-indirect
+OUTPUT_DIRECTORY D:\文档\xuewuyou-项目资料\Codex工作区\2026-10-18\3d-pbr-v-ray-corona-unreal\work\social-visual-detail-v4\js\features\social\assets\baked
+Info: Removed 12354 vertices
+Info: Baking map saved to internal image, save it externally or pack it
+BAKED 165 meshes 5154 triangles
+Info: Baking map saved to internal image, save it externally or pack it
+INDIRECT BAKED
+
+Blender quit

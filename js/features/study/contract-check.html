@@ -31,7 +31,7 @@ window.addEventListener('unhandledrejection', function (e) {
 <script src="walk.js"></script>
 <script type="module">
 import * as THREE from 'three';
-import { createDistrict } from './district.js';
+import { createDistrict } from './district.js?v=study-roof-88';
 
 const lines = [];
 const log = (s) => lines.push(s);
@@ -236,7 +236,28 @@ try {
     log('INFO 软装：书 ' + dc.books + ' 本 / 摊开的书 ' + dc.openBooks + ' 本 / 笔 ' + dc.pens +
       ' 支 / 杯 ' + dc.cups + ' 个 / 盆栽 ' + dc.pots + ' 盆 / 空座位 ' + dc.emptySeats + ' 个');
 
-    check('软装没有新增碰撞体', district.colliders.length === 12, '实际 ' + district.colliders.length);
+    /* 12 = 3 面墙 + 南墙两段 + 2 扇门扇 + 3 个桌岛 + 窗台长台 + 低书架。
+       2026-10-22 加落地绿植后多出 4 条：盆栽**不是软装**——盆能被走穿比穿模还难看，
+       所以它按家具那一档单列（见 props.createPlanters 的头注释）。
+       这里把「软装没变多」和「绿植按家算计」分开写，别把两者混成一条。 */
+    const plantIds = district.colliders.filter((c) => String(c.id).indexOf('study.plant.') === 0);
+    check('软装（Decor）没有新增碰撞体，落地绿植另计',
+      district.colliders.length === 12 + plantIds.length && plantIds.length === 4,
+      '共 ' + district.colliders.length + ' 条，其中绿植 ' + plantIds.length + ' 条');
+
+    /* 贴墙放，不站在屋子中间——这条守的是「加绿植不许挤走通行」。
+       判据用「离最近一面墙内皮的距距 ≤ 0.5 m + 盆半径」，比逐个比坐标稳：
+       以后花朵挪位置、换墙角都不用改这里。 */
+    check('落地绿植都贴墙（离墙内皮 ≤0.5 m）',
+      plantIds.length > 0 && plantIds.every((c) => {
+        const toSide = Math.min(
+          ROOMSPEC.width / 2 - Math.abs(c.center[0]),
+          ROOMSPEC.depth / 2 - Math.abs(c.center[2])
+        );
+        return toSide <= 0.5 + c.half[0];
+      }),
+      plantIds.map((c) => c.id.slice('study.plant.'.length) + ' ' +
+        c.center[0].toFixed(2) + ',' + c.center[2].toFixed(2)).join(' / '));
 
     let instMeshes = 0, instTotal = 0;
     decor.traverse((n) => {
@@ -656,8 +677,9 @@ try {
     /* 起点在门内一步。门洞本身要能过（南墙是分段的），墙体本身要挡住。
        注 1：墙只有 0.24 m 厚，所以"站在墙外 0.6 m 处"按碰撞模型是空的——
              碰撞体只描述"挡不挡人"，不描述"外面有没有地"。判墙要判在墙体上。
-       注 2：colliders 本身允许从门洞走出去（门外没有碰撞体），
-             预览页是用 bounds 把可站范围兜在墙内皮以内，这条写在 walk.js 的注释里。 */
+       注 2：colliders 本身允许从门洞走出去（门外没有碰撞体）。
+             预览页另有一份 bounds 兜底，它以前掐在墙内皮再退 0.06 m，
+             正好把门洞封死（用户实测"为什么出不去门"），所以下面单独断言它不封门。 */
     const RD = district.root.userData.spec;
     const DC = window.StudyDistrict.colliders.DOOR;
     const startX = DC.centerX - 0.55;
@@ -670,6 +692,18 @@ try {
       '起点(' + startX.toFixed(2) + ',' + startZ.toFixed(2) + ') ' +
       '眼高 ' + WALK.SPEC.eyeHeight + ' m / 步速 ' + WALK.SPEC.walkSpeed + ' m·s⁻¹ / 半径 ' + WALK.SPEC.radius + ' m'
     );
+
+    /* 可站范围不许封门：门外至少还留得下一整步。
+       上限 40 m 是防有人图省事改成"无穷大"——那样会走到 260 m 地坪外面去。
+       断言用 ROOM（净 12.0 × 9.0、墙厚 0.24），不用 spec.depth 那套标称值，
+       否则报出来的"墙外皮"会跟着偏。 */
+    const ROOMD = window.StudyDistrict.room.ROOM;
+    const CUSH = window.StudyDistrict.colliders.build(THREE, r).bounds;
+    check('可站范围不封门（门外至少能走 1 m）',
+      CUSH.maxZ >= ROOMD.depth / 2 + 1.0 && CUSH.maxZ <= 40,
+      'maxZ ' + CUSH.maxZ.toFixed(2) + ' m，墙外皮 ' +
+      (ROOMD.depth / 2 + ROOMD.wallThickness).toFixed(2) + ' m（门口原来的封边 ' +
+      (ROOMD.depth / 2 - 0.06).toFixed(2) + ' m）');
   } else {
     check('漫游模块已加载', false, 'window.StudyDistrict.walk 缺失');
   }

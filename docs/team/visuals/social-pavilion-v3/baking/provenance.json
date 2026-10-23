@@ -1,0 +1,38 @@
+{
+  "blender": "4.5.3 LTS 67807e1800cc",
+  "sourceSnapshot": "source.json.gz",
+  "sourceSha256": "4b2d7c0e26f6218f92f557a5ebcceacc26099b43d870203c01a2cf53a9384db8",
+  "sceneSignature": "e7435899",
+  "assets": [
+    {
+      "path": "js/features/social/assets/generated/camphor-leaf-v1.png",
+      "bytes": 2064297,
+      "sha256": "ecf7e94c1d9267a2dfe0c26acea6a7902828d9c2b1496e3ea630f6a7a9c92ea7"
+    },
+    {
+      "path": "js/features/social/assets/generated/limestone-albedo-v1.png",
+      "bytes": 3407941,
+      "sha256": "e6edecccc7cd2cacac2d3ace0722731d2aff176e7232dbb70c65667bd54d9e46"
+    },
+    {
+      "path": "js/features/social/assets/generated/provenance.json",
+      "bytes": 3969,
+      "sha256": "85ca2fbbe124fb40d3641fe1862a7e52b2094e83231aa1b3db204a1ae6fa6b29"
+    },
+    {
+      "path": "js/features/social/assets/baked/ao-manifest.json",
+      "bytes": 240593,
+      "sha256": "89be1bc96e5bd22293f99290e546ca708964649c7b5d049cd0c66aff5d3f1365"
+    },
+    {
+      "path": "js/features/social/assets/baked/contact-ao.png",
+      "bytes": 1931867,
+      "sha256": "d37bed96017b9d4b08b6fe667be7865731a9cce11fbb08c251d66bd9dbd1be65"
+    },
+    {
+      "path": "js/features/social/assets/baked/indirect-diffuse.jpg",
+      "bytes": 1015958,
+      "sha256": "2355a6960acbcf839759f6cc66a1ba2276bac6239166cacef31b19035468c4ef"
+    }
+  ]
+}

@@ -1,0 +1,36 @@
+{
+  "baseline": "f9fb94767d2d1e924d0adc160b53d0d61a0a3873",
+  "changes": [
+    {
+      "path": "js/features/social/assets/generated/camphor-leaf-v1.png",
+      "beforeBytes": 0,
+      "afterBytes": 2064297
+    },
+    {
+      "path": "js/features/social/assets/generated/limestone-albedo-v1.png",
+      "beforeBytes": 0,
+      "afterBytes": 3407941
+    },
+    {
+      "path": "js/features/social/assets/generated/provenance.json",
+      "beforeBytes": 0,
+      "afterBytes": 3969
+    },
+    {
+      "path": "js/features/social/assets/baked/ao-manifest.json",
+      "beforeBytes": 174252,
+      "afterBytes": 240593
+    },
+    {
+      "path": "js/features/social/assets/baked/contact-ao.png",
+      "beforeBytes": 1924814,
+      "afterBytes": 1931867
+    },
+    {
+      "path": "js/features/social/assets/baked/indirect-diffuse.jpg",
+      "beforeBytes": 0,
+      "afterBytes": 1015958
+    }
+  ],
+  "deltaBytes": 6565559
+}

@@ -17,7 +17,12 @@
     // —— 共用材质（色值来自说明书，不得私改）——
     stone_light: { color: '#D8D2C3', roughness: 0.55, metalness: 0.0 },
     brick_grey: { color: '#8A908B', roughness: 0.82, metalness: 0.0 },
-    metal_dark: { color: '#38443F', roughness: 0.40, metalness: 0.65 },
+    /* metalness 0.65 → 0.42：色值没动，动的是"它有多像纯金属"。
+       金属没有漫反射，画面里全靠环境反射给亮，而这张环境贴图本身是个偏暗的小房间，
+       于是走线槽、踢脚线、灯槽一起被压成死黑（实测走线槽 21，同一帧的地面 199）——
+       读起来像画上去的黑条，不像钢。降金属度把一部分能量还给漫反射，实测 21 → 36。
+       真实的深色喷塑钢件本来也不是 100% 金属。 */
+    metal_dark: { color: '#38443F', roughness: 0.40, metalness: 0.42 },
     roof_bluegrey: { color: '#637581', roughness: 0.48, metalness: 0.68 },
     oak_light: { color: '#C9AD82', roughness: 0.55, metalness: 0.0 },
     fabric_greygreen: { color: '#777D6E', roughness: 0.92, metalness: 0.0 },
@@ -26,13 +31,34 @@
     wall_interior: { color: '#E6E7E3', roughness: 0.94, metalness: 0.0 },
     ceiling: { color: '#E8E6DD', roughness: 0.94, metalness: 0.0 },
     floor_terrazzo: { color: '#F4F4EE', roughness: 0.60, metalness: 0.0 },
-    steel_chair: { color: '#2E3837', roughness: 0.38, metalness: 0.68 }
+    // 椅架同理，而且它更细：22 mm 的管子在画面里只是几像素宽，
+    // 压到 21 的时候就只剩一条黑线，看不出是圆的。0.68 → 0.38。
+    steel_chair: { color: '#2E3837', roughness: 0.38, metalness: 0.38 }
   };
 
   var GLASS = { color: '#C6D7D8', roughness: 0.08, metalness: 0.05, opacity: 0.22 };
 
+  /* 家具下方环境遮蔽的衰减参数。
+     inner 必须与 room.js 里 OCCLUSION.inner 一致：贴片边长 = 底面 / inner，
+     两边对不上，平台区就盖不严家具底面，边缘会留一圈亮边。
+     depth 0.16 = 最深处乘 0.84。原型按 0.14 试拍过 01-整屋：桌下的暗区已经能读出来，
+     只是偏轻，正式值再抬两档；再重就会开始像地面上的脏印子。 */
+  var FLOOR_OCCLUSION = { inner: 0.72, depth: 0.16 };
+
+  /* 墙脚与墙角的衰减深度。比家具底下更重一点：
+     真实的墙角是两块面互相挡，本来就是整间屋子里最暗的地方，
+     和"桌子底下"不是一回事。
+     cornerFadeStart = 1 − 顶部收边高度 / 贴片高度，见 room.js 的 EDGE_AO。 */
+  var EDGE_AO = { wallDepth: 0.20, topDepth: 0.20, cornerDepth: 0.22, cornerFadeStart: 0.778 };
+
   function hasDOM() {
     return typeof document !== 'undefined' && !!document.createElement;
+  }
+
+  /** 0..1 的 smoothstep，钳到区间内。几张衰减图共用，别再各写一份。 */
+  function smooth01(t) {
+    t = t < 0 ? 0 : t > 1 ? 1 : t;
+    return t * t * (3 - 2 * t);
   }
 
   /**
@@ -88,6 +114,121 @@
     if (THREE.SRGBColorSpace) tex.colorSpace = THREE.SRGBColorSpace;
     tex.wrapS = tex.wrapT = THREE.ClampToEdgeWrapping;
     tex.anisotropy = 4;
+    tex.needsUpdate = true;
+    return tex;
+  }
+
+  /**
+   * 家具遮挡造成的地面环境光衰减（floor occlusion）。
+   *
+   * 为什么需要它：这张环境贴图只给光、不做任何遮蔽，而太阳的影子在整幅画面上
+   * 只挣出 4% 的平均亮度差（关掉 castShadow，整屋均值 162.6 → 169.6）。
+   * 于是桌下的地面和走道一样亮（实测 192 / 192），桌子看着是"贴"在地板上的。
+   * 真实的房间，桌子底下少了大半天光。
+   *
+   * 与 contact_shadow 同一套做法（乘性混合、不写深度、不参与投影），区别在尺寸与衰减：
+   * 中央有一块 inner 的平台（乘子恒定在最深处），往外用 smoothstep 收回 1.0。
+   * 贴片边长 = 构件底面 / inner，平台区就永远与家具底面对齐——
+   * 加一件新家具只要报一次底面尺寸，不用为每件单独调衰减。
+   *
+   * 同样必须标 sRGB，理由与接触暗角一致（解码与编码互相抵消，写进去多少就乘多少）。
+   */
+  function makeFloorOcclusionTexture(THREE) {
+    if (!hasDOM()) return null;
+    var S = 256;
+    var inner = FLOOR_OCCLUSION.inner;
+    var depth = FLOOR_OCCLUSION.depth;
+    var cv = document.createElement('canvas');
+    cv.width = cv.height = S;
+    var c = cv.getContext('2d');
+    var img = c.createImageData(S, S);
+    var d = img.data;
+    for (var y = 0; y < S; y++) {
+      for (var x = 0; x < S; x++) {
+        var nx = Math.abs(((x + 0.5) / S) * 2 - 1);
+        var ny = Math.abs(((y + 0.5) / S) * 2 - 1);
+        var fx = smooth01((1 - nx) / (1 - inner));
+        var fy = smooth01((1 - ny) / (1 - inner));
+        var g = Math.round((1 - depth * fx * fy) * 255);
+        var i = (y * S + x) * 4;
+        d[i] = d[i + 1] = d[i + 2] = g;
+        d[i + 3] = 255;
+      }
+    }
+    c.putImageData(img, 0, 0);
+    var tex = new THREE.CanvasTexture(cv);
+    if (THREE.SRGBColorSpace) tex.colorSpace = THREE.SRGBColorSpace;
+    tex.wrapS = tex.wrapT = THREE.ClampToEdgeWrapping;
+    tex.anisotropy = 4;
+    tex.needsUpdate = true;
+    return tex;
+  }
+
+  /**
+   * 边界软衰减图：u=0 一侧最暗，u=1 一侧完全透明（乘 1.0）。
+   * 给「墙脚暗带」用——一条贴着墙、朝房间里淡出的带子。
+   */
+  function makeEdgeAOTexture(THREE, depth) {
+    if (!hasDOM()) return null;
+    var S = 64;
+    var cv = document.createElement('canvas');
+    cv.width = cv.height = S;
+    var c = cv.getContext('2d');
+    var img = c.createImageData(S, S);
+    var d = img.data;
+    for (var y = 0; y < S; y++) {
+      for (var x = 0; x < S; x++) {
+        var u = smooth01((x + 0.5) / S);
+        var g = Math.round((1 - depth * (1 - u)) * 255);
+        var i = (y * S + x) * 4;
+        d[i] = d[i + 1] = d[i + 2] = g;
+        d[i + 3] = 255;
+      }
+    }
+    c.putImageData(img, 0, 0);
+    var tex = new THREE.CanvasTexture(cv);
+    if (THREE.SRGBColorSpace) tex.colorSpace = THREE.SRGBColorSpace;
+    tex.wrapS = tex.wrapT = THREE.ClampToEdgeWrapping;
+    tex.needsUpdate = true;
+    return tex;
+  }
+
+  /**
+   * 墙角软衰减图：u=0（墙角那条竖线）最暗、往外淡出；竖直方向**等强度**，只在接近顶部时收边。
+   *
+   * 为什么竖直方向不做"从地面往上淡出"（第一版就是那样，实测被否掉）：
+   *   那样只有离地 0.9 m 以内变暗（0.1 m 处 163、1.1 m 处 203、1.8 m 处 204），
+   *   可真实的 90° 阳角在整条高度上都偏暗——站在角线附近，天光只剩四分之一，
+   *   而且这个比例**与高度无关**（无限高的墙角）。
+   *   高度相关的只有两端：贴地那一小段（由 floor_occlusion 与踢脚线负责）与贴天花那一段。
+   *   所以这里改成：fadeStart 以下恒为最深，往上一段 smoothstep 收到 1.0。
+   *
+   * fadeStart 必须与 room.js 的 EDGE_AO.cornerFadeStart 一致（= 1 − topFade / height）。
+   */
+  function makeCornerAOTexture(THREE, depth, fadeStart) {
+    if (!hasDOM()) return null;
+    var S = 64;
+    var cv = document.createElement('canvas');
+    cv.width = cv.height = S;
+    var c = cv.getContext('2d');
+    var img = c.createImageData(S, S);
+    var d = img.data;
+    for (var y = 0; y < S; y++) {
+      for (var x = 0; x < S; x++) {
+        var fu = smooth01((x + 0.5) / S);
+        /* 画布的 y 向下、贴图 v 向上：先翻成 v（0 = 地面） */
+        var v = 1 - (y + 0.5) / S;
+        var fv = v <= fadeStart ? 1 : smooth01((1 - v) / (1 - fadeStart));
+        var g = Math.round((1 - depth * (1 - fu) * fv) * 255);
+        var i = (y * S + x) * 4;
+        d[i] = d[i + 1] = d[i + 2] = g;
+        d[i + 3] = 255;
+      }
+    }
+    c.putImageData(img, 0, 0);
+    var tex = new THREE.CanvasTexture(cv);
+    if (THREE.SRGBColorSpace) tex.colorSpace = THREE.SRGBColorSpace;
+    tex.wrapS = tex.wrapT = THREE.ClampToEdgeWrapping;
     tex.needsUpdate = true;
     return tex;
   }
@@ -405,7 +546,11 @@
         var ter = makeTerrazzoTexture(THREE, 0.9);
         if (ter) {
           params.map = ter;
-          params.color = new THREE.Color(0xffffff);
+          /* 贴图是白的，这里乘一层灰把地面压回"水磨石"而不是"白纸"。
+             环境光提到 0.54 之后地面从 186 涨到 199，和白墙挤在同一档里，
+             墙地交界读不出转折；乘 0xD8D4C8 落回 187 左右，比原来低一点点，
+             太阳的影子也随之重新看得出来。 */
+          params.color = new THREE.Color(0xd8d4c8);
           params.userData = { ownsMap: true };
         }
       }
@@ -462,7 +607,9 @@
     /* 接地暗角贴片：乘性混合、不写深度、不投影也不受影。
        一张乘子图给所有贴片共用，贴片几何在 room.js 里按落地构件自动生成。
        toneMapped 必须关：开了的话 ACES 会把这张「乘数」当成颜色重新映射，
-       白色边缘就不再是 1.0，整块地面会被无声地压暗一点。 */
+       白色边缘就不再是 1.0，整块地面会被无声地压暗一点。
+       fog 也必须关：雾是把片元颜色往雾色里混，乘性贴片一旦被混进雾色，
+       乘的就不是 0..1 的乘子而是一个被抬亮的数，贴片会变成一层灰纱。 */
     var contactMap = wantTextures ? makeContactShadowTexture(THREE) : null;
     out.contact_shadow = new THREE.MeshBasicMaterial({
       name: 'contact_shadow',
@@ -472,9 +619,46 @@
       depthWrite: false,
       blending: THREE.MultiplyBlending,
       toneMapped: false,
+      fog: false,
       side: THREE.DoubleSide
     });
     if (contactMap) out.contact_shadow.userData = { ownsMap: true };
+
+    /* 家具下方的环境遮蔽：同一套混合方式，只是一张更大的软衰减图。
+       贴片几何在 room.js 的 createFloorOcclusion 里按构件底面生成。 */
+    var occlMap = wantTextures ? makeFloorOcclusionTexture(THREE) : null;
+    out.floor_occlusion = new THREE.MeshBasicMaterial({
+      name: 'floor_occlusion',
+      color: new THREE.Color(0xffffff),
+      map: occlMap,
+      transparent: true,
+      depthWrite: false,
+      blending: THREE.MultiplyBlending,
+      toneMapped: false,
+      fog: false,
+      side: THREE.DoubleSide
+    });
+    if (occlMap) out.floor_occlusion.userData = { ownsMap: true };
+
+    /* 墙脚暗带（贴地面、朝房间里淡出）与墙角暗带（贴墙面、往上和往外淡出）。
+       与上面两个同一套混合方式，几何在 room.js 的 createEdgeAO 里生成。 */
+    var sharedAO = { transparent: true, depthWrite: false, blending: THREE.MultiplyBlending, toneMapped: false, fog: false, side: THREE.DoubleSide, color: new THREE.Color(0xffffff) };
+    var edgeMap = wantTextures ? makeEdgeAOTexture(THREE, EDGE_AO.wallDepth) : null;
+    out.ao_wall_base = new THREE.MeshBasicMaterial(Object.assign({ name: 'ao_wall_base', map: edgeMap }, sharedAO));
+    if (edgeMap) out.ao_wall_base.userData = { ownsMap: true };
+
+    /* 墙顶暗带：深度取 0.20，与墙脚一致。
+       一开始嫌"天花本身只有 166，压到 0.80 会拉出比墙脚更抢眼的深带"，用了 0.16；
+       实拍+取样发现 0.16 只剩 166→142（差 24），而墙脚是 204→164（差 40），
+       墙顶看起来像"没做"。天花基数低，同样的乘数给出的**绝对**差本来就小一半，
+       要看起来"类似"就得用同一乘数。物理上这两处都是 90° 内凹角，被挡的量本来就该一样。 */
+    var topMap = wantTextures ? makeEdgeAOTexture(THREE, EDGE_AO.topDepth) : null;
+    out.ao_wall_top = new THREE.MeshBasicMaterial(Object.assign({ name: 'ao_wall_top', map: topMap }, sharedAO));
+    if (topMap) out.ao_wall_top.userData = { ownsMap: true };
+
+    var cornerMap = wantTextures ? makeCornerAOTexture(THREE, EDGE_AO.cornerDepth, EDGE_AO.cornerFadeStart) : null;
+    out.ao_wall_corner = new THREE.MeshBasicMaterial(Object.assign({ name: 'ao_wall_corner', map: cornerMap }, sharedAO));
+    if (cornerMap) out.ao_wall_corner.userData = { ownsMap: true };
 
     // 地面一次生成、按块平铺：给平面几何设置 repeat
     out.fitFloorUV = function (width, depth) {

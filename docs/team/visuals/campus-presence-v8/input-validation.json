@@ -1,0 +1,15 @@
+{
+  "passed": true,
+  "checks": [
+    "overview offers an enabled explicit interaction start button",
+    "start button enters walk mode and focuses scene",
+    "clicking a door returns focus to the scene",
+    "walking still works immediately after clicking interaction",
+    "E still works after clicking other campus controls",
+    "WASD works while a campus button had keyboard focus",
+    "E can also start interaction from overview",
+    "choosing quality returns control without an extra canvas click",
+    "no browser errors"
+  ],
+  "errors": []
+}
