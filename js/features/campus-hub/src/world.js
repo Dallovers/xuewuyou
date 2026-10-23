@@ -1,5 +1,5 @@
 import * as T from 'three';
-import {STUDY_PLACEMENT} from './layout.js';
+import {STUDY_PLACEMENT,ARENA_ROOT} from './layout.js';
 import {worldBoxes} from './navigation.js';
 import {createCourtyard} from './courtyard.js';
 import {loadSurfaces} from './surface-materials.js';
@@ -65,10 +65,10 @@ export async function createWorld(scene,openFeature,progress,getPose){
  box(studyExterior,'Study entrance canopy',3.3,3.25,5.2,3.1,.14,1.5,metal);
  const slats=new T.InstancedMesh(new T.BoxGeometry(.07,3.05,.10),wood,26),dummy=new T.Object3D();slats.name='Study external timber sun screen';
  for(let i=0;i<26;i++){dummy.position.set(.8-i*.23,1.65,4.86);dummy.updateMatrix();slats.setMatrixAt(i,dummy.matrix);}slats.castShadow=slats.receiveShadow=true;studyExterior.add(slats);
- for(const [module,x]of [[social,18],[arena,39]]){
+ for(const [module,x]of [[social,18],[arena,ARENA_ROOT.x]]){
   const district=module.createDistrict({THREE:T,openFeature,mode:'runtime',sharedSite:true,bakedAO:false});
   if(module===social)faceSocialCourtyard(district,social.SOCIAL_LAYOUT.pavilion);
-  district.root.position.set(x,0,2);root.add(district.root);districts.push(district);boxes.push(...worldBoxes(T,district));interactions.push(...district.interactions);await district.ready;
+  district.root.position.set(x,0,ARENA_ROOT.z);root.add(district.root);districts.push(district);boxes.push(...worldBoxes(T,district));interactions.push(...district.interactions);await district.ready;
   district.root.traverse(mesh=>{if(groundNames.has(mesh.name))unifyPaving(mesh);});
  }
  // Shared low-density vegetation uses A's actual tree builder and texture.

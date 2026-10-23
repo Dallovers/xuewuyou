@@ -319,6 +319,25 @@ function applyOrbit() {
   camera.lookAt(state.target);
 }
 
+/* 地面高度：擂台台面 + 西侧三跑台阶。
+   以前整片场地都当 y=0，人走到台边就停住（台基整块是碰撞体），所以不需要这个函数；
+   西门做成真能走之后，相机得跟着台阶和台面抬高，否则会从石材里穿过去、
+   站在台面下往上看。台阶高度按"从最外沿往东数第几跑"给，和几何一致。 */
+function arenaGroundAt(x, z) {
+  const L = ARENA_LAYOUT;
+  if (!L) return 0;
+  const half = L.ring.size / 2;
+  const top = L.ring.base + L.ring.cap;
+  if (Math.abs(x - L.ring.cx) <= half && Math.abs(z - L.ring.cz) <= half) return top;
+  if (Math.abs(z - L.ring.cz) <= L.step.width / 2) {
+    const x0 = L.ring.cx - half - L.step.run * L.step.count;
+    if (x >= x0 && x <= L.ring.cx - half) {
+      return Math.min(top, Math.ceil((x - x0) / L.step.run) * L.step.rise);
+    }
+  }
+  return 0;
+}
+
 function applyWalk() {
   if (RIG.frozen) return;
   /* 横向摆幅要沿"屏幕右"的方向加：right = (cos yaw, −sin yaw)。
@@ -327,7 +346,7 @@ function applyWalk() {
   const cos = Math.cos(state.yaw);
   camera.position.set(
     state.pos.x + RIG.offX * cos,
-    EYE + RIG.offY,
+    arenaGroundAt(state.pos.x, state.pos.z) + EYE + RIG.offY,
     state.pos.z - RIG.offX * sin,
   );
   camera.rotation.set(state.pitch, state.yaw, RIG.roll, 'YXZ');
@@ -483,6 +502,12 @@ function updateLocation() {
     return;
   }
   const { x, z } = state.pos;
+  /* 西门做成能走之后，人真的会站上台面（0.63m）。
+     用地面高度判断比再算一遍矩形可靠：第三跑台阶和台面同高，一起算「擂台上」。 */
+  if (arenaGroundAt(x, z) > 0.5) {
+    $('location').textContent = '擂台上';
+    return;
+  }
   if (x < -ARENA_LAYOUT.site.w / 2) $('location').textContent = '场外草地';
   else if (x < -7.4) $('location').textContent = '西侧牌坊';
   else if (Math.abs(z + 4.6) < 2.2 && x > 5.6) $('location').textContent = '对战牌';
