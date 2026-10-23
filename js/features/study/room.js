@@ -57,15 +57,17 @@
       panel: { width: 0.20, height: 0.30, thickness: 0.03, y: 1.30, offsetFromDoor: 0.35 },
       status: { width: 0.34, height: 0.20, thickness: 0.02, y: 1.68 }
     },
-    // 天花：三道横梁沿 Z（房间短向），灯具与梁同向
-    beams: { xs: [-3.6, 0, 3.6], width: 0.30, depth: 0.45 },
+    // 天花：三道横梁沿 Z（房间短向），灯具顺着梁通长铺设
+    // 梁深 0.45 → 0.22：0.45 时净高被压到 3.35，俯看像"吊顶格栅"；
+    // 参考图（B_自习室_风格样板）与校园教室都是近乎平的天花，只留结构线。
+    beams: { xs: [-3.6, 0, 3.6], width: 0.26, depth: 0.22 },
     lights: {
       axis: 'Z',
-      length: 1.20,
-      width: 0.10,
-      depth: 0.02,
+      length: 7.20,      // 通长：参考图是四条贯通的暗缝，不是一排短灯
+      width: 0.09,
+      depth: 0.022,
       xs: [-5.0, -1.8, 1.8, 5.0],
-      zs: [-2.8, 0, 2.8]
+      zs: [0]
     }
   };
 
@@ -898,34 +900,31 @@
         [x, L - B.depth / 2, 0], mats.wall_interior, { castShadow: false });
     });
 
-    /* —— 灯具：与梁同向（Z），嵌入式 —— */
+    /* —— 灯具：通长嵌入式灯槽 ——
+       原来这里是 4×3=12 个 1.2 m 的短灯盒（深色外壳 + 底面一整片自发光），
+       从下往上看是一排贴在天花上的白牌子，碎、多、抢戏。
+       参考图（docs/team/visuals/ab-style-v1/B_自习室_风格样板.png）与校园教室
+       （examples/campus-3d-v5 的 'Linear ceiling light'）都是"一条长长的暗缝里透出暖光"，
+       所以改成 4 条通长灯槽：两侧深色边条 + 中间凹进去 1 cm 的暖光芯。
+       芯比边条短 1 cm、窄 2 mm，靠这点退距做出"缝里有光"而不是"贴片发光"。 */
     var Li = LAYOUT.lights;
+    var railW = 0.014;
+    var railX = Li.width / 2 - railW / 2;
+    var coreW = Li.width - railW * 2 - 0.004;
+    var coreDrop = 0.010;                 // 光芯比边条底面高 1 cm = 凹进去
+    var railOpt2 = { castShadow: false, receiveShadow: true };
     Li.xs.forEach(function (x) {
       Li.zs.forEach(function (z) {
+        [-1, 1].forEach(function (s) {
+          core.box(THREE, g, 'LightFixture',
+            [railW, Li.depth, Li.length],
+            [x + s * railX, L - Li.depth / 2, z], mats.metal_dark, railOpt2);
+        });
         core.box(THREE, g, 'LightFixture',
-          [Li.width, Li.depth, Li.length],
-          [x, L - Li.depth / 2, z], mats.metal_dark, { castShadow: false });
+          [coreW, Li.depth - coreDrop, Li.length - 0.01],
+          [x, L - (Li.depth - coreDrop) / 2, z], mats.light_face, { castShadow: false, receiveShadow: false });
       });
     });
-
-    // 12 块发光面合成 1 个 draw call：深色灯槽下缘贴一层自发光白面，
-    // 白天也能读出「这是灯」而不是一条黑漆。
-    var faceGeo = new THREE.BoxGeometry(Li.width * 0.82, 0.002, Li.length * 0.97);
-    var faces = new THREE.InstancedMesh(faceGeo, mats.light_face, Li.xs.length * Li.zs.length);
-    faces.name = 'LightFace';
-    faces.castShadow = false;
-    faces.receiveShadow = false;
-    var dm = new THREE.Object3D();
-    var fi = 0;
-    Li.xs.forEach(function (x) {
-      Li.zs.forEach(function (z) {
-        dm.position.set(x, L - Li.depth - 0.001, z);
-        dm.updateMatrix();
-        faces.setMatrixAt(fi++, dm.matrix);
-      });
-    });
-    faces.instanceMatrix.needsUpdate = true;
-    g.add(faces);
 
     /* —— 踢脚线：墙脚一条 80 mm 深色收边 ——
        缺了它，墙像是直接插进地面。高度 0.08 在 0.1–1.7 m 的通行判定带以下，
@@ -1135,6 +1134,67 @@
   }
 
   /**
+   * 室内灯组：半球光 + 主太阳 + 补光 + 窗侧柔光。
+   *
+   * 为什么收进模块：这套参数原来在 preview.js 和单文件版母页里各写了一份，
+   * 改一处另一处就漂（`environmentIntensity` 就漂过一次，单文件版一直停在 0.38）。
+   * 现在两处都调这个函数。
+   *
+   * **整套参数是按「整屋摆在世界 (0, 0, −26)」调的**：太阳位置/目标、补光位置、
+   * 阴影相机的范围全是绝对坐标。宿主把整屋挪到别处时，要把这些一起平移
+   * （给了 `offset` 参数，传 [dx, dz] 即可），否则影子会落到屋外。
+   *
+   * 阴影精度：视锥 36 × 52 m、贴图 2048² → 26 mm/texel，太阳打在墙面上的光斑
+   * 边缘是一格一格的。提到 4096² 后 13 mm/texel，光斑边缘才读得出"光"。
+   * 再往上就是 8192²（约 268 MB 深度图），台式机也会掉帧，不划算。
+   */
+  var LIGHTING = {
+    sunColor: 0xfff4e2, sunIntensity: 2.10,
+    shadowMap: 4096,
+    shadowBias: -0.0002,
+    shadowNormalBias: 0.02
+  };
+
+  function createInteriorLighting(THREE, scene, opts) {
+    opts = opts || {};
+    var dx = (opts.offset && opts.offset[0]) || 0;
+    var dz = (opts.offset && opts.offset[1]) || 0;
+    var out = {};
+
+    out.hemi = new THREE.HemisphereLight(0xdfe7ea, 0xb9b4a6, 0.28);
+    scene.add(out.hemi);
+
+    var sun = new THREE.DirectionalLight(LIGHTING.sunColor, LIGHTING.sunIntensity);
+    sun.name = 'SunLight';
+    sun.position.set(-9 + dx, 8.5, 5.5 + dz);
+    sun.castShadow = true;
+    sun.shadow.mapSize.set(LIGHTING.shadowMap, LIGHTING.shadowMap);
+    sun.shadow.camera.left = -18;
+    sun.shadow.camera.right = 18;
+    sun.shadow.camera.top = 18;
+    sun.shadow.camera.bottom = -34;
+    sun.shadow.camera.near = 1;
+    sun.shadow.camera.far = 90;
+    sun.shadow.bias = LIGHTING.shadowBias;
+    sun.shadow.normalBias = LIGHTING.shadowNormalBias;
+    sun.target.position.set(0 + dx, 0.8, -12 + dz);
+    scene.add(sun, sun.target);
+    out.sun = sun;
+
+    out.fill = new THREE.DirectionalLight(0xdce6e8, 0.30);
+    out.fill.position.set(7 + dx, 5, -6 + dz);
+    scene.add(out.fill);
+
+    /* 从窗侧打一盏柔光进来，交代「B 从左侧大窗采光」的室内方向感 */
+    out.windowBounce = new THREE.DirectionalLight(0xfff2df, 0.55);
+    out.windowBounce.position.set(-6 + dx, 2.6, 0 + dz);
+    out.windowBounce.target.position.set(2 + dx, 1.2, -6 + dz);
+    scene.add(out.windowBounce, out.windowBounce.target);
+
+    return out;
+  }
+
+  /**
    * 在 scene 里铺室外：天空球 + 雾 + 地坪 + 远景树线。
    * 返回建出来的对象，方便宿主改色/换景/隐藏。
    */
@@ -1198,8 +1258,10 @@
     LAYOUT: LAYOUT,
     SEAT: SEAT,
     OUTDOOR: OUTDOOR,
+    LIGHTING: LIGHTING,
     createRoom: createRoom,
     createOutdoor: createOutdoor,
+    createInteriorLighting: createInteriorLighting,
     buildSeats: buildSeats,
     buildLightTable: buildLightTable
   };
