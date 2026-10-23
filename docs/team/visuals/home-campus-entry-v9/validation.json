@@ -1,0 +1,18 @@
+{
+  "passed": true,
+  "checks": [
+    "homepage replaces old campus map with a prominent 3D entrance",
+    "home loads generated cover without a map engine or character assets",
+    "original learning records still appear",
+    "course map is preserved behind existing shortcut",
+    "keyboard entrance actually loads the shared 3D campus",
+    "return-to-website brings back the new homepage",
+    "390px hero and CTA fit on screen",
+    "mobile downloads the smaller generated cover",
+    "embedded account page hides homepage promotion and recursive 3D links",
+    "Pages subpath keeps cover and 3D link under project prefix",
+    "no uncaught errors or missing local assets"
+  ],
+  "errors": [],
+  "failed": []
+}

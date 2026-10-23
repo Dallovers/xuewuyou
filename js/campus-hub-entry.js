@@ -1,1 +1,1 @@
-(function(){'use strict';if(window.self===window.top)return;for(const el of document.querySelectorAll('#campusHubEntry,#library3dEntry,#arena3dEntry,#rooms3d,[data-nav="arena3d"],[data-nav="library3d"]')){el.hidden=true;el.style.display='none';}})();
+(function(){'use strict';if(window.self===window.top)return;for(const el of document.querySelectorAll('#campusHomeFeature,#campusHomeShortcuts,#campusHubEntry,#library3dEntry,#arena3dEntry,#rooms3d,[data-nav="arena3d"],[data-nav="library3d"]')){el.hidden=true;el.style.display='none';}})();
