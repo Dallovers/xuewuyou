@@ -17,7 +17,12 @@
     // —— 共用材质（色值来自说明书，不得私改）——
     stone_light: { color: '#D8D2C3', roughness: 0.55, metalness: 0.0 },
     brick_grey: { color: '#8A908B', roughness: 0.82, metalness: 0.0 },
-    metal_dark: { color: '#38443F', roughness: 0.40, metalness: 0.65 },
+    /* metalness 0.65 → 0.42：色值没动，动的是"它有多像纯金属"。
+       金属没有漫反射，画面里全靠环境反射给亮，而这张环境贴图本身是个偏暗的小房间，
+       于是走线槽、踢脚线、灯槽一起被压成死黑（实测走线槽 21，同一帧的地面 199）——
+       读起来像画上去的黑条，不像钢。降金属度把一部分能量还给漫反射，实测 21 → 36。
+       真实的深色喷塑钢件本来也不是 100% 金属。 */
+    metal_dark: { color: '#38443F', roughness: 0.40, metalness: 0.42 },
     roof_bluegrey: { color: '#637581', roughness: 0.48, metalness: 0.68 },
     oak_light: { color: '#C9AD82', roughness: 0.55, metalness: 0.0 },
     fabric_greygreen: { color: '#777D6E', roughness: 0.92, metalness: 0.0 },
@@ -26,13 +31,34 @@
     wall_interior: { color: '#E6E7E3', roughness: 0.94, metalness: 0.0 },
     ceiling: { color: '#E8E6DD', roughness: 0.94, metalness: 0.0 },
     floor_terrazzo: { color: '#F4F4EE', roughness: 0.60, metalness: 0.0 },
-    steel_chair: { color: '#2E3837', roughness: 0.38, metalness: 0.68 }
+    // 椅架同理，而且它更细：22 mm 的管子在画面里只是几像素宽，
+    // 压到 21 的时候就只剩一条黑线，看不出是圆的。0.68 → 0.38。
+    steel_chair: { color: '#2E3837', roughness: 0.38, metalness: 0.38 }
   };
 
   var GLASS = { color: '#C6D7D8', roughness: 0.08, metalness: 0.05, opacity: 0.22 };
 
+  /* 家具下方环境遮蔽的衰减参数。
+     inner 必须与 room.js 里 OCCLUSION.inner 一致：贴片边长 = 底面 / inner，
+     两边对不上，平台区就盖不严家具底面，边缘会留一圈亮边。
+     depth 0.16 = 最深处乘 0.84。原型按 0.14 试拍过 01-整屋：桌下的暗区已经能读出来，
+     只是偏轻，正式值再抬两档；再重就会开始像地面上的脏印子。 */
+  var FLOOR_OCCLUSION = { inner: 0.72, depth: 0.16 };
+
+  /* 墙脚与墙角的衰减深度。比家具底下更重一点：
+     真实的墙角是两块面互相挡，本来就是整间屋子里最暗的地方，
+     和"桌子底下"不是一回事。
+     cornerFadeStart = 1 − 顶部收边高度 / 贴片高度，见 room.js 的 EDGE_AO。 */
+  var EDGE_AO = { wallDepth: 0.20, topDepth: 0.20, cornerDepth: 0.22, cornerFadeStart: 0.778 };
+
   function hasDOM() {
     return typeof document !== 'undefined' && !!document.createElement;
+  }
+
+  /** 0..1 的 smoothstep，钳到区间内。几张衰减图共用，别再各写一份。 */
+  function smooth01(t) {
+    t = t < 0 ? 0 : t > 1 ? 1 : t;
+    return t * t * (3 - 2 * t);
   }
 
   /**
@@ -93,17 +119,187 @@
   }
 
   /**
-   * 水磨石地面。
+   * 家具遮挡造成的地面环境光衰减（floor occlusion）。
    *
-   * 改这一轮的原因（量出来的，不是觉得）：
-   *   原来 512²、2600 颗骨料、半径 1.2~3.6 px，1.8 m 一铺 → 1 px = 3.5 mm。
-   *   单看贴图是细的，但铺到 12×9 m 的屋里之后：骨料覆盖只有约 19%，
-   *   放大后读成「白底上几团灰」，近景还能看到 10 cm 级的软斑——
-   *   这是整间屋子最便宜的一块，比桌椅更影响第一眼。
+   * 为什么需要它：这张环境贴图只给光、不做任何遮蔽，而太阳的影子在整幅画面上
+   * 只挣出 4% 的平均亮度差（关掉 castShadow，整屋均值 162.6 → 169.6）。
+   * 于是桌下的地面和走道一样亮（实测 192 / 192），桌子看着是"贴"在地板上的。
+   * 真实的房间，桌子底下少了大半天光。
    *
-   * 现在：1024²（1 px = 1.76 mm），三档骨料合计约 23% 覆盖，
-   * 直径大致对齐真实水磨石（4~8 mm / 8~14 mm / 14~24 mm），
-   * 各向异性提到 16，掠视时不糊成一片。
+   * 与 contact_shadow 同一套做法（乘性混合、不写深度、不参与投影），区别在尺寸与衰减：
+   * 中央有一块 inner 的平台（乘子恒定在最深处），往外用 smoothstep 收回 1.0。
+   * 贴片边长 = 构件底面 / inner，平台区就永远与家具底面对齐——
+   * 加一件新家具只要报一次底面尺寸，不用为每件单独调衰减。
+   *
+   * 同样必须标 sRGB，理由与接触暗角一致（解码与编码互相抵消，写进去多少就乘多少）。
+   */
+  function makeFloorOcclusionTexture(THREE) {
+    if (!hasDOM()) return null;
+    var S = 256;
+    var inner = FLOOR_OCCLUSION.inner;
+    var depth = FLOOR_OCCLUSION.depth;
+    var cv = document.createElement('canvas');
+    cv.width = cv.height = S;
+    var c = cv.getContext('2d');
+    var img = c.createImageData(S, S);
+    var d = img.data;
+    for (var y = 0; y < S; y++) {
+      for (var x = 0; x < S; x++) {
+        var nx = Math.abs(((x + 0.5) / S) * 2 - 1);
+        var ny = Math.abs(((y + 0.5) / S) * 2 - 1);
+        var fx = smooth01((1 - nx) / (1 - inner));
+        var fy = smooth01((1 - ny) / (1 - inner));
+        var g = Math.round((1 - depth * fx * fy) * 255);
+        var i = (y * S + x) * 4;
+        d[i] = d[i + 1] = d[i + 2] = g;
+        d[i + 3] = 255;
+      }
+    }
+    c.putImageData(img, 0, 0);
+    var tex = new THREE.CanvasTexture(cv);
+    if (THREE.SRGBColorSpace) tex.colorSpace = THREE.SRGBColorSpace;
+    tex.wrapS = tex.wrapT = THREE.ClampToEdgeWrapping;
+    tex.anisotropy = 4;
+    tex.needsUpdate = true;
+    return tex;
+  }
+
+  /**
+   * 边界软衰减图：u=0 一侧最暗，u=1 一侧完全透明（乘 1.0）。
+   * 给「墙脚暗带」用——一条贴着墙、朝房间里淡出的带子。
+   */
+  function makeEdgeAOTexture(THREE, depth) {
+    if (!hasDOM()) return null;
+    var S = 64;
+    var cv = document.createElement('canvas');
+    cv.width = cv.height = S;
+    var c = cv.getContext('2d');
+    var img = c.createImageData(S, S);
+    var d = img.data;
+    for (var y = 0; y < S; y++) {
+      for (var x = 0; x < S; x++) {
+        var u = smooth01((x + 0.5) / S);
+        var g = Math.round((1 - depth * (1 - u)) * 255);
+        var i = (y * S + x) * 4;
+        d[i] = d[i + 1] = d[i + 2] = g;
+        d[i + 3] = 255;
+      }
+    }
+    c.putImageData(img, 0, 0);
+    var tex = new THREE.CanvasTexture(cv);
+    if (THREE.SRGBColorSpace) tex.colorSpace = THREE.SRGBColorSpace;
+    tex.wrapS = tex.wrapT = THREE.ClampToEdgeWrapping;
+    tex.needsUpdate = true;
+    return tex;
+  }
+
+  /**
+   * 墙角软衰减图：u=0（墙角那条竖线）最暗、往外淡出；竖直方向**等强度**，只在接近顶部时收边。
+   *
+   * 为什么竖直方向不做"从地面往上淡出"（第一版就是那样，实测被否掉）：
+   *   那样只有离地 0.9 m 以内变暗（0.1 m 处 163、1.1 m 处 203、1.8 m 处 204），
+   *   可真实的 90° 阳角在整条高度上都偏暗——站在角线附近，天光只剩四分之一，
+   *   而且这个比例**与高度无关**（无限高的墙角）。
+   *   高度相关的只有两端：贴地那一小段（由 floor_occlusion 与踢脚线负责）与贴天花那一段。
+   *   所以这里改成：fadeStart 以下恒为最深，往上一段 smoothstep 收到 1.0。
+   *
+   * fadeStart 必须与 room.js 的 EDGE_AO.cornerFadeStart 一致（= 1 − topFade / height）。
+   */
+  function makeCornerAOTexture(THREE, depth, fadeStart) {
+    if (!hasDOM()) return null;
+    var S = 64;
+    var cv = document.createElement('canvas');
+    cv.width = cv.height = S;
+    var c = cv.getContext('2d');
+    var img = c.createImageData(S, S);
+    var d = img.data;
+    for (var y = 0; y < S; y++) {
+      for (var x = 0; x < S; x++) {
+        var fu = smooth01((x + 0.5) / S);
+        /* 画布的 y 向下、贴图 v 向上：先翻成 v（0 = 地面） */
+        var v = 1 - (y + 0.5) / S;
+        var fv = v <= fadeStart ? 1 : smooth01((1 - v) / (1 - fadeStart));
+        var g = Math.round((1 - depth * (1 - fu) * fv) * 255);
+        var i = (y * S + x) * 4;
+        d[i] = d[i + 1] = d[i + 2] = g;
+        d[i + 3] = 255;
+      }
+    }
+    c.putImageData(img, 0, 0);
+    var tex = new THREE.CanvasTexture(cv);
+    if (THREE.SRGBColorSpace) tex.colorSpace = THREE.SRGBColorSpace;
+    tex.wrapS = tex.wrapT = THREE.ClampToEdgeWrapping;
+    tex.needsUpdate = true;
+    return tex;
+  }
+
+  /**
+   * 从一张「灰度高度图」算切线空间法线贴图。
+   *
+   * 为什么不引 addon：仓库只 vendor 了 OrbitControls / RoomEnvironment 两个，
+   * 不该为一张法线图再加依赖。而我们要的高度信息本来就在自己画的那张色图里
+   * （板缝是暗的、骨料是亮的、木纹是暗的），亮度直接当高度用，物理上也说得通。
+   *
+   * 两个必须记住的点：
+   *   ① 输出必须是**线性**贴图 —— 法线是向量不是颜色，标了 sRGB 会被再转一次，
+   *      法线整体歪向 +Z，看起来"贴了但没起伏"；
+   *   ② 画布的 y 向下、贴图的 V 向上，所以 ty 分量要取 +dy（不是 −dy），
+   *      符号弄反的话板缝会从"凹进去"变成"凸出来"，很显眼。
+   *
+   * @param {number} strength 高度差到坡度（斜率）的放大倍数，2~3 对应"毫米级倒角"
+   * @param {number} [res]    计算分辨率，源图 1024² 时给 512 就够（低频起伏为主）
+   */
+  function normalFromHeight(THREE, srcCanvas, strength, res) {
+    if (!hasDOM()) return null;
+    var n = res || 512;
+    var tmp = document.createElement('canvas');
+    tmp.width = tmp.height = n;
+    var tc = tmp.getContext('2d');
+    tc.drawImage(srcCanvas, 0, 0, n, n);
+    var src = tc.getImageData(0, 0, n, n).data;
+
+    var outCv = document.createElement('canvas');
+    outCv.width = outCv.height = n;
+    var oc = outCv.getContext('2d');
+    var img = oc.createImageData(n, n);
+    var d = img.data;
+    function H(x, y) {
+      x = (x + n) % n; y = (y + n) % n;          // 环绕取样，接缝处不出条
+      return src[(y * n + x) * 4] / 255;
+    }
+    for (var y = 0; y < n; y++) {
+      for (var x = 0; x < n; x++) {
+        // 中心差分就够：这里的高度都是毫米级、低频的，Sobel 只会更钝
+        var dx = (H(x + 1, y) - H(x - 1, y)) * strength;
+        var dy = (H(x, y + 1) - H(x, y - 1)) * strength;
+        var nx = -dx, ny = dy, nz = 1;
+        var inv = 1 / Math.sqrt(nx * nx + ny * ny + 1);
+        var i = (y * n + x) * 4;
+        d[i] = (nx * inv * 0.5 + 0.5) * 255;
+        d[i + 1] = (ny * inv * 0.5 + 0.5) * 255;
+        d[i + 2] = (nz * inv * 0.5 + 0.5) * 255;
+        d[i + 3] = 255;
+      }
+    }
+    oc.putImageData(img, 0, 0);
+    var t = new THREE.CanvasTexture(outCv);
+    t.wrapS = t.wrapT = THREE.RepeatWrapping;
+    t.anisotropy = 8;
+    return t;
+  }
+
+  /**
+   * 地面：磨光石材水磨石板（0.9 m 板 + 通缝 + 很淡的骨料）。
+   *
+   * 两轮改动都是量出来的：
+   *   ① 原来 512²、2600 颗骨料、1.8 m 一铺 → 1 px = 3.5 mm，铺到 12×9 m 的屋里
+   *     骨料只覆盖约 19%，读成「白底上几团灰」，近景还有 10 cm 级的软斑。
+   *   ② 这一轮按风格基准改成"石材为主"：1024²（1 px = 1.76 mm）保留，
+   *     但骨料从 17920 颗降到 6420 颗、颜色收到贴片基色附近，
+   *     并把板缝做成真的缝（底色铺缝色、每块板内缩 1.5 px）。
+   *     参考图 B_自习室_风格样板 的磨光石板就是"退一步是一整块料、近看有细颗粒"。
+   *
+   * 各向异性 16，掠视时不糊成一片。
    */
   function makeTerrazzoTexture(THREE, tileMetres) {
     if (!hasDOM()) return null;
@@ -111,7 +307,11 @@
     var canvas = document.createElement('canvas');
     canvas.width = canvas.height = size;
     var c = canvas.getContext('2d');
-    c.fillStyle = '#e6e3d9';
+
+    /* 先把整张铺成「缝色」，再把每块板往里收 1.5 px ——
+       这样绕圈重复时，相邻两块板的边缘自己接成一条通缝，
+       不用在 canvas 边上单独画半条（那种写法在 repeat 处总有一侧漏缝）。 */
+    c.fillStyle = '#cdc7b9';
     c.fillRect(0, 0, size, size);
 
     /* 2×2 分区只做 ±1~2 级的色差：原来差到 6 级，远看会出现一张 0.9 m 的棋盘格。
@@ -121,7 +321,7 @@
       c.fillStyle = shades[i];
       var x = (i % 2) * (size / 2);
       var y = Math.floor(i / 2) * (size / 2);
-      c.fillRect(x + 1, y + 1, size / 2 - 2, size / 2 - 2);
+      c.fillRect(x + 1.5, y + 1.5, size / 2 - 3, size / 2 - 3);
     }
 
     var seed = 20261021;
@@ -129,12 +329,15 @@
       seed = (seed * 1103515245 + 12345) & 0x7fffffff;
       return seed / 0x7fffffff;
     }
-    // 颜色刻意压在同一明度带里：骨料是"石粒"，不是"脏点"，反差大了会显脏
-    var grains = ['#cdc9be', '#c7c3b7', '#d3cfc4', '#c1bdb1', '#cac6bb'];
+    /* 骨料密度与反差都压下来了（原来 14000/3500/420）。
+       风格基准里 B 侧地面是"石材为主"，参考图（B_自习室_风格样板）是磨光石板：
+       近看有细颗粒，退一步就是一整块料。原来那组密度读起来像密级配水磨石，
+       跟校园的磨光石地面不是一回事。骨料只留一层"有手感"的量。 */
+    var grains = ['#dcd8cd', '#d5d1c5', '#e0dcd1', '#cfcabd', '#d8d4c8'];
     var tiers = [
-      { n: 14000, r0: 1.2, r1: 2.3 },   // 直径约 4~8 mm
-      { n: 3500, r0: 2.3, r1: 3.9 },    // 直径约 8~14 mm
-      { n: 420, r0: 3.9, r1: 6.8 }      // 直径约 14~24 mm，少量，打破均匀感
+      { n: 5200, r0: 1.2, r1: 2.3 },   // 直径约 4~8 mm
+      { n: 1100, r0: 2.3, r1: 3.9 },   // 直径约 8~14 mm
+      { n: 120, r0: 3.9, r1: 6.8 }     // 直径约 14~24 mm，少量，打破均匀感
     ];
     tiers.forEach(function (t) {
       for (var g = 0; g < t.n; g++) {
@@ -152,7 +355,48 @@
     tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
     tex.anisotropy = 16;
     tex.userData = { metresPerRepeat: (tileMetres || 0.9) * 2 };
-    return tex;
+
+    /* 微起伏：板缝是真凹进去的（每块板收 1.5 px ≈ 2.6 mm 倒角），骨料微微凸起。
+       强度 2.2 是照"缝边坡度约 35°"试出来的；给大了缝会变成一道沟槽。 */
+    var normal = normalFromHeight(THREE, canvas, 2.2, 512);
+    if (normal) normal.userData = { metresPerRepeat: (tileMetres || 0.9) * 2 };
+
+    /* 光泽不均匀：磨光的石板不是"处处同一光泽"。缝里更哑、走人的板面更亮。
+       把亮度**反着**映射成粗糙度（暗=缝=糙，亮=板=光），材质上的 roughness 设成 1.0
+       让这张图说话——否则 0.6 × 0.5 会把地面推成镜面。 */
+    var rough = makeFloorRoughness(THREE, canvas);
+    if (rough) rough.userData = { metresPerRepeat: (tileMetres || 0.9) * 2 };
+
+    return { map: tex, normal: normal, rough: rough };
+  }
+
+  /** 地面的粗糙度图：由色图亮度反推（暗=缝=糙，亮=板=光）。 */
+  function makeFloorRoughness(THREE, colourCanvas) {
+    if (!hasDOM()) return null;
+    var n = 256;
+    var tmp = document.createElement('canvas');
+    tmp.width = tmp.height = n;
+    var tc = tmp.getContext('2d');
+    tc.drawImage(colourCanvas, 0, 0, n, n);
+    var src = tc.getImageData(0, 0, n, n).data;
+
+    var outCv = document.createElement('canvas');
+    outCv.width = outCv.height = n;
+    var oc = outCv.getContext('2d');
+    var img = oc.createImageData(n, n);
+    var d = img.data;
+    for (var i = 0; i < src.length; i += 4) {
+      var L = (0.2126 * src[i] + 0.7152 * src[i + 1] + 0.0722 * src[i + 2]) / 255;
+      var r = 0.46 + (1 - L) * 0.42;        // 板面 ≈0.50，缝里 ≈0.80
+      var g = Math.round((r < 0 ? 0 : r > 1 ? 1 : r) * 255);
+      d[i] = d[i + 1] = d[i + 2] = g;
+      d[i + 3] = 255;
+    }
+    oc.putImageData(img, 0, 0);
+    var t = new THREE.CanvasTexture(outCv);
+    t.wrapS = t.wrapT = THREE.RepeatWrapping;
+    t.anisotropy = 4;
+    return t;
   }
 
   /**
@@ -243,7 +487,13 @@
       seed = (seed * 1103515245 + 12345) & 0x7fffffff;
       return seed / 0x7fffffff;
     }
-    c.fillStyle = '#c9ad82';
+    /* 底色 #c9ad82 → #d0b892（2026-10-23）。
+       风格基准写的是"浅橡木"，色值表本身注明是"起始色值，实际还需在统一灯光下调整"；
+       校园那边的木件是 0xfff3dc + 木纹贴图（近白，色由贴图给），
+       我们这张贴图的底色直接决定桌面颜色，所以调的是这里。
+       先试过 #d5bd97，近景木纹跟着一起淡掉、快读成素色板，退回到 #d0b892。
+       同时把低频暖斑的 alpha 从 0.030~0.080 收到 0.022~0.060（底亮了，暗斑会显脏）。 */
+    c.fillStyle = '#d0b892';
     c.fillRect(0, 0, S, S);
 
     /* 1) 低频色差：一块板上不该有两块颜色完全一样的面积。
@@ -251,7 +501,7 @@
     for (var b = 0; b < 26; b++) {
       var cx = rnd() * S, cy = rnd() * S, rad = 90 + rnd() * 230;
       var warm = rnd() < 0.55;
-      var a0 = 0.030 + rnd() * 0.050;
+      var a0 = 0.022 + rnd() * 0.038;
       var inner = warm ? 'rgba(122,94,58,' + a0.toFixed(3) + ')' : 'rgba(255,241,214,' + a0.toFixed(3) + ')';
       var outer = warm ? 'rgba(122,94,58,0)' : 'rgba(255,241,214,0)';
       for (var ox = -1; ox <= 1; ox++) {
@@ -302,16 +552,19 @@
       for (var k = 0; k < nIn; k++) {
         var yk = yc + dir * k * tight + (rnd() - 0.5) * tight * 0.6;
         yk = ((yk % S) + S) % S;
-        grainLine(yk, 0.9 + rnd() * 1.7, 0.10 + rnd() * 0.16, 0.8 + rnd() * 3.6);
+        grainLine(yk, 0.9 + rnd() * 1.7, 0.12 + rnd() * 0.19, 0.8 + rnd() * 3.6);
       }
     }
     // 孤立散纹：填簇与簇之间的早期材区，别让那儿只剩纯色
     for (var sc = 0; sc < 26; sc++) {
-      grainLine(rnd() * S, 0.8 + rnd() * 1.4, 0.06 + rnd() * 0.11, 1.0 + rnd() * 4.0);
+      grainLine(rnd() * S, 0.8 + rnd() * 1.4, 0.075 + rnd() * 0.13, 1.0 + rnd() * 4.0);
     }
-    // 晚材带：宽而淡的暗带，把细纹组织成年轮，同时给出色块层次
-    for (var lb = 0; lb < 16; lb++) {
-      grainLine(rnd() * S, 4 + rnd() * 6, 0.04 + rnd() * 0.05, 0.6 + rnd() * 2.4);
+    /* 晚材带：宽而淡的暗带，把细纹组织成年轮，同时给出色块层次。
+       2026-10-23：16 条 → 12 条、alpha 减半。原因是在 1.8 m 一铺的贴图里
+       16 条 = 每 11 cm 一道，0.7 m 高的桌岛立板正好收进 6 道，
+       读出来是"一排木条拼的"，不是年轮。法线贴图会再放大它一次，所以两处一起收。 */
+    for (var lb = 0; lb < 12; lb++) {
+      grainLine(rnd() * S, 4 + rnd() * 6, 0.032 + rnd() * 0.040, 0.6 + rnd() * 2.4);
     }
 
     /* 3) 短丝：10~34 px 的短线，方向与长纹一致但长度不一。
@@ -319,7 +572,7 @@
     for (var f = 0; f < 48; f++) {
       var fx = rnd() * S, fy = rnd() * S, len = 10 + rnd() * 24;
       var dy = (rnd() - 0.5) * 1.6;
-      var fa = 0.05 + rnd() * 0.09;
+      var fa = 0.06 + rnd() * 0.11;
       c.strokeStyle = 'rgba(112,84,52,' + fa.toFixed(3) + ')';
       c.lineWidth = 0.6 + rnd() * 1.1;
       for (var wx = -1; wx <= 1; wx++) {
@@ -370,7 +623,14 @@
     rough.userData = { metresPerRepeat: 1.8 };
     // 数据图，不能标 sRGB（标了会被当颜色再转一次）
 
-    return { map: map, rough: rough };
+    /* 木纹法线：直接拿色图的亮度当高度（晚材线更暗 → 凹下去一点）。
+       强度先给到 6，实拍桌岛侧板变成了"瓦楞板"——木纹是 1.8 m 一铺，
+       0.7 m 高的立板会把整条纹路压进去，坡度被放大。降到 3、normalScale 0.16：
+       只在桌沿和板边折出一道细边，读"这是木头"而不是"这是压型钢板"。 */
+    var normal = normalFromHeight(THREE, canvas, 3.0, 512);
+    if (normal) normal.userData = { metresPerRepeat: 1.8, metricUV: true };
+
+    return { map: map, rough: rough, normal: normal };
   }
 
   /**
@@ -397,15 +657,30 @@
         if (oak) {
           params.map = oak.map;
           params.roughnessMap = oak.rough;
+          // 木纹的毫米级起伏：只沿着纹路走，所以法线图自己就带着方向
+          if (oak.normal) {
+            params.normalMap = oak.normal;
+            params.normalScale = new THREE.Vector2(0.10, 0.10);
+          }
           params.color = new THREE.Color(0xffffff);
           params.userData = { ownsMap: true };
         }
       }
       if (id === 'floor_terrazzo' && wantTextures) {
         var ter = makeTerrazzoTexture(THREE, 0.9);
-        if (ter) {
-          params.map = ter;
-          params.color = new THREE.Color(0xffffff);
+        if (ter && ter.map) {
+          params.map = ter.map;
+          params.normalMap = ter.normal || null;
+          // 约 35° 的缝边坡度已经够读出"这是一块一块铺的"，再大就成沟槽了
+          params.normalScale = new THREE.Vector2(0.55, 0.55);
+          params.roughnessMap = ter.rough || null;
+          // 粗糙度交给贴图（0.46~0.88），材质这一层设 1.0 让它原样通过
+          params.roughness = 1.0;
+          /* 贴图是白的，这里乘一层灰把地面压回"水磨石"而不是"白纸"。
+             环境光提到 0.54 之后地面从 186 涨到 199，和白墙挤在同一档里，
+             墙地交界读不出转折；乘 0xD8D4C8 落回 187 左右，比原来低一点点，
+             太阳的影子也随之重新看得出来。 */
+          params.color = new THREE.Color(0xd8d4c8);
           params.userData = { ownsMap: true };
         }
       }
@@ -462,7 +737,9 @@
     /* 接地暗角贴片：乘性混合、不写深度、不投影也不受影。
        一张乘子图给所有贴片共用，贴片几何在 room.js 里按落地构件自动生成。
        toneMapped 必须关：开了的话 ACES 会把这张「乘数」当成颜色重新映射，
-       白色边缘就不再是 1.0，整块地面会被无声地压暗一点。 */
+       白色边缘就不再是 1.0，整块地面会被无声地压暗一点。
+       fog 也必须关：雾是把片元颜色往雾色里混，乘性贴片一旦被混进雾色，
+       乘的就不是 0..1 的乘子而是一个被抬亮的数，贴片会变成一层灰纱。 */
     var contactMap = wantTextures ? makeContactShadowTexture(THREE) : null;
     out.contact_shadow = new THREE.MeshBasicMaterial({
       name: 'contact_shadow',
@@ -472,16 +749,56 @@
       depthWrite: false,
       blending: THREE.MultiplyBlending,
       toneMapped: false,
+      fog: false,
       side: THREE.DoubleSide
     });
     if (contactMap) out.contact_shadow.userData = { ownsMap: true };
 
-    // 地面一次生成、按块平铺：给平面几何设置 repeat
+    /* 家具下方的环境遮蔽：同一套混合方式，只是一张更大的软衰减图。
+       贴片几何在 room.js 的 createFloorOcclusion 里按构件底面生成。 */
+    var occlMap = wantTextures ? makeFloorOcclusionTexture(THREE) : null;
+    out.floor_occlusion = new THREE.MeshBasicMaterial({
+      name: 'floor_occlusion',
+      color: new THREE.Color(0xffffff),
+      map: occlMap,
+      transparent: true,
+      depthWrite: false,
+      blending: THREE.MultiplyBlending,
+      toneMapped: false,
+      fog: false,
+      side: THREE.DoubleSide
+    });
+    if (occlMap) out.floor_occlusion.userData = { ownsMap: true };
+
+    /* 墙脚暗带（贴地面、朝房间里淡出）与墙角暗带（贴墙面、往上和往外淡出）。
+       与上面两个同一套混合方式，几何在 room.js 的 createEdgeAO 里生成。 */
+    var sharedAO = { transparent: true, depthWrite: false, blending: THREE.MultiplyBlending, toneMapped: false, fog: false, side: THREE.DoubleSide, color: new THREE.Color(0xffffff) };
+    var edgeMap = wantTextures ? makeEdgeAOTexture(THREE, EDGE_AO.wallDepth) : null;
+    out.ao_wall_base = new THREE.MeshBasicMaterial(Object.assign({ name: 'ao_wall_base', map: edgeMap }, sharedAO));
+    if (edgeMap) out.ao_wall_base.userData = { ownsMap: true };
+
+    /* 墙顶暗带：深度取 0.20，与墙脚一致。
+       一开始嫌"天花本身只有 166，压到 0.80 会拉出比墙脚更抢眼的深带"，用了 0.16；
+       实拍+取样发现 0.16 只剩 166→142（差 24），而墙脚是 204→164（差 40），
+       墙顶看起来像"没做"。天花基数低，同样的乘数给出的**绝对**差本来就小一半，
+       要看起来"类似"就得用同一乘数。物理上这两处都是 90° 内凹角，被挡的量本来就该一样。 */
+    var topMap = wantTextures ? makeEdgeAOTexture(THREE, EDGE_AO.topDepth) : null;
+    out.ao_wall_top = new THREE.MeshBasicMaterial(Object.assign({ name: 'ao_wall_top', map: topMap }, sharedAO));
+    if (topMap) out.ao_wall_top.userData = { ownsMap: true };
+
+    var cornerMap = wantTextures ? makeCornerAOTexture(THREE, EDGE_AO.cornerDepth, EDGE_AO.cornerFadeStart) : null;
+    out.ao_wall_corner = new THREE.MeshBasicMaterial(Object.assign({ name: 'ao_wall_corner', map: cornerMap }, sharedAO));
+    if (cornerMap) out.ao_wall_corner.userData = { ownsMap: true };
+
+    // 地面一次生成、按块平铺：给平面几何设置 repeat（法线 / 粗糙度要跟着一起走，
+    // 三张图不同步的话，板缝的起伏会和颜色错位，读起来像贴纸没贴正）
     out.fitFloorUV = function (width, depth) {
       var m = out.floor_terrazzo;
       if (!m || !m.map) return;
       var per = (m.map.userData && m.map.userData.metresPerRepeat) || 1.8;
       m.map.repeat.set(width / per, depth / per);
+      if (m.normalMap) m.normalMap.repeat.copy(m.map.repeat);
+      if (m.roughnessMap) m.roughnessMap.repeat.copy(m.map.repeat);
     };
 
     /* 木纹不在这里按块调 repeat：repeat 是共享材质上的属性，调它等于把所有用这张图的
@@ -503,6 +820,7 @@
           if (v.userData && v.userData.ownsMap) {
             if (v.map) v.map.dispose();
             if (v.roughnessMap) v.roughnessMap.dispose();
+            if (v.normalMap) v.normalMap.dispose();
           }
           v.dispose();
         }

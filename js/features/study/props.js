@@ -7,6 +7,8 @@
  * 三条硬约束：
  *  1. **不产生碰撞体、不产生交互点**。宿主只认 district 显式给出的数组，
  *     这里返回的 Group 不参与 AABB 计算，所以桌上放多高的书都不会改变走道净距。
+ *     （例外：`createPlanters` 返回的是**落地绿植**，它按家具那一档参与碰撞，
+ *      理由写在那个函数头上——盆能被走穿比什么都难看。）
  *  2. **不改变任何 SPEC 尺寸**。物件全部按家具 SPEC 现算坐标，家具一挪跟着走。
  *  3. **控制 draw call**。重复物件（书、笔、杯、叶）一律用 InstancedMesh：
  *     整间屋子 60+ 本书只占 1 个 draw call，而不是 60 个。
@@ -32,6 +34,67 @@
   ];
 
   var CUP_COLORS = ['#e8e4d8', '#d9d3c4', '#5f6a63', '#c9ad82'];
+
+  /* —— 绿植的三套配方 ——
+   *
+   * 比例照"成年盆栽"的常见观感定：盆高 ≈ 总高 / 4.5，冠幅 ≈ 总高 × 0.5。
+   * 上次窗台那两盆只有一个压扁的球（7×5 段），一米内读作"一坨绿球"、
+   * 三米外只剩一团深色 —— 整间屋子看不出有植物，所以这次全都按片叶做。
+   *
+   * leafW / leafL 是叶片的半宽 / 半长（几何是单位球压缩，scale 直接给半径）。
+   */
+  var PLANT_SPEC = {
+    /* 高杆阔叶：主干 + 18 片轮生大叶，总高 ≈ 1.35 m，冠幅 ≈ 0.85 m。
+       冠幅别往小了给：第一版 spread 只给 0.19（冠幅 0.38），
+       实拍是一根杆上贴了几片叶，像塑料模型，不像盆栽。
+       layers = 分几层轮生。6 层 × 3 片，同一高度三片朝不同方向，
+       才不会读成"绕杆的螺旋梯"（第一版就是那样）。 */
+    tree: {
+      potR: 0.170, potH: 0.300, stemTop: 1.220, stemR: 0.018,
+      leafCount: 18, layers: 6, leafW: 0.105, leafL: 0.175, spread: 0.250,
+      leafBase: 0.340, leafRise: 0.920, tilt: 0.180, tiltRise: -0.480
+    },
+    /* 丛生细叶：三根杆 + 22 片细长叶从盆口放射，总高 ≈ 0.95 m */
+    bush: {
+      potR: 0.150, potH: 0.260, stemTop: 0.720, stemR: 0.011,
+      leafCount: 22, layers: 4, leafW: 0.038, leafL: 0.205, spread: 0.255,
+      leafBase: 0.240, leafRise: 0.540, tilt: -0.250, tiltRise: -0.320
+    },
+    /* 书架顶的小盆：0.35 m 高的矮丛。**刻意不做垂吊**。
+       垂吊版试过：叶片要么贴在书架正面挡住书脊，要么横向摊成一条"绿毛毛虫"，
+       实拍两版都不能看。书架是这间屋子里信息密度最高的一块，别拿它试造型。 */
+    small: {
+      potR: 0.095, potH: 0.135, stemTop: 0.340, stemR: 0.008,
+      leafCount: 15, layers: 3, leafW: 0.030, leafL: 0.115, spread: 0.150,
+      leafBase: 0.110, leafRise: 0.340, tilt: -0.220, tiltRise: -0.260
+    }
+  };
+
+  /* 摆放位置（整屋局部坐标）。全部贴墙，主走道（进门 x≈2.75 的直线、z=0 的横向走道）
+     一根都不碰 —— walk-tour 那六条动线的读数不该被绿植改掉。
+     书架 x ∈ [−1.8, 1.8]、窗台 z ∈ [−2.4, 2.4]、门洞 x ∈ [2.1, 4.5]，都核对过。
+
+     两条摆放规矩，都是实测撞出来的（踩过的坑写在这儿，别再来一遍）：
+
+     ① **离墙至少留出"叶冠半径"**（tree 0.41 / bush 0.35 / small 0.23），不是按盆半径留。
+        盆离墙 5 cm 看着很贴墙，叶子却已经穿墙 6 cm —— 第一版按盆摆的，
+        量出来 bush 的叶尖到 x=6.06。
+     ② **不能把沿墙的走廊切死**。契约用 0.25 m 栅格做连通性检查，
+        贴墙一株就能把"东墙 x=5.0 那一列"堵掉，于是东北角从可达变不可达。
+        所以东墙这两株的碰撞盒（=盆沿）必须收在 x ≤ 5.6 附近，给 x=5.0 这一列让路；
+        走到那里的人离盆心 0.42 m，视觉上还留着 0.2 m 空隙。 */
+  var PLANT_SPOTS = [
+    { id: 'a', kind: 'tree', x: -4.30, z: -3.95, y: 0, yaw: 0.6 },    // 北墙、书架西侧
+    { id: 'b', kind: 'tree', x: 5.58, z: -1.10, y: 0, yaw: -2.1 },    // 东墙北段（这面没窗，靠它破白墙）
+    { id: 'c', kind: 'bush', x: 5.42, z: 1.55, y: 0, yaw: 1.2 },      // 东墙南段
+    { id: 'd', kind: 'bush', x: 5.42, z: 3.05, y: 0, yaw: -0.7 },     // 门内右侧
+    { id: 'e', kind: 'small', x: -1.05, z: -4.25, y: 1.05, yaw: 0.15 },  // 书架顶（西半）
+    { id: 'f', kind: 'small', x: 1.05, z: -4.25, y: 1.05, yaw: -0.2 }    // 书架顶（东半）
+  ];
+
+  /* 叶色四档。真实盆栽同株的叶子也有深浅，全是同一个绿会读成塑料。 */
+  var LEAF_TONES = ['#3d5a3c', '#476645', '#52744b', '#3a5238'];
+
 
   /**
    * 道具材质挂在 mats 上，而不是自己管一份。
@@ -74,6 +137,32 @@
         name: 'prop_paper', roughness: 0.88, metalness: 0.0
       });
     }
+    /* —— 落地绿植的四样 ——
+       盆分两种：窗台小盆用陶土（prop_pot），落地的用水泥灰。
+       真实自习室里的落地大盆几乎没有陶土的，都是水泥/树脂灰盆，陶土色在 1.3 m 的
+       浅色墙前太跳，会把视线从桌面上抢走。 */
+    if (!mats.prop_pot_stone) {
+      mats.prop_pot_stone = new THREE.MeshStandardMaterial({
+        name: 'prop_pot_stone', color: new THREE.Color('#8f8c85'), roughness: 0.92, metalness: 0.0
+      });
+    }
+    if (!mats.prop_soil) {
+      mats.prop_soil = new THREE.MeshStandardMaterial({
+        name: 'prop_soil', color: new THREE.Color('#4a3b30'), roughness: 1.0, metalness: 0.0
+      });
+    }
+    if (!mats.prop_stem) {
+      mats.prop_stem = new THREE.MeshStandardMaterial({
+        name: 'prop_stem', color: new THREE.Color('#6d5c46'), roughness: 0.95, metalness: 0.0
+      });
+    }
+    /* 叶色基底给白：这个材质走 instanceColor，实际颜色由每个实例给
+       （instanceColor 是**乘**在 material.color 上的，基底不白就永远调不到目标色）。 */
+    if (!mats.prop_leaf_deep) {
+      mats.prop_leaf_deep = new THREE.MeshStandardMaterial({
+        name: 'prop_leaf_deep', color: new THREE.Color('#ffffff'), roughness: 0.86, metalness: 0.0
+      });
+    }
   }
 
   /**
@@ -94,7 +183,12 @@
       } else {
         dummy.position.set(it.pos[0], it.pos[1], it.pos[2]);
         var r = it.rot || [0, 0, 0];
-        dummy.rotation.set(r[0], r[1], r[2]);
+        /* order 可选：叶片必须用 'YXZ'。
+           默认 'XYZ' 下 rx 是绕**世界** X 轴转的，叶子先转到方位角 a 再绕世界 X 倾，
+           倾斜方向就不跟着叶子自己的朝向了——一半叶子会变成"竖着插的刀片"。
+           'YXZ' 是 R = Ry(a)·Rx(β)，β 在叶子的局部横轴上，这才是"叶尖上翘/下垂"。 */
+        if (it.order) dummy.rotation.set(r[0], r[1], r[2], it.order);
+        else dummy.rotation.set(r[0], r[1], r[2]);
         dummy.scale.set(it.scale[0], it.scale[1], it.scale[2]);
         dummy.updateMatrix();
         mesh.setMatrixAt(i, dummy.matrix);
@@ -350,6 +444,156 @@
         yy += t;
       }
     });
+  }
+
+  /**
+   * 绿植：落地高杆 / 落地丛生 / 书架顶垂吊，共 6 盆（2026-10-22 用户要求「增加一些绿植」）。
+   *
+   * **这个函数刻意不并进 createDecor**，虽然它也在 props.js 里。
+   * 原因不是洁癖，是契约有两条硬判据：
+   *   - 「软装没有新增碰撞体」把 `colliders.length === 12` 钉死了；
+   *   - 「软装用实例化合批」要求 Decor 组里 InstancedMesh ≤ 8 个。
+   * 而落地盆栽**必须**挡人（0.3 m 高的盆能被走穿，比穿模还出戏），
+   * 所以它按「家具」那一档单列：自己一个 Group、自己 4 条碰撞体、自己的实例网格。
+   * 软装那两条判据因此一个字都不用改。
+   *
+   * 三条实现约束，别顺手改掉：
+   *
+   * 1. **盆必须是普通 Mesh，不能进 InstancedMesh。**
+   *    `room.createContactShadows` 扫接地暗角时会跳过 `isInstancedMesh`，
+   *    盆一旦实例化，六盆全都没有落地影子，会像飘在半空。
+   *    代价是 6 个 draw call——这个场景本来就有一百多个，不值一提。
+   *
+   * 2. **网格名不能叫 DecorPots / DecorLeaves。**
+   *    契约有一条「桌面/台面/书架软装不超桌面隔板 ≈1.09」，按那 6 个名字量包围盒；
+   *    落地盆栽 1.35 m 混进去会直接把那条判失败。用 `Planter*` 就各归各的。
+   *
+   * 3. **碰撞半径按盆沿 +3 cm，不按叶展。**
+   *    叶子是蓬松的，按叶展挡人会出现「离树干半米就被挡住」——比穿模还难受。
+   *    半径以数据形式挂在 `userData.colliders` 上，colliders.js 只消费、不抄坐标。
+   *
+   * 叶与干共用一个实例化网格，靠 instanceColor 给深浅（材质基色必须是白，
+   * instanceColor 是**乘**上去的）。
+   */
+  function createPlanters(THREE, mats, opts) {
+    var core = global.StudyDistrict.core;
+    var rand = rng(5150);
+    var g = core.group(THREE, null, 'Planters');
+    var out = { soils: [], stems: [], leaves: [], colliders: [] };
+
+    PLANT_SPOTS.forEach(function (spot) {
+      var S = PLANT_SPEC[spot.kind];
+      var grp = core.group(THREE, g, 'Planter.' + spot.id);
+      grp.position.set(spot.x, spot.y, spot.z);
+
+      // —— 盆：圆台上大下小，18 段够圆 ——
+      var potMat = spot.y > 0 ? mats.prop_pot : mats.prop_pot_stone;
+      var pot = new THREE.Mesh(
+        new THREE.CylinderGeometry(S.potR, S.potR * 0.78, S.potH, 18), potMat
+      );
+      pot.name = 'PlanterPot';
+      pot.position.y = S.potH / 2;
+      pot.castShadow = true;
+      pot.receiveShadow = true;
+      grp.add(pot);
+
+      // —— 土面：比盆口低 2 cm，略小一圈，读成"盆里有土" ——
+      out.soils.push({
+        pos: [spot.x, spot.y + S.potH - 0.020, spot.z],
+        scale: [S.potR * 0.86, 0.022, S.potR * 0.86]
+      });
+
+      // —— 干 ——
+      var stemBase = S.potH - 0.06;
+      if (spot.kind === 'tree') {
+        var len = S.stemTop - stemBase;
+        out.stems.push({
+          pos: [spot.x, spot.y + stemBase + len / 2, spot.z],
+          scale: [S.stemR, len, S.stemR]
+        });
+      } else {
+        /* 丛生：三根杆从盆口内不同点起、高度各不同——齐平会读成"一束筷子"。
+           偏移与长度都按盆径缩放，换尺寸的盆（书架顶那两盆只有 0.095）不用改这里。 */
+        var k3 = S.potR / 0.150;
+        [[0.30, 0.07, 0.96], [-0.25, 0.20, 0.72], [0.04, -0.32, 1.10]].forEach(function (c) {
+          var l = (S.stemTop - stemBase) * c[2];
+          out.stems.push({
+            pos: [
+              spot.x + c[0] * S.potR,
+              spot.y + stemBase + l / 2,
+              spot.z + c[1] * S.potR
+            ],
+            scale: [S.stemR * k3, l, S.stemR * k3]
+          });
+        });
+      }
+
+      // —— 叶 ——
+      /* 位置用 (sin a, cos a) 而不是 (cos a, sin a)：
+         叶的长边在几何里沿 +Z，绕 Y 转 a 之后 +Z 正好指向 (sin a, cos a)，
+         两种写法混用会让叶子"横着长"——从侧面看变成一圈薄片。
+
+         **轮生**，不是螺旋：同一层几片叶朝不同方向、各有自己的倾角。
+         第一版给的是"每片往上转 20°"的螺旋，实拍是一圈绕杆的绿色踏步——
+         站在两米外看就是"螺丝"，不像植物。
+
+         倾角必须走 order:'YXZ'，理由见 instance() 里的注释。 */
+      var perLayer = Math.ceil(S.leafCount / S.layers);
+      var i, lv, idx, t, a, spread, y, k;
+      for (i = 0; i < S.leafCount; i++) {
+        lv = Math.min(S.layers - 1, Math.floor(i / perLayer));
+        idx = i - lv * perLayer;
+        t = lv / Math.max(1, S.layers - 1);
+        // 层内均分一圈，层与层之间错开一点，避免上下对齐成一根柱
+        a = spot.yaw + (idx / perLayer) * Math.PI * 2 + lv * 0.83 + (rand() - 0.5) * 0.12;
+        /* 两种冠形：
+           高杆——中段最宽、两头收窄，才像树冠（均匀分布会读成一个圆柱）；
+           丛生——越往上越散，下密上疏，像从盆口长出来的一丛草。 */
+        spread = S.spread * (spot.kind === 'tree'
+          ? (0.42 + 0.58 * Math.sin(Math.PI * (0.18 + 0.82 * t)))
+          : (0.30 + 0.70 * t));
+        spread *= 0.88 + rand() * 0.24;      // 每片远近抖一点，规则排列一眼就看出来
+        y = spot.y + S.leafBase + t * S.leafRise + (rand() - 0.5) * 0.03;
+        k = (spot.kind === 'tree' ? (1 - 0.26 * t) : (0.75 + 0.35 * Math.sin(t * Math.PI)))
+          * (0.9 + rand() * 0.2);
+        out.leaves.push({
+          pos: [spot.x + Math.sin(a) * spread, y, spot.z + Math.cos(a) * spread],
+          scale: [S.leafW * k, spot.kind === 'tree' ? 0.014 : 0.011, S.leafL * k],
+          /* rotX 为负 = 叶尖上翘、为正 = 往下耷。底部老叶下垂、顶部新叶上扬。 */
+          rot: [S.tilt + S.tiltRise * t, a, (rand() - 0.5) * 0.5],
+          order: 'YXZ',
+          color: LEAF_TONES[(i + Math.floor(rand() * 3)) % LEAF_TONES.length]
+        });
+      }
+
+      // —— 只有落地的才挡人 ——
+      if (spot.y === 0) {
+        out.colliders.push({
+          id: spot.id,
+          x: spot.x, z: spot.z,
+          /* 碰撞盒 = 盆的外沿。人的 0.25 m 半径是判定方加的，所以人会在 0.42 m 外停住，
+             视觉上离盆还有 0.2 m 空隙——不用为了"别撞进盆里"再把盒子放大，
+             放大的代价是把沿墙的走廊挤断（见下面 PLANT_SPOTS 的注释）。 */
+          r: S.potR,
+          h: spot.kind === 'tree' ? 1.45 : 1.05
+        });
+      }
+    });
+
+    var soilGeo = new THREE.CylinderGeometry(1, 1, 1, 18);
+    instance(THREE, g, 'PlanterSoil', soilGeo, mats.prop_soil, out.soils, false);
+    var stemGeo = new THREE.CylinderGeometry(1, 1, 1, 6);
+    instance(THREE, g, 'PlanterStems', stemGeo, mats.prop_stem, out.stems, false);
+    instance(THREE, g, 'PlanterLeaves',
+      new THREE.SphereGeometry(1, 7, 5), mats.prop_leaf_deep, out.leaves, true);
+
+    g.userData = {
+      role: 'planters',
+      // colliders.js 直接消费这一份，不另抄坐标
+      colliders: out.colliders,
+      counts: { planters: PLANT_SPOTS.length, leaves: out.leaves.length, floor: out.colliders.length }
+    };
+    return g;
   }
 
   /**
@@ -627,6 +871,9 @@
   global.StudyDistrict = global.StudyDistrict || {};
   global.StudyDistrict.props = {
     createDecor: createDecor,
+    createPlanters: createPlanters,
+    PLANT_SPEC: PLANT_SPEC,
+    PLANT_SPOTS: PLANT_SPOTS,
     BOOK_COLORS: BOOK_COLORS
   };
 })(typeof window !== 'undefined' ? window : globalThis);
