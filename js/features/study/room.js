@@ -774,6 +774,14 @@
       seams.push([x, sy, -b, x, sy + yEnd, -zEnd]);
       seams.push([x, sy, b, x, sy + yEnd, zEnd]);
     }
+    // 两端三角坡的落水方向沿 X；沿 Z 排列，截到斜脊。
+    // 原循环只覆盖南北两个梯形坡，不能代替这两个端坡的锁边。
+    for (var ez = -b + 0.30; ez < b - 0.30; ez += ROOF.seamGap) {
+      var reach = b - Math.abs(ez);
+      [-1, 1].forEach(function (side) {
+        seams.push([side * a, sy, ez, side * (a - reach), sy + reach * ROOF.slope, ez]);
+      });
+    }
     if (seams.length) {
       var seamMesh = new THREE.InstancedMesh(
         new THREE.CylinderGeometry(1, 1, 1, 6), mats.roof_bluegrey, seams.length

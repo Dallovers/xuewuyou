@@ -34,12 +34,19 @@ export async function createWorld(scene,openFeature,progress){
  progress('连接自习室、社交广场和竞技场…');
  // Runtime imports preserve each author's import.meta.url asset bases.
  const [study,social,arena,landscape]=await Promise.all([
-  import(new URL('../study/district.js',document.baseURI).href),import(new URL('../social/social-district.js?campus=hub1',document.baseURI).href),import(new URL('../arena/arena-district.js?campus=hub1',document.baseURI).href),import(new URL('../social/social-landscape.js',document.baseURI).href)
+  import(new URL('../study/district.js?v=study-roof-88',document.baseURI).href),import(new URL('../social/social-district.js?campus=hub1',document.baseURI).href),import(new URL('../arena/arena-district.js?campus=hub1',document.baseURI).href),import(new URL('../social/social-landscape.js',document.baseURI).href)
  ]);
  const studyDistrict=study.createDistrict({THREE:T,openFeature,mode:'runtime'});studyDistrict.root.position.set(-27,0,24);studyDistrict.root.rotation.y=Math.PI;
  // The indoor room is a shell in this view. Its original page retains picking,
  // reading and seating. Outdoor collision uses the measured exterior footprint.
  root.add(studyDistrict.root);districts.push(studyDistrict);
+ // Camera obstruction includes the new eaves/ridge; navigation keeps the
+ // ground-level wall footprint so the overhang never blocks pedestrians.
+ studyDistrict.root.updateMatrixWorld(true);
+ const roofBounds=new T.Box3(),roof=studyDistrict.root.getObjectByName('Roof');
+ roof?.traverse(n=>{if(n.isMesh&&!['RainPipe','RainHopper'].includes(n.name))roofBounds.union(new T.Box3().setFromObject(n));});
+ const cameraObstacles=roofBounds.isEmpty()?[]:[{id:'study-roof',minX:roofBounds.min.x,maxX:roofBounds.max.x,minY:roofBounds.min.y,maxY:roofBounds.max.y,minZ:roofBounds.min.z,maxZ:roofBounds.max.z}];
+ boxes.find(b=>b.id==='study').maxY=roof?.getObjectByName('RoofPlate')?.position.y??4.2;
  // Exterior-only warm timber screen and entrance canopy; retain B's room,
  // door opening, interior, picking and seat implementation unchanged.
  box(root,'Study entrance canopy',-30.3,3.25,18.8,3.1,.14,1.5,metal);
@@ -56,5 +63,5 @@ export async function createWorld(scene,openFeature,progress){
   const add=(geo,m,px,py,pz,opts={})=>{const mesh=new T.Mesh(geo,m);mesh.position.set(px,py,pz);mesh.name=opts.name||'Tree';mesh.castShadow=mesh.receiveShadow=true;tree.add(mesh);return mesh;};
   landscape.buildCampusTree({THREE:T,root:tree,add,M:{leaf,bark,soil},x:0,z:0,leafCount:1200,seedOffset:100+i*197});boxes.push({id:'tree',minX:x-.35,maxX:x+.35,minZ:z-.35,maxZ:z+.35});
  }
- return{root,boxes,interactions,districts,update(dt){for(const d of districts)d.update?.(dt);},dispose(){for(const d of districts)d.dispose?.();const geos=new Set(),mats=new Set(owned),maps=new Set(textures);root.traverse(n=>{if(n.geometry)geos.add(n.geometry);for(const m of n.material?(Array.isArray(n.material)?n.material:[n.material]):[]){mats.add(m);for(const v of Object.values(m))if(v?.isTexture)maps.add(v);}});for(const g of geos)g.dispose();for(const t of maps)t.dispose();for(const m of mats)m.dispose();scene.remove(root);}};
+ return{root,boxes,cameraObstacles,interactions,districts,update(dt){for(const d of districts)d.update?.(dt);},dispose(){for(const d of districts)d.dispose?.();const geos=new Set(),mats=new Set(owned),maps=new Set(textures);root.traverse(n=>{if(n.geometry)geos.add(n.geometry);for(const m of n.material?(Array.isArray(n.material)?n.material:[n.material]):[]){mats.add(m);for(const v of Object.values(m))if(v?.isTexture)maps.add(v);}});for(const g of geos)g.dispose();for(const t of maps)t.dispose();for(const m of mats)m.dispose();scene.remove(root);}};
 }

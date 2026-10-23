@@ -30,6 +30,9 @@ const http=require('node:http');
    await page.evaluate(()=>window.__campusHub.entry('study'));await page.locator('#campus-return').waitFor();await page.waitForFunction(()=>!!window.__studySample,null,{timeout:120000});await page.locator('#campus-return').click();await ready();check('repeat enter/return '+(i+1),(await snap()).returnRestored&&await page.locator('canvas').count()===1);
   }
   await page.evaluate(()=>window.__campusHub.openFeature('rooms'));await page.frameLocator('#business-frame').locator('#view-rooms').waitFor({state:'visible',timeout:60000});
+  // navTo can reveal the room before the final deferred embedding script runs.
+  // Wait for the host's real iframe load handshake before checking hidden links.
+  await page.waitForFunction(()=>document.querySelector('#business-status').textContent==='关闭后回到当前站位。',null,{timeout:60000});
   const paused=await snap();await page.keyboard.press('KeyW');await page.waitForTimeout(300);s=await snap();check('original rooms panel pauses campus input',s.modal&&s.pos.every((v,i)=>v===paused.pos[i]));
   check('business iframe hides 3D entrances',await page.frameLocator('#business-frame').locator('#campusHubEntry').isHidden()&&await page.frameLocator('#business-frame').locator('#arena3dEntry').isHidden());
   await page.locator('#close-business').click();check('closing destroys business iframe document',await page.locator('#business-frame').getAttribute('src')===null);
