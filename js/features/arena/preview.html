@@ -101,7 +101,7 @@ const scene = new THREE.Scene();
 scene.background = new THREE.Color(0xc6dae4);
 scene.fog = new THREE.Fog(0xc6dae4, 52, 128);
 
-/* 天空 HDR → 环境反射（IBL）。没有它，金属度偏高的柱、围绳、锣面会发死黑。 */
+/* 天空 HDR → 环境反射（IBL）。没有它，金属度偏高的柱、锣面会发死黑。 */
 let envState = { ok: false, reason: 'not-started' };
 try {
   const { RGBELoader } = await import('three/addons/loaders/RGBELoader.js');

@@ -1,6 +1,6 @@
 /* 学无忧 · 好友竞技场（擂台）
  *
- * 内容：场地铺装、擂台台基与围绳、西侧牌坊与开赛锣、报名处、对战牌、看台、围栏、灯柱、树池，
+ * 内容：场地铺装、擂台台基与围护（木扶手 + 赛带）、西侧牌坊与开赛锣、报名处、对战牌、看台、围栏、灯柱、树池，
  *       以及三个实物交互点。
  *
  * 边界（与社交广场同一套契约）：
@@ -58,7 +58,7 @@ export const ARENA_LAYOUT = {
 /* 材质 ID 沿用统一风格文档，宿主传 materials 时按 ID 克隆复用。
    新增两个只属于本板块的：
    - arena_olive：竞技场的识别色（同 js/campus-registry.js 里 arena 分区的 0x9a9e67），
-     用在围绳、台面色带、牌坊挂幡上，远看能认出这是哪个分区。
+     用在赛带、台面色带、牌坊挂幡上，远看能认出这是哪个分区。
    - bronze：开赛锣的铜面，靠金属反射读出"是真锣"。 */
 const MATERIAL_SPEC = {
   stone_light: { color: 0xcfc8ba, roughness: 0.74, metalness: 0.0, envMapIntensity: 0.55, uvUnit: 1.2 },
@@ -1580,7 +1580,7 @@ export function createDistrict(ctx = {}) {
 
   /* 本板块不做树池：
      试过放在东围栏外（(13.5, ±7.4)），从场地里看过去那两棵树正好落进擂台顶框的范围，
-     读成"围台里浮着两个绿球"，而且树干被围绳挡掉只剩树冠。
+     读成"围台里浮着两个绿球"，而且树干被扶手和赛带挡掉只剩树冠。
      绿化交给隔壁社交广场，这里保持硬质场地 + 灯柱 + 围栏。 */
 
   /* ---------- 柱子 ----------
@@ -1756,11 +1756,24 @@ export function createDistrict(ctx = {}) {
          1.02m 木扶手（0.16 宽，能从场外看见）
          0.52m 橄榄色赛带（平直、不垂——下垂是"受力绳索"的读法）
          每边两根竖向栏杆（0.05 方管），把扶手和台面连起来，
-         不然 6.5m 长的一根木条悬在那儿，远看是一条浮着的线。 */
+         不然 6.5m 长的一根木条悬在那儿，远看是一条浮着的线。
+
+       西侧（正对那两跑台阶）留一道 3.4m 的门洞——四面都封着的时候，
+       从场外看就是一圈栏杆围着一块高出地面的石台：既读不出"从哪儿上"，
+       也把台心那两块答题台关在里面，整块场地像个笼子。门只开西门一处，
+       因为台阶只有这一侧；另三边照旧整根。 */
     const railY = topY + L.rail.top;
     const beltY = topY + L.rail.band;
     const balXs = [R.cx - postR / 3, R.cx + postR / 3];
     const balZs = [R.cz - postR / 3, R.cz + postR / 3];
+
+    /* 门洞宽度直接取台阶宽（3.4）：台阶两肩和门柱同一条线，
+       站在台阶上看过去就是一个直通台面的口子，不用再对一遍尺寸。 */
+    const gateW = L.step.width;
+    const gateHalf = gateW / 2;
+    const gateSeg = postR - gateHalf;   // 西侧门洞两侧各剩下的扶手长度
+    const westX = postXs[0];
+
     for (const pz of postZs) {
       add(boxGeo(span, 0.06, 0.16), M.oak_flat, R.cx, railY, pz, { name: 'arena:rail' });
       add(boxGeo(span, 0.20, 0.045), M.arena_olive, R.cx, beltY, pz, { name: 'arena:band', cast: false });
@@ -1771,12 +1784,38 @@ export function createDistrict(ctx = {}) {
       }
     }
     for (const px of postXs) {
-      add(boxGeo(0.16, 0.06, span), M.oak_flat, px, railY, R.cz, { name: 'arena:rail' });
-      add(boxGeo(0.045, 0.20, span), M.arena_olive, px, beltY, R.cz, { name: 'arena:band', cast: false });
-      for (const bz of balZs) {
-        add(boxGeo(0.05, L.rail.top, 0.05), M.metal_frame, px, topY + L.rail.top / 2, bz, {
-          name: 'arena:baluster',
-        });
+      if (px === westX) {
+        /* 西门：扶手和赛带各拆两段，中间空出 3.4m。
+           竖杆不留在门洞里（那正是要过人的地方），挪到门洞两侧当门柱。 */
+        for (const sz of [-1, 1]) {
+          const gz = R.cz + sz * (gateHalf + gateSeg / 2);
+          add(boxGeo(0.16, 0.06, gateSeg), M.oak_flat, px, railY, gz, { name: 'arena:rail' });
+          add(boxGeo(0.045, 0.20, gateSeg), M.arena_olive, px, beltY, gz, {
+            name: 'arena:band', cast: false,
+          });
+        }
+        /* 门垛：比扶手高 0.22，顶上收一个小柱帽。
+           试过在两根柱子上架一道横梁当门楣——正对西门的机位（擂台主视角）里，
+           那道梁正好横切过台面和两块答题台，把最好的一眼挡掉了；
+           而且围护只有 1.02m，上面架梁更像闸机。加高门柱 + 收帽就够读成门。 */
+        const gatePostH = L.rail.top + 0.22;
+        for (const sz of [-1, 1]) {
+          const gz = R.cz + sz * gateHalf;
+          add(boxGeo(0.09, gatePostH, 0.09), M.metal_frame, px, topY + gatePostH / 2, gz, {
+            name: 'arena:gate-post',
+          });
+          add(boxGeo(0.13, 0.025, 0.13), M.metal_frame, px, topY + gatePostH + 0.0125, gz, {
+            name: 'arena:gate-cap', cast: false,
+          });
+        }
+      } else {
+        add(boxGeo(0.16, 0.06, span), M.oak_flat, px, railY, R.cz, { name: 'arena:rail' });
+        add(boxGeo(0.045, 0.20, span), M.arena_olive, px, beltY, R.cz, { name: 'arena:band', cast: false });
+        for (const bz of balZs) {
+          add(boxGeo(0.05, L.rail.top, 0.05), M.metal_frame, px, topY + L.rail.top / 2, bz, {
+            name: 'arena:baluster',
+          });
+        }
       }
     }
     // 抱箍：每根柱、每个高度一圈，扶手和赛带都是"装上去的"而不是穿过去的
