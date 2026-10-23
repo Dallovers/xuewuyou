@@ -92,6 +92,11 @@ async function init(){try{
  }catch(error){console.error(error);$('#loading strong').textContent='校园暂时无法加载';$('#progress').textContent=error.message;$('#retry').hidden=false;}}
 window.__campusHub={snapshot:()=>({ready:state.ready,mode:state.mode,pos:[state.x,groundAt(state.x,state.z),state.z],yaw:state.yaw,path:state.path,modal:bridge.paused,returnRestored:state.returnRestored,seated:!!state.seated,frames:state.frames,entries:ENTRIES,nearest:nearest?.id||null,avatar:avatar?.snapshot(),boxes:world?.boxes.length,render:renderer.info.render}),route:id=>goTo(id),setPose:(x,z,yaw=0)=>{if(!navigation||navigation.blocked(x,z))return false;clearInput();setMode('walk');Object.assign(state,{x,z,yaw});lastX=x;lastZ=z;return true;},blocked:(x,z)=>navigation?.blocked(x,z),entry:id=>{const e=ENTRIES.find(e=>e.id===id);if(e)enterScene(e);},openFeature:(...args)=>bridge.openFeature(...args),dispose};
 window.__campusHub.courtyard=()=>world?.courtyard.snapshot();
-window.__campusHub.districts=()=>world?.districts.map(d=>{const features={},plaqueNormals=[];d.root.updateMatrixWorld(true);d.root.traverse(n=>{if(n.name==='arena:podium'||n.name==='arena:rope'||n.name==='site:lawn'||n.name.startsWith('dressing:'))features[n.name]=(features[n.name]||0)+1;if(n.name==='arena:podium-plaque-face')plaqueNormals.push(new T.Vector3(0,0,1).transformDirection(n.matrixWorld).toArray());});return{name:d.root.name,features,plaqueNormals,interactions:d.interactions?.map(i=>({id:i.id,disabled:!!i.disabled}))};});
+window.__campusHub.districts=()=>world?.districts.map(d=>{
+ const features={},plaqueNormals=[];d.root.updateMatrixWorld(true);
+ d.root.traverse(n=>{if(n.name==='arena:podium'||n.name==='arena:rope'||n.name==='site:lawn'||n.name.startsWith('dressing:'))features[n.name]=(features[n.name]||0)+1;if(n.name==='arena:podium-plaque-face')plaqueNormals.push(new T.Vector3(0,0,1).transformDirection(n.matrixWorld).toArray());});
+ const front=d.root.getObjectByName('Social courtyard-facing service pavilion');
+ return{name:d.root.name,features,plaqueNormals,serviceFacing:front?new T.Vector3(1,0,0).transformDirection(front.matrixWorld).toArray():null,interactions:d.interactions?.map(i=>({id:i.id,disabled:!!i.disabled,position:i.object.getWorldPosition(new T.Vector3()).toArray()}))};
+});
 window.__campusHub.visuals=()=>({...effects.snapshot(),memory:{...renderer.info.memory},programs:renderer.info.programs.length,water:world?.courtyard.snapshot().water,paving:world?.pavingSnapshot()});
 init();

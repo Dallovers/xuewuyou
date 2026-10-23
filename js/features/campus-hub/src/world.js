@@ -7,6 +7,7 @@ import {createCourtyard} from './courtyard.js';
 import {loadSurfaces} from './surface-materials.js';
 import {createCampusContext} from './campus-context.js';
 import {createWhitePaving} from './paving-material.js';
+import {faceSocialCourtyard} from './social-placement.js';
 
 export async function createWorld(scene,openFeature,progress){
  const root=new T.Group();root.name='Campus shared public ground';scene.add(root);
@@ -68,7 +69,9 @@ export async function createWorld(scene,openFeature,progress){
  const slats=new T.InstancedMesh(new T.BoxGeometry(.07,3.05,.10),wood,26),dummy=new T.Object3D();slats.name='Study external timber sun screen';
  for(let i=0;i<26;i++){dummy.position.set(.8-i*.23,1.65,4.86);dummy.updateMatrix();slats.setMatrixAt(i,dummy.matrix);}slats.castShadow=slats.receiveShadow=true;studyExterior.add(slats);
  for(const [module,x]of [[social,18],[arena,39]]){
-  const district=module.createDistrict({THREE:T,openFeature,mode:'runtime',sharedSite:true,bakedAO:false});district.root.position.set(x,0,2);root.add(district.root);districts.push(district);boxes.push(...worldBoxes(T,district));interactions.push(...district.interactions);await district.ready;
+  const district=module.createDistrict({THREE:T,openFeature,mode:'runtime',sharedSite:true,bakedAO:false});
+  if(module===social)faceSocialCourtyard(district,social.SOCIAL_LAYOUT.pavilion);
+  district.root.position.set(x,0,2);root.add(district.root);districts.push(district);boxes.push(...worldBoxes(T,district));interactions.push(...district.interactions);await district.ready;
   district.root.traverse(mesh=>{if(groundNames.has(mesh.name))unifyPaving(mesh);});
  }
  // Shared low-density vegetation uses A's actual tree builder and texture.

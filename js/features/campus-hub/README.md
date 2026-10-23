@@ -77,6 +77,8 @@ SSAO 不把透明叶卡、水面、天空和蒙皮人物当实心遮挡；人物
 
 `npm run test:round` 检查白石统一、两座答题台与牌面朝向、共享背景裁剪、圆水面与碰撞、真实 W/E 拾取、Esc 和窄屏轻路径。本轮生成图只作建模参考，没有用于水面、天空或场景背景。实景、参考图与版本来源见 `docs/team/visuals/campus-round-v4/`。
 
+2026-10-23 社交服务区朝向调整：公共宿主将亭廊、服务台、留言板及其固定件以亭廊中心原地旋转 180°，正面朝西侧中央庭院；配套台阶、檐沟、排水与板脚随组旋转。碰撞中心同步旋转，真实互动对象保留引用并由矩阵求世界位置。广场其他设施及原独立预览保持原布局；宿主继续关闭原几何烘焙。专项为 `node tests/social-facing.cjs`，实景和结果见 `docs/team/visuals/campus-social-facing-v5/`。
+
 ## 文件与重建
 
 `src/app.js` 统一相机、输入、渲染循环和场景入口；`world.js` 组装共享地面和各板块；`navigation.js` 负责角色体积、分步碰撞及可达路线；`return-state.js` / `return-bridge.js` 负责入口往返；`business.js` 复用主站业务。新宿主可不安装 Blender。
