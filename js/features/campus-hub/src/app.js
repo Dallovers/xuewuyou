@@ -35,10 +35,10 @@ function findNearest(){
  nearest=null;if(!state.ready||state.mode!=='walk'||bridge.paused||avatar.actionState.current)return;
  if(state.seated){nearest={label:'起身继续行走',action:stand};return;}
  const entries=ENTRIES.map(e=>({id:e.id,label:'进入'+e.label,distance:Math.hypot(state.x-e.at[0],state.z-e.at[1]),radius:2.3,action:()=>enterScene(e)}));
- for(const item of world.interactions){const p=item.object.getWorldPosition(new T.Vector3());entries.push({...item,distance:Math.hypot(state.x-p.x,state.z-p.z)});}
+ for(const item of world.interactions){if(item.disabled)continue;const p=item.object.getWorldPosition(new T.Vector3());entries.push({...item,distance:Math.hypot(state.x-p.x,state.z-p.z)});}
  nearest=entries.filter(i=>i.distance<=i.radius).sort((a,b)=>a.distance-b.distance)[0]||null;
 }
-async function activate(){if(!nearest||bridge.paused)return;clearInput();try{const result=await nearest.action?.();if(result?.kind==='seat'){state.seated=result;state.pitch=0;state.yaw=Math.atan2(result.directions[0][0],-result.directions[0][2]);toast('已坐下，拖动环顾，按 E 或 Esc 起身。');}else if(result?.message)toast(result.message);}catch(error){toast('操作未完成：'+error.message);}}
+async function activate(){if(!nearest||bridge.paused)return;clearInput();try{const result=await nearest.action?.();if(result?.kind==='seat'){state.seated=result;state.pitch=0;state.yaw=Math.atan2(result.directions[0][0],-result.directions[0][2]);toast('已坐下，拖动环顾，按 E 或 Esc 起身。');}else if(result?.kind==='note'){bridge.openFeature('note',{text:result.text});}else if(result?.message)toast(result.message);}catch(error){toast('操作未完成：'+error.message);}}
 function jump(){if(state.mode==='walk'&&!bridge.paused&&!state.seated)avatar?.act('jump',groundAt(state.x,state.z));}
 function updateCamera(dt){
  if(state.seated){camera.position.fromArray(state.seated.position);camera.lookAt(camera.position.x+Math.sin(state.yaw),camera.position.y-state.pitch,camera.position.z-Math.cos(state.yaw));return;}
@@ -92,5 +92,6 @@ async function init(){try{
  }catch(error){console.error(error);$('#loading strong').textContent='校园暂时无法加载';$('#progress').textContent=error.message;$('#retry').hidden=false;}}
 window.__campusHub={snapshot:()=>({ready:state.ready,mode:state.mode,pos:[state.x,groundAt(state.x,state.z),state.z],yaw:state.yaw,path:state.path,modal:bridge.paused,returnRestored:state.returnRestored,seated:!!state.seated,frames:state.frames,entries:ENTRIES,nearest:nearest?.id||null,avatar:avatar?.snapshot(),boxes:world?.boxes.length,render:renderer.info.render}),route:id=>goTo(id),setPose:(x,z,yaw=0)=>{if(!navigation||navigation.blocked(x,z))return false;clearInput();setMode('walk');Object.assign(state,{x,z,yaw});lastX=x;lastZ=z;return true;},blocked:(x,z)=>navigation?.blocked(x,z),entry:id=>{const e=ENTRIES.find(e=>e.id===id);if(e)enterScene(e);},openFeature:(...args)=>bridge.openFeature(...args),dispose};
 window.__campusHub.courtyard=()=>world?.courtyard.snapshot();
-window.__campusHub.visuals=()=>({...effects.snapshot(),memory:{...renderer.info.memory},programs:renderer.info.programs.length,water:world?.courtyard.snapshot().water});
+window.__campusHub.districts=()=>world?.districts.map(d=>{const features={},plaqueNormals=[];d.root.updateMatrixWorld(true);d.root.traverse(n=>{if(n.name==='arena:podium'||n.name==='arena:rope'||n.name==='site:lawn'||n.name.startsWith('dressing:'))features[n.name]=(features[n.name]||0)+1;if(n.name==='arena:podium-plaque-face')plaqueNormals.push(new T.Vector3(0,0,1).transformDirection(n.matrixWorld).toArray());});return{name:d.root.name,features,plaqueNormals,interactions:d.interactions?.map(i=>({id:i.id,disabled:!!i.disabled}))};});
+window.__campusHub.visuals=()=>({...effects.snapshot(),memory:{...renderer.info.memory},programs:renderer.info.programs.length,water:world?.courtyard.snapshot().water,paving:world?.pavingSnapshot()});
 init();

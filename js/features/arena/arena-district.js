@@ -22,9 +22,10 @@ export const ARENA_LAYOUT = {
   neighbor: { districtId: 'social', offset: [21, 0, 0] },
   ring: { cx: 1.8, cz: 0, size: 7.2, base: 0.55, cap: 0.08 },
   post: { size: 0.18, height: 2.75, inset: 0.36 },
-  /* radius 收到 0.03（直径 6cm）：0.045 时站在台前三米看是一根水管。
-     真实围绳包布后也就 3~4cm，靠下垂的弧线和分色去辨识，不靠粗。 */
-  rope: { levels: 3, from: 0.5, step: 0.4, radius: 0.03 },
+  /* 围护改成"木扶手 + 布带"两道，都是相对台面（topY）的高度。
+     原来这里是 rope: { levels: 3, from: 0.5, step: 0.4, radius: 0.03 } 的三道围绳，
+     连同绳的麻花法线、抛物线下垂几何一起删掉了——那套是拳击台的语汇。 */
+  rail: { top: 1.02, band: 0.52 },
   step: { count: 2, width: 3.4, rise: 0.18, run: 0.44 },
   gate: { x: -8.6, z: 0, span: 4.0, post: 0.22, height: 3.05 },
   /* 锣不挂在门洞正中：吊到 2.0m 高、直径 0.68，正中挂着就是给进场的人一个"撞头"。
@@ -38,6 +39,12 @@ export const ARENA_LAYOUT = {
   desk: { x: 7.9, z: 4.6, w: 0.66, h: 1.0, d: 1.7 },
   board: { x: 7.9, z: -4.6, width: 2.0, height: 1.55 },
   stand: { rows: 2, depth: 1.05, rise: 0.42, inner: 4.5, x0: -1.6, x1: 6.4 },
+  /* 彩蛋：西南角那片空铺装。定在这里是因为动线——
+     人从西围栏缺口进来看台，主路在 z ∈ [-2.25, 2.25]，纸条落在路缘石南侧 0.6m，
+     走在路上扫一眼就在余光里，但要专门拐半步才够得着（判定半径 2.0m）。
+     往西 x < -8 会撞上围栏，往东 x > -3 就是台阶和看台，只有这一段是纯空地。
+     高度压在铺装面（y = 0.02）之上 3.5mm，不 z-fighting 也不像浮着。 */
+  note: { x: -5.0, z: 2.85, y: 0.0235 },
   /* 西侧缺口净宽 4.2：必须宽于牌坊门洞（跨度 4.0、净宽 3.56），
      否则围栏会横在门洞前面，人从牌坊穿过去还得再钻一道栏杆。 */
   fence: { height: 0.95, gap: 4.2 },
@@ -65,11 +72,11 @@ const MATERIAL_SPEC = {
   fabric_greygreen: { color: 0x777d6e, roughness: 0.9, metalness: 0.0 },
   accent_amber: { color: 0xc98b3f, roughness: 0.4, metalness: 0.2, emissive: 0xc98b3f, emissiveIntensity: 0.3 },
   arena_olive: { color: 0x9a9e67, roughness: 0.82, metalness: 0.0, envMapIntensity: 0.45 },
-  /* 围绳分三层颜色：下深、中橄榄、上米白。
-     三道绳全用同一个橄榄时，逆光下会糊成一块绿板，读不出"三层绳"这个结构。 */
-  rope_dark: { color: 0x6d7248, roughness: 0.96, metalness: 0.0, envMapIntensity: 0.25 },
+  /* 米白布件：台面赛线、赛带、篷布收边、报名簿的内页都用这一档。
+     粗糙度拉到 0.95、环境强度压到 0.25——布不能有金属感，也不能有一层环境反光。 */
   rope_cream: { color: 0xe0d7b9, roughness: 0.95, metalness: 0.0, envMapIntensity: 0.25 },
-  /* 护角垫：包布的，比围绳更暗更粗糙，否则读成"柱子加粗了一圈" */
+  /* 橄榄色帆布：护角垫已经不用了，现在只剩报名处的棚顶。
+     比布件更暗更粗糙，否则会读成"一块刷了漆的板" */
   canvas_olive: { color: 0x7f8455, roughness: 0.97, metalness: 0.0, envMapIntensity: 0.2 },
   /* 串旗三色。赭石是这块场地唯一的暖色，专门用来把"有比赛"这件事点出来 */
   flag_olive: { color: 0x8d915e, roughness: 0.92, metalness: 0.0, doubleSide: true },
@@ -96,7 +103,7 @@ const MATERIAL_SPEC = {
    oak_light / oak_flat / brick_grey 不在此列——它们的 roughnessMap 由异步 PBR 贴图接管。 */
 const ROUGH_NOISE_IDS = new Set([
   'metal_dark', 'metal_frame', 'roof_bluegrey', 'stone_light', 'stone_light_in',
-  'arena_olive', 'rope_dark', 'rope_cream', 'canvas_olive', 'bronze',
+  'arena_olive', 'rope_cream', 'canvas_olive', 'bronze',
   'ground_paving', 'ground_lawn', 'ring_canvas',
 ]);
 
@@ -571,8 +578,6 @@ export function createDistrict(ctx = {}) {
 
   /* 微表面贴图的惰性状态。必须声明在 dressMaterials 之前：
      生成器是函数声明（会提升），但这些 let 不会——放到函数体后面就是 TDZ 报错。 */
-  let ropeNormalTex = null;
-  let ropeNormalDone = false;
   let weaveNormalTex = null;
   let weaveNormalDone = false;
 
@@ -616,24 +621,8 @@ export function createDistrict(ctx = {}) {
       }
     }
 
-    /* 围绳的麻花法线。中间那道绳用的是识别色 arena_olive，
-       那块材质还要去贴台面色带和台心圆圈，不能带绳子纹理——所以克隆一份单独给绳子。 */
-    const braid = ropeNormal();
-    if (!braid) return;
-    for (const id of ['rope_dark', 'rope_cream']) {
-      const m = M[id];
-      if (!m) continue;
-      m.normalMap = braid;
-      m.normalScale = new THREE.Vector2(0.8, 0.8);
-      m.needsUpdate = true;
-    }
-    const mid = M.arena_olive.clone();
-    mid.name = 'rope_mid';
-    mid.normalMap = braid;
-    mid.normalScale = new THREE.Vector2(0.8, 0.8);
-    mid.needsUpdate = true;
-    owner.ownMaterial(mid);
-    M.rope_mid = mid;
+    /* 围绳的麻花法线已经随着"三道围绳"一起删掉了——
+       围护改成木扶手 + 平直布带之后，场上没有任何需要绳索纹理的部件。 */
   })();
   const root = new THREE.Group();
   root.name = 'district:arena';
@@ -732,31 +721,6 @@ export function createDistrict(ctx = {}) {
     ], 3));
     g.setAttribute('uv', new THREE.Float32BufferAttribute([0, 1, 0.5, 0, 1, 1], 2));
     g.computeVertexNormals();
-    g.userData.__arenaCached = true;
-    geoCache.set(key, g);
-    return g;
-  }
-
-  /* 围绳：沿抛物线下垂的管子。
-     直圆柱是"钢杆"，不是绳子——真实围绳在两根柱之间会往下坠 4~6cm，
-     侧看的那条弧线才是围绳的辨识特征。UV 沿管长 0–1、绕管一周 0–1，
-     正好把斜纹法线铺成麻花。 */
-  function ropeGeometry(span, sag, radius) {
-    const key = 'rope' + span.toFixed(3) + '|' + sag.toFixed(3) + '|' + radius.toFixed(3);
-    let g = geoCache.get(key);
-    if (g) return g;
-    const segs = 22;
-    const pts = [];
-    for (let i = 0; i <= segs; i++) {
-      const t = i / segs;
-      const x = (t - 0.5) * span;
-      /* 抛物线：两端为 0、中点为 -sag。用抛物线不用悬链线——
-         6.5m 跨度上两者差别不到 1mm，抛物线省一次 cosh。 */
-      const y = -sag * (1 - Math.pow(2 * t - 1, 2));
-      pts.push(new THREE.Vector3(x, y, 0));
-    }
-    const curve = new THREE.CatmullRomCurve3(pts);
-    g = new THREE.TubeGeometry(curve, segs, radius, 7, false);
     g.userData.__arenaCached = true;
     geoCache.set(key, g);
     return g;
@@ -1332,23 +1296,6 @@ export function createDistrict(ctx = {}) {
     return owner.ownTexture(tex);
   }
 
-  /* 绳子的麻花纹：沿绳轴（u）走斜纹。三股绳的脊线在 (u, v) 平面上是斜的，
-     所以高度场写成 sin(u*N + v)，法线出来就是一圈缠上去的斜棱。
-     （状态变量 ropeNormalTex / ropeNormalDone 声明在 createDistrict 顶部） */
-  function ropeNormal() {
-    if (!ropeNormalDone) {
-      ropeNormalDone = true;
-      ropeNormalTex = heightToNormal(128, (u, v) => Math.sin(2 * Math.PI * (6 * u + v)), 0.012);
-      if (ropeNormalTex) {
-        /* 40 次重复 = 每 16cm 一个循环、每股棱约 2.7cm。
-           太密（60+）在 2m 内就落到 mip 里糊平了，等于没加。 */
-        ropeNormalTex.repeat.set(40, 2);
-        ropeNormalTex.needsUpdate = true;
-      }
-    }
-    return ropeNormalTex;
-  }
-
   /* 台面帆布：经纬交错的凹凸。sin*sin 出来是棋盘状的起落，正是帆布的读法。
      频率是这里唯一的难点：原来写 48 个循环、台面上再重复 48 次，
      一个织格只有 3mm，投影到屏幕上是亚像素——结果不是"看不见"，而是**走样成一片竖条纹**。
@@ -1588,7 +1535,6 @@ export function createDistrict(ctx = {}) {
     if (!ctx.sharedSite) add(lawnGeo, lawnMat, 0, -0.055, 0, {
       rotX: -Math.PI / 2, name: 'site:lawn', cast: false,
     });
-    else lawnGeo.dispose();
     /* 三块地面压成三档明度：主场地最亮、擂台圈地中间、进场主路最浅（人走得多，磨得发白）。
        先前三块都在 #a8 以上，又被贴图的亮底色乘了一遍，整片读成一块白板。 */
     const siteMat = makePavingMaterial('#9c9684', L.site.w, L.site.d, 2.2) || M.ground_paving;
@@ -1600,7 +1546,7 @@ export function createDistrict(ctx = {}) {
        只有铺装之外那圈才露出来。 */
     const fadeBand = 0.9;
     const fadeMat = makeEdgeFadeMaterial(L.site.w, L.site.d, fadeBand);
-    if (fadeMat) {
+    if (fadeMat && !ctx.sharedSite) {
       const fade = add(planeGeo(L.site.w + fadeBand, L.site.d + fadeBand * 2), fadeMat, fadeBand / 2, 0.016, 0, {
         rotX: -Math.PI / 2, cast: false, receive: false, name: 'site:edge-fade',
       });
@@ -1636,6 +1582,45 @@ export function createDistrict(ctx = {}) {
      试过放在东围栏外（(13.5, ±7.4)），从场地里看过去那两棵树正好落进擂台顶框的范围，
      读成"围台里浮着两个绿球"，而且树干被围绳挡掉只剩树冠。
      绿化交给隔壁社交广场，这里保持硬质场地 + 灯柱 + 围栏。 */
+
+  /* ---------- 柱子 ----------
+   * 和社交广场亭廊柱同一套做法（js/features/social/social-district.js 的 buildPavilion）：
+   *
+   *   深色垫板（1.64×，18mm，压在石础脚下）
+   *   石柱础（1.32×）
+   *   涂装柱身（1.0×，倒角 0.010）
+   *   石柱头箍（1.36×，套在柱身外面，梁坐在它上面）
+   *
+   * 两个板块并排（neighbor.offset = 21），柱子是离眼睛最近、最容易被横向比较的构件，
+   * 构造和比例不一致非常扎眼。所以这里不是"另起一套更好看的"，是把广场那套尺寸
+   * 按柱径等比重算一遍：`k = size / 0.22`，0.22 就是广场亭廊柱的柱径——
+   * 牌坊柱正好 0.22，于是它和亭廊柱一模一样；擂台柱 0.18 是同一套件的 0.82 倍。
+   *
+   * 三处照抄的地方，都是"不一致会露馅"的地方：
+   *   1. 倒角用绝对值 0.014 / 0.010 / 0.008，不跟着柱径缩；
+   *   2. 石料用 stone_light（0xcfc8ba）——两个板块里唯一完全同色的一档，
+   *      竞技场的 stone_light_in 是 0xc3bcac，比广场那档暗，接缝处会看出来；
+   *   3. 柱头是**套箍**，不是压在柱顶上的帽子：柱子一直伸到梁底，石箍包住最上面 9cm。
+   */
+  function column(x, z, baseY, size, top, capGap) {
+    const k = size / 0.22;
+    const plinthH = 0.12 * k;
+    const capH = 0.09 * k;
+    add(boxGeo(0.36 * k, 0.018, 0.36 * k), M.metal_dark, x, baseY + 0.009, z, {
+      name: 'arena:post-seat', cast: false,
+    });
+    add(beveledBoxGeometry(THREE, 0.29 * k, plinthH, 0.29 * k, 0.014, 1), M.stone_light, x,
+      baseY + plinthH / 2, z, { name: 'arena:post-plinth' });
+    const shaftH = top - baseY - plinthH;
+    add(beveledBoxGeometry(THREE, size, shaftH, size, 0.01, 1), M.metal_dark, x,
+      baseY + plinthH + shaftH / 2, z, { name: 'arena:post' });
+    /* capGap：石箍顶面离柱顶还有多远。擂台柱和牌坊柱都是 0——箍顶与柱顶齐平，
+       梁直接坐在箍上；柱身其实一直顶到梁底，石箍只是套在最上面 9cm 的一圈。
+       留着这个参数：以后给牌坊加檐、或擂台换梁高，只动它，不用改调用签名。 */
+    const capBottom = top - (capGap || 0) - capH;
+    add(beveledBoxGeometry(THREE, 0.30 * k, capH, 0.30 * k, 0.008, 1), M.stone_light, x,
+      capBottom + capH / 2, z, { name: 'arena:post-cap' });
+  }
 
   /* ---------- 擂台 ---------- */
 
@@ -1686,15 +1671,12 @@ export function createDistrict(ctx = {}) {
       });
     }
 
-    // 台心：两道同心圈 + 中心圆点。全部是贴地薄片，不参与碰撞
-    add(new THREE.RingGeometry(1.34, 1.46, 64), M.arena_olive, R.cx, topY + 0.010, R.cz, {
-      rotX: -Math.PI / 2, name: 'arena:ring-mark-outer', cast: false,
-    });
-    add(new THREE.RingGeometry(0.86, 0.94, 64), M.arena_olive, R.cx, topY + 0.010, R.cz, {
-      rotX: -Math.PI / 2, name: 'arena:ring-mark-inner', cast: false,
-    });
-    add(new THREE.CircleGeometry(0.26, 32), M.arena_olive, R.cx, topY + 0.010, R.cz, {
-      rotX: -Math.PI / 2, name: 'arena:ring-mark-dot', cast: false,
+    /* 台心：一个八角的"对决区"。
+       原来是两道同心圆 + 中心点——那是拳击台的标准台标，一眼就是格斗场。
+       八边形读的是"令牌 / 答题卡 / 印章"，和这块场地的其他中式元素同族，
+       而且它是空心的，中间留给答题台和站位，不像靶心那样把视线钉在正中。 */
+    add(new THREE.RingGeometry(0.66, 0.80, 8, 1, Math.PI / 8), M.arena_olive, R.cx, topY + 0.010, R.cz, {
+      rotX: -Math.PI / 2, name: 'arena:ring-mark-oct', cast: false,
     });
 
     /* 台面内圈一道乳白赛线：把台心那组圈收进一个框，远看就是"这块台上要比一场"。
@@ -1721,28 +1703,13 @@ export function createDistrict(ctx = {}) {
     const postXs = [R.cx - postR, R.cx + postR];
     const postZs = [R.cz - postR, R.cz + postR];
     const postH = L.post.height;
-    const ropeY0 = topY + L.rope.from;
-    /* 柱身中段包一圈护角垫：围绳从垫子里穿出来，才像一张能打的擂台。
-       垫子只包下两道绳（0.3 ~ 1.1），第三道绳和绳扣露在垫子上方，
-       不然护垫一路包到柱顶，从远处看就是四根粗柱子。 */
-    const padH = 0.8;
-    const padCy = ropeY0 + 0.2;
+    const S = L.post.size;
+    /* 柱顶必须落在 2.83（= postH + 0.08）：横梁底面就在那儿，
+       高一点梁会浮、低一点梁会插进石箍。 */
+    const postTop = topY + postH + 0.08;
     for (const px of postXs) {
       for (const pz of postZs) {
-        add(beveledBoxGeometry(THREE, 0.3, 0.1, 0.3, 0.012, 1), M.stone_light_in, px, topY + 0.05, pz, {
-          name: 'arena:post-plinth',
-        });
-        add(beveledBoxGeometry(THREE, L.post.size, postH - 0.1, L.post.size, 0.008, 1), M.metal_dark, px,
-          topY + 0.1 + (postH - 0.1) / 2, pz, { name: 'arena:post' });
-        add(beveledBoxGeometry(THREE, L.post.size + 0.09, 0.08, L.post.size + 0.09, 0.008, 1), M.stone_light_in, px,
-          topY + postH + 0.04, pz, { name: 'arena:post-cap' });
-        add(beveledBoxGeometry(THREE, 0.245, padH, 0.245, 0.022, 1), M.canvas_olive, px, padCy, pz, {
-          name: 'arena:post-pad',
-        });
-        // 束带：一道米白捆绳，护垫不是一个光面方桶
-        add(boxGeo(0.256, 0.05, 0.256), M.rope_cream, px, padCy + padH / 2 - 0.13, pz, {
-          name: 'arena:post-pad-strap', cast: false,
-        });
+        column(px, pz, topY, S, postTop, 0);
       }
     }
     const postTopY = topY + postH + 0.08;
@@ -1783,58 +1750,73 @@ export function createDistrict(ctx = {}) {
       }
     }
 
-    // 三道围绳：包布的三股绳，不是钢丝——钢丝在这个尺度上直接消失
-    /* 三层分色：下深、中橄榄、上米白。全用一个橄榄色时，三道绳在逆光下糊成一块绿板，
-       结构完全读不出来；分色之后站在场外就能数清是三道。 */
-    const ropeMats = [M.rope_dark, M.rope_mid || M.arena_olive, M.rope_cream];
-    const ropeGeo = ropeGeometry(span, 0.042, L.rope.radius);
-    for (let i = 0; i < L.rope.levels; i++) {
-      const y = ropeY0 + i * L.rope.step;
-      const mat = ropeMats[i] || M.rope_mid || M.arena_olive;
-      /* ropeGeo 的曲线本身沿 X 铺开（span 就是跨度）。
-         所以南北两道绳（z = ±postR）不转，东西两道绳（x = ±postR）绕 Y 转 90°。
-         早先这两行是反的：每道绳都从场地中线往一边长出去，
-         半个擂台没有绳、另一半的绳穿出界，站在正面看还有一根"竖线"——
-         那是绳管正对着镜头，透视收成一条。 */
-      for (const pz of postZs) {
-        add(ropeGeo, mat, R.cx, y, pz, { name: 'arena:rope' });
-      }
-      for (const px of postXs) {
-        add(ropeGeo, mat, px, y, R.cz, { rotY: Math.PI / 2, name: 'arena:rope' });
+    /* 围护：木扶手 + 橄榄赛带 + 竖向栏杆。
+       原来是三道下垂的包布尼龙绳——那是拳击台的签名，换什么颜色都还是拳击台。
+       现在全部换成建筑语言，和广场亭廊、图书馆的木构同族：
+         1.02m 木扶手（0.16 宽，能从场外看见）
+         0.52m 橄榄色赛带（平直、不垂——下垂是"受力绳索"的读法）
+         每边两根竖向栏杆（0.05 方管），把扶手和台面连起来，
+         不然 6.5m 长的一根木条悬在那儿，远看是一条浮着的线。 */
+    const railY = topY + L.rail.top;
+    const beltY = topY + L.rail.band;
+    const balXs = [R.cx - postR / 3, R.cx + postR / 3];
+    const balZs = [R.cz - postR / 3, R.cz + postR / 3];
+    for (const pz of postZs) {
+      add(boxGeo(span, 0.06, 0.16), M.oak_flat, R.cx, railY, pz, { name: 'arena:rail' });
+      add(boxGeo(span, 0.20, 0.045), M.arena_olive, R.cx, beltY, pz, { name: 'arena:band', cast: false });
+      for (const bx of balXs) {
+        add(boxGeo(0.05, L.rail.top, 0.05), M.metal_frame, bx, topY + L.rail.top / 2, pz, {
+          name: 'arena:baluster',
+        });
       }
     }
-    // 绳扣：每根柱上三道小箍，让围绳"挂"在柱子上而不是穿过去
+    for (const px of postXs) {
+      add(boxGeo(0.16, 0.06, span), M.oak_flat, px, railY, R.cz, { name: 'arena:rail' });
+      add(boxGeo(0.045, 0.20, span), M.arena_olive, px, beltY, R.cz, { name: 'arena:band', cast: false });
+      for (const bz of balZs) {
+        add(boxGeo(0.05, L.rail.top, 0.05), M.metal_frame, px, topY + L.rail.top / 2, bz, {
+          name: 'arena:baluster',
+        });
+      }
+    }
+    // 抱箍：每根柱、每个高度一圈，扶手和赛带都是"装上去的"而不是穿过去的
     for (const px of postXs) {
       for (const pz of postZs) {
-        for (let i = 0; i < L.rope.levels; i++) {
-          add(cylGeo(L.rope.radius + 0.016, L.rope.radius + 0.016, 0.06, 12), M.metal_frame, px,
-            ropeY0 + i * L.rope.step, pz, { name: 'arena:rope-clamp', cast: false });
+        for (const y of [railY, beltY]) {
+          add(boxGeo(S + 0.02, 0.05, S + 0.02), M.metal_frame, px, y, pz, {
+            name: 'arena:rail-clamp', cast: false,
+          });
         }
       }
     }
 
     /* 四角竖幡：挂在柱外侧，只写一个字。
-       四个角重复同一个五字全名会读成"贴了四张一样的海报"，全名留给牌坊匾额。 */
-    const bannerMat = makeBannerMaterial('擂');
-    if (bannerMat) {
-      for (const sx of [-1, 1]) {
-        for (const sz of [-1, 1]) {
-          const g = new THREE.Group();
-          g.position.set(R.cx + sx * (postR + 0.16), topY + postH - 0.06, R.cz + sz * (postR + 0.16));
-          // 每面转向场地外侧，否则四个角都用默认朝向，北侧两面会把字挂反
-          g.rotation.y = Math.atan2(sx, sz);
-          g.name = 'arena:banner-group';
-          root.add(g);
-          // 横杆沿 X，所以圆柱绕 Z 转 90°
-          add(cylGeo(0.018, 0.018, 0.52, 8), M.metal_frame, 0, 0, 0, {
-            rotZ: Math.PI / 2, parent: g, name: 'arena:banner-rod', cast: false,
-          });
-          /* 0.44 × 1.1：先前做到 0.56 × 1.4，站在台前时那块布会正好糊住围台的中段，
-             看过去像场中间挂了张海报。幡是角上的识别物，不该抢主体。 */
-          add(new THREE.PlaneGeometry(0.44, 1.1), bannerMat, 0, -0.60, 0, {
-            parent: g, name: 'arena:banner', cast: false,
-          });
-        }
+       原来四个角都是「擂」——重复四遍只是在喊"这里是擂台"，
+       现在改成四个学科：数 / 英 / 语 / 综。
+       零成本（网格数不变，只是四张字），但一眼就把"这是比什么"说清楚了：
+       四角立着四科的幡，中间两块答题台，比再挂四张「擂」有用得多。
+       全名仍然留给牌坊匾额。 */
+    const bannerChars = ['数', '英', '语', '综'];
+    let bannerIdx = 0;
+    for (const sx of [-1, 1]) {
+      for (const sz of [-1, 1]) {
+        const bannerMat = makeBannerMaterial(bannerChars[bannerIdx++ % 4]);
+        if (!bannerMat) continue;
+        const g = new THREE.Group();
+        g.position.set(R.cx + sx * (postR + 0.16), topY + postH - 0.06, R.cz + sz * (postR + 0.16));
+        // 每面转向场地外侧，否则四个角都用默认朝向，北侧两面会把字挂反
+        g.rotation.y = Math.atan2(sx, sz);
+        g.name = 'arena:banner-group';
+        root.add(g);
+        // 横杆沿 X，所以圆柱绕 Z 转 90°
+        add(cylGeo(0.018, 0.018, 0.52, 8), M.metal_frame, 0, 0, 0, {
+          rotZ: Math.PI / 2, parent: g, name: 'arena:banner-rod', cast: false,
+        });
+        /* 0.44 × 1.1：先前做到 0.56 × 1.4，站在台前时那块布会正好糊住围台的中段，
+           看过去像场中间挂了张海报。幡是角上的识别物，不该抢主体。 */
+        add(new THREE.PlaneGeometry(0.44, 1.1), bannerMat, 0, -0.60, 0, {
+          parent: g, name: 'arena:banner', cast: false,
+        });
       }
     }
 
@@ -1876,6 +1858,73 @@ export function createDistrict(ctx = {}) {
     });
   }
 
+  /* ---------- 答题台 ----------
+   * 两座，南北相对，摆在台面上。这是全场地最直接的一句"这是知识竞赛"——
+   * 比在柱子上挂学科牌有效，因为它占住了台面，而台面原本是空白的。
+   * 选手不能登台（见 README「未完成」），但两座空着的台子读成"人还没上来"，
+   * 不是"这里没有比赛"：台面上的牌和灯是开着灯的。
+   *
+   * **为什么沿 Z 分列而不是沿 X**：预设的"擂台正面"机位是从西侧斜看进来的，
+   * 沿 X 摆的时候两座台子正好一前一后叠成一根柱子，画面里像台心多了个怪东西。
+   * 沿 Z 摆，从西侧看就是左右两座、隔着八角对决区相向——一句话就读完了。
+   *
+   * 尺寸按"人站在后面能看到台面"取：台高 0.88 + 台面 0.03，立牌到 1.18。
+   * 位置离开中线 1.62——中间正好留出 3.2m 的答题距离，也就是八角区的直径。
+   */
+  function buildPodiums() {
+    const R = L.ring;
+    const topY = R.base + R.cap;
+    for (const [text, sgn] of [['甲', 1], ['乙', -1]]) {
+      const g = new THREE.Group();
+      /* sgn=+1 在南（z 正），对手在 -Z 方向。局部 +X 一律当"面对对手"来写，
+         再由整组旋转摆正：南座转 +90°（+X → -Z），北座转 -90°（+X → +Z）。 */
+      g.position.set(R.cx, topY, R.cz + sgn * 1.62);
+      g.rotation.y = sgn > 0 ? Math.PI / 2 : -Math.PI / 2;
+      g.name = 'arena:podium';
+      root.add(g);
+
+      add(beveledBoxGeometry(THREE, 0.54, 0.88, 0.58, 0.008, 1), M.oak_light, 0, 0.44, 0, {
+        parent: g, name: 'arena:podium-body',
+      });
+      add(boxGeo(0.58, 0.04, 0.62), M.metal_dark, 0, 0.02, 0, {
+        parent: g, name: 'arena:podium-plinth', cast: false,
+      });
+      // 台面板：比箱体宽 6cm、向对手一侧挑 4cm，读成"有块台面可以放手"
+      add(boxGeo(0.60, 0.03, 0.66), M.oak_flat, 0.04, 0.895, 0, {
+        parent: g, name: 'arena:podium-top',
+      });
+      /* 台面下面一道深色裙板（比箱体窄 2cm）：
+         没有它，柜体就是一个 0.54 × 0.88 的实心木箱——加一条阴影线之后
+         才有"台面挑出来、底下一个柜子"的关系，也就是"桌子"而不是"箱子"。 */
+      add(boxGeo(0.52, 0.055, 0.56), M.metal_dark, 0.02, 0.855, 0, {
+        parent: g, name: 'arena:podium-apron', cast: false,
+      });
+      // Both plaques face world -X; opposite podium rotations need opposite local faces.
+      const plaqueZ = sgn > 0 ? -1 : 1;
+      const face = makeSignMaterial({ title: text, w: 0.36, h: 0.24 });
+      add(boxGeo(0.40, 0.28, 0.024), M.metal_dark, 0, 1.06, plaqueZ * 0.295, {
+        parent: g, name: 'arena:podium-plaque',
+      });
+      if (face) {
+        add(new THREE.PlaneGeometry(0.36, 0.24), face, 0, 1.06, plaqueZ * 0.309, {
+          rotY: sgn > 0 ? Math.PI : 0, parent: g, name: 'arena:podium-plaque-face', cast: false,
+        });
+      }
+      /* 小灯：台面后侧一盏，加一张加色光晕。
+         这个尺度上光斑比任何文字都更说明"这里有人要用"。 */
+      add(cylGeo(0.008, 0.008, 0.16, 6), M.metal_frame, 0.19, 0.985, 0, {
+        parent: g, name: 'arena:podium-lamp-stem', cast: false,
+      });
+      const bulb = add(sphereGeo(0.05, 12, 9), M.accent_amber, 0.19, 1.10, 0, {
+        parent: g, name: 'arena:podium-lamp', cast: false,
+      });
+      bulb.scale.y = 1.1;
+      /* 光晕挂在 root 上（世界坐标）：组的 ±90° 旋转把局部 +0.19 转到了 -Z/+Z，
+         所以世界 z 是 cz + sgn·(1.62 − 0.19)。 */
+      lanternGlow(R.cx, topY + 1.10, R.cz + sgn * 1.43, 0.55);
+    }
+  }
+
   /* ---------- 西侧牌坊与开赛锣 ---------- */
 
   let bellPivot = null;
@@ -1885,11 +1934,11 @@ export function createDistrict(ctx = {}) {
     const halfSpan = G.span / 2;
     for (const sz of [-1, 1]) {
       const z = G.z + sz * halfSpan;
-      add(beveledBoxGeometry(THREE, 0.28, 0.12, 0.28, 0.014, 1), M.stone_light_in, G.x, 0.06, z, {
-        name: 'arena:gate-foot',
-      });
-      add(beveledBoxGeometry(THREE, G.post, G.height - 0.12, G.post, 0.01, 1), M.metal_dark, G.x,
-        0.12 + (G.height - 0.12) / 2, z, { name: 'arena:gate-post' });
+      /* 牌坊柱站在进场主路上（路面 y = 0.045），所以整根从 0.045 起。
+         柱径 0.22 正好等于广场亭廊柱，于是它拿到的就是亭廊柱原尺寸的一套件
+         （k = 1），只是更高。柱顶停在梁底 3.00：梁坐 3.10 ± 0.10，
+         柱身和石箍都在 3.00 收齐，不让柱头伸进梁里。 */
+      column(G.x, z, 0.045, G.post, G.height - 0.05, 0);
       blockBox(0.28, G.height, 0.28, G.x, z, 'arena:gate-post');
       contactShadow(G.x, z, 1.05, 1.05, 0.049, 0.8);
     }
@@ -1921,28 +1970,73 @@ export function createDistrict(ctx = {}) {
     bellPivot.name = 'arena:bell-pivot';
     root.add(bellPivot);
 
+    /* 悬挂：绳吊到锣的**上缘**，不穿锣心。
+       穿心的绳在物理上没法敲（正对着面），画面上也正好把锣面切成两半。
+       吊点 → 锣心的距离仍然是 ropeLen，锣心高度不变，摆动的转轴也不变。 */
     const ropeLen = G.height + 0.05 - L.bell.y;
-    add(cylGeo(0.012, 0.012, ropeLen, 6), M.metal_frame, 0, -ropeLen / 2, 0, {
+    const gr = L.bell.radius;
+    const cordLen = ropeLen - gr;
+    add(cylGeo(0.008, 0.008, cordLen, 6), M.metal_frame, 0, -cordLen / 2, 0, {
       parent: bellPivot, name: 'arena:bell-rope', cast: false,
     });
-    const gong = add(cylGeo(L.bell.radius, L.bell.radius, 0.035, 40), M.bronze, 0, -ropeLen, 0, {
+    // 上缘的吊环：绳和铜面之间要有金属件过渡，否则绳是"插进"铜里的
+    add(new THREE.TorusGeometry(0.032, 0.007, 6, 16), M.metal_frame, 0, -cordLen - 0.022, 0, {
+      rotY: Math.PI / 2, parent: bellPivot, name: 'arena:bell-eye', cast: false,
+    });
+
+    const gong = add(cylGeo(gr, gr, 0.03, 40), M.bronze, 0, -ropeLen, 0, {
       rotZ: Math.PI / 2, parent: bellPivot, name: 'arena:bell-gong',
     });
-    add(cylGeo(L.bell.radius * 0.9, L.bell.radius * 0.9, 0.022, 40), M.bronze, 0.03, -ropeLen, 0, {
-      rotZ: Math.PI / 2, parent: bellPivot, name: 'arena:bell-face', cast: false,
-    });
-    /* 锣面细节：一枚中心凸脐 + 两圈同心棱 + 一道深色外箍。
-       一块素圆盘在檐影里只会读成"深褐色圆板"，这几层才有金属件该有的转折。 */
-    add(cylGeo(0.085, 0.085, 0.03, 24), M.bronze, -0.032, -ropeLen, 0, {
-      rotZ: Math.PI / 2, parent: bellPivot, name: 'arena:bell-boss', cast: false,
-    });
-    for (const rr of [0.17, 0.26]) {
-      add(cylGeo(rr, rr, 0.012, 32), M.bronze, -0.026, -ropeLen, 0, {
-        rotZ: Math.PI / 2, parent: bellPivot, name: 'arena:bell-ring', cast: false,
+    /* 锣面：一块**浅球冠**，不再是平盘。
+       平盘在光下没有明暗梯度——怎么调材质都是一块棕色圆板，这是铜锣读不出来的主要原因。
+       球冠半径 1.1m、开口到 0.335（正好接住锣径 0.34），鼓起 5.4cm：
+       够出一条从中心到边缘的高光过渡，又不至于变成一只碗。 */
+    const CAP_R = 1.1;
+    const capTheta = Math.asin((gr - 0.005) / CAP_R);
+    const capCx = 0.015 - CAP_R * Math.cos(capTheta);   // 球心在 x 上的位置
+    add(new THREE.SphereGeometry(CAP_R, 56, 16, 0, Math.PI * 2, 0, capTheta), M.bronze,
+      capCx, -ropeLen, 0, {
+        rotZ: -Math.PI / 2, parent: bellPivot, name: 'arena:bell-face', cast: false,
+      });
+    /* 一道车削纹：就在卷边里面。试过两圈，读成"靶心"/"音箱"——
+       锣面本来就是素的，只留最外这一道，作为卷边和鼓面之间的过渡。 */
+    {
+      const rr = 0.255;
+      const rx = capCx + Math.sqrt(CAP_R * CAP_R - rr * rr);
+      add(new THREE.TorusGeometry(rr, 0.0045, 6, 44), M.bronze, rx, -ropeLen, 0, {
+        rotY: Math.PI / 2, parent: bellPivot, name: 'arena:bell-groove', cast: false,
       });
     }
-    add(cylGeo(L.bell.radius + 0.012, L.bell.radius + 0.012, 0.05, 40, true), M.metal_frame, 0,
-      -ropeLen, 0, { rotZ: Math.PI / 2, parent: bellPivot, name: 'arena:bell-rim', cast: false });
+    // 卷边：滚一圈铜条，正面才有"这是个锻造件"的轮廓，平盘的边永远是一条硬切线
+    add(new THREE.TorusGeometry(gr - 0.008, 0.014, 8, 40), M.bronze, 0.012, -ropeLen, 0, {
+      rotY: Math.PI / 2, parent: bellPivot, name: 'arena:bell-rim', cast: false,
+    });
+    // 中心凸脐：锣心是敲击点，也是整块面上最亮的一处。做扁，不做成门把手
+    const boss = add(sphereGeo(0.068, 16, 10), M.bronze, 0.060, -ropeLen, 0, {
+      parent: bellPivot, name: 'arena:bell-boss', cast: false,
+    });
+    boss.scale.x = 0.34;
+
+    /* 锣槌：靠在北侧门柱的柱脚上。
+       之前门洞这一片只有一口悬空的锣，没有"谁敲它"的痕迹——补一只槌，
+       而且必须是**放下的**：挂在柱上就成了装饰，靠在地上才像刚刚有人敲完。
+       比例按真家伙：头 0.10 × 0.17，柄 0.45——第一版柄做到 0.6，
+       在这个尺度上读成扫帚。 */
+    const mx = G.x + 0.20;
+    /* z 必须落在柱子的厚度里（柱心 -2.00、半宽 0.11），否则槌是立在柱子**旁边**的，
+       从东侧看过去柄顶悬空，读成一根自己站着的木棍。 */
+    const mz = G.z + L.bell.z - 0.48;
+    add(cylGeo(0.05, 0.05, 0.17, 14), M.oak_flat, mx, 0.10, mz, {
+      rotZ: Math.PI / 2, name: 'arena:bell-mallet-head',
+    });
+    add(cylGeo(0.048, 0.048, 0.012, 14), M.metal_dark, mx + 0.086, 0.10, mz, {
+      rotZ: Math.PI / 2, name: 'arena:bell-mallet-band', cast: false,
+    });
+    /* 柄斜靠在柱东面（x = G.x + 0.11）：底端接槌头、顶端贴柱面，
+       倾角由两点反算——0.09 / 0.45，约 11.5°。 */
+    add(cylGeo(0.015, 0.018, 0.45, 10), M.oak_flat, mx - 0.055, 0.31, mz, {
+      rotZ: 0.20, name: 'arena:bell-mallet-handle',
+    });
 
     let struck = 0;
     let clock = 0;
@@ -2029,17 +2123,63 @@ export function createDistrict(ctx = {}) {
     add(boxGeo(0.035, 0.13, roofD + 0.04), M.rope_cream, D.x - 0.12 - roofW / 2 + 0.02, ch + 0.02 - 0.05, D.z, {
       name: 'arena:desk-canopy-trim', cast: false,
     });
-    // 棚下挂一盏小灯笼，背光时这块角不会塌成一片灰
-    const lx = D.x - roofW / 2 + 0.28;
-    const lz = D.z + roofD / 2 - 0.34;
-    add(cylGeo(0.008, 0.008, 0.24, 6), M.metal_frame, lx, ch - 0.1, lz, {
+    const lanternX = D.x - roofW / 2 + 0.28;
+    const lanternZ = D.z + roofD / 2 - 0.34;
+    add(cylGeo(0.008, 0.008, 0.24, 6), M.metal_frame, lanternX, ch - 0.1, lanternZ, {
       name: 'arena:desk-lantern-cord', cast: false,
     });
-    const dl = add(sphereGeo(0.1, 12, 9), M.accent_amber, lx, ch - 0.32, lz, {
+    const dl = add(sphereGeo(0.1, 12, 9), M.accent_amber, lanternX, ch - 0.32, lanternZ, {
       name: 'arena:desk-lantern', cast: false,
     });
     dl.scale.y = 1.14;
-    lanternGlow(lx, ch - 0.32, lz, 0.62);
+    lanternGlow(lanternX, ch - 0.32, lanternZ, 0.62);
+
+    /* 台面三件：登记簿 / 笔 / 叫号铃。
+       这块 0.66 × 1.7 的台面原来只有一块立牌，从预设机位看是一张空柜台——
+       一件家具上有没有"用过"的痕迹，比它本身的分段做得细不细更决定可信度。
+       位置都避开中间的立牌（立牌占 z ±0.6），放在两端各 ±0.68 的窄条里。 */
+    const topY = D.h + 0.06;
+    const ledgerZ = D.z + 0.68;
+    add(boxGeo(0.36, 0.011, 0.27), M.metal_dark, D.x, topY + 0.006, ledgerZ, {
+      name: 'arena:desk-ledger-cover', cast: false,
+    });
+    /* 摊开的两页：中缝两侧各压一个薄块、向外微微抬起 4°。
+       两页一样大、一样平的时候读成"一块白板"，抬起才有"翻开着"的意思。 */
+    for (const s of [-1, 1]) {
+      add(boxGeo(0.142, 0.007, 0.232), M.rope_cream, D.x + s * 0.081, topY + 0.018, ledgerZ, {
+        rotZ: -s * 0.07, name: 'arena:desk-ledger-page', cast: false,
+      });
+    }
+    /* 铅笔横搭在中缝上——这是"写到一半放下"的位置，也是这本书唯一放得住笔的地方。
+       侧过来斜放试过：笔身细、又没有接触阴影（柜台在棚子底下没有直射光），
+       读成一根浮在纸上面的棍子。 */
+    add(cylGeo(0.005, 0.005, 0.155, 6), M.oak_flat, D.x, topY + 0.027, ledgerZ - 0.02, {
+      rotX: Math.PI / 2, name: 'arena:desk-pen', cast: false,
+    });
+
+    const bellZ = D.z - 0.68;
+    add(cylGeo(0.062, 0.066, 0.012, 20), M.metal_dark, D.x + 0.04, topY + 0.006, bellZ, {
+      name: 'arena:desk-bell-base', cast: false,
+    });
+    const deskBell = add(sphereGeo(0.052, 18, 12), M.bronze, D.x + 0.04, topY + 0.03, bellZ, {
+      name: 'arena:desk-bell', cast: false,
+    });
+    deskBell.scale.y = 0.86;
+    add(cylGeo(0.007, 0.007, 0.026, 8), M.bronze, D.x + 0.04, topY + 0.072, bellZ, {
+      name: 'arena:desk-bell-stem', cast: false,
+    });
+    add(sphereGeo(0.014, 10, 8), M.bronze, D.x + 0.04, topY + 0.088, bellZ, {
+      name: 'arena:desk-bell-knob', cast: false,
+    });
+
+    /* 柜门拉手。柜门是两块 22mm 的板贴在柜身上，没有五金，
+       近看就是两块"印刷出来的门"——两条横杆比什么都管用。
+       用铜不用深灰钢：深灰钢在这个角度反射的是暗环境，两条把手会读成贴了两条黑胶带。 */
+    for (const s of [-1, 1]) {
+      add(boxGeo(0.026, 0.024, 0.17), M.bronze, D.x - D.w / 2 - 0.003, 0.60, D.z + s * 0.10, {
+        name: 'arena:desk-handle', cast: false,
+      });
+    }
 
     interactions.push({
       id: 'arena.roster',
@@ -2076,6 +2216,166 @@ export function createDistrict(ctx = {}) {
       name: 'arena:board-canopy',
     });
     blockBox(0.26, postH, B.width, B.x, B.z, 'arena:board');
+  }
+
+  /* ---------- 彩蛋：一张纸条 ----------
+     西南角那片空铺装上压着一张对折的草稿纸。不挂任何业务件，
+     捡起来只出一个面板，不写服务端、不留状态，刷新之后回到原地。
+     纸不能做成"平贴的一张白片"：真正的纸放过地上永远有一道折痕和几处翘边，
+     所以在平面上按顶点推了一点高度（折线抬高 + 两道很轻的波），再重算法线。 */
+  const NOTE_TEXT = '寝室长和凡越是刘福超儿子';
+
+  let noteGroup = null;
+  let noteShadow = null;
+  let noteTaken = false;
+  let noteFade = -1;
+
+  /* 空白草稿纸的正面：偏米白、带一点纸纤维的颗粒，再压四道淡淡的格线。
+     9cm 见方的纸在地上读不出字，但那几道线能让它一眼是"写过字的纸"而不是纸屑。 */
+  function makeNoteTexture() {
+    if (typeof document === 'undefined') return null;
+    const W = 128;
+    const H = 176;
+    const canvas = document.createElement('canvas');
+    canvas.width = W;
+    canvas.height = H;
+    const g = canvas.getContext('2d');
+    if (!g) return null;
+    g.fillStyle = '#f6f1e2';
+    g.fillRect(0, 0, W, H);
+    for (let i = 0; i < 900; i++) {
+      const x = Math.random() * W;
+      const y = Math.random() * H;
+      g.fillStyle = 'rgba(' + (Math.random() > 0.5 ? '160,150,124' : '255,253,244')
+        + ',' + (0.05 + Math.random() * 0.09).toFixed(3) + ')';
+      g.fillRect(x, y, 1, 1);
+    }
+    // 四道格线 + 上面几笔潦草的"字"
+    for (let i = 0; i < 4; i++) {
+      const y = 40 + i * 32;
+      g.strokeStyle = 'rgba(120,140,168,0.16)';
+      g.lineWidth = 1;
+      g.beginPath(); g.moveTo(10, y); g.lineTo(W - 10, y); g.stroke();
+      let x = 14;
+      while (x < W - 22) {
+        const w = 4 + Math.random() * 9;
+        g.strokeStyle = 'rgba(38,48,66,' + (0.30 + Math.random() * 0.22).toFixed(2) + ')';
+        g.lineWidth = 0.9 + Math.random() * 0.7;
+        g.beginPath();
+        g.moveTo(x, y - 10);
+        g.quadraticCurveTo(x + w * 0.5, y - 10 - Math.random() * 7, x + w, y - 8 - Math.random() * 3);
+        g.stroke();
+        x += w + 3 + Math.random() * 4;
+      }
+    }
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.anisotropy = 4;
+    return owner.ownTexture(tex);
+  }
+
+  function buildNote() {
+    const N = L.note;
+    const tex = makeNoteTexture();
+    const mat = new THREE.MeshStandardMaterial({
+      /* 纯白纸在直射太阳下会被 ACES 压成一块死白贴片，稍微压一点底色，
+         高光留给环境。这是"纸"和"塑料卡片"的分界。 */
+      color: 0xeee7d5, roughness: 0.93, metalness: 0.0,
+      side: THREE.DoubleSide, envMapIntensity: 0.28,
+    });
+    if (tex) mat.map = tex;
+    mat.name = 'note-paper';
+    owner.ownMaterial(mat);
+
+    noteGroup = new THREE.Group();
+    noteGroup.name = 'arena:note';
+    noteGroup.position.set(N.x, N.y, N.z);
+    noteGroup.rotation.y = -0.55;
+    root.add(noteGroup);
+
+    /* 纸面 13 × 17.5cm。尺寸是被"能不能看见"定的：站在路边视线高 1.65m、
+       斜着看过去只有这么一小片，12cm 以下就得低头找；15cm 以上又像传单。
+       形状也别做太皱：第一版折 1.4cm、波 3.5mm，边缘起伏一圈，读成"揉过的纸团压平"；
+       真正的对折纸条放地上只有中缝那一道抬起来，其余是贴地的。 */
+    const PW = 0.13;
+    const PD = 0.175;
+    const paperGeo = new THREE.PlaneGeometry(PW, PD, 4, 6);
+    const pos = paperGeo.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+      const x = pos.getX(i);
+      const y = pos.getY(i);
+      // 中缝抬高 + 一侧微微翘起，再叠两道很小的波（0.8mm 级），只为破掉"平板"感
+      const fold = 0.008 * (1 - Math.abs(x) / (PW / 2));
+      const curl = 0.004 * Math.max(0, (y - PD * 0.18) / (PD / 2));
+      const wave = 0.0016 * Math.sin(y * 34) + 0.0013 * Math.sin(x * 46 + 1.3);
+      pos.setZ(i, fold + curl + wave);
+    }
+    pos.needsUpdate = true;
+    paperGeo.computeVertexNormals();
+    paperGeo.userData.__arenaDisposable = true;
+    add(paperGeo, mat, 0, 0, 0, { rotX: -Math.PI / 2, parent: noteGroup, cast: false });
+
+    /* 旁边再压一小片撕下来的角，两张一起才像"掉在这儿的纸"，不像贴了一张便签。
+       旋转必须写 rotZ 不能写 rotY：这块面已经 rotX -90° 放平了，
+       rotY 是绕世界竖直轴转，会把它立起来变成一片悬空的纸板。 */
+    const scrap = new THREE.PlaneGeometry(0.046, 0.062, 2, 2);
+    const sp = scrap.attributes.position;
+    for (let i = 0; i < sp.count; i++) sp.setZ(i, 0.003 * Math.sin(sp.getX(i) * 90));
+    sp.needsUpdate = true;
+    scrap.computeVertexNormals();
+    scrap.userData.__arenaDisposable = true;
+    add(scrap, mat, 0.099, 0.0006, 0.042, {
+      rotX: -Math.PI / 2, rotZ: 0.9, parent: noteGroup, cast: false,
+    });
+
+    /* 接地阴影压在纸和铺装之间（纸 0.0207 起 / 阴影 0.0216 / 铺装 0.02），
+       三条线差 1mm 上下，肉眼看是"贴着地"，深度缓冲也不会打架。
+       尺寸必须比纸大出好几倍，不是"刚好包住"：contactTexture 的径向渐变
+       只在中心 20% 半径内是实心的（0.66 → 0.30 → 0），按纸的 1.2 倍铺，
+       实心部分整片被纸盖住，露在外面的只剩 alpha 接近 0 的尾巴，等于没画——
+       第一版 0.34×0.40 就是这么消失的。这里铺到 4.5 倍，芯的边缘正好落在纸边。 */
+    noteShadow = contactShadow(N.x + 0.004, N.z + 0.006, 0.58, 0.68, N.y - 0.0019, 0.46);
+    if (noteShadow) noteShadow.name = 'arena:note-shadow';
+
+    /* 交互锚点单独一个空对象：拾取动画会把 noteGroup 抬起来缩小，
+       但判定点必须留在原地，否则"捡到一半"时提示会跟着纸飘走。 */
+    const anchor = new THREE.Group();
+    anchor.name = 'arena:note-anchor';
+    anchor.position.set(N.x, 0.05, N.z);
+    root.add(anchor);
+
+    const item = {
+      id: 'arena.note',
+      label: '一张对折的纸条',
+      prompt: '按 E 捡起纸条',
+      object: anchor,
+      radius: 2.0,
+      action() {
+        if (noteTaken) return { ok: false, message: '纸条已经捡走了' };
+        noteTaken = true;
+        noteFade = 0;
+        /* 交给 findNearest 的 disabled 标记，提示立刻消失；
+           object 保留——测试脚本还要靠它算"站到哪" */
+        item.disabled = true;
+        return { ok: true, kind: 'note', text: NOTE_TEXT };
+      },
+    };
+    interactions.push(item);
+
+    animated.push((t, dt) => {
+      if (noteFade < 0) return;
+      noteFade += dt;
+      const k = Math.min(1, noteFade / 0.45);
+      const e = 1 - Math.pow(1 - k, 3);
+      if (noteGroup) {
+        noteGroup.position.y = N.y + e * 0.24;
+        noteGroup.scale.setScalar(Math.max(0.001, 1 - e));
+        noteGroup.rotation.y = -0.55 + e * 1.5;
+        if (k >= 1) noteGroup.visible = false;
+      }
+      if (noteShadow && k >= 0.3) noteShadow.visible = false;
+      if (k >= 1) noteFade = -1;
+    });
   }
 
   /* ---------- 看台 ---------- */
@@ -2634,6 +2934,7 @@ export function createDistrict(ctx = {}) {
     buildDust();
   }
   buildRing();
+  buildPodiums();
   buildGate();
   buildDesk();
   buildBoard();
@@ -2645,6 +2946,8 @@ export function createDistrict(ctx = {}) {
   buildLamp(-L.lamp.x, L.lamp.z);
   buildLamp(L.lamp.x, -L.lamp.z);
   buildLamp(L.lamp.x, L.lamp.z);
+  /* 彩蛋放最后：它只是地上一件小 dressing，不该插在场地结构中间 */
+  buildNote();
 
   /* 灯呼吸：四盏共用同一份 accent_amber，所以一次改完即可；
      幅度很小（0.26±0.08），只为让场地不死板，不做成闪烁。

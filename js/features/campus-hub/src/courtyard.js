@@ -1,10 +1,10 @@
 import * as T from 'three';
 import {RoundedBoxGeometry} from 'three/addons/geometries/RoundedBoxGeometry.js';
-import {SITE_EXIT} from './layout.js';
+import {SITE_EXIT,FOUNTAIN} from './layout.js';
 import {createWaterSurface} from './water-surface.js';
 
 // Metres, Y up. Keep a four-metre route east of the water garden.
-export function createCourtyard(openFeature,leafMap,surfaces){
+export function createCourtyard(openFeature,leafMap,surfaces,pavingMaterial){
  const root=new T.Group();root.name='Central courtyard water and reading garden';
  const boxes=[],interactions=[],batches=new Map(),cube=new T.BoxGeometry(1,1,1);
  const stone=new T.MeshStandardMaterial({name:'Honed limestone',color:0xc5c1b2,roughness:.78});
@@ -32,39 +32,49 @@ export function createCourtyard(openFeature,leafMap,surfaces){
   const object=new T.Object3D();object.name=id;object.position.set(x,y,z);root.add(object);
   interactions.push({id:'courtyard.'+id,label,object,radius,action:()=>disposed?{ok:false,message:'场景已关闭'}:action()});
  }
- // A lightly recessed, shallow basin with real wall thickness and an inner lip.
- box('Water garden foundation',0,.07,5.5,4.3,.14,8.5,edge);
- box('Basin dark bottom',0,.16,5.5,3.7,.12,7.9,bronze);
- const copingLong=new RoundedBoxGeometry(.36,.065,.842,1,.006),copingShort=new RoundedBoxGeometry(.752,.065,.36,1,.006);
- for(const s of [-1,1]){
-  box('Basin long wall',s*2.02,.245,5.5,.26,.25,8.5,stone);
-  box('Basin short wall',0,.245,5.5+s*4.12,3.78,.25,.26,stone);
-  // Individual coping joints are physically separated, with a small overhang.
-  for(let i=0;i<10;i++)part(copingLong,stone,[s*2.02,.39,1.67+i*.85]);
-  for(let i=0;i<5;i++)part(copingShort,stone,[-1.52+i*.76,.39,5.5+s*4.12]);
+ // Low circular basin: closed stone section and separate curved coping stones.
+ const F=FOUNTAIN;
+ const basinStone=stone.clone();basinStone.name='Ivory circular fountain stone';basinStone.color.setHex(0xf8f6ef);
+ const fountainBronze=new T.MeshStandardMaterial({name:'Satin fountain bronze',color:0x7b715d,metalness:.65,roughness:.35});
+ const liner=new T.MeshStandardMaterial({name:'Deep green basin liner',color:0x324b47,roughness:.65});
+ function revolve(name,profile,material,segments=128,start=0,length=Math.PI*2){
+  const mesh=new T.Mesh(new T.LatheGeometry(profile.map(p=>new T.Vector2(...p)),segments,start,length),material);
+  mesh.name=name;mesh.position.set(F.x,0,F.z);mesh.castShadow=mesh.receiveShadow=true;root.add(mesh);return mesh;
  }
- obstacle('water',0,5.5,4.36,8.56,.43);
+ revolve('Circular basin solid stone wall',[[2.76,.08],[3.08,.08],[3.08,.29],[2.76,.29],[2.76,.08]],basinStone);
+ const copingProfile=[[2.73,.29],[3.12,.29],[3.14,.31],[3.14,.35],[3.12,.375],[2.74,.375],[2.72,.355],[2.72,.31],[2.73,.29]];
+ for(let i=0;i<24;i++)revolve('Curved coping stone',copingProfile,basinStone,6,i*Math.PI/12+.0008,Math.PI/12-.0016);
+ part(new T.CylinderGeometry(2.77,2.77,.08,96),liner,[F.x,.12,F.z]);
+ part(new T.CylinderGeometry(.62,.66,.13,64),fountainBronze,[F.x,.35,F.z]);
+ const torus=new T.TorusGeometry(2.758,.012,6,128);torus.rotateX(-Math.PI/2);part(torus,fountainBronze,[F.x,.276,F.z]);
+ boxes.push({id:'courtyard.water',type:'circle',x:F.x,z:F.z,radius:F.radius,minX:F.x-F.radius,maxX:F.x+F.radius,minZ:F.z-F.radius,maxZ:F.z+F.radius,maxY:.38});
  const waterSurface=createWaterSurface(reduced);root.add(waterSurface.mesh);
- // Narrow stone borders and slotted drainage give the paving a construction scale.
- for(const s of [-1,1]){
-  box('Water paving border',s*2.78,.014,5.5,.18,.012,10.1,edge,0,false);
-  box('Water paving border',0,.014,5.5+s*5.0,5.75,.012,.18,edge,0,false);
-  box('Flush drainage channel',s*3.35,.015,5.5,.10,.014,10.1,dark,0,false);
-  for(let j=0;j<55;j++)box('Drain cross strip',s*3.35,.025,.55+j*.18,.11,.012,.024,bronze,0,false);
- }
- // Three low recirculating arcs; geometry is static, only droplets move at 20 Hz.
- const streamMaterial=new T.MeshPhysicalMaterial({color:0xc9ded8,transparent:true,opacity:.24,depthWrite:false,roughness:.10,metalness:0,clearcoat:.8});
+ // Flush circular drain outside the rim, with thin radial bars.
+ part(new T.RingGeometry(3.36,3.405,144),dark,[F.x,.010,F.z],[1,1,1],[-Math.PI/2,0,0],false);
+ for(let i=0;i<512;i++){const a=i*Math.PI/256;box('Flush circular drain bar',F.x+Math.sin(a)*3.3825,.013,F.z+Math.cos(a)*3.3825,.018,.002,.047,basinStone,a,false);}
+ // Six outward arcs and a slender central plume; all motion shares the host tick.
+ const streamMaterial=new T.MeshPhysicalMaterial({name:'Fine fountain water',color:0xe4eeea,transparent:true,opacity:.42,depthWrite:false,roughness:.10,metalness:0,clearcoat:1});
  const streams=new T.Group();streams.name='Courtyard recirculating streams';root.add(streams);
- const curves=[];
- for(const x of [-1,0,1]){
-  box('Bronze spout',x,.41,1.55,.10,.08,.22,bronze);
-  const points=[];for(let i=0;i<=20;i++){const t=i/20;points.push(new T.Vector3(x,.43+1.15*t-1.27*t*t,1.62+t*1.9));}
+ const curves=[],landings=[];
+ for(let jet=0;jet<7;jet++){
+  const a=jet*Math.PI/3,central=jet===6;
+  const sx=F.x+(central?0:Math.sin(a)*.46),sz=F.z+(central?0:Math.cos(a)*.46);
+  part(new T.CylinderGeometry(.022,.027,.055,10),fountainBronze,[sx,.435,sz]);
+  const points=[];for(let i=0;i<=32;i++){
+   const t=i/32,r=central?.12*t:.46+1.48*t;
+   points.push(new T.Vector3(F.x+Math.sin(a)*r,.46+(central?5.4:3.45)*t*(1-t)-.16*t,F.z+Math.cos(a)*r));
+  }
   const curve=new T.CatmullRomCurve3(points);curves.push(curve);
-  const mesh=new T.Mesh(new T.TubeGeometry(curve,24,.018,5,false),streamMaterial);mesh.name='Low water arc';streams.add(mesh);
+  landings.push(curve.getPoint(1));
+  const mesh=new T.Mesh(new T.TubeGeometry(curve,40,central?.025:.012,6,false),streamMaterial);mesh.name=central?'Central fountain plume':'Radial water arc';streams.add(mesh);
  }
- const droplets=new T.InstancedMesh(new T.SphereGeometry(.011,5,4),streamMaterial,30);droplets.name='Recirculating water droplets';streams.add(droplets);
- const rings=new T.InstancedMesh(new T.TorusGeometry(.16,.006,4,28),streamMaterial,9);rings.name='Water landing ripples';rings.rotation.x=-Math.PI/2;rings.position.set(0,.296,0);streams.add(rings);
- for(let i=0;i<9;i++){dummy.position.set([-1,0,1][i%3],-3.52,0);dummy.scale.setScalar(.55+Math.floor(i/3)*.65);dummy.rotation.set(0,0,0);dummy.updateMatrix();rings.setMatrixAt(i,dummy.matrix);}rings.instanceMatrix.needsUpdate=true;
+ const droplets=new T.InstancedMesh(new T.SphereGeometry(.014,5,4),streamMaterial,84);droplets.name='Recirculating water droplets';streams.add(droplets);
+ const sprayCanvas=document.createElement('canvas');sprayCanvas.width=sprayCanvas.height=32;const sc=sprayCanvas.getContext('2d'),gradient=sc.createRadialGradient(16,16,0,16,16,16);gradient.addColorStop(0,'rgba(255,255,255,1)');gradient.addColorStop(.45,'rgba(255,255,255,.7)');gradient.addColorStop(1,'rgba(255,255,255,0)');sc.fillStyle=gradient;sc.fillRect(0,0,32,32);
+ const sprayMap=new T.CanvasTexture(sprayCanvas),sprayGeo=new T.BufferGeometry(),sprayPositions=new Float32Array(64*3);sprayGeo.setAttribute('position',new T.BufferAttribute(sprayPositions,3));
+ const spray=new T.Points(sprayGeo,new T.PointsMaterial({name:'Central plume fine spray',map:sprayMap,color:0xf7fffd,size:.035,opacity:.65,transparent:true,depthWrite:false}));spray.name='Central plume spray';spray.frustumCulled=false;streams.add(spray);
+ const rippleGeo=new T.TorusGeometry(.13,.004,4,32);rippleGeo.rotateX(-Math.PI/2);
+ const rings=new T.InstancedMesh(rippleGeo,streamMaterial,21);rings.name='Water landing ripples';streams.add(rings);
+ for(let i=0;i<21;i++){const p=landings[i%7];dummy.position.set(p.x,F.waterY+.008,p.z);dummy.scale.setScalar(.5+Math.floor(i/7)*.65);dummy.rotation.set(0,0,0);dummy.updateMatrix();rings.setMatrixAt(i,dummy.matrix);}rings.instanceMatrix.needsUpdate=true;
  box('Water control plinth',4.25,.38,11.0,.28,.76,.24,stone);
  box('Water control bronze face',4.25,.78,11.0,.31,.06,.27,bronze);
  const switchLight=new T.Mesh(new T.CylinderGeometry(.034,.034,.008,12),new T.MeshStandardMaterial({color:0xa7c8a4,emissive:0x84aa7c,emissiveIntensity:.5}));switchLight.position.set(4.25,.818,11);root.add(switchLight);
@@ -76,7 +86,7 @@ export function createCourtyard(openFeature,leafMap,surfaces){
  });
  // Reading pergola: footplates, slender posts, supported beams and timber louvres.
  const cx=-12,cz=3;
- box('Reading deck stone inset',cx,.018,cz,6.5,.025,8,edge,0,false);
+ box('Reading deck stone inset',cx,.018,cz,6.5,.025,8,pavingMaterial,0,false);
  for(const x of [-2.5,2.5])for(const z of [-3.25,3.25]){
   box('Pergola stone base',cx+x,.10,cz+z,.32,.20,.32,stone);
   box('Pergola footplate',cx+x,.214,cz+z,.23,.028,.23,bronze);
@@ -138,7 +148,7 @@ export function createCourtyard(openFeature,leafMap,surfaces){
  ctx.fillStyle='#e4e2d5';ctx.fillRect(0,0,512,640);ctx.fillStyle='#334e44';ctx.font='bold 38px Microsoft YaHei';ctx.fillText('中央庭院',40,65);ctx.font='21px Microsoft YaHei';ctx.fillText('校园导览',40,102);
  ctx.strokeStyle='#b3b6a6';ctx.lineWidth=28;ctx.beginPath();ctx.moveTo(265,510);ctx.lineTo(265,200);ctx.moveTo(100,330);ctx.lineTo(420,330);ctx.stroke();
  for(const [x,y,w,h,text]of [[150,150,240,58,'教学楼'],[35,268,115,62,'图书馆'],[35,415,115,62,'自习室'],[335,290,140,55,'社交广场'],[335,400,140,55,'竞技场']]){ctx.fillStyle='#61786b';ctx.fillRect(x,y,w,h);ctx.fillStyle='#fffdf4';ctx.font='19px Microsoft YaHei';ctx.fillText(text,x+10,y+36);}
- ctx.fillStyle='#38586a';ctx.fillRect(245,278,35,115);ctx.fillStyle='#51674c';ctx.font='19px Microsoft YaHei';ctx.fillText('沿庭院步行，走近入口按 E',40,580);
+ ctx.fillStyle='#38586a';ctx.beginPath();ctx.arc(264,334,32,0,Math.PI*2);ctx.fill();ctx.fillStyle='#51674c';ctx.font='19px Microsoft YaHei';ctx.fillText('沿庭院步行，走近入口按 E',40,580);
  const map=new T.CanvasTexture(plan);map.colorSpace=T.SRGBColorSpace;map.anisotropy=4;
  const signMat=new T.MeshStandardMaterial({name:'Campus directory enamel',map,roughness:.68});
  box('Directory stone base',-6.1,.10,-9.6,1.38,.20,.6,stone);
@@ -167,11 +177,12 @@ export function createCourtyard(openFeature,leafMap,surfaces){
   waterSurface.update(dt);
   if(disposed||!waterOn||dt<=0)return;time+=dt;waterTicks+=dt;
   if(waterTicks<.05)return;waterTicks=0;
-  for(let i=0;i<30;i++){
-   const t=reduced?.45:(time*.55+(i%10)/10)%1,p=curves[Math.floor(i/10)].getPoint(t);
+  for(let i=0;i<84;i++){
+   const t=reduced?.45:(time*.60+(i%12)/12)%1,p=curves[Math.floor(i/12)].getPoint(t);
    dummy.position.copy(p);dummy.rotation.set(0,0,0);dummy.scale.set(.65,1.7,.65);dummy.updateMatrix();droplets.setMatrixAt(i,dummy.matrix);
   }droplets.instanceMatrix.needsUpdate=true;
+  for(let i=0;i<64;i++){const t=reduced?(i+.5)/64:(time*.8+i*.037)%1,a=i*2.39996,r=t*(.04+(i%7)*.033);sprayPositions[i*3]=F.x+Math.sin(a)*r;sprayPositions[i*3+1]=.44+4.9*t-4.9*t*t;sprayPositions[i*3+2]=F.z+Math.cos(a)*r;}sprayGeo.attributes.position.needsUpdate=true;
  }
  update(.05);
- return{root,boxes,interactions,cameraObstacles:[{id:'courtyard.pergola-roof',minX:-14.85,maxX:-9.15,minZ:-.50,maxZ:6.50,minY:2.74,maxY:3.06}],configureQuality:(quality,width)=>waterSurface.configure(quality,width),update,dispose(){disposed=true;waterSurface.dispose();},snapshot:()=>({waterOn,reducedMotion:reduced,water:waterSurface.snapshot(),interactionCount:interactions.length,points:interactions.map(i=>({id:i.id,label:i.label,position:i.object.getWorldPosition(new T.Vector3()).toArray()}))})};
+ return{root,boxes,interactions,cameraObstacles:[{id:'courtyard.pergola-roof',minX:-14.85,maxX:-9.15,minZ:-.50,maxZ:6.50,minY:2.74,maxY:3.06}],configureQuality:(quality,width)=>waterSurface.configure(quality,width),update,dispose(){disposed=true;waterSurface.dispose();},snapshot:()=>({waterOn,fountain:{shape:'circle',center:[F.x,F.z],radius:F.radius,copingSegments:24,jets:7},reducedMotion:reduced,water:waterSurface.snapshot(),interactionCount:interactions.length,points:interactions.map(i=>({id:i.id,label:i.label,position:i.object.getWorldPosition(new T.Vector3()).toArray()}))})};
 }

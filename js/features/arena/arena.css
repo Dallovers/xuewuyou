@@ -370,6 +370,45 @@ dialog:focus, dialog:focus-visible { outline: none; }
   line-height: 1.7;
 }
 
+/* 彩蛋面板里的纸条本体。
+   不做拟真到"照片"的程度，只把三件小事做到位：米色纸、左侧装订线、横格的节奏。
+   行高必须跟 repeating-linear-gradient 的周期（28px）对齐，字才能落在格子上；
+   差 1px 会读成"文字压在线上"，比不画格线还难看。 */
+.note-slip {
+  position: relative;
+  overflow: hidden;
+  margin: 4px 0 14px;
+  padding: 22px 22px 24px 34px;
+  background: #fbf7e8;
+  border: 1px solid #e3dabd;
+  border-radius: 3px;
+  box-shadow: inset 0 1px 0 #fffdf6, 0 6px 16px rgba(39, 61, 58, .10);
+  transform: rotate(-.5deg);
+}
+.note-slip::before {
+  content: "";
+  position: absolute;
+  top: 0; bottom: 0; left: 17px;
+  border-left: 1px solid rgba(178, 106, 96, .35);
+}
+.note-slip::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(180deg, transparent 0 27px, rgba(120, 140, 168, .14) 27px 28px);
+  pointer-events: none;
+}
+.note-slip p {
+  position: relative;
+  z-index: 1;
+  margin: 0;
+  font-family: "Kaiti SC", "KaiTi", "Songti SC", "SimSun", serif;
+  font-size: 19px;
+  line-height: 28px;
+  letter-spacing: 1px;
+  color: #3a352c;
+}
+
 @media (max-width: 640px) {
   .topbar { top: calc(8px + env(safe-area-inset-top)); left: 10px; right: 10px; gap: 6px; padding: 8px; }
   .topbar button { font-size: 12px; padding: 8px; }

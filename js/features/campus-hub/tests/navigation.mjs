@@ -7,6 +7,11 @@ const nav=createNavigation(BUILDING_BOXES);
 for(const entry of ENTRIES){const route=nav.route(START,{x:entry.outside[0],z:entry.outside[1]});assert(route,'Reachable '+entry.id);let from=START;for(const to of route){assert(nav.clear(from,to));from=to;}}
 const p={x:0,z:-24};nav.move(p,0,-100);assert(p.z>-25.51,'Long step cannot tunnel through teaching block');
 assert(nav.blocked(NaN,0));assert(nav.blocked(-1000,0));assert(nav.route(START,{x:0,z:-35})===null);
+const roundNav=createNavigation([{type:'circle',x:-.6,z:5.5,radius:3.14}]);
+assert(roundNav.blocked(-.6,5.5));assert(roundNav.blocked(2.8,5.5));
+assert(!roundNav.blocked(2.5,8.5),'Round basin has no rectangular ghost corners');
+const roundRoute=roundNav.route({x:-.6,z:11},{x:-.6,z:0});assert(roundRoute?.length>1);
+let roundFrom={x:-.6,z:11};for(const to of roundRoute){assert(roundNav.clear(roundFrom,to));roundFrom=to;}
 const root=new T.Group();root.position.set(18,0,2);root.rotation.y=Math.PI/2;
 const transformed=worldBoxes(T,{root,colliders:[{center:[2,1,3],half:[1,1,.5]},{center:[0,.2,0],type:'cylinder',radius:2,height:.4}]});
 assert(Math.abs(transformed[0].minX-20.5)<1e-6);assert(Math.abs(transformed[0].minZ+1)<1e-6);assert.equal(transformed[1].minX,16);

@@ -4,6 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>好友竞技场 · 学无忧</title>
+<!-- 空 data: 图标：这页不需要页签图标，但不写这一行，浏览器会自己去请求 /favicon.ico
+     并报一条 404 —— 验收里那条"无关的 404"就是它 -->
+<link rel="icon" href="data:,">
 <link rel="stylesheet" href="arena.css">
 </head>
 <body>
@@ -227,6 +230,35 @@ const minX = -ARENA_LAYOUT.site.w / 2 - 7;
 const maxX = ARENA_LAYOUT.site.w / 2 + 2;
 const maxZ = ARENA_LAYOUT.site.d / 2 + 1;
 
+/* ---------- 第一人称的"手感"参数 ----------
+ * 位移和姿态分开：WALK 管 state.pos，RIG 只管相机叠上去的那点偏移。
+ * 相机偏移永远不改 state.pos —— 碰撞、交互判定、位置名都按脚下那个点算，
+ * 否则头一晃，站在纸条边缘的判定就跟着抖。
+ */
+const WALK = { walk: 4.2, sprint: 6.6 };
+const RIG = {
+  /* 检视机位用的是长焦（2·atan(12/35) ≈ 37.9° 垂直）——那是拍照片的镜头：
+     透视收得紧，移动看着慢。第一人称要有"身在其中"的开阔感，
+     所以漫游单独一档更广的视野，冲刺时再放开一点，速度感就有了。 */
+  fovInspect: camera.fov,
+  fovWalk: 46,
+  fovSprint: 55,
+  bobY: 0.016,        // 垂直起伏幅度（米）。原来定 0.020，4cm 峰峰值在 2Hz 下开始晕
+  bobX: 0.009,        // 横向摆幅
+  bobRoll: 0.007,     // 步态滚转（弧度，≈0.4°）
+  phase: 0,           // 步频相位
+  breath: 0,          // 呼吸相位
+  amp: 0,             // 0..1：步态权重，只有走起来才长出来
+  offX: 0,
+  offY: 0,
+  roll: 0,
+  speed: 0,
+  frozen: false,      // 验收脚本直接摆机位时把相机冻住
+};
+/* 被嵌在 iframe 里时不申请 Pointer Lock：它需要父级 allow="pointer-lock"，
+   而我们控制不了宿主。在预览面板里点一下画面就弹"不允许锁定"是纯噪音。 */
+const canLockPointer = window.self === window.top;
+
 /* 三个检视机位。target 是看的点，radius / yaw / pitch 决定相机站在哪。
    机位是按实拍调的：既要读到牌坊和擂台的关系，又不能让灯柱、门柱挡住主体。 */
 const PRESETS = {
@@ -253,6 +285,7 @@ const state = {
   orbitYaw: PRESETS.entrance.yaw * Math.PI / 180,
   orbitPitch: PRESETS.entrance.pitch * Math.PI / 180,
   pos: { x: -(ARENA_LAYOUT.site.w / 2) - 5.5, z: ARENA_LAYOUT.site.d / 2 },
+  vel: { x: 0, z: 0 },
   yaw: -50 * Math.PI / 180,
   pitch: -3 * Math.PI / 180,
   nearest: null,
@@ -287,8 +320,67 @@ function applyOrbit() {
 }
 
 function applyWalk() {
-  camera.position.set(state.pos.x, EYE, state.pos.z);
-  camera.rotation.set(state.pitch, state.yaw, 0, 'YXZ');
+  if (RIG.frozen) return;
+  /* 横向摆幅要沿"屏幕右"的方向加：right = (cos yaw, −sin yaw)。
+     直接加在 x 上的话，面朝 +X 时横向摆动会变成前后摆动。 */
+  const sin = Math.sin(state.yaw);
+  const cos = Math.cos(state.yaw);
+  camera.position.set(
+    state.pos.x + RIG.offX * cos,
+    EYE + RIG.offY,
+    state.pos.z - RIG.offX * sin,
+  );
+  camera.rotation.set(state.pitch, state.yaw, RIG.roll, 'YXZ');
+}
+
+/* ---------- 步态 ----------
+ * 原来漫游就是"把相机放在 1.65m 高度平移"：走起来像一台滑轨车——
+ * 视线高度恒定、速度瞬间起停、冲刺时视野也不动。
+ * 真实的步行同时有三件事：
+ *   1. 重心起伏，一个步幅里落两次脚，所以垂直频率是步频的两倍；
+ *   2. 骨盆左右摆，于是视线有横移和一点滚转；
+ *   3. 站着也不静止，4 秒一次的呼吸带 3.5mm 起伏。
+ * 三件都只改相机，不动 state.pos。
+ */
+function updateRig(dt, speed, moving) {
+  if (RIG.frozen) return;
+  RIG.speed = speed;
+
+  /* 相位按"走过的距离"推进，不按时间：按时间推的话速度一变相位就跳，
+     慢走时脚在打滑、快走时又跟不上。步幅随速度变长，频率才不会失真。
+     4.2 m/s 配 2.46m 步幅 = 1.7 个步幅/秒（3.4 步/秒），是慢跑的节奏；
+     先前 1.2+0.2v 只有 2.04m，同样速度下顶到 4.1 步/秒，快得像小跑赶地铁。 */
+  if (moving && speed > 0.05) {
+    const stride = 1.45 + 0.24 * speed;
+    RIG.phase += (speed / stride) * Math.PI * 2 * dt;
+  }
+
+  /* 步态权重跟着速度长出来，但要有惯性：急停时头不能瞬间静止 */
+  const target = Math.min(1, Math.max(0, (speed - 0.12) / 2.4));
+  RIG.amp += (target - RIG.amp) * Math.min(1, dt * 7);
+  RIG.breath += dt * Math.PI * 2 * 0.24;
+
+  const rest = 1 - RIG.amp;
+  const bobY = Math.sin(RIG.phase * 2) * RIG.bobY * RIG.amp;
+  const bobX = Math.sin(RIG.phase) * RIG.bobX * RIG.amp;
+  /* 站着时的呼吸：幅度小到"说不出哪里在动"，但没有它就是一张照片贴在人脸上。
+     走起来之后自动让位给步态，两个频率不会打架。 */
+  const breathY = Math.sin(RIG.breath) * 0.0035 * rest;
+  const breathRoll = Math.sin(RIG.breath * 0.5) * 0.0016 * rest;
+
+  /* 侧移时向行进方向微微"倒"一点：镜头滚转比横移更能让人感觉到自己在拐 */
+  const lateral = state.vel.x * Math.cos(state.yaw) - state.vel.z * Math.sin(state.yaw);
+
+  RIG.offY = bobY + breathY;
+  RIG.offX = bobX;
+  RIG.roll = Math.sin(RIG.phase) * RIG.bobRoll * RIG.amp + lateral * 0.0042 + breathRoll;
+}
+
+/* 鼠标锁定后的视线增量（像素 → 弧度） */
+function lookBy(dx, dy) {
+  state.yaw -= dx * 0.0022;
+  state.pitch = Math.max(-1.1, Math.min(1.1, state.pitch - dy * 0.0022));
+  applyWalk();
 }
 
 function setView(name) {
@@ -310,12 +402,18 @@ function setView(name) {
   $('interact').hidden = true;
   $('modeStatus').textContent = '外观检视 · 开放挑战';
   $('statusDot').classList.remove('is-live');
+  /* 退出漫游要把姿态清干净：留着最后一步的横移/滚转，下一帧检视机位会歪着头 */
+  if (document.pointerLockElement) document.exitPointerLock();
+  RIG.amp = 0; RIG.offX = 0; RIG.offY = 0; RIG.roll = 0;
   applyOrbit();
   updateLocation();
 }
 
 function walk() {
   state.mode = 'walk';
+  /* 进入漫游时把速度归零、姿态归位：从上一次停下那一刻接着走会很怪 */
+  state.vel.x = 0; state.vel.z = 0;
+  RIG.phase = 0; RIG.amp = 0; RIG.offX = 0; RIG.offY = 0; RIG.roll = 0;
   applyWalk();
   canvas.focus();
   const touchUI = matchMedia('(pointer: coarse)').matches || innerWidth < 700;
@@ -329,7 +427,9 @@ function walk() {
   updateLocation();
   toast(touchUI
     ? '左手方向键移动，画布上滑动转向；回到外观后可以双指捏合缩放。'
-    : '拖动转向，WASD 移动；走到擂台台阶、报名处或开赛锣前按 E。');
+    : canLockPointer
+      ? 'WASD 移动、Shift 快跑；点一下画面锁定鼠标直接转头，不锁也能按住拖动。'
+      : 'WASD 移动、Shift 快跑；按住画面拖动转向，走到物件前按 E。');
 }
 
 /* 圆-盒 / 圆-柱 推开，判定与 aria 预览页同一份，避免两处不一致 */
@@ -410,6 +510,9 @@ function pinchSpan() {
 canvas.addEventListener('pointerdown', (e) => {
   if (state.modal) return;
   canvas.focus();
+  /* 锁定鼠标时 clientX/Y 是冻住的，拖动逻辑拿到的 dx 恒为 0；
+     干脆不走这条分支，省得 pointerState 里留一个永远不动的 drag */
+  if (document.pointerLockElement === canvas) return;
   canvas.setPointerCapture(e.pointerId);
   pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
   if (pointers.size === 1) {
@@ -469,6 +572,36 @@ canvas.addEventListener('wheel', (e) => {
   applyOrbit();
 }, { passive: false });
 
+/* ---------- 鼠标锁定（可选）----------
+ * 漫游里最别扭的是"按住拖动才能看"：真实的第一人称是鼠标一动视线就动。
+ * 点一下画面申请 Pointer Lock；被浏览器或嵌入页拒绝（iframe 要 allow="pointer-lock"）
+ * 就安静地退回拖动——只提示一次，不重试、不抛错。
+ * 锁定状态下按 Esc 由浏览器解锁，keydown 不会再派发，所以那一次 Esc 不会退出漫游，
+ * 第二次才退——这和所有第一人称游戏的手感一致。 */
+let lockState = 'idle';  // idle | locked | denied
+canvas.addEventListener('click', () => {
+  if (!canLockPointer) return;
+  if (state.mode !== 'walk' || state.modal || lockState === 'denied') return;
+  if (matchMedia('(pointer: coarse)').matches) return;
+  if (document.pointerLockElement === canvas) return;
+  let p = null;
+  try { p = canvas.requestPointerLock && canvas.requestPointerLock(); } catch (_) { p = null; }
+  if (p && typeof p.catch === 'function') p.catch(() => { lockState = 'denied'; });
+});
+document.addEventListener('pointerlockchange', () => {
+  lockState = document.pointerLockElement === canvas ? 'locked' : 'idle';
+});
+document.addEventListener('pointerlockerror', () => {
+  if (lockState === 'denied') return;
+  lockState = 'denied';
+  toast('这个页面不允许锁定鼠标，继续按住拖动就可以转向。');
+});
+document.addEventListener('mousemove', (e) => {
+  if (document.pointerLockElement !== canvas) return;
+  if (state.mode !== 'walk' || state.modal) return;
+  lookBy(e.movementX || 0, e.movementY || 0);
+});
+
 addEventListener('keydown', (e) => {
   if (e.code === 'Escape') {
     if (featureDialog.open || $('rules-dialog').open) closeDialogs();
@@ -525,6 +658,18 @@ const BELL_COPY = {
     <div class="dialog-note">刻意不接业务：挑战的发起与判分都在服务端，3D 侧不该有第二套状态。</div>`,
 };
 
+/* 彩蛋：地上一张纸条。同样不接业务——
+   纸条上的字由 district 侧给出（它才是那张纸的材质来源），这里只负责排版与展示。
+   文字用 textContent 灌进节点，不拼进 innerHTML：内容来自模块常量，但没必要留注入口。 */
+const NOTE_COPY = {
+  title: '一张对折的纸条',
+  sub: '场地角落 → 彩蛋',
+  body: () => `
+    <div class="note-slip"><p class="note-text"></p></div>
+    <p>草稿纸，边缘撕得不齐，压在擂台西南角的空地上。铅笔写的，笔迹有点急。</p>
+    <div class="dialog-note">一次性的彩蛋：捡走之后原地就干净了。不写服务端、不进排行榜，刷新页面会回到原地。</div>`,
+};
+
 const featureDialog = $('feature-dialog');
 
 const panels = createPanels({
@@ -539,6 +684,9 @@ function findNearest() {
   let best = null;
   let bestD = Infinity;
   for (const it of interactions) {
+    /* 一次性的东西（彩蛋纸条）取走之后要立刻从候选里退出：
+       只把 object 摘掉的话，测试脚本就没法再算"该站到哪"了。 */
+    if (it.disabled) continue;
     if (!it.object) continue;
     it.object.getWorldPosition(tmpV);
     const d = Math.hypot(tmpV.x - state.pos.x, tmpV.z - state.pos.z);
@@ -555,6 +703,25 @@ function interact() {
      读不到就把缺什么说清楚，不会停在空白上。 */
   if (it.id === 'arena.ring') { openDialog(featureDialog); return panels.ring({}); }
   if (it.id === 'arena.roster') { openDialog(featureDialog); return panels.roster(); }
+
+  /* 纸条彩蛋：action() 自己负责"只给一次"，宿主只管把结果摆到面板上 */
+  if (it.id === 'arena.note') {
+    let picked;
+    try {
+      picked = it.action();
+    } catch (err) {
+      picked = { ok: false, message: String((err && err.message) || err) };
+    }
+    if (!picked || !picked.ok) { toast((picked && picked.message) || '捡不起来'); return; }
+    $('feature-title').textContent = NOTE_COPY.title;
+    $('feature-sub').textContent = NOTE_COPY.sub;
+    const body = $('feature-body');
+    body.innerHTML = NOTE_COPY.body();
+    const line = body.querySelector('.note-text');
+    if (line) line.textContent = picked.text || '';
+    openDialog(featureDialog);
+    return;
+  }
 
   /* 开赛锣：唯一的纯本地动作 */
   let result;
@@ -643,6 +810,9 @@ function frame(now) {
   const dt = Math.min((now - last) / 1000, 0.06);
   last = now;
 
+  let speedNow = 0;
+  let sprinting = false;
+
   if (state.mode === 'walk' && !state.modal) {
     let f = 0;
     let r = 0;
@@ -650,19 +820,63 @@ function frame(now) {
     if (keys.KeyS || keys.ArrowDown) f -= 1;
     if (keys.KeyD || keys.ArrowRight) r += 1;
     if (keys.KeyA || keys.ArrowLeft) r -= 1;
+
+    sprinting = !!(keys.ShiftLeft || keys.ShiftRight);
+    /* 目标速度：方向归一后乘上限；松手就是 0。
+       原来是把位移直接按 dt 加上去——按下立刻满速、松开立刻停，
+       走起来像台滑轨车。这里给一阶惯性：蓄力约 100ms，刹车约 80ms。 */
+    let tvx = 0;
+    let tvz = 0;
     if (f || r) {
-      const len = Math.hypot(f, r) || 1;
-      const speed = (keys.ShiftLeft || keys.ShiftRight ? 6.6 : 4.2) * dt / len;
+      const len = Math.hypot(f, r);
       const sin = Math.sin(state.yaw);
       const cos = Math.cos(state.yaw);
-      state.pos.x += (-sin * f + cos * r) * speed;
-      state.pos.z += (-cos * f - sin * r) * speed;
+      const maxSpeed = sprinting ? WALK.sprint : WALK.walk;
+      tvx = (-sin * f + cos * r) / len * maxSpeed;
+      tvz = (-cos * f - sin * r) / len * maxSpeed;
+    }
+    /* 指数趋近，和帧率无关：k 由 dt 算出来，60Hz 和 144Hz 的起步手感一致 */
+    const k = 1 - Math.exp(-(f || r ? 10 : 13) * dt);
+    state.vel.x += (tvx - state.vel.x) * k;
+    state.vel.z += (tvz - state.vel.z) * k;
+
+    speedNow = Math.hypot(state.vel.x, state.vel.z);
+    const moving = speedNow > 0.02;
+    if (moving) {
+      state.pos.x += state.vel.x * dt;
+      state.pos.z += state.vel.z * dt;
       collide(state.pos);
-      applyWalk();
       updateLocation();
     }
-    if (keys.KeyJ) { state.yaw += dt * 1.6; applyWalk(); }
-    if (keys.KeyL) { state.yaw -= dt * 1.6; applyWalk(); }
+    if (keys.KeyJ) state.yaw += dt * 1.6;
+    if (keys.KeyL) state.yaw -= dt * 1.6;
+
+    updateRig(dt, speedNow, moving);
+    /* 每帧都重算相机：步态偏移是连续量，靠"有事才更新"会漏帧 */
+    applyWalk();
+  } else {
+    /* 不在漫游：步态归零、速度归零（否则退出漫游那一刻还带着上一帧的横移） */
+    state.vel.x = 0;
+    state.vel.z = 0;
+    updateRig(dt, 0, false);
+  }
+
+  /* 视野：检视用长焦，漫游用广角，冲刺再放开。
+     冲刺那一档按"速度超出步行上限的比例"连续插值，不是"按没按 Shift"——
+     撞墙时按住 Shift 不会把画面顶开，从散步过渡到奔跑也是一条连续的线。 */
+  const sprintT = Math.min(1, Math.max(0, (speedNow - WALK.walk) / (WALK.sprint - WALK.walk)));
+  const wantFov = state.mode === 'walk'
+    ? (RIG.fovWalk + (RIG.fovSprint - RIG.fovWalk) * sprintT)
+    : RIG.fovInspect;
+  /* 冻住相机时连视野一起冻：验收脚本要拍"同一站位三档 fov"的对照图 */
+  if (!RIG.frozen) {
+    if (Math.abs(camera.fov - wantFov) > 0.03) {
+      camera.fov += (wantFov - camera.fov) * Math.min(1, dt * 4.5);
+      camera.updateProjectionMatrix();
+    } else if (camera.fov !== wantFov) {
+      camera.fov = wantFov;
+      camera.updateProjectionMatrix();
+    }
   }
 
   arena.update(dt);
@@ -738,6 +952,18 @@ window.__arena = {
   get panelText() { return $('feature-body').textContent.replace(/\s+/g, ' ').trim(); },
   get touchVisible() { return !$('touch').hidden; },
   get radius() { return state.radius; },
+  /* 第一人称那套：步态偏移、视野、鼠标锁定状态全在这里，
+     验收脚本要靠它算"走了多远 / 头部起伏多少 / 冲刺有没有把视野顶开" */
+  get rig() {
+    return {
+      offY: RIG.offY, offX: RIG.offX, roll: RIG.roll,
+      amp: RIG.amp, phase: RIG.phase, speed: RIG.speed,
+      fov: camera.fov, lock: lockState,
+    };
+  },
+  /* 冻结相机：脚本要摆特写机位时用。漫游模式下 applyWalk() 每帧都会
+     把 camera 拉回 state.pos + 步态偏移，不冻住直接改 camera 会被立刻覆盖 */
+  freezeCam(v) { RIG.frozen = !!v; },
   setView,
   walk,
   interact,
@@ -746,7 +972,9 @@ window.__arena = {
     openDialog(featureDialog);
     return (kind === 'roster') ? panels.roster() : panels.ring(opts || {});
   },
-  standNear(id) {
+  /* yaw 是可选的人朝向（角度制，0 = 面向 -Z，-90 = 面向 +X）：
+     验收脚本要能一次摆到"站在物件前正对它"，靠按方向键转不可控。 */
+  standNear(id, yaw) {
     const it = interactions.find((x) => x.id === id);
     if (!it) return null;
     const p = new THREE.Vector3();
@@ -754,6 +982,7 @@ window.__arena = {
     const d = (it.radius || 2.5) - 0.7;
     state.pos.x = p.x - d;
     state.pos.z = p.z;
+    if (typeof yaw === 'number') state.yaw = yaw * Math.PI / 180;
     collide(state.pos);
     applyWalk();
     updateLocation();

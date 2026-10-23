@@ -1,0 +1,40 @@
+{
+  "repository": "https://github.com/Dallovers/xuewuyou",
+  "pullRequest": 89,
+  "upstreamMergeCommit": "3b2756023e6e5819c5e02fb33acd883ee365d539",
+  "upstreamHead": "14403eeec95629bd1bc293c4f418ab969b43277b",
+  "files": [
+    {
+      "path": "js/features/arena/arena-district.js",
+      "upstreamGitBlobSha": "1d67586128756c776e11a442cb34a3e02e583274"
+    },
+    {
+      "path": "js/features/arena/README.md",
+      "upstreamGitBlobSha": "2ca7afcf335186daf2091ec0ec67a05b1b45a605"
+    },
+    {
+      "path": "js/features/arena/index.html",
+      "upstreamGitBlobSha": "76ae356f250a7f48c14ae7c68125544f7ced9a7f"
+    },
+    {
+      "path": "js/features/arena/preview.html",
+      "upstreamGitBlobSha": "691c778ab77a9d04780e3a6fcbacd36871cc43b9"
+    },
+    {
+      "path": "js/features/arena/arena.css",
+      "upstreamGitBlobSha": "5cdbe3c08ed7356a541b27cf6f6d9e5ec678f076"
+    }
+  ],
+  "localAdaptations": [
+    "Preserve sharedSite background suppression",
+    "Preserve campus return bridge",
+    "Face both podium plaques west",
+    "Override outdoor paving only inside shared host",
+    "Handle disabled note interaction and readable host modal"
+  ],
+  "referenceImage": {
+    "file": "fountain-design-reference.png",
+    "kind": "AI generated design reference, not an application screenshot",
+    "runtimeUse": false
+  }
+}

@@ -6,6 +6,7 @@ import {worldBoxes} from './navigation.js';
 import {createCourtyard} from './courtyard.js';
 import {loadSurfaces} from './surface-materials.js';
 import {createCampusContext} from './campus-context.js';
+import {createWhitePaving} from './paving-material.js';
 
 export async function createWorld(scene,openFeature,progress){
  const root=new T.Group();root.name='Campus shared public ground';scene.add(root);
@@ -14,15 +15,13 @@ export async function createWorld(scene,openFeature,progress){
  const mat=(color,opts={})=>{const m=new T.MeshStandardMaterial({color,roughness:.8,...opts});owned.add(m);return m;};
  const stone=mat(0xe2dfd2),wood=mat(0xb39265),metal=mat(0x34473e,{metalness:.2,roughness:.5}),lawn=mat(0x7e8d69),soil=mat(0x80735b);
  surfaces.apply(stone,'stone',{normal:.16,color:0xe5e1d4});surfaces.apply(wood,'wood',{meters:1.6,normal:.13,color:0xe9dcc4});
- const tiles=document.createElement('canvas');tiles.width=tiles.height=512;const ctx=tiles.getContext('2d');ctx.fillStyle='#aeb0a2';ctx.fillRect(0,0,512,512);
- for(let y=0;y<4;y++)for(let x=-1;x<5;x++){const v=193+(x*7+y*11)%9;ctx.fillStyle=`rgb(${v},${v-1},${v-9})`;ctx.fillRect(x*128+(y%2)*64+1,y*128+1,126,126);}
- const tiled=new T.CanvasTexture(tiles);tiled.colorSpace=T.SRGBColorSpace;tiled.wrapS=tiled.wrapT=T.RepeatWrapping; textures.add(tiled);
- const pavingCanvas=document.createElement('canvas');pavingCanvas.width=pavingCanvas.height=1024;const pc=pavingCanvas.getContext('2d');pc.drawImage(surfaces.sets.stone.map.image,0,0,1024,1024);pc.strokeStyle='#706e6660';pc.lineWidth=2;
- for(let y=0;y<4;y++){pc.beginPath();pc.moveTo(0,y*256);pc.lineTo(1024,y*256);pc.stroke();for(let x=-1;x<5;x++){pc.beginPath();pc.moveTo(x*256+(y%2)*128,y*256);pc.lineTo(x*256+(y%2)*128,(y+1)*256);pc.stroke();}}
- const pavingMap=new T.CanvasTexture(pavingCanvas);pavingMap.colorSpace=T.SRGBColorSpace;pavingMap.wrapS=pavingMap.wrapT=T.RepeatWrapping;pavingMap.anisotropy=8;textures.add(pavingMap);
+ const pavingMaterial=createWhitePaving(surfaces);owned.add(pavingMaterial);
+ const groundNames=new Set(['site:paving','path:main','path:branch','path:edge','ring:apron','pavilion:floor-slab','pavilion:landing-slab']);
+ const pavingMeshes=[];
+ function unifyPaving(mesh){if(!mesh.isMesh)return;mesh.material=pavingMaterial;pavingMeshes.push(mesh);}
  function box(g,name,x,y,z,w,h,d,m){const geo=new T.BoxGeometry(w,h,d),mesh=new T.Mesh(geo,m);mesh.name=name;mesh.position.set(x,y,z);mesh.castShadow=mesh.receiveShadow=true;g.add(mesh);return mesh;}
  function plane(name,x,z,w,d,m,y=0){if(m===lawn&&lawn.map){m=lawn.clone();Object.assign(m,surfaces.copySet('grass',w/2,d/2));owned.add(m);}const mesh=new T.Mesh(new T.PlaneGeometry(w,d),m);mesh.name=name;mesh.rotation.x=-Math.PI/2;mesh.position.set(x,y,z);mesh.receiveShadow=true;root.add(mesh);return mesh;}
- function paving(x,z,w,d){const joints=tiled.clone(),map=pavingMap.clone();joints.colorSpace=T.NoColorSpace;joints.repeat.set(w/3.2,d/3.2);map.repeat.copy(joints.repeat);textures.add(joints);textures.add(map);return plane('Walkable limestone paving',x,z,w,d,mat(0xe3dfd3,{...surfaces.copySet('stone',w/3.2,d/3.2),map,normalScale:new T.Vector2(.22,.22),roughness:.95,bumpMap:joints,bumpScale:.012}),.006);}
+ function paving(x,z,w,d){const mesh=plane('Walkable limestone paving',x,z,w,d,pavingMaterial,.006);pavingMeshes.push(mesh);return mesh;}
  Object.assign(lawn,surfaces.copySet('grass',100,90));lawn.normalScale=new T.Vector2(.5,.5);lawn.color.setHex(0x90ad83);lawn.needsUpdate=true;
  plane('Shared lawn',3,-2,2000,2000,lawn,-.06);
  plane('Campus service road',0,43.8,1000,5,mat(0x777c76),-.03);
@@ -30,7 +29,7 @@ export async function createWorld(scene,openFeature,progress){
  paving(-2,10,43,50);paving(-12,-19,36,9);paving(-24,1,10,7);paving(-27,15,15,7);paving(-13,30,18,5);paving(3,37,9,10);paving(20,-10,8,8);
  for(const [x,z,w,d]of [[-12,3,10,14]]){plane('Courtyard lawn island',x,z,w,d,lawn,.02);for(const s of [-1,1]){box(root,'Low lawn stone edge',x+s*w/2,.04,z,.10,.08,d,stone);box(root,'Low lawn stone edge',x,.04,z+s*d/2,w,.08,.10,stone);}}
  const leafMap=await new T.TextureLoader().loadAsync(new URL('../social/assets/generated/camphor-leaf-v1.png',document.baseURI).href);leafMap.colorSpace=T.SRGBColorSpace;textures.add(leafMap);
- const courtyard=createCourtyard(openFeature,leafMap,surfaces);root.add(courtyard.root);boxes.push(...courtyard.boxes);interactions.push(...courtyard.interactions);
+ const courtyard=createCourtyard(openFeature,leafMap,surfaces,pavingMaterial);root.add(courtyard.root);boxes.push(...courtyard.boxes);interactions.push(...courtyard.interactions);
  function bench(x,z,angle=0){const g=new T.Group();g.position.set(x,0,z);g.rotation.y=angle;root.add(g);for(const s of [-1,1])box(g,'Bench stone support',s*.65,.21,0,.20,.42,.45,stone);for(let i=0;i<4;i++)box(g,'Warm timber bench slat',0,.46,(i-1.5)*.12,1.85,.055,.10,wood);boxes.push({id:'bench',minX:x-(angle?.33:1),maxX:x+(angle?.33:1),minZ:z-(angle?1:.33),maxZ:z+(angle?1:.33)});}
  for(const [x,z,a]of [[-18,13,Math.PI/2],[-18,-7,Math.PI/2],[-36,16,0],[-7,-15,0]])bench(x,z,a);
  for(const [x,z]of [[-4,34],[4,34],[-20,9],[-20,-10],[5,-13],[13,31],[30,15],[51,-8]]){
@@ -49,7 +48,7 @@ export async function createWorld(scene,openFeature,progress){
  progress('连接自习室、社交广场和竞技场…');
  // Runtime imports preserve each author's import.meta.url asset bases.
  const [study,social,arena,landscape]=await Promise.all([
-  import(new URL('../study/district.js?v=study-roof-88',document.baseURI).href),import(new URL('../social/social-district.js?campus=hub1',document.baseURI).href),import(new URL('../arena/arena-district.js?campus=hub1',document.baseURI).href),import(new URL('../social/social-landscape.js',document.baseURI).href)
+  import(new URL('../study/district.js?v=study-roof-88',document.baseURI).href),import(new URL('../social/social-district.js?campus=hub1',document.baseURI).href),import(new URL('../arena/arena-district.js?campus=arena89-round4',document.baseURI).href),import(new URL('../social/social-landscape.js',document.baseURI).href)
  ]);
  const studyDistrict=study.createDistrict({THREE:T,openFeature,mode:'runtime'});studyDistrict.root.position.set(STUDY_PLACEMENT.x,0,STUDY_PLACEMENT.z);studyDistrict.root.rotation.y=STUDY_PLACEMENT.yaw;
  // The indoor room is a shell in this view. Its original page retains picking,
@@ -70,6 +69,7 @@ export async function createWorld(scene,openFeature,progress){
  for(let i=0;i<26;i++){dummy.position.set(.8-i*.23,1.65,4.86);dummy.updateMatrix();slats.setMatrixAt(i,dummy.matrix);}slats.castShadow=slats.receiveShadow=true;studyExterior.add(slats);
  for(const [module,x]of [[social,18],[arena,39]]){
   const district=module.createDistrict({THREE:T,openFeature,mode:'runtime',sharedSite:true,bakedAO:false});district.root.position.set(x,0,2);root.add(district.root);districts.push(district);boxes.push(...worldBoxes(T,district));interactions.push(...district.interactions);await district.ready;
+  district.root.traverse(mesh=>{if(groundNames.has(mesh.name))unifyPaving(mesh);});
  }
  // Shared low-density vegetation uses A's actual tree builder and texture.
  const leaf=mat(0xb8c2a4,{map:leafMap,transparent:false,alphaTest:.42,side:T.DoubleSide,roughness:.85}),bark=mat(0x77654b);
@@ -78,5 +78,5 @@ export async function createWorld(scene,openFeature,progress){
   const add=(geo,m,px,py,pz,opts={})=>{const mesh=new T.Mesh(geo,m);mesh.position.set(px,py,pz);mesh.name=opts.name||'Tree';mesh.castShadow=mesh.receiveShadow=true;tree.add(mesh);return mesh;};
   landscape.buildCampusTree({THREE:T,root:tree,add,M:{leaf,bark,soil},x:0,z:0,leafCount:2400,seedOffset:100+i*197});boxes.push({id:'tree',minX:x-.35,maxX:x+.35,minZ:z-.35,maxZ:z+.35});
  }
- return{root,boxes,cameraObstacles,interactions,districts,courtyard,update(dt){courtyard.update(dt);for(const d of districts)d.update?.(dt);},dispose(){courtyard.dispose();for(const d of districts)d.dispose?.();const geos=new Set(),mats=new Set(owned),maps=new Set([...textures,...surfaces.textures]);root.traverse(n=>{if(n.geometry)geos.add(n.geometry);for(const m of n.material?(Array.isArray(n.material)?n.material:[n.material]):[]){mats.add(m);for(const v of Object.values(m))if(v?.isTexture)maps.add(v);}});for(const g of geos)g.dispose();for(const t of maps)t.dispose();for(const m of mats)m.dispose();scene.remove(root);}};
+ return{root,boxes,cameraObstacles,interactions,districts,courtyard,pavingSnapshot:()=>({name:pavingMaterial.name,meshes:pavingMeshes.length,materials:[...new Set(pavingMeshes.map(m=>m.material.uuid))].length}),update(dt){courtyard.update(dt);for(const d of districts)d.update?.(dt);},dispose(){courtyard.dispose();for(const d of districts)d.dispose?.();const geos=new Set(),mats=new Set(owned),maps=new Set([...textures,...surfaces.textures]);root.traverse(n=>{if(n.geometry)geos.add(n.geometry);for(const m of n.material?(Array.isArray(n.material)?n.material:[n.material]):[]){mats.add(m);for(const v of Object.values(m))if(v?.isTexture)maps.add(v);}});for(const g of geos)g.dispose();for(const t of maps)t.dispose();for(const m of mats)m.dispose();scene.remove(root);}};
 }

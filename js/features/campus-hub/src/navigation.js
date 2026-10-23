@@ -1,6 +1,6 @@
 import {BOUNDS} from './layout.js';
 export function createNavigation(boxes,radius=.30){
- function blocked(x,z){return !Number.isFinite(x)||!Number.isFinite(z)||x<BOUNDS.minX+radius||x>BOUNDS.maxX-radius||z<BOUNDS.minZ+radius||z>BOUNDS.maxZ-radius||boxes.some(b=>b.enabled!==false&&x>b.minX-radius&&x<b.maxX+radius&&z>b.minZ-radius&&z<b.maxZ+radius);}
+ function blocked(x,z){return !Number.isFinite(x)||!Number.isFinite(z)||x<BOUNDS.minX+radius||x>BOUNDS.maxX-radius||z<BOUNDS.minZ+radius||z>BOUNDS.maxZ-radius||boxes.some(b=>b.enabled!==false&&(b.type==='circle'?Math.hypot(x-b.x,z-b.z)<b.radius+radius:x>b.minX-radius&&x<b.maxX+radius&&z>b.minZ-radius&&z<b.maxZ+radius));}
  function move(pos,dx,dz){const steps=Math.max(1,Math.ceil(Math.hypot(dx,dz)/.12));for(let i=0;i<steps;i++){if(!blocked(pos.x+dx/steps,pos.z))pos.x+=dx/steps;if(!blocked(pos.x,pos.z+dz/steps))pos.z+=dz/steps;}return pos;}
  function clear(a,b){const n=Math.max(1,Math.ceil(Math.hypot(b.x-a.x,b.z-a.z)/.16));for(let i=0;i<=n;i++)if(blocked(a.x+(b.x-a.x)*i/n,a.z+(b.z-a.z)*i/n))return false;return true;}
  function route(start,goal){
