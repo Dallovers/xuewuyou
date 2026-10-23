@@ -53,8 +53,8 @@ function frame(){
   const oldX=state.x,oldZ=state.z;
   if(state.mode==='walk'&&!paused&&!state.seated&&!avatar.locksMovement){
    const forward=Number(keys.has('KeyW')||keys.has('ArrowUp'))-Number(keys.has('KeyS')||keys.has('ArrowDown')),right=Number(keys.has('KeyD')||keys.has('ArrowRight'))-Number(keys.has('KeyA')||keys.has('ArrowLeft'));
-   if(forward||right){state.path=null;const speed=(keys.has('ShiftLeft')||keys.has('ShiftRight')?3.2:1.65)*dt/Math.max(1,Math.hypot(forward,right));navigation.move(state,(Math.sin(state.yaw)*forward+Math.cos(state.yaw)*right)*speed,(-Math.cos(state.yaw)*forward+Math.sin(state.yaw)*right)*speed);}
-   else if(state.path?.length){const goal=state.path[0],dx=goal.x-state.x,dz=goal.z-state.z,d=Math.hypot(dx,dz),distance=Math.min(d,dt*3.2);if(d<.10)state.path.shift();else{navigation.move(state,dx/d*distance,dz/d*distance);state.yaw=Math.atan2(dx,-dz);if(Math.hypot(state.x-oldX,state.z-oldZ)<.0001){state.path=null;toast('通路暂时受阻，请手动调整站位。');}}}
+   if(forward||right){state.path=null;const speed=(keys.has('ShiftLeft')||keys.has('ShiftRight')?6:3.6)*dt/Math.max(1,Math.hypot(forward,right));navigation.move(state,(Math.sin(state.yaw)*forward+Math.cos(state.yaw)*right)*speed,(-Math.cos(state.yaw)*forward+Math.sin(state.yaw)*right)*speed);}
+   else if(state.path?.length){const goal=state.path[0],dx=goal.x-state.x,dz=goal.z-state.z,d=Math.hypot(dx,dz),distance=Math.min(d,dt*3.6);if(d<.10)state.path.shift();else{navigation.move(state,dx/d*distance,dz/d*distance);state.yaw=Math.atan2(dx,-dz);if(Math.hypot(state.x-oldX,state.z-oldZ)<.0001){state.path=null;toast('通路暂时受阻，请手动调整站位。');}}}
    state.yaw+=(Number(keys.has('KeyL'))-Number(keys.has('KeyJ')))*dt*1.6;
   }
   const dx=state.x-lastX,dz=state.z-lastZ,moving=Math.hypot(dx,dz)>.0001;if(moving){const angle=Math.atan2(dx,dz);studentYaw+=Math.atan2(Math.sin(angle-studentYaw),Math.cos(angle-studentYaw))*(1-Math.exp(-dt*18));}
