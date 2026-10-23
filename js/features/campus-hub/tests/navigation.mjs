@@ -13,4 +13,7 @@ assert(Math.abs(transformed[0].minX-20.5)<1e-6);assert(Math.abs(transformed[0].m
 const record=makeReturn(ENTRIES[0],{yaw:1,pitch:.2});assert.deepEqual(restorePose(record,nav),record.pose);
 const store=v=>({getItem:k=>k===KEY?JSON.stringify(v):null});assert(readReturn(store(record)));assert(!readReturn(store({...record,created:undefined})));assert(!readReturn(store({...record,created:0})));assert(!readReturn(store({...record,scene:'https://example.com'})));assert(!readReturn(store({...record,pose:{x:null,z:0,yaw:0,pitch:0}})));
 assert(!nav.blocked(restorePose({...record,pose:{x:0,z:-35}},nav).x,restorePose({...record,pose:{x:0,z:-35}},nav).z));
+const studyEntry=ENTRIES.find(e=>e.id==='study');
+const oldStudy={...record,scene:'study',pose:{x:-30.3,z:16.5,yaw:.7,pitch:.1}};
+assert.deepEqual(restorePose(oldStudy,nav),{x:studyEntry.outside[0],z:studyEntry.outside[1],yaw:.7,pitch:.1});
 console.log('Navigation PASS: all entries, continuous paths, swept movement, bounds, transformed/cylinder collision, validated return and fallback');

@@ -1,7 +1,7 @@
 import * as T from 'three';
 import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 import {MeshoptDecoder} from 'meshoptimizer';
-import {BUILDING_BOXES} from './layout.js';
+import {BUILDING_BOXES,STUDY_PLACEMENT} from './layout.js';
 import {worldBoxes} from './navigation.js';
 
 export async function createWorld(scene,openFeature,progress){
@@ -36,7 +36,7 @@ export async function createWorld(scene,openFeature,progress){
  const [study,social,arena,landscape]=await Promise.all([
   import(new URL('../study/district.js?v=study-roof-88',document.baseURI).href),import(new URL('../social/social-district.js?campus=hub1',document.baseURI).href),import(new URL('../arena/arena-district.js?campus=hub1',document.baseURI).href),import(new URL('../social/social-landscape.js',document.baseURI).href)
  ]);
- const studyDistrict=study.createDistrict({THREE:T,openFeature,mode:'runtime'});studyDistrict.root.position.set(-27,0,24);studyDistrict.root.rotation.y=Math.PI;
+ const studyDistrict=study.createDistrict({THREE:T,openFeature,mode:'runtime'});studyDistrict.root.position.set(STUDY_PLACEMENT.x,0,STUDY_PLACEMENT.z);studyDistrict.root.rotation.y=STUDY_PLACEMENT.yaw;
  // The indoor room is a shell in this view. Its original page retains picking,
  // reading and seating. Outdoor collision uses the measured exterior footprint.
  root.add(studyDistrict.root);districts.push(studyDistrict);
@@ -49,9 +49,10 @@ export async function createWorld(scene,openFeature,progress){
  boxes.find(b=>b.id==='study').maxY=roof?.getObjectByName('RoofPlate')?.position.y??4.2;
  // Exterior-only warm timber screen and entrance canopy; retain B's room,
  // door opening, interior, picking and seat implementation unchanged.
- box(root,'Study entrance canopy',-30.3,3.25,18.8,3.1,.14,1.5,metal);
+ const studyExterior=new T.Group();studyExterior.name='Study entrance exterior';studyDistrict.root.add(studyExterior);
+ box(studyExterior,'Study entrance canopy',3.3,3.25,5.2,3.1,.14,1.5,metal);
  const slats=new T.InstancedMesh(new T.BoxGeometry(.07,3.05,.10),wood,26),dummy=new T.Object3D();slats.name='Study external timber sun screen';
- for(let i=0;i<26;i++){dummy.position.set(-27.8+i*.23,1.65,19.14);dummy.updateMatrix();slats.setMatrixAt(i,dummy.matrix);}slats.castShadow=slats.receiveShadow=true;root.add(slats);
+ for(let i=0;i<26;i++){dummy.position.set(.8-i*.23,1.65,4.86);dummy.updateMatrix();slats.setMatrixAt(i,dummy.matrix);}slats.castShadow=slats.receiveShadow=true;studyExterior.add(slats);
  for(const [module,x]of [[social,18],[arena,39]]){
   const district=module.createDistrict({THREE:T,openFeature,mode:'runtime',sharedSite:true,bakedAO:false});district.root.position.set(x,0,2);root.add(district.root);districts.push(district);boxes.push(...worldBoxes(T,district));interactions.push(...district.interactions);await district.ready;
  }

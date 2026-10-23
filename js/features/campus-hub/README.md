@@ -23,11 +23,13 @@ node server/scripts/campus-preview-dev.cjs
 | --- | --- | --- |
 | classroom | `examples/campus-3d-v5/index.html?view=classroom` | 0 / -22 |
 | library | `examples/library-3d/index.html` | -22 / 1 |
-| study | `js/features/study/preview.html` | -30.3 / 16.5 |
+| study | `js/features/study/preview.html` | -19.5 / 20.7 |
 | social | `js/features/social/preview.html` | 7 / 11 |
 | arena | `js/features/arena/index.html` | 29 / 2 |
 
 本表是场景路由，不改 `bank / wenku / study / social / arena` 等既有业务地点 ID。返回票据只存当前标签页 sessionStorage，30 分钟有效，校验版本、目标、坐标与可站立位置，异常时回安全位置；没有把本地票据当云存档或学习记录。
+
+2026-10-23：自习室在原地旋转为与图书馆一致的朝东入口，面向中央庭院；入口雨棚与木遮阳随建筑旋转，墙身碰撞和屋顶相机包络同步更新。进入/退出改用东侧门前落点，旧自习室票据恢复时迁到新门前，保留人物和镜头朝向。
 
 ## 整合来源与边界
 
