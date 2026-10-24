@@ -30,6 +30,8 @@ const base=process.env.CAMPUS_TEST_BASE||'http://127.0.0.1:4184/';
   await page.locator('[data-interaction="academy.equipment"]').waitFor({state:'visible'});
   check('a nearer facility no longer hides the projector control',(await snapshot()).nearest!=='academy.equipment');
   const original=(await snapshot()).nearest;
+  const shortcuts=await page.evaluate(()=>[true,false].map(ctrl=>{const event=new KeyboardEvent('keydown',{code:'KeyF',key:'f',ctrlKey:ctrl,metaKey:!ctrl,bubbles:true,cancelable:true});document.getElementById('world').dispatchEvent(event);return event.defaultPrevented;}));
+  check('browser Ctrl/Cmd+F shortcuts do not switch the target or get intercepted',shortcuts.every(prevented=>!prevented)&&(await snapshot()).nearest===original);
   for(let i=0;i<nearby.overlap.candidates.length&&(await snapshot()).nearest!=='academy.equipment';i++){await page.keyboard.press('KeyF');await page.waitForTimeout(90);}
   check('F selects projection without moving away',(await snapshot()).nearest==='academy.equipment');
   await page.waitForTimeout(180);check('selected target survives subsequent render frames',(await snapshot()).nearest==='academy.equipment');

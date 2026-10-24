@@ -279,7 +279,7 @@ addEventListener('keydown',e=>{
  if(duelPanel?.isOpen&&duelPanel.handleKey(e)){e.preventDefault();return;}
  if(e.code==='Escape'){if(!$('#places').hidden){e.preventDefault();setPlaces(false,true);return;}stand();clearInput();return;}
  if(state.mode!=='walk'){if(e.code==='KeyE'&&!e.repeat){e.preventDefault();activate();}return;}
- if(e.code==='KeyF'&&!e.repeat){e.preventDefault();findNearest();nearest=interactionSelection.cycle();syncControls();return;}
+ if(e.code==='KeyF'&&!e.repeat&&!e.ctrlKey&&!e.metaKey&&!e.altKey){e.preventDefault();findNearest();nearest=interactionSelection.cycle();syncControls();return;}
  if(!e.repeat&&pickerEnabled&&['KeyQ','KeyR','KeyG'].includes(e.code)){e.preventDefault();if(e.code==='KeyQ')studyPicker.toggleOpen();else studyPicker.drop();return;}
  if(!e.repeat&&e.code==='KeyC'&&world.inside(state)==='study'){e.preventDefault();if(state.seated){stand();return;}const seats=world.interactions.filter(i=>i.id.startsWith('study.seat.')).map(i=>({i,d:i.object.getWorldPosition(new T.Vector3()).distanceTo(new T.Vector3(state.x,0,state.z))})).sort((a,b)=>a.d-b.d);if(seats[0]?.d<1.65){nearest=seats[0].i;activate();}return;}
  if(['KeyW','KeyA','KeyS','KeyD','ArrowUp','ArrowDown','ArrowLeft','ArrowRight','ShiftLeft','ShiftRight','KeyJ','KeyL'].includes(e.code)){e.preventDefault();focusScene();keys.add(e.code);state.path=null;}
