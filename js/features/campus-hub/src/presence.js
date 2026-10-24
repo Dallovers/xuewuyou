@@ -58,7 +58,7 @@ export function createCampusPresence({scene,camera,getPose,setSpawn,openAccount,
   }catch(error){if(current===generation)paint(error.message,'重新连接');}
  }
  function publish(force=false){if(!joined||!socket?.connected||document.hidden)return;const now=performance.now();if(force||now-lastSend>=100){lastSend=now;socket.volatile.emit('campus:pose',getPose());}}
- /* 瞬移后必须立刻走 campus:teleport，不能靠下一帧 publish：
+ /* 移动（teleport）后必须立刻走 campus:teleport，不能靠下一帧 publish：
     campus:pose 有速度包络（一步跨 40 米会被判异常丢掉），而丢一次不是丢一帧——
     服务端记的还是旧位置，之后每次比较都拒，人走到哪里别人都看不见。
     限频由服务端管（1.2s）；这里只负责把新位置送出去。 */
