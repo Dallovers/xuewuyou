@@ -13,6 +13,7 @@ import {createBusinessBridge} from './business.js';
 import {createVisualEffects} from './visual-effects.js';
 import {createSkyEnvironment} from './sky-environment.js';
 import {createCampusPresence} from './presence.js';
+import {createFeatureCue,describeFeatureCue} from './feature-cues.js';
 
 const $=selector=>document.querySelector(selector),canvas=$('#world'),scene=new T.Scene(),camera=new T.PerspectiveCamera(49,innerWidth/innerHeight,.1,350);
 const renderer=new T.WebGLRenderer({canvas,antialias:true,powerPreference:'high-performance'});
@@ -22,15 +23,19 @@ const hemisphere=new T.HemisphereLight(0xe3edf1,0x686c5c,.36);scene.add(hemisphe
 const effects=createVisualEffects(renderer,scene,camera,sun);
 const orbit=new OrbitControls(camera,canvas);orbit.enableDamping=true;orbit.minDistance=8;orbit.maxDistance=180;orbit.maxPolarAngle=Math.PI*.49;
 const state={ready:false,mode:'overview',...START,seated:null,stance:null,path:null,frames:0,returnRestored:false};
-const keys=new Set(),clock=new T.Clock();let presence,studyPicker,pickerEnabled=false,world,avatar,opponent,duel,duelHint,duelPanel,sky,navigation,drag,nearest,disposed=false,toastTimer,lastShadow=0,studentYaw=0,lastX=0,lastZ=START.z,cameraCheck=0,cameraDistance=5.3,cameraBoxes=[],smoothGround=0;
+const keys=new Set(),clock=new T.Clock();let presence,studyPicker,pickerEnabled=false,world,avatar,opponent,duel,duelHint,duelPanel,sky,navigation,drag,nearest,disposed=false,toastTimer,lastShadow=0,studentYaw=0,lastX=0,lastZ=START.z,cameraCheck=0,cameraDistance=5.3,cameraBoxes=[],smoothGround=0,lastPanelSync=0;
 const coarsePointer=matchMedia('(pointer:coarse)');
 const ray=new T.Raycaster(),aim=new T.Vector3(),direction=new T.Vector3(),targetCamera=new T.Vector3();
 const bridge=createBusinessBridge({clearInput,route:goTo,equipment:()=>world?.interiors.systems,status:()=>{if(bridge.paused)avatar?.cancelAction();syncControls();}});
+const featureCue=createFeatureCue($('#context-actions'));
+let seatControlsMode;
 function syncControls(){
  const walking=state.ready&&state.mode==='walk',paused=bridge.paused,fixed=!!state.seated||!!state.stance;
  $('#touch').hidden=!walking||fixed||paused||!(coarsePointer.matches||innerWidth<700);
  $('#actions').hidden=!walking||fixed||paused;
  $('#seat-tools').hidden=!state.seated||paused;
+ const seatMode=state.seated?.feature||'none';if(seatControlsMode!==seatMode){seatControlsMode=seatMode;if(state.seated){const classroom=seatMode==='courses',study=seatMode==='study';for(const button of $('#seat-tools').querySelectorAll('[data-reading-tool]'))button.hidden=classroom;$('#seat-feature').textContent=classroom?'选择学科':study?'在线自习房间':'查阅资料';}}
+ featureCue.update(walking&&!paused&&!state.stance&&!studyPicker?.isHolding()?describeFeatureCue({interior:world?.inside(state),nearest,seated:state.seated}):null);
  $('#book-actions').hidden=!pickerEnabled||!studyPicker?.isHolding()||paused;
  if(document.body.dataset.seated!==String(fixed))document.body.dataset.seated=String(fixed);
 }
@@ -64,7 +69,7 @@ function findNearest(){
  /* 姿态动作（wave/punch）播放期间原来会整体吞掉提示，作答位这里要例外：
    人是锁在站位上的，动作一播完还会再按，提示中途消失会让人以为卡住了。 */
  if(pickerEnabled&&(studyPicker.isHolding()||studyPicker.getAim())){nearest={id:'study.pick',label:studyPicker.isHolding()?'放回 · '+studyPicker.getHeldLabel():'拿起 · '+studyPicker.getAim().label,action:()=>{studyPicker.isHolding()?studyPicker.putBack():studyPicker.take();return{ok:true};}};return;}
- if(state.seated){nearest={label:'起身继续行走',action:stand};return;}
+ if(state.seated){nearest=state.seated.feature==='courses'?{id:'academy.seated-practice',label:'开始刷题',action:()=>bridge.openFeature('courses')}:{label:'起身继续行走',action:stand};return;}
  /* 作答位：E 不再"再就位一次"，而是重复做那个动作（举手抢答）。
     对手跟着回一次——台上两个人一起动，才读成"在对答"，而不是一个人在空台上挥手。 */
  if(state.stance){nearest={id:'arena.answer',label:'举手抢答',action:()=>{avatar.act('wave',smoothGround);duel?.act('cheer');return{ok:true,message:duel?.peer?'举手抢答 · 对面 '+duel.peer.nick+' 也看得见':'举手抢答（对面还没人就位）'};}};return;}
@@ -73,7 +78,7 @@ function findNearest(){
  for(const item of world.interactions){if(item.disabled)continue;const p=item.object.getWorldPosition(new T.Vector3());entries.push({...item,distance:Math.hypot(state.x-p.x,state.z-p.z)});}
  nearest=entries.filter(i=>i.distance<=i.radius).sort((a,b)=>a.distance-b.distance)[0]||null;
 }
-async function activate(){if(!state.ready||bridge.paused)return;if(state.mode==='overview'){setMode('walk');toast('漫游已开启，走近设施后按 E，或点击底部互动按钮。');return;}if(!nearest)return;clearInput();try{const result=await nearest.action?.();if(result?.kind==='seat'){state.seated=result;state.pitch=0;state.yaw=Math.atan2(result.directions[0][0],-result.directions[0][2]);toast('已坐下，拖动环顾，按 E 或 Esc 起身。');}else if(result?.kind==='pose'){
+async function activate(){if(!state.ready||bridge.paused)return;if(state.mode==='overview'){setMode('walk');toast('漫游已开启，走近设施后按 E，或点击底部互动按钮。');return;}if(!nearest)return;clearInput();try{const result=await nearest.action?.();if(result?.kind==='seat'){state.seated=result;state.pitch=0;state.yaw=Math.atan2(result.directions[0][0],-result.directions[0][2]);toast(result.feature==='courses'?'已入座 · 按 E 开始刷题，Esc 起身。题库和学习记录与网站一致。':'已坐下，拖动环顾，按 E 或 Esc 起身。');}else if(result?.kind==='pose'){
    /* 擂台作答位（arena-district.js 的 arena.stage.jia / .yi）。
       位置是直接摆过去的，不走寻路——站位点就在 1.7m 判定半径内，
       摆过去的落点和原地只差半步，走一段反而像"绕到台后"。
@@ -173,6 +178,9 @@ function updateCamera(dt){
 }
 function frame(){
  if(disposed)return;const dt=Math.min(clock.getDelta(),.10),paused=bridge.paused||document.hidden;
+ // Keep the shared-campus connection alive while the 2D tool owns the screen.
+ // The unchanged 3D background needs no GPU passes during reading or practice.
+ if(bridge.paused){if(performance.now()-lastPanelSync>=250){lastPanelSync=performance.now();presence?.update(.1);}return;}
  if(state.ready){
   const oldX=state.x,oldZ=state.z;
   if(state.mode==='walk'&&!paused&&!state.seated&&!state.stance&&!avatar.locksMovement){
@@ -196,17 +204,18 @@ function frame(){
   world.update(paused?0:dt,{x:state.x,z:state.z});effects.fitShadow(state);if(state.mode==='overview')orbit.update();else updateCamera(dt);
   if(inside==='study'&&!pickerEnabled){studyPicker?.enable();pickerEnabled=!!studyPicker;}else if(inside!=='study'&&pickerEnabled){studyPicker.disable();pickerEnabled=false;}
   if(pickerEnabled)studyPicker.update(paused?0:dt);
-  $('#room-exit').hidden=!inside||bridge.paused;syncControls();
-  findNearest();$('#enter').disabled=bridge.paused||(state.mode!=='overview'&&!nearest);$('#enter').textContent=state.mode==='overview'?'开始漫游 · 开启互动':nearest?'E · '+nearest.label:'走近设施后按 E 互动';$('#jump').disabled=!!avatar.actionState.current||!!state.seated||!!state.stance;
-  $('#location').textContent=inside?({classroom:'教学楼 · 门厅与示范教室',library:'知识图书馆',study:'自习室'})[inside]:state.seated?(state.seated.label||'社交广场 · 休息'):state.stance?state.stance.name:state.z<-15?'教学楼前庭':state.x<-20&&state.z<15?'图书馆前庭':state.x<-20&&state.z>=15?'自习室前庭':state.x>28?'竞技场':state.x>7&&state.z<14?'社交广场':'中央庭院';
-  $('#instructions').textContent=state.mode==='overview'?'拖动旋转，滚轮缩放':state.stance?'作答中 · E 举手抢答 · Esc 起身':state.seated?'拖动环顾，E / Esc 起身':(coarsePointer.matches||innerWidth<700)?'方向键移动，拖动画面转向':'WASD 移动 · Shift 快跑 · E 互动';
+  $('#room-exit').hidden=!inside||bridge.paused;findNearest();syncControls();
+  const cue=describeFeatureCue({interior:inside,nearest,seated:state.seated});
+  $('#enter').disabled=bridge.paused||(state.mode!=='overview'&&!nearest);$('#enter').textContent=state.mode==='overview'?'开始漫游 · 开启互动':nearest?'E · '+(cue?.action||nearest.label):'走近设施后按 E 互动';$('#jump').disabled=!!avatar.actionState.current||!!state.seated||!!state.stance;
+  $('#location').textContent=inside?({classroom:'教学楼 · 刷题教室',library:'知识图书馆',study:'自习室'})[inside]:state.seated?(state.seated.label||'社交广场 · 休息'):state.stance?state.stance.name:state.z<-15?'教学楼前庭':state.x<-20&&state.z<15?'图书馆前庭':state.x<-20&&state.z>=15?'自习室前庭':state.x>28?'竞技场':state.x>7&&state.z<14?'社交广场':'中央庭院';
+  $('#instructions').textContent=state.mode==='overview'?'拖动旋转，滚轮缩放':state.stance?'作答中 · E 举手抢答 · Esc 起身':state.seated?.feature==='courses'?'E 开始刷题 · Esc 起身':state.seated?'拖动环顾，E / Esc 起身':(coarsePointer.matches||innerWidth<700)?'方向键移动，拖动画面转向':'WASD 移动 · Shift 快跑 · E 互动';
   if(!paused&&(moving||avatar.actionState.current||opponent?.moving||world.interiors.moving())&&performance.now()-lastShadow>110){renderer.shadowMap.needsUpdate=true;lastShadow=performance.now();}state.frames++;
  }
  presence?.update(dt);effects.render();
 }
 const roomExit=document.createElement('button');roomExit.id='room-exit';roomExit.hidden=true;roomExit.textContent='回庭院';roomExit.onclick=()=>goTo(world.inside(state)||'classroom');$('#context-actions').append(roomExit);
 const seatTools=document.createElement('div');seatTools.id='seat-tools';seatTools.hidden=true;seatTools.setAttribute('role','group');seatTools.setAttribute('aria-label','座位工具');$('#context-actions').append(seatTools);
-for(const [label,fn]of [['起身',stand],['课程 / 资料',()=>state.seated?.feature==='courses'?bridge.openFeature('courses'):bridge.openFeature('library',{mode:'catalog',seated:true})],['阅读计时',()=>bridge.openFeature('library',{mode:'focus',seated:true})],['书签摘记',()=>bridge.openFeature('library',{mode:'shelf',seated:true})],['自习房间',()=>bridge.openFeature('rooms')]]){const b=document.createElement('button');b.textContent=label;b.onclick=fn;seatTools.append(b);}
+for(const [label,fn,kind]of [['选择学科',()=>state.seated?.feature==='courses'?bridge.openFeature('courses'):state.seated?.feature==='study'?bridge.openFeature('rooms'):bridge.openFeature('library',{mode:'catalog',seated:true}),'primary'],['阅读计时',()=>bridge.openFeature('library',{mode:'focus',seated:true}),'reading'],['书签摘记',()=>bridge.openFeature('library',{mode:'shelf',seated:true}),'reading'],['起身',stand]]){const b=document.createElement('button');b.type='button';b.textContent=label;b.onclick=fn;if(kind==='primary')b.id='seat-feature';if(kind==='reading')b.dataset.readingTool='';seatTools.append(b);}
 const bookActions=document.createElement('div');bookActions.id='book-actions';bookActions.hidden=true;bookActions.setAttribute('role','group');bookActions.setAttribute('aria-label','手中书本');$('#context-actions').append(bookActions);for(const [label,fn]of [['翻书 Q',()=>studyPicker.toggleOpen()],['举起细看',()=>studyPicker.setInspect(!studyPicker.isInspecting())],['放下 G',()=>studyPicker.drop()]]){const b=document.createElement('button');b.textContent=label;b.onclick=()=>{fn();focusScene();};bookActions.append(b);}
 $('#overview').onclick=()=>setMode('overview');$('#walk').onclick=()=>setMode('walk');$('#directory').onclick=()=>setPlaces($('#places').hidden,true);$('#close-places').onclick=()=>setPlaces(false,true);$('#controls-help').onclick=()=>{setPlaces(false);bridge.openFeature('controls');};$('#enter').onclick=activate;$('#jump').onclick=()=>{jump();canvas.focus();};$('#quality').onchange=()=>{resize();focusScene();};$('#retry').onclick=()=>location.reload();
 for(const entry of [...ENTRIES,SITE_EXIT]){const b=document.createElement('button');b.textContent=entry.label;b.dataset.place=entry.id;const span=document.createElement('span');span.textContent='前往';b.append(span);b.onclick=()=>goTo(entry.id);$('#destinations').append(b);}

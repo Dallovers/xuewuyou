@@ -16,6 +16,7 @@ window.WG_Heavy = (function () {
   ];
   var promise = null;
   var done = false;
+  var loadedFiles = Object.create(null);
 
   /* 后台开始加载（幂等，可多次调用）。串行加载避免并发解析大文件卡顿。 */
   function load() {
@@ -24,11 +25,12 @@ window.WG_Heavy = (function () {
       var chain = Promise.resolve();
       FILES.forEach(function (f) {
         chain = chain.then(function () {
+          if (loadedFiles[f]) return;
           return new Promise(function (ok) {
             var s = document.createElement('script');
             s.src = f;
             s.async = false;
-            s.onload = function () { ok(); };
+            s.onload = function () { loadedFiles[f] = true; ok(); };
             s.onerror = function () {
               console.warn('[学无忧] 数据文件加载失败(可忽略):', f);
               ok();
@@ -54,6 +56,18 @@ window.WG_Heavy = (function () {
     return load();
   }
 
+  /* A completed request sequence may include a failed bank download. Retry only
+     missing files and never route the classroom into an empty practice page. */
+  function readyBank() {
+    if (typeof GAOSHU_BANK !== 'undefined') return Promise.resolve();
+    return load().then(function () {
+      if (typeof GAOSHU_BANK !== 'undefined') return;
+      done = false;
+      promise = null;
+      throw new Error('题库暂时没有加载成功，请检查网络后重试');
+    });
+  }
+
   /* 数据未就绪时的占位 HTML（首页题库 / 资料板块） */
   function placeholder(label) {
     return '<div class="hg-loading" role="status" aria-live="polite">' +
@@ -61,5 +75,5 @@ window.WG_Heavy = (function () {
       (label || '题库数据加载中，请稍候…') + '</div>';
   }
 
-  return { load: load, ready: ready, isReady: isReady, placeholder: placeholder };
+  return { load: load, ready: ready, readyBank: readyBank, isReady: isReady, placeholder: placeholder };
 })();
