@@ -20,6 +20,12 @@ const {chromium}=require('playwright'),fs=require('node:fs/promises'),path=requi
   await pb.waitForFunction(()=>{const peer=window.__campusHub.presence().peers[0];return peer?.rendered&&peer.pose.z<28.5&&Math.hypot(peer.rendered[0]-peer.pose.x,peer.rendered[2]-peer.pose.z)<.15;});check('real W movement is synchronized and interpolated in the other renderer',true);
   await pa.keyboard.press('Space');await pb.waitForFunction(()=>{const peer=window.__campusHub.presence().peers[0];return peer?.pose.height>.5&&peer.pose.clip==='jump';},null,{timeout:15000});check('real jump height and native character animation reach the other browser',true);
   await pb.screenshot({path:path.join(out,'two-players.png')});await pa.waitForFunction(()=>!window.__campusHub.snapshot().avatar.action.current);
+  await pa.evaluate(()=>window.__campusHub.openFeature('courses'));
+  const frozenFrames=await pa.evaluate(()=>window.__campusHub.snapshot().frames);
+  await pa.waitForTimeout(17000);
+  check('open learning panel preserves same-room membership beyond the server expiry interval',(await live(pa)).players===2&&(await live(pb)).players===2&&(await live(pa)).joined);
+  check('learning panel stops background rendering while shared-campus heartbeat stays alive',await pa.evaluate(frames=>window.__campusHub.snapshot().frames===frames,frozenFrames));
+  await pa.locator('#close-business').click();
   await pb.locator('#presence-toggle').click();await pa.waitForFunction(()=>window.__campusHub.presence().players===1&&window.__campusHub.presence().loaded===0);check('leaving shared campus removes the peer immediately without exiting 3D',!(await live(pb)).joined&&await pb.locator('#world').isVisible());
   await pb.locator('#presence-toggle').click();await pa.waitForFunction(()=>window.__campusHub.presence().loaded===1,null,{timeout:120000});check('rejoining restores one peer without duplicates',(await live(pa)).players===2);
   check('rejoining reuses downloaded avatar data while keeping independent live models',robotDownloads===2);

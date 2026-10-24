@@ -3,12 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <!-- 提前完成到后端域名的 DNS / TCP / TLS 握手：首次 API 请求原本要为此多花 500-700ms -->
-<link rel="preconnect" href="https://xuewuyou-campus.onrender.com" crossorigin>
-<link rel="dns-prefetch" href="https://xuewuyou-campus.onrender.com">
+<link rel="preconnect" href="https://1.94.225.173" crossorigin>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="description" content="学无忧 · 大学生备考通关平台：高等数学、线性代数、概率论真题级题库，错题复盘与 AI 讲题。">
 <meta name="theme-color" content="#234333">
 <title>学无忧 · 大学生备考通关平台</title>
+<script>if(window.self!==window.top&&new URLSearchParams(location.search).get('embedded')==='campus')document.documentElement.classList.add('campus-panel');</script>
+<style>.campus-panel .topbar,.campus-panel .atlas-sidebar,.campus-panel .skip-link,.campus-panel #campusHomeFeature,.campus-panel #campusHomeShortcuts{display:none!important}.campus-panel .app{max-width:none;padding:16px}.campus-panel .atlas-layout{display:block}.campus-panel #mainContent{min-width:0}.campus-panel body::before,.campus-panel body::after{display:none}</style>
 <link rel="preload" href="vendor/campus-theme/fonts/campus-serif.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="css/style.css?v=22">
 <link rel="stylesheet" href="css/integrations.css?v=1">
@@ -28,7 +29,7 @@
 <script src="vendor/katex/katex.min.js" defer></script>
 <script src="vendor/katex/contrib/auto-render.min.js" defer></script>
   <!-- PDF.js 用于 AI 划词模式 -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js" defer></script>
+  <script src="examples/library-3d/vendor/pdfjs/pdf.min.js" defer></script>
 </head>
 <body>
 
@@ -172,7 +173,7 @@
       <a class="campus-home-hero" id="campusHubEntry" href="js/features/campus-hub/index.html" aria-labelledby="campusTitle campusEntryAction" aria-describedby="campusEntryDescription">
         <picture class="campus-home-picture">
           <source media="(max-width: 640px)" srcset="vendor/campus-home/campus-courtyard-cover-mobile-v1.webp">
-          <img src="vendor/campus-home/campus-courtyard-cover-v1.webp" width="1600" height="900" alt="灰砖与浅石材教学楼围合的开放庭院，白石步道连接圆形喷泉和木质亭廊" fetchpriority="high" decoding="async">
+          <img src="vendor/campus-home/campus-courtyard-cover-v1.webp" width="1600" height="900" alt="灰砖与浅石材教学楼围合的开放庭院，白石步道连接圆形喷泉和木质亭廊" loading="lazy" decoding="async">
         </picture>
         <div class="campus-home-copy">
           <p class="campus-home-today">今日校园</p>
@@ -1055,7 +1056,7 @@
 </div>
 
 <script src="js/deploy-config.js?v=huawei-20261024" defer></script>
-<script src="js/runtime.js?v=1" defer></script>
+<script src="js/runtime.js?v=campus-panels-2" defer></script>
 <script src="js/api.js?v=7" defer></script>
 <script src="js/practice-resume.js?v=1" defer></script>
 <script src="js/data.js?v=8" defer></script>
@@ -1073,8 +1074,8 @@
 <script src="js/study.js?v=11" defer></script>
 <!-- 重型数据延迟加载器：gaoshu_bank / english_words / ielts_words / wenku / wenku_cat
      首屏渲染后后台加载，避免 4.3MB 同步阻塞登录界面 -->
-<script src="js/loader.js?v=1" defer></script>
-<script src="js/app.js?v=58" defer></script>
+<script src="js/loader.js?v=2" defer></script>
+<script src="js/app.js?v=campus-panels-2" defer></script>
 <script src="js/integrations.js?v=wall-3" defer></script>
 <script src="js/whiteboard.js?v=1" defer></script>
 <script src="js/community.js?v=4" defer></script>
