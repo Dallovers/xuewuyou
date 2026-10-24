@@ -37,6 +37,13 @@
 | `js/app.js` | `view === 'arena3d'` → 整页跳转 `js/features/arena/index.html`（与图书馆同样是独立页，不在同页加载第二套引擎） |
 | `index.html` | 校园互动 → 好友竞技场 tab 里加「进入 3D 好友竞技场」；全部功能入口加「3D 竞技场」按钮；`app.js?v=56 → 57` |
 | `js/app.js` | 新增深链 `#community` / `#community/<tab>`（标签名只认 `friends / posts / arena`）——3D 页里的「在主站继续」靠它直接落在好友竞技场那一栏 |
+
+**第二十轮补充**：这一页**没有作答位**，能坐下答题的是整合版 `campus-hub` 里的那座擂台。
+所以擂台面板底部多了一条「去台上坐下答题（校园 · 竞技场）」，指向
+`js/features/campus-hub/index.html?at=arena`；整合版支持 `?at=<地点 id>` 深链落点
+（`arena` / `classroom` / `library` / `study` / `social` / `site-exit`），落的点就是
+「移动」按钮同款的门口位置，参数不认识就当没写。不留这条路的话，用户在这里发完挑战、
+发现自己"没地方打"——这也是「匹配不上、答不了题」的一部分来源。
 | `js/features/arena/index.html` | 左上角「返回主站」回 `index.html#community` |
 
 服务端静态白名单**没改**：页面在 `js/` 下、样式在 `js/features/arena/`、three 在 `vendor/`、贴图走

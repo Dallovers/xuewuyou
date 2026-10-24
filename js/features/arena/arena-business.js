@@ -139,6 +139,15 @@ export function createPanels(refs) {
     opts = opts || {};
     head('擂台 · 好友挑战', '擂台台阶 → 真实好友挑战');
     bodyEl.replaceChildren();
+    /* 这一页**没有作答位**：能坐下答题的是整合版校园里的那座擂台。
+     * 所以这条出路放在登录门禁**之前**——没登录的人同样需要知道"去哪里才打得起来"，
+     * 不给的话，用户在这里发完挑战就没地方打（"匹配不上、答不了题"的一部分）。
+     * 路径从本页算起：baseURI 是 js/features/arena/index.html，所以是一层 '..'。 */
+    const wayOut = el(bodyEl, 'div', null, 'biz');
+    link(wayOut, '去台上坐下答题（校园 · 竞技场）', new URL('../campus-hub/index.html?at=arena', document.baseURI).href, true);
+    el(wayOut, 'p',
+      '两个人都走到甲/乙位按 E：有进行中的挑战就直接开局；没有的话，两边各按一次 E 就现场匹配，不用先加学习搭子。',
+      'biz-meta');
     const s = session();
     if (s.state !== 'cloud') { gate(bodyEl, s); return; }
 
