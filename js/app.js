@@ -943,6 +943,11 @@ var WG_App = (function () {
   }
 
   /* 合并入口保留原 AI 讲题、出题与两种备考计划，使用用户输入和真实记录。 */
+  function renderAiAnswer(node, value) {
+    if (window.WG_AIView) WG_AIView.mount(node, value);
+    else node.textContent = value;
+  }
+
   async function aiToolRun(label, fn, publish) {
     var out = $('aiChat');
     if (out.getAttribute('aria-busy') === 'true') return;
@@ -952,7 +957,7 @@ var WG_App = (function () {
     out.textContent = label + '…（AI 思考中）';
     try {
       var answer = await fn();
-      out.textContent = answer;
+      renderAiAnswer(out, answer);
       /* 只有三类「通用工具」的产出会被公开到「大家问过的」。
        * 「根据我的错题生成计划」不会走到这里——它带着个人错题清单，
        * 公开等于把别人的学习短板挂出来。 */
@@ -999,7 +1004,11 @@ var WG_App = (function () {
         tag.className = 'ai-note-tag';
         tag.textContent = AI_NOTE_KINDS[n.kind] || 'AI';
         var time = document.createElement('time');
-        time.textContent = date(new Date(n.createdAt).toISOString());
+        var created = new Date(n.createdAt);
+        if (!isNaN(created.getTime())) {
+          time.dateTime = created.toISOString();
+          time.textContent = created.toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+        }
         head.append(who, tag, time);
         var q = document.createElement('p');
         q.className = 'ai-note-q';
@@ -1009,7 +1018,7 @@ var WG_App = (function () {
         var summary = document.createElement('summary');
         summary.textContent = '展开回答';
         var body = document.createElement('div');
-        body.textContent = n.answer;
+        renderAiAnswer(body, n.answer);
         detail.append(summary, body);
         item.append(head, q, detail);
         box.appendChild(item);
@@ -1754,7 +1763,8 @@ var WG_App = (function () {
   function aiMsgAdd(role, text) {
     var el = document.createElement('div');
     el.className = 'ai-msg ' + role;
-    el.textContent = text;
+    if (role === 'bot') renderAiAnswer(el, text);
+    else el.textContent = text;
     $('aiMsgs').appendChild(el);
     $('aiMsgs').scrollTop = $('aiMsgs').scrollHeight;
     return el;
@@ -1768,7 +1778,8 @@ var WG_App = (function () {
         var img = el.querySelector('img');
         msgs.push({
           role: el.classList.contains('user') ? 'user' : 'bot',
-          text: el.textContent || '',
+          /* KaTeX DOM contains both MathML and visual glyphs; never persist its textContent. */
+          text: window.WG_AIView ? WG_AIView.source(el) : el.textContent || '',
           photo: img ? img.src : null
         });
       });
@@ -1840,11 +1851,11 @@ var WG_App = (function () {
         aiHistory.push({ role: 'assistant', content: reply });
       }
       loading.classList.remove('loading');
-      loading.textContent = reply;
+      renderAiAnswer(loading, reply);
       aiSaveChat();
     } catch (e) {
       loading.classList.remove('loading');
-      loading.textContent = '⚠ ' + WG_AI.errText(e);
+      renderAiAnswer(loading, '⚠ ' + WG_AI.errText(e));
       aiSaveChat();
     }
     pendingPhoto = null;
@@ -2545,16 +2556,18 @@ var WG_App = (function () {
     $('aiVarLoading').classList.add('hidden');
     $('aiVarContent').classList.remove('hidden');
     var qtext = $('aiVarQText');
-    qtext.textContent = v.question || '（AI 未返回题干）';
+    renderAiAnswer(qtext, v.question || '（AI 未返回题干）');
     /* 选项渲染：剥离「A.」前缀，字母单独成列，点击区更大 */
     var opts = v.options || [];
     $('aiVarOptions').innerHTML = opts.map(function (o, i) {
       var letter = String.fromCharCode(65 + i);
-      var txt = String(o).replace(/^[A-D][.、:：)]?\s*/, '');
       return '<button type="button" class="ai-var-opt" data-letter="' + letter + '">' +
         '<b class="ai-var-opt-letter">' + letter + '.</b>' +
-        '<span class="ai-var-opt-text">' + escHtml(txt) + '</span></button>';
+        '<span class="ai-var-opt-text"></span></button>';
     }).join('');
+    $('aiVarOptions').querySelectorAll('.ai-var-opt-text').forEach(function (node, i) {
+      renderAiAnswer(node, String(opts[i]).replace(/^[A-D][.、:：)]?\s*/, ''));
+    });
     aiVar.answer = String(v.answer || 'A').toUpperCase().replace(/[^A-D]/g, '');
     if (!aiVar.answer || aiVar.answer.length !== 1) aiVar.answer = 'A';
     aiVar.analysis = v.analysis || '（AI 未返回详细解析）';
@@ -2576,7 +2589,7 @@ var WG_App = (function () {
       var banner = $('aiVarStatusBanner');
       banner.className = 'ai-var-status-banner ok';
       banner.textContent = '🎉 回答正确！同类题你已经能举一反三了。';
-      $('aiVarAnalysisText').textContent = aiVar.analysis;
+      renderAiAnswer($('aiVarAnalysisText'), aiVar.analysis);
       $('aiVarResult').classList.remove('hidden');
       var mk = $('aiVarMarkMasteredBtn');
       mk.disabled = false;
@@ -2633,12 +2646,12 @@ var WG_App = (function () {
     WG_AI.analyzeStats({ openMistakes: openN, cleared: cl.length, byTopic: byTopic, weakCount: ms.filter(function (m) { return m.markedWeak; }).length })
       .then(function (reply) {
         loading.classList.remove('loading');
-        loading.textContent = '【📋 学情摘要】\n' + summary + '\n\n【💡 AI 建议】\n' + reply;
+        renderAiAnswer(loading, '【📋 学情摘要】\n' + summary + '\n\n【💡 AI 建议】\n' + reply);
         aiSaveChat();
       })
       .catch(function (e) {
         loading.classList.remove('loading');
-        loading.textContent = '【📋 学情摘要】\n' + summary + '\n\n（AI 建议生成失败：' + WG_AI.errText(e) + '）';
+        renderAiAnswer(loading, '【📋 学情摘要】\n' + summary + '\n\n（AI 建议生成失败：' + WG_AI.errText(e) + '）');
         aiSaveChat();
       });
   }
@@ -2735,11 +2748,6 @@ var WG_App = (function () {
     if (hasCn && hasEng) return '双语对照/术语';
     if (hasCn) return '中文概念/定理';
     return '文字段落';
-  }
-
-  function formatAiAnswer(txt) {
-    if (!txt) return txt;
-    return escHtml(txt).replace(/\n\n+/g, '<br><br>').replace(/\n/g, '<br>');
   }
 
   async function loadPdfForAi(pdfUrl, title) {
@@ -2864,7 +2872,7 @@ var WG_App = (function () {
         { role: 'system', content: systemPrompt },
         { role: 'user', content: '我阅读的资料是「' + ctx + '」，选中了以下这段内容，请帮我深度解剖：\n\n' + text }
       ], { maxTokens: 800, temperature: 0.5 });
-      $('wkdAiAnswerContent').innerHTML = formatAiAnswer(result || 'AI 暂时无法回答，请稍后重试。');
+      renderAiAnswer($('wkdAiAnswerContent'), result || 'AI 暂时无法回答，请稍后重试。');
     } catch (e) {
       $('wkdAiAnswerContent').innerHTML = '<div style="color:var(--danger);">❌ AI 请求失败：' + escHtml(e.message || '网络错误') + '</div>';
     }
