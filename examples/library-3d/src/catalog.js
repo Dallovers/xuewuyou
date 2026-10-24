@@ -88,7 +88,7 @@ async function upload(){
 }
 export async function initCatalog(callbacks){
  ({pause,resume,report}=callbacks);
- try{const r=await fetch('assets/catalog-availability.json');if(!r.ok)throw Error();manifest=(await r.json()).files;}catch{report('文件清单未加载；打开资料时仍会检查实际文件。');}
+ try{const r=await fetch('assets/catalog-availability.json',{signal:AbortSignal.timeout(5000)});if(!r.ok)throw Error();manifest=(await r.json()).files;}catch{report('文件清单未加载；打开资料时仍会检查实际文件。');}
  for(const c of [...WG_WenkuCat.CATS,{id:'private',name:'我的资料'}]){const b=el('button',c.name);b.dataset.id=c.id;b.onclick=()=>selectCategory(c.id);$('categories').append(b);}
  $('search').oninput=$('subject').onchange=$('local-only').onchange=()=>{page=0;renderResults();};
  $('prev').onclick=()=>{page--;renderResults();};$('next').onclick=()=>{page++;renderResults();};
