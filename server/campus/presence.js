@@ -210,6 +210,16 @@ module.exports=function({authUser,store,namespace}){
       if(Math.hypot(next.x-m.pose.x,next.z-m.pose.z)>3+Math.min(3,(now-m.lastSeen)/1000)*7)return;
       m.pose=next;m.seq++;m.lastSeen=now;m.lastPose=now;
     });
+    /* 瞬移：上面那条速度包络会把「一步跨过 40 米」当异常丢掉，而且是**永久**丢掉——
+     * 服务端记住的还是旧位置，之后每次上报都跟旧位置比，人走到哪别人都看不见。
+     * 所以瞬移必须单独一条通道：不做包络，但**限频 1.2 秒**，它不是用来刷位置的。
+     * 位置本身仍要过 pose() 的合法性与边界校验（越界一样拒）。 */
+    socket.on('campus:teleport',body=>{
+      const m=members.get(socket.data.uid),now=Date.now();if(!m||m.socket!==socket)return;
+      if(now-(m.lastTeleport||0)<1200)return;
+      const next=pose(body);if(!next)return;
+      m.pose=next;m.seq++;m.lastSeen=now;m.lastPose=now;m.lastTeleport=now;
+    });
     /* ---------- 擂台：就位 / 动作 / 起身 ---------- */
     socket.on('duel:enter',(body,ack)=>{
       const reply=value=>{if(typeof ack==='function')ack(value);};
