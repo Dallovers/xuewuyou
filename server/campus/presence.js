@@ -1,6 +1,7 @@
 'use strict';
 // Ephemeral presentation state only. Never writes learning, attendance or scores.
 const {randomUUID}=require('node:crypto');
+const createChat=require('./chat');
 const WORLD='campus-hub-v1',ROOM='campus:live:'+WORLD,MAX_PLAYERS=24;
 const wardrobe=require('./wardrobe');
 const AVATARS=new Set(wardrobe.skins.keys());
@@ -36,6 +37,7 @@ function pose(body){
 }
 module.exports=function({authUser,store,namespace}){
   const members=new Map(),rooms=new Map();let ns,timer,closed=false;
+  const chat=createChat({store,authUser,member:socket=>members.get(socket.data.uid),broadcast:message=>ns.to(ROOM).emit('campus:chat',message)});
   /* 挑战变化的旁听者。server.js 在 community.attach 之后把它接到 challenges 上：
    * 挑战一开始，就把两位成员拉进这间房（房间是懒建的，没人就位就不占内存）。 */
   const challengeById=new Map(),hooks=new Set();
@@ -240,6 +242,7 @@ module.exports=function({authUser,store,namespace}){
     return p;
   }
   function attach(namespaceOrServer){ns=namespace||namespaceOrServer;ns.on('connection',socket=>{
+    chat.attach(socket);
     let joining=false;
     socket.on('campus:join',async(body,ack)=>{
       const reply=value=>{if(typeof ack==='function')ack(value);};
@@ -263,7 +266,7 @@ module.exports=function({authUser,store,namespace}){
         if(closed||!identity||!socket.connected)return reply({ok:false,error:'请登录有效的云端账号'});
         const old=members.get(identity.uid);
         if(!old&&members.size>=MAX_PLAYERS)return reply({ok:false,error:'当前校园已满，请稍后再来'});
-        if(old?.socket===socket)return reply({ok:true,self:publicPlayer(old),players:players()});
+        if(old?.socket===socket)return reply({ok:true,self:publicPlayer(old),players:players(),chat:chat.history()});
         if(old){leave(old.socket);old.socket.emit('campus:replaced');}
         const id=randomUUID(),m={id,uid:identity.uid,socket,nick:identity.nick||'同学 '+id.slice(0,4),avatar:body.avatar,pose:spawn(initial),seq:0,lastSeen:Date.now(),lastPose:0};
         members.set(identity.uid,m);socket.join(ROOM);startTimer();
@@ -272,7 +275,7 @@ module.exports=function({authUser,store,namespace}){
          * 这一趟也顺带重建 rooms——重启后的第一份真相来自库，不是内存。 */
         for(const c of mine)duelChallenge(c);
         for(const [challengeId,room] of rooms)if(room.members.includes(identity.uid))socket.join(topic(challengeId));
-        reply({ok:true,self:publicPlayer(m),players:players(),duels:mine.map(c=>({challenge:c.id,topic:c.topic||'',status:c.status}))});
+        reply({ok:true,self:publicPlayer(m),players:players(),chat:chat.history(),duels:mine.map(c=>({challenge:c.id,topic:c.topic||'',status:c.status}))});
       }catch{reply({ok:false,error:'校园连接暂不可用，请重试'});}finally{joining=false;}
     });
     socket.on('campus:appearance',async(body,ack)=>{
@@ -345,6 +348,7 @@ module.exports=function({authUser,store,namespace}){
     setChallengeFactory(fn){challengeFactory=fn;},
     onChallengeEvent(fn){hooks.add(fn);return()=>hooks.delete(fn);},
     close(){
+      chat.close();
       closed=true;clearInterval(timer);timer=null;
       for(const m of [...members.values()])leave(m.socket);
       rooms.clear();stationOwner.clear();challengeById.clear();hooks.clear();queue.clear();

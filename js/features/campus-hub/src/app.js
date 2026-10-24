@@ -27,8 +27,8 @@ const orbit=new OrbitControls(camera,canvas);orbit.enableDamping=true;orbit.minD
 const state={ready:false,mode:'overview',...START,seated:null,stance:null,path:null,frames:0,returnRestored:false};
 const keys=new Set(),clock=new T.Clock();let presence,studyPicker,pickerEnabled=false,world,avatar,opponent,duel,duelHint,duelPanel,sky,navigation,drag,nearest,disposed=false,toastTimer,lastShadow=0,studentYaw=0,lastX=0,lastZ=START.z,cameraCheck=0,cameraDistance=5.3,cameraBoxes=[],smoothGround=0,lastPanelSync=0;
 const coarsePointer=matchMedia('(pointer:coarse)');
-const ray=new T.Raycaster(),aim=new T.Vector3(),direction=new T.Vector3(),targetCamera=new T.Vector3();
-const bridge=createBusinessBridge({clearInput,route:goTo,equipment:()=>world?.interiors.systems,status:()=>{if((bridge.paused||!!document.querySelector('#skin-shop-dialog[open]')))avatar?.cancelAction();syncControls();}});
+const ray=new T.Raycaster(),aim=new T.Vector3(),direction=new T.Vector3(),targetCamera=new T.Vector3(),ownHead=new T.Vector3();
+const bridge=createBusinessBridge({clearInput,route:goTo,equipment:()=>world?.interiors.systems,status:()=>{if(bridge.paused)presence?.closeChat(false);if((bridge.paused||!!document.querySelector('#skin-shop-dialog[open]')))avatar?.cancelAction();syncControls();}});
 const featureCue=createFeatureCue($('#context-actions'));
 const interactionSelection=createInteractionSelection();
 const interactionChoices=createInteractionChoices($('#context-actions'),id=>{
@@ -37,7 +37,7 @@ const interactionChoices=createInteractionChoices($('#context-actions'),id=>{
 });
 let seatControlsMode;
 function syncControls(){
- const walking=state.ready&&state.mode==='walk',paused=(bridge.paused||!!document.querySelector('#skin-shop-dialog[open]')),fixed=!!state.seated||!!state.stance;
+ const walking=state.ready&&state.mode==='walk',paused=(bridge.paused||!!document.querySelector('#skin-shop-dialog[open]')||presence?.chatOpen),fixed=!!state.seated||!!state.stance;
  $('#touch').hidden=!walking||fixed||paused||!(coarsePointer.matches||innerWidth<700);
  $('#actions').hidden=!walking||fixed||paused;
  $('#seat-tools').hidden=!state.seated||paused;
@@ -47,6 +47,7 @@ function syncControls(){
  if(document.body.dataset.seated!==String(fixed))document.body.dataset.seated=String(fixed);
 }
 function setPlaces(open,focus=false){
+ if(open)presence?.closeChat(false);
  clearInput();$('#places').hidden=!open;$('#directory').setAttribute('aria-expanded',String(open));document.body.dataset.placesOpen=String(open);
  if(focus)(open?$('#close-places'):$('#directory')).focus({preventScroll:true});
 }
@@ -237,7 +238,7 @@ function updateCamera(dt){
  targetCamera.copy(aim).addScaledVector(direction,cameraDistance);camera.position.copy(targetCamera);camera.lookAt(aim);
 }
 function frame(){
- if(disposed)return;const dt=Math.min(clock.getDelta(),.10),paused=(bridge.paused||!!document.querySelector('#skin-shop-dialog[open]'))||document.hidden;
+ if(disposed)return;const dt=Math.min(clock.getDelta(),.10),paused=(bridge.paused||!!document.querySelector('#skin-shop-dialog[open]'))||document.hidden||presence?.chatOpen;
  // Keep the shared-campus connection alive while the 2D tool owns the screen.
  // The unchanged 3D background needs no GPU passes during reading or practice.
  if((bridge.paused||!!document.querySelector('#skin-shop-dialog[open]'))){if(performance.now()-lastPanelSync>=250){lastPanelSync=performance.now();presence?.update(.1);}return;}
@@ -300,6 +301,8 @@ for(const entry of [...ENTRIES,SITE_EXIT]){
 $('#site-exit').onclick=e=>{if(e.button!==0||e.ctrlKey||e.metaKey||e.shiftKey||e.altKey)return;e.preventDefault();exitSite();};
 addEventListener('keydown',e=>{
  if(!state.ready||e.target.closest?.('input,textarea,select,[contenteditable=true]')||(bridge.paused||!!document.querySelector('#skin-shop-dialog[open]')))return;
+ if(e.key==='Enter'&&!e.target.closest?.('button,a,dialog,[role=dialog]')&&!e.repeat&&!e.ctrlKey&&!e.metaKey&&!e.altKey&&!e.isComposing&&!duelPanel?.isOpen){e.preventDefault();presence?.openChat();return;}
+ if(presence?.chatOpen)return;
  /* 作答面板开着时键盘全归面板：A/B/C/D 选项、Enter 交卷、Esc 下台。
     面板吃掉一切（连移动键也吃），人锁在作答位上，不该边走边答题。
     唯一例外是面板明确交回来的键（现在是 E）——底部写着「E 举手抢答」，
@@ -314,14 +317,14 @@ addEventListener('keydown',e=>{
  if(['KeyW','KeyA','KeyS','KeyD','ArrowUp','ArrowDown','ArrowLeft','ArrowRight','ShiftLeft','ShiftRight','KeyJ','KeyL'].includes(e.code)){e.preventDefault();focusScene();keys.add(e.code);state.path=null;}
  if(e.code==='KeyE'||e.code==='Space'&&!e.target.closest?.('button,a')){e.preventDefault();if(!e.repeat){if(e.code==='Space')jump();else activate();}}
 });addEventListener('keyup',e=>keys.delete(e.code));addEventListener('blur',clearInput);
-canvas.onpointerdown=e=>{if(duelPanel?.isOpen)return;if(e.button===2&&pickerEnabled&&!(bridge.paused||!!document.querySelector('#skin-shop-dialog[open]'))){studyPicker.setInspect(true);return;}if((bridge.paused||!!document.querySelector('#skin-shop-dialog[open]'))||state.mode!=='walk')return;canvas.focus();canvas.setPointerCapture(e.pointerId);drag={id:e.pointerId,x:e.clientX,y:e.clientY};};
+canvas.onpointerdown=e=>{if(presence?.chatOpen)return;if(duelPanel?.isOpen)return;if(e.button===2&&pickerEnabled&&!(bridge.paused||!!document.querySelector('#skin-shop-dialog[open]'))){studyPicker.setInspect(true);return;}if((bridge.paused||!!document.querySelector('#skin-shop-dialog[open]'))||state.mode!=='walk')return;canvas.focus();canvas.setPointerCapture(e.pointerId);drag={id:e.pointerId,x:e.clientX,y:e.clientY};};
 /* 俯仰上限分两套（2026-10-24）。室外用 pitch 反推第三人称机位（1.7+pitch*3），
    上限只能 0.70，再大就把机位抬到人头顶上去；屋里是第一人称，没有这层牵连。
    而书在桌面上 0.76 m、眼高 1.60 m，贴着桌边站（离书 0.86~0.98 m）需要 0.81~0.97，
    原来的 0.70 让中心射线永远落不到「眼前这本」书上——量出来只能碰到两张桌以外那本，
    用户读到的就是「拿书不灵敏、时灵时不灵」。室内放到 1.30（≈52°，还有 25% 余量）。
    实测：最近可站点上 16/16 本书的 needPitch 都 > 0.70、≤ 0.97。 */
-canvas.onpointermove=e=>{if(duelPanel?.isOpen)return;if(drag?.id!==e.pointerId||(bridge.paused||!!document.querySelector('#skin-shop-dialog[open]')))return;state.yaw+=(e.clientX-drag.x)*.004;state.pitch=T.MathUtils.clamp(state.pitch+(e.clientY-drag.y)*.003,-.45,world?.inside(state)?1.3:.7);drag.x=e.clientX;drag.y=e.clientY;};canvas.onpointerup=canvas.onpointercancel=()=>{drag=null;studyPicker?.setInspect(false);};
+canvas.onpointermove=e=>{if(presence?.chatOpen)return;if(duelPanel?.isOpen)return;if(drag?.id!==e.pointerId||(bridge.paused||!!document.querySelector('#skin-shop-dialog[open]')))return;state.yaw+=(e.clientX-drag.x)*.004;state.pitch=T.MathUtils.clamp(state.pitch+(e.clientY-drag.y)*.003,-.45,world?.inside(state)?1.3:.7);drag.x=e.clientX;drag.y=e.clientY;};canvas.onpointerup=canvas.onpointercancel=()=>{drag=null;studyPicker?.setInspect(false);};
 for(const b of document.querySelectorAll('[data-key]')){b.onpointerdown=e=>{if(duelPanel?.isOpen)return;e.preventDefault();b.setPointerCapture(e.pointerId);keys.add(b.dataset.key);state.path=null;};b.onpointerup=b.onpointercancel=()=>keys.delete(b.dataset.key);}
 addEventListener('resize',resize);document.addEventListener('visibilitychange',()=>{clearInput();studyPicker?.setInspect(false);clock.getDelta();if(state.ready)renderer.setAnimationLoop(document.hidden?null:frame);});
 function dispose(){if(disposed)return;disposed=true;clearInput();clearTimeout(toastTimer);hudObserver.disconnect();renderer.setAnimationLoop(null);duelPanel?.dispose();presence?.dispose();bridge.dispose();document.querySelector('#skin-shop-dialog')?.dispatchEvent(new Event('campus-dispose'));avatar?.dispose();opponent?.dispose();duel?.dispose();duelHint?.remove();studyPicker?.disable();world?.dispose();effects.dispose();sky?.dispose();orbit.dispose();sun.shadow.dispose();scene.environment?.dispose();if(scene.background?.isTexture)scene.background.dispose();renderer.dispose();renderer.forceContextLoss();}
@@ -343,9 +346,9 @@ async function init(){try{
  const record=readReturn(sessionStorage);if(record){Object.assign(state,restorePose(record,navigation));state.returnRestored=!!record.pending;record.pending=false;sessionStorage.setItem(KEY,JSON.stringify(record));}studentYaw=Number.isFinite(record?.heading)?record.heading:Math.PI-state.yaw;lastX=state.x;lastZ=state.z;state.ready=true;
  smoothGround=groundAt(state.x,state.z);
  setMode(record?'walk':'overview');avatar.update({position:{x:state.x,z:state.z,groundY:smoothGround},yaw:studentYaw,dt:0});avatar.setVisible(true);await renderer.compileAsync(scene,camera);renderer.shadowMap.needsUpdate=true;
-const shop=createSkinShop({avatar,clearInput,status:syncControls,toast,openAccount:()=>bridge.openFeature('account')});
+const shop=createSkinShop({avatar,clearInput,status:()=>{if(document.querySelector('#skin-shop-dialog[open]'))presence?.closeChat(false);syncControls();},toast,openAccount:()=>bridge.openFeature('account')});
  shop.restore();
-presence=createCampusPresence({scene,camera,getPose:()=>({x:state.x,y:smoothGround,z:state.z,yaw:studentYaw,height:avatar.jumpHeight,time:avatar.actionState.elapsed,clip:(bridge.paused||!!document.querySelector('#skin-shop-dialog[open]'))||state.seated||state.stance?'idle':avatar.clip,avatar:avatar.variant,studying:(bridge.paused||!!document.querySelector('#skin-shop-dialog[open]'))||!!state.seated||!!state.stance}),setSpawn:(p,sent)=>{if(Math.hypot(state.x-sent.x,state.z-sent.z)<.2&&!navigation.blocked(p.x,p.z)){state.x=p.x;state.z=p.z;lastX=p.x;lastZ=p.z;}},openAccount:()=>bridge.openFeature('account'),prepareAvatar:peer=>renderer.compileAsync(peer.root,camera,scene),shadowChanged:()=>{renderer.shadowMap.needsUpdate=true;}});
+presence=createCampusPresence({scene,camera,clearInput,chatChanged:()=>{clearInput();avatar?.cancelAction();syncControls();},getOwnHead:()=>{const p=avatar.headPosition(ownHead);return p?{x:p.x,y:p.y,z:p.z,visible:avatar.root.visible}:null;},getPose:()=>({x:state.x,y:smoothGround,z:state.z,yaw:studentYaw,height:avatar.jumpHeight,time:avatar.actionState.elapsed,clip:(bridge.paused||!!document.querySelector('#skin-shop-dialog[open]'))||state.seated||state.stance?'idle':avatar.clip,avatar:avatar.variant,studying:(bridge.paused||!!document.querySelector('#skin-shop-dialog[open]'))||!!state.seated||!!state.stance}),setSpawn:(p,sent)=>{if(Math.hypot(state.x-sent.x,state.z-sent.z)<.2&&!navigation.blocked(p.x,p.z)){state.x=p.x;state.z=p.z;lastX=p.x;lastZ=p.z;}},openAccount:()=>bridge.openFeature('account'),prepareAvatar:peer=>renderer.compileAsync(peer.root,camera,scene),shadowChanged:()=>{renderer.shadowMap.needsUpdate=true;}});
 /* 对面没人在那个位时挂一块牌子：空台对读不出"我在等谁"，而凭空放一个替身
    又会被读成"和人机对打"。牌子只用一句话说清楚状态，不参与任何判定。 */
 duelHint=document.createElement('p');duelHint.id='duel-hint';duelHint.hidden=true;duelHint.setAttribute('role','status');document.body.append(duelHint);
@@ -378,6 +381,7 @@ window.__campusHub.districts=()=>world?.districts.map(d=>{
 });
 window.__campusHub.visuals=()=>({...effects.snapshot(),memory:{...renderer.info.memory},programs:renderer.info.programs.length,water:world?.courtyard.snapshot().water,paving:world?.pavingSnapshot()});
 window.__campusHub.presence=()=>presence?.snapshot();
+window.__campusHub.chat=()=>presence?.chatSnapshot();
 /* 擂台现场的自检入口：把 duel 本体的接口和 enter() 的**原始返回值**交出来。
    只读，不改状态；排查"人在台上但对面看不见"的时候，看这个比看 3D 快得多。 */
 window.__campusHub.duelApi=()=>duel?{snapshot:duel.snapshot,challenge:duel.challenge,peer:duel.peer,peerAct:duel.peerAct,enter:seat=>duel.enter(seat),match:seat=>duel.match(seat),act:kind=>duel.act(kind),connect:()=>duel.connect()}:null;

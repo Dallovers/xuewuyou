@@ -6,6 +6,8 @@ import {createStudentAvatar} from './avatar.js';
 export function createAvatarManager(scene,{changed=()=>{}}={}){
  const anchor=new T.Group();let current=null,generation=0,disposed=false,pose=null,visible=true,loading=false;
  return {
+  get height(){return current?.height||1.72;},
+  headPosition:target=>current?.headPosition(target),
   get root(){return current?.root||anchor;},get model(){return current?.model;},
   get variant(){return current?.variant||'anime';},get clip(){return current?.clip||'idle';},
   get actionState(){return current?.actionState||{current:null,elapsed:0};},
