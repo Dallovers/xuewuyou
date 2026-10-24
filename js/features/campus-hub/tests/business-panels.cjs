@@ -7,7 +7,7 @@ const assert=require('node:assert/strict');
  page.on('pageerror',error=>errors.push(error.message));
  page.on('request',request=>{if(request.isNavigationRequest()&&request.url().includes('embedded=campus'))navigations.push(request.url());});
  try{
-  await page.goto('http://127.0.0.1:4184/js/features/campus-hub/index.html');
+  await page.goto(new URL('js/features/campus-hub/index.html',process.env.CAMPUS_TEST_BASE||'http://127.0.0.1:4184/').href);
   await page.waitForFunction(()=>window.__campusHub?.snapshot().ready&&window.__campusHub.snapshot().frames>3,null,{timeout:120000});
   const seat=await page.evaluate(()=>window.__campusHub.interactions().find(item=>item.id.startsWith('academy.seat-')));
   assert(seat,'classroom has an actual interactive chair');
@@ -90,7 +90,7 @@ const assert=require('node:assert/strict');
   assert.equal(await page.locator('#seat-tools').isVisible(),false,'Escape stands up after the panel is closed');
   const retryPage=await browser.newPage({viewport:{width:1440,height:900}});let blockedBank=false;
   await retryPage.route('**/js/gaoshu_bank.js*',route=>{if(!blockedBank){blockedBank=true;route.abort();}else route.continue();});
-  await retryPage.goto('http://127.0.0.1:4184/js/features/campus-hub/index.html');
+  await retryPage.goto(new URL('js/features/campus-hub/index.html',process.env.CAMPUS_TEST_BASE||'http://127.0.0.1:4184/').href);
   await retryPage.waitForFunction(()=>window.__campusHub?.snapshot().ready&&window.__campusHub.snapshot().frames>3,null,{timeout:120000});
   await retryPage.evaluate(()=>window.__campusHub.openFeature('courses'));
   await retryPage.getByRole('button',{name:'高等数学',exact:true}).click();

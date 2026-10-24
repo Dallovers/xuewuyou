@@ -4,7 +4,7 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict'),fs=r
  const browser=await chromium.launch({channel:'msedge',headless:true,args:['--use-angle=d3d11','--ignore-gpu-blocklist']}),page=await browser.newPage({viewport:{width:1440,height:900}}),checks=[],errors=[];
  page.on('pageerror',e=>errors.push(e.message));const snap=()=>page.evaluate(()=>window.__campusHub.snapshot()),check=(name,ok)=>{assert(ok,name);checks.push(name);console.log('PASS',name);};
  try{
-  await page.goto('http://127.0.0.1:4184/js/features/campus-hub/index.html');await page.waitForFunction(()=>window.__campusHub?.snapshot().ready&&window.__campusHub.snapshot().frames>3,null,{timeout:120000});
+  await page.goto(new URL('js/features/campus-hub/index.html',process.env.CAMPUS_TEST_BASE||'http://127.0.0.1:4184/').href);await page.waitForFunction(()=>window.__campusHub?.snapshot().ready&&window.__campusHub.snapshot().frames>3,null,{timeout:120000});
   check('overview offers an enabled explicit interaction start button',await page.locator('#enter').isEnabled()&&(await page.locator('#enter').textContent()).includes('开启互动'));await page.locator('#enter').click();check('start button enters walk mode and focuses scene',(await snap()).mode==='walk'&&await page.evaluate(()=>document.activeElement.id==='world'));
   // Follow normal UI navigation, with no setPose or explicit canvas.focus().
   await page.locator('#directory').click();await page.locator('[data-place="library"]').click();await page.waitForFunction(()=>window.__campusHub.snapshot().path?.length===0,null,{timeout:60000});
