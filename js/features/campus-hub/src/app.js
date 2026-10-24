@@ -232,7 +232,7 @@ const duelPanelOpen=()=>!!duelPanel?.isOpen;
 function updateCamera(dt){
  if(!state.seated&&world?.inside(state)){camera.position.set(state.x,smoothGround+1.6+(avatar?.jumpHeight||0),state.z);camera.lookAt(state.x+Math.sin(state.yaw),camera.position.y-state.pitch,state.z-Math.cos(state.yaw));return;}
  if(state.seated){camera.position.fromArray(state.seated.position);camera.lookAt(camera.position.x+Math.sin(state.yaw),camera.position.y-state.pitch,camera.position.z-Math.cos(state.yaw));return;}
- const ground=smoothGround,height=avatar?.jumpHeight||0;aim.set(state.x,ground+1.12+height*.65,state.z);direction.set(-Math.sin(state.yaw)*5,1.7+state.pitch*3,Math.cos(state.yaw)*5).normalize();
+ const ground=smoothGround,height=avatar?.jumpHeight||0;aim.set(state.x,ground+1.12+height*.65,state.z);direction.set(-Math.sin(state.yaw)*5,1.7+Math.min(state.pitch,.7)*3,Math.cos(state.yaw)*5).normalize();
  if(performance.now()-cameraCheck>90){ray.set(aim,direction);cameraDistance=5.3;for(const box of cameraBoxes){const hit=ray.ray.intersectBox(box,new T.Vector3());if(hit)cameraDistance=Math.min(cameraDistance,Math.max(.5,hit.distanceTo(aim)-.2));}cameraCheck=performance.now();}
  targetCamera.copy(aim).addScaledVector(direction,cameraDistance);camera.position.copy(targetCamera);camera.lookAt(aim);
 }
@@ -315,7 +315,13 @@ addEventListener('keydown',e=>{
  if(e.code==='KeyE'||e.code==='Space'&&!e.target.closest?.('button,a')){e.preventDefault();if(!e.repeat){if(e.code==='Space')jump();else activate();}}
 });addEventListener('keyup',e=>keys.delete(e.code));addEventListener('blur',clearInput);
 canvas.onpointerdown=e=>{if(duelPanel?.isOpen)return;if(e.button===2&&pickerEnabled&&!(bridge.paused||!!document.querySelector('#skin-shop-dialog[open]'))){studyPicker.setInspect(true);return;}if((bridge.paused||!!document.querySelector('#skin-shop-dialog[open]'))||state.mode!=='walk')return;canvas.focus();canvas.setPointerCapture(e.pointerId);drag={id:e.pointerId,x:e.clientX,y:e.clientY};};
-canvas.onpointermove=e=>{if(duelPanel?.isOpen)return;if(drag?.id!==e.pointerId||(bridge.paused||!!document.querySelector('#skin-shop-dialog[open]')))return;state.yaw+=(e.clientX-drag.x)*.004;state.pitch=T.MathUtils.clamp(state.pitch+(e.clientY-drag.y)*.003,-.45,.7);drag.x=e.clientX;drag.y=e.clientY;};canvas.onpointerup=canvas.onpointercancel=()=>{drag=null;studyPicker?.setInspect(false);};
+/* 俯仰上限分两套（2026-10-24）。室外用 pitch 反推第三人称机位（1.7+pitch*3），
+   上限只能 0.70，再大就把机位抬到人头顶上去；屋里是第一人称，没有这层牵连。
+   而书在桌面上 0.76 m、眼高 1.60 m，贴着桌边站（离书 0.86~0.98 m）需要 0.81~0.97，
+   原来的 0.70 让中心射线永远落不到「眼前这本」书上——量出来只能碰到两张桌以外那本，
+   用户读到的就是「拿书不灵敏、时灵时不灵」。室内放到 1.30（≈52°，还有 25% 余量）。
+   实测：最近可站点上 16/16 本书的 needPitch 都 > 0.70、≤ 0.97。 */
+canvas.onpointermove=e=>{if(duelPanel?.isOpen)return;if(drag?.id!==e.pointerId||(bridge.paused||!!document.querySelector('#skin-shop-dialog[open]')))return;state.yaw+=(e.clientX-drag.x)*.004;state.pitch=T.MathUtils.clamp(state.pitch+(e.clientY-drag.y)*.003,-.45,world?.inside(state)?1.3:.7);drag.x=e.clientX;drag.y=e.clientY;};canvas.onpointerup=canvas.onpointercancel=()=>{drag=null;studyPicker?.setInspect(false);};
 for(const b of document.querySelectorAll('[data-key]')){b.onpointerdown=e=>{if(duelPanel?.isOpen)return;e.preventDefault();b.setPointerCapture(e.pointerId);keys.add(b.dataset.key);state.path=null;};b.onpointerup=b.onpointercancel=()=>keys.delete(b.dataset.key);}
 addEventListener('resize',resize);document.addEventListener('visibilitychange',()=>{clearInput();studyPicker?.setInspect(false);clock.getDelta();if(state.ready)renderer.setAnimationLoop(document.hidden?null:frame);});
 function dispose(){if(disposed)return;disposed=true;clearInput();clearTimeout(toastTimer);hudObserver.disconnect();renderer.setAnimationLoop(null);duelPanel?.dispose();presence?.dispose();bridge.dispose();document.querySelector('#skin-shop-dialog')?.dispatchEvent(new Event('campus-dispose'));avatar?.dispose();opponent?.dispose();duel?.dispose();duelHint?.remove();studyPicker?.disable();world?.dispose();effects.dispose();sky?.dispose();orbit.dispose();sun.shadow.dispose();scene.environment?.dispose();if(scene.background?.isTexture)scene.background.dispose();renderer.dispose();renderer.forceContextLoss();}
