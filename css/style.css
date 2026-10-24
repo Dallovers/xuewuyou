@@ -4073,3 +4073,5 @@ main, #mainContent, footer { position: relative; z-index: 1; }
   /* 撑高后左右内边距也要跟上，否则按钮会显得瘦长 */
   .btn.sm, .sc-btn, .mod-filter .wt-btn { padding-left: 0.9rem; padding-right: 0.9rem; }
 }
+
+.bank-coin-reward{display:block;margin:12px 0;padding:10px 14px;border:1px solid #83a99166;border-radius:10px;background:#e8f4ec;color:#28583c;font-weight:600;font-size:14px;line-height:1.5}

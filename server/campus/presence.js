@@ -1,9 +1,11 @@
 'use strict';
 // Ephemeral presentation state only. Never writes learning, attendance or scores.
 const {randomUUID}=require('node:crypto');
+const createChat=require('./chat');
 const WORLD='campus-hub-v1',ROOM='campus:live:'+WORLD,MAX_PLAYERS=24;
-const AVATARS=new Set(['anime','robot','formal','prototype']);
-const CLIPS=new Set(['idle','walk','run','jump']);
+const wardrobe=require('./wardrobe');
+const AVATARS=new Set(wardrobe.skins.keys());
+const CLIPS=new Set(['idle','walk','run','jump','wave','punch']);
 /* ---------- 擂台（第十五轮） ----------
  * 好友挑战原来是「异步」的：两边各答各的，谁也不在场。这一轮让两个人真的在同一座
  * 擂台上互相看得见——但**只同步表现**，判分、计时、交卷仍然完全由 community 模块负责。
@@ -35,6 +37,7 @@ function pose(body){
 }
 module.exports=function({authUser,store,namespace}){
   const members=new Map(),rooms=new Map();let ns,timer,closed=false;
+  const chat=createChat({store,authUser,member:socket=>members.get(socket.data.uid),broadcast:message=>ns.to(ROOM).emit('campus:chat',message)});
   /* ---------- 一个账号可以有好几条连接 ----------
    * 整合版校园里，同一个页面会开两条：化身（campus:pose 那条）一条、擂台（duel:*）一条。
    * 以前这里按"一个账号一条连接"建模，后连的会把先连的清理掉（leave + campus:replaced），
@@ -284,6 +287,7 @@ module.exports=function({authUser,store,namespace}){
     return p;
   }
   function attach(namespaceOrServer){ns=namespace||namespaceOrServer;ns.on('connection',socket=>{
+    chat.attach(socket);
     let joining=false;
     socket.on('campus:join',async(body,ack)=>{
       const reply=value=>{if(typeof ack==='function')ack(value);};
@@ -294,7 +298,7 @@ module.exports=function({authUser,store,namespace}){
       try{
         const identity=await store.run(()=>{
           const user=authUser({headers:{authorization:'Bearer '+(socket.handshake.auth?.token||'')}});
-          if(!user)return null;
+          if(!user||!wardrobe.owns(store,user.id,body.avatar))return null;
           const data=store.get('community','main',{})||{};
           const profile=data.profiles?.[user.id];
           /* 顺手把我**还活着的挑战**读出来一起带出去。
@@ -307,7 +311,7 @@ module.exports=function({authUser,store,namespace}){
         if(closed||!identity||!socket.connected)return reply({ok:false,error:'请登录有效的云端账号'});
         const old=members.get(identity.uid);
         if(!old&&members.size>=MAX_PLAYERS)return reply({ok:false,error:'当前校园已满，请稍后再来'});
-        if(old?.socket===socket)return reply({ok:true,self:publicPlayer(old),players:players()});
+        if(old?.socket===socket)return reply({ok:true,self:publicPlayer(old),players:players(),chat:chat.history()});
         /* 先把这条连接登记进来，再通知旧连接。顺序不能反：
          * 旧连接收到 campus:replaced 会立刻断开，那时 leave() 要能看到"账号还有别的连接在线"，
          * 才不会把人正在排的队、正在坐的位一起清掉。 */
@@ -323,12 +327,23 @@ module.exports=function({authUser,store,namespace}){
          * 这一趟也顺带重建 rooms——重启后的第一份真相来自库，不是内存。 */
         for(const c of mine)duelChallenge(c);
         for(const [challengeId,room] of rooms)if(room.members.includes(identity.uid))socket.join(topic(challengeId));
-        reply({ok:true,self:publicPlayer(m),players:players(),duels:mine.map(c=>({challenge:c.id,topic:c.topic||'',status:c.status}))});
+        reply({ok:true,self:publicPlayer(m),players:players(),chat:chat.history(),duels:mine.map(c=>({challenge:c.id,topic:c.topic||'',status:c.status}))});
       }catch{reply({ok:false,error:'校园连接暂不可用，请重试'});}finally{joining=false;}
     });
     /* 位置可以来自这个账号的**任何一条**连接：整合版校园里化身上报走 presence 那条、
      * 擂台走 duel 那条，两条会互相顶号。只认"当前主连接"的话，
      * 主连接换成不发位置的那条时，位置就再也收不到，人会被误判成掉线。 */
+    socket.on('campus:appearance',async(body,ack)=>{
+      const reply=value=>{if(typeof ack==='function')ack(value);};
+      if(Date.now()<(socket.data.appearanceAfter||0))return reply({ok:false,error:'请稍后再换装'});
+      socket.data.appearanceAfter=Date.now()+500;
+      try{
+        const valid=await store.run(()=>{const user=authUser({headers:{authorization:'Bearer '+(socket.handshake.auth?.token||'')}});return !!user&&wardrobe.owns(store,user.id,body?.avatar);},{readOnly:true});
+        /* 换装同样按账号认连接（同一个人可能同时有化身与擂台两条连接）。 */
+        const m=members.get(socket.data.uid);if(!valid||!m||!connections.get(socket.data.uid)?.has(socket))return reply({ok:false,error:'皮肤尚未拥有或连接已失效'});
+        m.avatar=body.avatar;m.seq++;ns.to(ROOM).emit('campus:state',{world:WORLD,players:players()});reply({ok:true});
+      }catch{reply({ok:false,error:'换装同步暂不可用'});}
+    });
     socket.on('campus:pose',body=>{
       const uid=socket.data.uid,m=members.get(uid),now=Date.now();
       if(!m||!connections.get(uid)?.has(socket)||now-m.lastPose<60)return;
@@ -391,6 +406,7 @@ module.exports=function({authUser,store,namespace}){
     setChallengeFactory(fn){challengeFactory=fn;},
     onChallengeEvent(fn){hooks.add(fn);return()=>hooks.delete(fn);},
     close(){
+      chat.close();
       closed=true;clearInterval(timer);timer=null;
       for(const set of [...connections.values()])for(const s of [...set])leave(s);
       rooms.clear();stationOwner.clear();challengeById.clear();hooks.clear();queue.clear();

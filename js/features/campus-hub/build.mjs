@@ -11,4 +11,6 @@ await writeFile(output,(await readFile(output,'utf8')).replace(/[\t ]+$/gm,''));
 const hash=async file=>createHash('sha256').update(await readFile(new URL(file,import.meta.url))).digest('hex').slice(0,12);
 let html=await readFile(new URL('index.html',import.meta.url),'utf8');
 html=html.replace(/src="app\.bundle\.js(?:\?v=[^"]*)?"/,`src="app.bundle.js?v=${await hash('app.bundle.js')}"`).replace(/href="hub\.css(?:\?v=[^"]*)?"/,`href="hub.css?v=${await hash('hub.css')}"`);
+html=html.replace(/href="skins\.css(?:\?v=[^"]*)?"/,`href="skins.css?v=${await hash('skins.css')}"`);
+html=html.replace(/href="chat\.css(?:\?v=[^"]*)?"/,`href="chat.css?v=${await hash('chat.css')}"`);
 await writeFile(new URL('index.html',import.meta.url),html);

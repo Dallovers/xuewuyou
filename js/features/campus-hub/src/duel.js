@@ -74,6 +74,9 @@ function loadClient() {
  */
 export function createArenaDuel(options = {}) {
   const toast = options.toast || (() => {});
+  const shared=typeof options.campusConnection==='function',bindings=[];
+  function bind(event,handler){socket.on(event,handler);bindings.push([socket,event,handler]);}
+  function unbind(){for(const [target,event,handler]of bindings)target.off(event,handler);bindings.length=0;}
   /* id → { topic, peer, status, ticking, finishedAt }
    *   ticking    我自己真的点了「开始作答」（只用于排序，不决定能不能坐）
    *   finishedAt 我自己已交卷（那就不该再上去了） */
@@ -152,18 +155,20 @@ export function createArenaDuel(options = {}) {
     if (s.state !== 'cloud') return null;
     connecting = (async () => {
       try {
-        io = await loadClient();
-        if (closed) return null;
-        socket = io(apiBase() + '/community', {
-          auth: (cb) => cb({ token: s.token }),
-          reconnection: true, reconnectionDelay: 700, reconnectionDelayMax: 5000, timeout: 10000,
-        });
-        /* 重连之后要把"我还在等"这件事重新说一遍。
+        unbind();
+        if(shared){
+          const link=await options.campusConnection();if(!link||closed)return null;
+          socket=link.socket;joined=true;selfId=link.selfId;if(link.duels?.length)setMeta(link.duels);
+        }else{
+          io=await loadClient();if(closed)return null;
+          socket=io(apiBase()+'/community',{auth:cb=>cb({token:s.token}),reconnection:true,reconnectionDelay:700,reconnectionDelayMax:5000,timeout:10000});
+        }
+        /* 连接建立/恢复时做两件事：补 join，以及把"我还在等"重新说一遍。
          * 匹配队列是服务端的**内存表**：服务重启（每次上线都会重启）或网络抖一下，
          * 队列就空了，而人还站在台上、界面还写着「正在匹配对手」——
          * 对面按下 E 时服务端根本不知道我在等，于是两个人各自等各自的，永远配不上。
-         * 这里在连接恢复、并且确实还在等（没有已经坐进去的挑战）时重新入队一次。 */
-        socket.on('connect', () => {
+         * 所以只要确认还在等（matching）且没有已经坐进去的挑战，就重新入队一次。 */
+        bind('connect', () => {
           if (closed) return;
           ensureJoined().then(() => {
             if (closed || !socket?.connected || !matching || challenge) return;
@@ -172,20 +177,20 @@ export function createArenaDuel(options = {}) {
             });
           });
         });
-        socket.on('duel:seats', onSeats);
-        socket.on('duel:seat', (m) => { if (m?.id) upsertSeat(m); onSeats(m); });
-        socket.on('duel:state', onState);
-        socket.on('duel:act', onAct);
+        bind('duel:seats', onSeats);
+        bind('duel:seat', (m) => { if (m?.id) upsertSeat(m); onSeats(m); });
+        bind('duel:state', onState);
+        bind('duel:act', onAct);
         /* 匹配成功：由服务端告诉我"配到哪一场、坐哪个位"。
          * 这时候人已经站在台上了，所以直接走就位那一步，不再问一次挑战列表。 */
-        socket.on('duel:matched', (m) => { onMatched(m); });
-        socket.on('duel:left', (m) => {
+        bind('duel:matched', (m) => { onMatched(m); });
+        bind('duel:left', (m) => {
           if (!m?.id) return;
           seats.delete(m.id);
           if (peer?.id === m.id) peer = null;
           emit();
         });
-        socket.on('disconnect', () => { joined = false; selfId = ''; });
+        bind('disconnect', () => { joined = false; selfId = ''; });
       } catch (error) {
         toast('擂台现场连接失败：' + (error?.message || error));
         return null;
@@ -258,6 +263,8 @@ export function createArenaDuel(options = {}) {
 
   async function join() {
     if (closed) return false;
+    if(shared){const link=await options.campusConnection();if(!link)return false;joined=true;selfId=link.selfId;if(link.duels?.length)setMeta(link.duels);if(challenge)sendEnter(challenge,station);emit();return true;}
+
     /* 不要在这里直接 `if(!socket.connected) return false`：
      * 那是一个静默失败，调用方拿不到"只是还没连上"和"连接坏了"的区别，
      * 前者会让人莫名停在 connecting。等一等，等不到再算失败。 */
@@ -281,6 +288,7 @@ export function createArenaDuel(options = {}) {
    * 同一条 socket 刚 join 过再发一次，会被挡回来（"请稍后再加入"）。
    * 所以重试几轮，每轮间隔都比节流窗口长；拿到就收手。 */
   async function refreshDuels(rounds = 2) {
+    if(shared){await fromApi();return !!candidate();}
     for (let i = 0; i < rounds; i++) {
       await new Promise((r) => setTimeout(r, 900));
       if (!socket?.connected) return false;
@@ -561,7 +569,7 @@ export function createArenaDuel(options = {}) {
       closed = true;
       listeners.clear();
       try { leave(); } catch { }
-      if (socket) { socket.removeAllListeners(); socket.disconnect(); socket = null; }
+      unbind();if(socket&&!shared){socket.removeAllListeners();socket.disconnect();}socket=null;
       joined = false;
       detail = null;
     },

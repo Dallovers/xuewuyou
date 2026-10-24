@@ -16,7 +16,13 @@ import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
  *  1. 交互对象（world.interactions 的 object）连同祖先、子树一律不动 ——
  *     它们按对象身份取世界坐标，烘进去就再也找不到。
  *  2. 会动的对象不动：名字像门/帘/钟/水花的整棵子树跳过（碰撞体另外走
- *     colliders/boxes，不依赖这些 Mesh）。
+ *     colliders/boxes，不依赖这些 Mesh）；**再加一条：祖先链上挂了
+ *     `userData.dynamic` 的整棵子树也跳过**。这条是老师入口门把手的真因
+ *     （2026-10-24）：门 root 由 `makeDoor()` 标了 `dynamic`，名字却是中文
+ *     label（不匹配 SKIP_NAME），门扇里的 `Door stile`/`Door rail` 靠自己的
+ *     名字躲过去了，`Pull handle` 名字干净 → 被烘进静态批次、原件从门扇里摘掉
+ *     → 门一开把手留在门口悬空。examples 自己的合批（architecture.js:245）
+ *     本来就是沿树继承 dynamic 的，这里补齐同一个语义。
  *  3. 只合并普通 isMesh：InstancedMesh / SkinnedMesh / Points / Line /
  *     自己挂了 onBeforeRender 的（水面反射体）/ 多材质 / 透明材质全部跳过。
  *
@@ -43,6 +49,14 @@ function skipByName(n) {
   return false;
 }
 
+/* 祖先链上任一层标了 userData.dynamic，整棵子树都不许烘（与 examples 的合批同一语义）。
+   门 root 的名字是中文 label，光靠 SKIP_NAME 只挡得住 Door stile / Door rail，
+   挡不住 Pull handle —— 那正是「开门后把手悬空」的来路。 */
+function underDynamic(n) {
+  for (let a = n; a; a = a.parent) if (a.userData && a.userData.dynamic) return true;
+  return false;
+}
+
 function isStaticCandidate(n, protectSet) {
   if (!n.isMesh || n.isInstancedMesh || n.isSkinnedMesh || n.isReflector) return false;
   if (!n.geometry || !n.geometry.attributes.position) return false;
@@ -51,7 +65,7 @@ function isStaticCandidate(n, protectSet) {
   if (n.userData && (n.userData.pickables || n.userData.skipContactAO || n.userData.dynamic)) return false;
   if (Array.isArray(n.material) || !n.material) return false;
   if (n.material.transparent || n.material.depthWrite === false) return false;
-  if (protectSet.has(n) || skipByName(n)) return false;
+  if (protectSet.has(n) || skipByName(n) || underDynamic(n)) return false;
   const dr = n.geometry.drawRange;
   if (dr && (dr.start !== 0 || (dr.count !== Infinity && dr.count < n.geometry.attributes.position.count))) return false;
   return true;

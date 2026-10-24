@@ -135,3 +135,19 @@ test('管理员后台在 PostgreSQL 下可用：处罚生效、审计落库、�
   const bRow=(await req(a,'/api/admin/users')).items.find(u=>u.id===b.user.id);
   assert.ok(bRow.mutedUntil>Date.now(),'禁言截止时间应持久化');
 });
+
+test('PostgreSQL wardrobe serializes rewards and purchases and survives restart',{skip:!configured},async()=>{
+  const bank=[...questions.values()].filter(q=>!q.selfAssessed),first=bank[0];
+  const rewarded=await Promise.all(Array.from({length:6},()=>req(a,'/api/skins/answer','POST',{qid:first.id,answer:first.answer})));
+  assert(rewarded.every(r=>r.status===200));assert.equal(rewarded.reduce((n,r)=>n+r.gained,0),10);
+  for(const q of bank.slice(1,8))assert.equal((await req(a,'/api/skins/answer','POST',{qid:q.id,answer:q.answer})).gained,10);
+  assert.equal((await req(a,'/api/skins/wallet')).wallet.balance,80);
+  const purchases=await Promise.all(Array.from({length:2},()=>req(a,'/api/skins/purchase','POST',{id:'kaykit-knight',price:0})));
+  assert(purchases.every(r=>r.status===200));
+  const w=(await req(a,'/api/skins/wallet')).wallet;assert.equal(w.balance,0);assert.equal(w.spent,80);assert.equal(w.owned.filter(id=>id==='kaykit-knight').length,1);
+  assert.equal((await req(b,'/api/skins/equip','POST',{id:'kaykit-knight'})).status,400);
+  assert.equal((await req(a,'/api/skins/equip','POST',{id:'kaykit-knight'})).wallet.equipped,'kaykit-knight');
+  await stopServer();await startServer();
+  const restored=(await req(a,'/api/skins/wallet')).wallet;assert.equal(restored.balance,0);assert.equal(restored.equipped,'kaykit-knight');assert.equal(restored.earned,80);
+  assert.equal((await req(b,'/api/skins/wallet')).wallet.balance,0);
+});

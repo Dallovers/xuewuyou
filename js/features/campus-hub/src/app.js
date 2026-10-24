@@ -2,7 +2,8 @@ import * as T from 'three';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
 import {RGBELoader} from 'three/addons/loaders/RGBELoader.js';
 import {createWorld} from './world.js';
-import {createStudentAvatar} from './avatar.js';
+import {createAvatarManager} from './avatar-manager.js';
+import {createSkinShop} from './skin-shop.js';
 import {createArenaDuelAvatar} from './arena-opponent.js';
 import {createArenaDuel, DUEL_TOP, DUEL_STATIONS, otherSeat} from './duel.js';
 import {createDuelPanel} from './duel-panel.js';
@@ -26,8 +27,8 @@ const orbit=new OrbitControls(camera,canvas);orbit.enableDamping=true;orbit.minD
 const state={ready:false,mode:'overview',...START,seated:null,stance:null,path:null,frames:0,returnRestored:false};
 const keys=new Set(),clock=new T.Clock();let presence,studyPicker,pickerEnabled=false,world,avatar,opponent,duel,duelHint,duelPanel,sky,navigation,drag,nearest,disposed=false,toastTimer,lastShadow=0,studentYaw=0,lastX=0,lastZ=START.z,cameraCheck=0,cameraDistance=5.3,cameraBoxes=[],smoothGround=0,lastPanelSync=0;
 const coarsePointer=matchMedia('(pointer:coarse)');
-const ray=new T.Raycaster(),aim=new T.Vector3(),direction=new T.Vector3(),targetCamera=new T.Vector3();
-const bridge=createBusinessBridge({clearInput,route:goTo,equipment:()=>world?.interiors.systems,status:()=>{if(bridge.paused)avatar?.cancelAction();syncControls();}});
+const ray=new T.Raycaster(),aim=new T.Vector3(),direction=new T.Vector3(),targetCamera=new T.Vector3(),ownHead=new T.Vector3();
+const bridge=createBusinessBridge({clearInput,route:goTo,equipment:()=>world?.interiors.systems,status:()=>{if(bridge.paused)presence?.closeChat(false);if((bridge.paused||!!document.querySelector('#skin-shop-dialog[open]')))avatar?.cancelAction();syncControls();}});
 const featureCue=createFeatureCue($('#context-actions'));
 const interactionSelection=createInteractionSelection();
 const interactionChoices=createInteractionChoices($('#context-actions'),id=>{
@@ -36,7 +37,7 @@ const interactionChoices=createInteractionChoices($('#context-actions'),id=>{
 });
 let seatControlsMode;
 function syncControls(){
- const walking=state.ready&&state.mode==='walk',paused=bridge.paused,fixed=!!state.seated||!!state.stance;
+ const walking=state.ready&&state.mode==='walk',paused=(bridge.paused||!!document.querySelector('#skin-shop-dialog[open]')||presence?.chatOpen),fixed=!!state.seated||!!state.stance;
  $('#touch').hidden=!walking||fixed||paused||!(coarsePointer.matches||innerWidth<700);
  $('#actions').hidden=!walking||fixed||paused;
  $('#seat-tools').hidden=!state.seated||paused;
@@ -46,6 +47,7 @@ function syncControls(){
  if(document.body.dataset.seated!==String(fixed))document.body.dataset.seated=String(fixed);
 }
 function setPlaces(open,focus=false){
+ if(open)presence?.closeChat(false);
  clearInput();$('#places').hidden=!open;$('#directory').setAttribute('aria-expanded',String(open));document.body.dataset.placesOpen=String(open);
  if(focus)(open?$('#close-places'):$('#directory')).focus({preventScroll:true});
 }
@@ -55,7 +57,7 @@ function measureHUD(){
 }
 const hudObserver=new ResizeObserver(measureHUD);hudObserver.observe($('.campus-toolbar'));hudObserver.observe($('footer'));
 function clearInput(){keys.clear();drag=null;state.path=null;}
-function focusScene(){if(state.ready&&state.mode==='walk'&&!bridge.paused&&!disposed)canvas.focus({preventScroll:true});}
+function focusScene(){if(state.ready&&state.mode==='walk'&&!(bridge.paused||!!document.querySelector('#skin-shop-dialog[open]'))&&!disposed)canvas.focus({preventScroll:true});}
 function toast(text){$('#toast').textContent=text;$('#toast').hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('#toast').hidden=true,4200);}
 function configureWater(){const q=$('#quality').value;world?.courtyard.configureQuality(q==='auto'&&state.mode==='walk'?'fluid':q,innerWidth);}
 function resize(){const q=$('#quality').value,ratio=q==='high'?1.5:q==='fluid'?.8:innerWidth<700?.9:1;renderer.setPixelRatio(Math.min(devicePixelRatio,ratio));renderer.setSize(innerWidth,innerHeight);camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();effects.resize(innerWidth,innerHeight,q);configureWater();renderer.shadowMap.needsUpdate=true;syncControls();measureHUD();}
@@ -68,7 +70,7 @@ state.mode=mode;orbit.enabled=mode==='overview';$('#overview').setAttribute('ari
 /* 起身：两个"定点"共用一条出口——自习室的座位（state.seated）和擂台的作答位（state.stance）。
    作答位是先锁住移动的，所以没有"走开就自动取消"这条路，只能就地解除。 */
 function stand(){if(state.stance){closeDuelPanel();duel?.leave();state.stance=null;avatar.cancelAction();focusScene();toast('已离开作答位');return;}if(!state.seated)return;state.seated.onStand?.();state.seated=null;clearInput();focusScene();toast('已起身');}
-function goTo(id){if(!state.ready||bridge.paused)return;stand();setMode('walk');if(world.inside(state))world.interiors.open(world.inside(state),true);const entry=ENTRIES.find(e=>e.id===id)||(id===SITE_EXIT.id?SITE_EXIT:null);if(!entry)return;const goal={x:entry.outside[0],z:entry.outside[1]};const route=navigation.route(state,goal);if(!route){toast('暂时找不到通路，请换个站位重试。');return;}state.path=route;toast('正在前往'+entry.label+(id===SITE_EXIT.id?'，走近后按 E 返回网站。':'，走近后按 E 互动。'));}
+function goTo(id){if(!state.ready||(bridge.paused||!!document.querySelector('#skin-shop-dialog[open]')))return;stand();setMode('walk');if(world.inside(state))world.interiors.open(world.inside(state),true);const entry=ENTRIES.find(e=>e.id===id)||(id===SITE_EXIT.id?SITE_EXIT:null);if(!entry)return;const goal={x:entry.outside[0],z:entry.outside[1]};const route=navigation.route(state,goal);if(!route){toast('暂时找不到通路，请换个站位重试。');return;}state.path=route;toast('正在前往'+entry.label+(id===SITE_EXIT.id?'，走近后按 E 返回网站。':'，走近后按 E 互动。'));}
 /* 移动（第十七轮，界面上叫「移动」，接口是 teleport）：不走寻路，直接把人和相机落到门口。
  * 与 goTo 共用同一套出口逻辑（起身 → 退室内 → 切漫游），区别只在"走过去"还是"落过去"。
  * 落点用 ENTRIES[].outside——那本来就是寻路的目标点，必然是能站的合法位置；
@@ -77,7 +79,7 @@ function goTo(id){if(!state.ready||bridge.paused)return;stand();setMode('walk');
  * 人物朝向会甩一下）、smoothGround（地面高度平滑对 >1.2m 的跳变直接吸附，这里先赋准值）。
  * 网络位置单独走 presence.teleport()：campus:pose 的速度包络会把这一跳当异常丢掉。 */
 function teleportTo(id){
- if(!state.ready||bridge.paused)return {ok:false,reason:'not-ready'};
+ if(!state.ready||(bridge.paused||!!document.querySelector('#skin-shop-dialog[open]')))return {ok:false,reason:'not-ready'};
  const entry=ENTRIES.find(e=>e.id===id)||(id===SITE_EXIT.id?SITE_EXIT:null);
  if(!entry)return {ok:false,reason:'unknown-place'};
  stand();setMode('walk');
@@ -97,7 +99,7 @@ function teleportTo(id){
 }
 function exitSite(){clearInput();try{sessionStorage.removeItem(KEY);}catch{}location.assign(new URL('../../../index.html#home',document.baseURI).href);return{ok:true};}
 function findNearest(){
- nearest=null;if(!state.ready||state.mode!=='walk'||bridge.paused){interactionSelection.clear();return;}
+ nearest=null;if(!state.ready||state.mode!=='walk'||(bridge.paused||!!document.querySelector('#skin-shop-dialog[open]'))){interactionSelection.clear();return;}
  if(state.seated||state.stance||avatar.actionState.current||(pickerEnabled&&(studyPicker.isHolding()||studyPicker.getAim())))interactionSelection.clear();
  /* 姿态动作（wave/punch）播放期间原来会整体吞掉提示，作答位这里要例外：
    人是锁在站位上的，动作一播完还会再按，提示中途消失会让人以为卡住了。 */
@@ -111,7 +113,7 @@ function findNearest(){
  for(const item of world.interactions){if(item.disabled)continue;const p=item.object.getWorldPosition(new T.Vector3());entries.push({...item,distance:Math.hypot(state.x-p.x,state.z-p.z)});}
  nearest=interactionSelection.update(entries);
 }
-async function activate(){if(!state.ready||bridge.paused)return;if(state.mode==='overview'){setMode('walk');toast('漫游已开启，走近设施后按 E，或点击底部互动按钮。');return;}if(!nearest)return;clearInput();try{const result=await nearest.action?.();if(result?.kind==='seat'){state.seated=result;state.pitch=0;state.yaw=Math.atan2(result.directions[0][0],-result.directions[0][2]);toast(result.feature==='courses'?'已入座 · 按 E 开始刷题，Esc 起身。题库和学习记录与网站一致。':'已坐下，拖动环顾，按 E 或 Esc 起身。');}else if(result?.kind==='pose'){
+async function activate(){if(!state.ready||(bridge.paused||!!document.querySelector('#skin-shop-dialog[open]')))return;if(state.mode==='overview'){setMode('walk');toast('漫游已开启，走近设施后按 E，或点击底部互动按钮。');return;}if(!nearest)return;clearInput();try{const result=await nearest.action?.();if(result?.kind==='seat'){state.seated=result;state.pitch=0;state.yaw=Math.atan2(result.directions[0][0],-result.directions[0][2]);toast(result.feature==='courses'?'已入座 · 按 E 开始刷题，Esc 起身。题库和学习记录与网站一致。':'已坐下，拖动环顾，按 E 或 Esc 起身。');}else if(result?.kind==='pose'){
    /* 擂台作答位（arena-district.js 的 arena.stage.jia / .yi）。
       位置是直接摆过去的，不走寻路——站位点就在 1.7m 判定半径内，
       摆过去的落点和原地只差半步，走一段反而像"绕到台后"。
@@ -160,7 +162,8 @@ async function activate(){if(!state.ready||bridge.paused)return;if(state.mode===
      toast((result.message||'已就位')+hint+' · 按 E 举手，Esc 起身');
    }
   }else if(result?.kind==='equipment'){bridge.openFeature('equipment');}else if(result?.kind==='note'){bridge.openFeature('note',{text:result.text});}else if(result?.message)toast(result.message);}catch(error){toast('操作未完成：'+error.message);}finally{focusScene();}}
-function jump(){if(state.mode==='walk'&&!bridge.paused&&!state.seated&&!state.stance)avatar?.act('jump',smoothGround);}
+function gesture(name){if(state.mode==='walk'&&!bridge.paused&&!document.querySelector('#skin-shop-dialog[open]')&&!state.seated&&!state.stance)avatar?.act(name,smoothGround);}
+function jump(){if(state.mode==='walk'&&!(bridge.paused||!!document.querySelector('#skin-shop-dialog[open]'))&&!state.seated&&!state.stance)avatar?.act('jump',smoothGround);}
 /* 匹配分到的位和我站的那个不一样时，人得跟着挪过去：
  * 服务端只管座位表（谁在哪个位），3D 里人在哪归这里。
  * 两个人都站在甲位按 E 时，后来的那位会被挪到乙位——不挪的话两个人叠在同一个点上。 */
@@ -194,6 +197,7 @@ function syncDuel(){
   return;
  }
  /* 别人朝我，正好是我朝向的 π：我在甲位（yaw π）时他在乙位（yaw 0） */
+ if(presence?.hasPeer(peer.id)){if(opponent?.visible)opponent.depart();showDuelHint(peer.submitted?peer.nick+' · 已交卷':peer.nick+' · 已在对面');return;}
  const facing=Math.PI-(peer.seat==='jia'?Math.PI:0);
  if(opponent?.visible&&opponent.seat===peer.seat){
   showDuelHint(peer.submitted?peer.nick+' · 已交卷':peer.nick+' · 已在对面');
@@ -229,15 +233,15 @@ const duelPanelOpen=()=>!!duelPanel?.isOpen;
 function updateCamera(dt){
  if(!state.seated&&world?.inside(state)){camera.position.set(state.x,smoothGround+1.6+(avatar?.jumpHeight||0),state.z);camera.lookAt(state.x+Math.sin(state.yaw),camera.position.y-state.pitch,state.z-Math.cos(state.yaw));return;}
  if(state.seated){camera.position.fromArray(state.seated.position);camera.lookAt(camera.position.x+Math.sin(state.yaw),camera.position.y-state.pitch,camera.position.z-Math.cos(state.yaw));return;}
- const ground=smoothGround,height=avatar?.jumpHeight||0;aim.set(state.x,ground+1.12+height*.65,state.z);direction.set(-Math.sin(state.yaw)*5,1.7+state.pitch*3,Math.cos(state.yaw)*5).normalize();
+ const ground=smoothGround,height=avatar?.jumpHeight||0;aim.set(state.x,ground+1.12+height*.65,state.z);direction.set(-Math.sin(state.yaw)*5,1.7+Math.min(state.pitch,.7)*3,Math.cos(state.yaw)*5).normalize();
  if(performance.now()-cameraCheck>90){ray.set(aim,direction);cameraDistance=5.3;for(const box of cameraBoxes){const hit=ray.ray.intersectBox(box,new T.Vector3());if(hit)cameraDistance=Math.min(cameraDistance,Math.max(.5,hit.distanceTo(aim)-.2));}cameraCheck=performance.now();}
  targetCamera.copy(aim).addScaledVector(direction,cameraDistance);camera.position.copy(targetCamera);camera.lookAt(aim);
 }
 function frame(){
- if(disposed)return;const dt=Math.min(clock.getDelta(),.10),paused=bridge.paused||document.hidden;
+ if(disposed)return;const dt=Math.min(clock.getDelta(),.10),paused=(bridge.paused||!!document.querySelector('#skin-shop-dialog[open]'))||document.hidden||presence?.chatOpen;
  // Keep the shared-campus connection alive while the 2D tool owns the screen.
  // The unchanged 3D background needs no GPU passes during reading or practice.
- if(bridge.paused){if(performance.now()-lastPanelSync>=250){lastPanelSync=performance.now();presence?.update(.1);}return;}
+ if((bridge.paused||!!document.querySelector('#skin-shop-dialog[open]'))){if(performance.now()-lastPanelSync>=250){lastPanelSync=performance.now();presence?.update(.1);}return;}
  if(state.ready){
   const oldX=state.x,oldZ=state.z;
   if(state.mode==='walk'&&!paused&&!state.seated&&!state.stance&&!avatar.locksMovement){
@@ -261,9 +265,9 @@ function frame(){
   world.update(paused?0:dt,{x:state.x,z:state.z});effects.fitShadow(state);if(state.mode==='overview')orbit.update();else updateCamera(dt);
   if(inside==='study'&&!pickerEnabled){studyPicker?.enable();pickerEnabled=!!studyPicker;}else if(inside!=='study'&&pickerEnabled){studyPicker.disable();pickerEnabled=false;}
   if(pickerEnabled)studyPicker.update(paused?0:dt);
-  $('#room-exit').hidden=!inside||bridge.paused;$('#room-equipment').hidden=inside!=='classroom'||bridge.paused||state.mode!=='walk';findNearest();syncControls();
+  $('#room-exit').hidden=!inside||(bridge.paused||!!document.querySelector('#skin-shop-dialog[open]'));$('#room-equipment').hidden=inside!=='classroom'||(bridge.paused||!!document.querySelector('#skin-shop-dialog[open]'))||state.mode!=='walk';findNearest();syncControls();
   const cue=describeFeatureCue({interior:inside,nearest,seated:state.seated});
-  $('#enter').disabled=bridge.paused||(state.mode!=='overview'&&!nearest);$('#enter').textContent=state.mode==='overview'?'开始漫游 · 开启互动':nearest?'E · '+(cue?.action||nearest.label):'走近设施后按 E 互动';$('#jump').disabled=!!avatar.actionState.current||!!state.seated||!!state.stance;
+  $('#enter').disabled=(bridge.paused||!!document.querySelector('#skin-shop-dialog[open]'))||(state.mode!=='overview'&&!nearest);$('#enter').textContent=state.mode==='overview'?'开始漫游 · 开启互动':nearest?'E · '+(cue?.action||nearest.label):'走近设施后按 E 互动';$('#jump').disabled=!avatar.clips.includes('jump')||!!avatar.actionState.current||!!state.seated||!!state.stance;for(const [id,action]of [['avatar-wave','wave'],['avatar-punch','punch']])$('#'+id).disabled=!avatar.clips.includes(action)||!!avatar.actionState.current;
   $('#location').textContent=inside?({classroom:'教学楼 · 刷题教室',library:'知识图书馆',study:'自习室'})[inside]:state.seated?(state.seated.label||'社交广场 · 休息'):state.stance?state.stance.name:state.z<-15?'教学楼前庭':state.x<-20&&state.z<15?'图书馆前庭':state.x<-20&&state.z>=15?'自习室前庭':state.x>28?'竞技场':state.x>7&&state.z<14?'社交广场':'中央庭院';
   interactionChoices.update(interactionSelection.items,nearest);
   $('#instructions').textContent=state.mode==='overview'?'拖动旋转，滚轮缩放':state.stance?'作答中 · E 举手抢答 · Esc 起身':state.seated?.feature==='courses'?'E 开始刷题 · Esc 起身':state.seated?'拖动环顾，E / Esc 起身':interactionSelection.items.length>1?'E 使用当前目标 · F 切换 · 也可点选附近互动':(coarsePointer.matches||innerWidth<700)?'方向键移动，拖动画面转向':'WASD 移动 · Shift 快跑 · E 互动';
@@ -277,6 +281,7 @@ const roomEquipment=document.createElement('button');roomEquipment.id='room-equi
 const seatTools=document.createElement('div');seatTools.id='seat-tools';seatTools.hidden=true;seatTools.setAttribute('role','group');seatTools.setAttribute('aria-label','座位工具');$('#context-actions').append(seatTools);
 for(const [label,fn,kind]of [['选择学科',()=>state.seated?.feature==='courses'?bridge.openFeature('courses'):state.seated?.feature==='study'?bridge.openFeature('rooms'):bridge.openFeature('library',{mode:'catalog',seated:true}),'primary'],['阅读计时',()=>bridge.openFeature('library',{mode:'focus',seated:true}),'reading'],['书签摘记',()=>bridge.openFeature('library',{mode:'shelf',seated:true}),'reading'],['起身',stand]]){const b=document.createElement('button');b.type='button';b.textContent=label;b.onclick=fn;if(kind==='primary')b.id='seat-feature';if(kind==='reading')b.dataset.readingTool='';seatTools.append(b);}
 const bookActions=document.createElement('div');bookActions.id='book-actions';bookActions.hidden=true;bookActions.setAttribute('role','group');bookActions.setAttribute('aria-label','手中书本');$('#context-actions').append(bookActions);for(const [label,fn]of [['翻书 Q',()=>studyPicker.toggleOpen()],['举起细看',()=>studyPicker.setInspect(!studyPicker.isInspecting())],['放下 G',()=>studyPicker.drop()]]){const b=document.createElement('button');b.textContent=label;b.onclick=()=>{fn();focusScene();};bookActions.append(b);}
+$('#avatar-wave').onclick=()=>{gesture('wave');focusScene();};$('#avatar-punch').onclick=()=>{gesture('punch');focusScene();};
 $('#overview').onclick=()=>setMode('overview');$('#walk').onclick=()=>setMode('walk');$('#directory').onclick=()=>setPlaces($('#places').hidden,true);$('#close-places').onclick=()=>setPlaces(false,true);$('#controls-help').onclick=()=>{setPlaces(false);bridge.openFeature('controls');};$('#enter').onclick=activate;$('#jump').onclick=()=>{jump();canvas.focus();};$('#quality').onchange=()=>{resize();focusScene();};$('#retry').onclick=()=>location.reload();
 /* 每个目的地两个动作：走过去（默认）/ 直接移动到门口。
    分开成两颗按钮而不是"长按"之类的隐藏交互——隐藏手势没人会发现，
@@ -295,7 +300,9 @@ for(const entry of [...ENTRIES,SITE_EXIT]){
 }
 $('#site-exit').onclick=e=>{if(e.button!==0||e.ctrlKey||e.metaKey||e.shiftKey||e.altKey)return;e.preventDefault();exitSite();};
 addEventListener('keydown',e=>{
- if(!state.ready||e.target.closest?.('input,textarea,select,[contenteditable=true]')||bridge.paused)return;
+ if(!state.ready||e.target.closest?.('input,textarea,select,[contenteditable=true]')||(bridge.paused||!!document.querySelector('#skin-shop-dialog[open]')))return;
+ if(e.key==='Enter'&&!e.target.closest?.('button,a,dialog,[role=dialog]')&&!e.repeat&&!e.ctrlKey&&!e.metaKey&&!e.altKey&&!e.isComposing&&!duelPanel?.isOpen){e.preventDefault();presence?.openChat();return;}
+ if(presence?.chatOpen)return;
  /* 作答面板开着时键盘全归面板：A/B/C/D 选项、Enter 交卷、Esc 下台。
     面板吃掉一切（连移动键也吃），人锁在作答位上，不该边走边答题。
     唯一例外是面板明确交回来的键（现在是 E）——底部写着「E 举手抢答」，
@@ -303,17 +310,24 @@ addEventListener('keydown',e=>{
  if(duelPanel?.isOpen&&duelPanel.handleKey(e)){e.preventDefault();return;}
  if(e.code==='Escape'){if(!$('#places').hidden){e.preventDefault();setPlaces(false,true);return;}stand();clearInput();return;}
  if(state.mode!=='walk'){if(e.code==='KeyE'&&!e.repeat){e.preventDefault();activate();}return;}
+ if(['KeyZ','KeyX'].includes(e.code)&&!e.repeat&&!e.ctrlKey&&!e.metaKey&&!e.altKey){e.preventDefault();gesture(e.code==='KeyZ'?'wave':'punch');return;}
  if(e.code==='KeyF'&&!e.repeat&&!e.ctrlKey&&!e.metaKey&&!e.altKey){e.preventDefault();findNearest();nearest=interactionSelection.cycle();syncControls();return;}
  if(!e.repeat&&pickerEnabled&&['KeyQ','KeyR','KeyG'].includes(e.code)){e.preventDefault();if(e.code==='KeyQ')studyPicker.toggleOpen();else studyPicker.drop();return;}
  if(!e.repeat&&e.code==='KeyC'&&world.inside(state)==='study'){e.preventDefault();if(state.seated){stand();return;}const seats=world.interactions.filter(i=>i.id.startsWith('study.seat.')).map(i=>({i,d:i.object.getWorldPosition(new T.Vector3()).distanceTo(new T.Vector3(state.x,0,state.z))})).sort((a,b)=>a.d-b.d);if(seats[0]?.d<1.65){nearest=seats[0].i;activate();}return;}
  if(['KeyW','KeyA','KeyS','KeyD','ArrowUp','ArrowDown','ArrowLeft','ArrowRight','ShiftLeft','ShiftRight','KeyJ','KeyL'].includes(e.code)){e.preventDefault();focusScene();keys.add(e.code);state.path=null;}
  if(e.code==='KeyE'||e.code==='Space'&&!e.target.closest?.('button,a')){e.preventDefault();if(!e.repeat){if(e.code==='Space')jump();else activate();}}
 });addEventListener('keyup',e=>keys.delete(e.code));addEventListener('blur',clearInput);
-canvas.onpointerdown=e=>{if(duelPanel?.isOpen)return;if(e.button===2&&pickerEnabled&&!bridge.paused){studyPicker.setInspect(true);return;}if(bridge.paused||state.mode!=='walk')return;canvas.focus();canvas.setPointerCapture(e.pointerId);drag={id:e.pointerId,x:e.clientX,y:e.clientY};};
-canvas.onpointermove=e=>{if(duelPanel?.isOpen)return;if(drag?.id!==e.pointerId||bridge.paused)return;state.yaw+=(e.clientX-drag.x)*.004;state.pitch=T.MathUtils.clamp(state.pitch+(e.clientY-drag.y)*.003,-.45,.7);drag.x=e.clientX;drag.y=e.clientY;};canvas.onpointerup=canvas.onpointercancel=()=>{drag=null;studyPicker?.setInspect(false);};
+canvas.onpointerdown=e=>{if(presence?.chatOpen)return;if(duelPanel?.isOpen)return;if(e.button===2&&pickerEnabled&&!(bridge.paused||!!document.querySelector('#skin-shop-dialog[open]'))){studyPicker.setInspect(true);return;}if((bridge.paused||!!document.querySelector('#skin-shop-dialog[open]'))||state.mode!=='walk')return;canvas.focus();canvas.setPointerCapture(e.pointerId);drag={id:e.pointerId,x:e.clientX,y:e.clientY};};
+/* 俯仰上限分两套（2026-10-24）。室外用 pitch 反推第三人称机位（1.7+pitch*3），
+   上限只能 0.70，再大就把机位抬到人头顶上去；屋里是第一人称，没有这层牵连。
+   而书在桌面上 0.76 m、眼高 1.60 m，贴着桌边站（离书 0.86~0.98 m）需要 0.81~0.97，
+   原来的 0.70 让中心射线永远落不到「眼前这本」书上——量出来只能碰到两张桌以外那本，
+   用户读到的就是「拿书不灵敏、时灵时不灵」。室内放到 1.30（≈52°，还有 25% 余量）。
+   实测：最近可站点上 16/16 本书的 needPitch 都 > 0.70、≤ 0.97。 */
+canvas.onpointermove=e=>{if(presence?.chatOpen)return;if(duelPanel?.isOpen)return;if(drag?.id!==e.pointerId||(bridge.paused||!!document.querySelector('#skin-shop-dialog[open]')))return;state.yaw+=(e.clientX-drag.x)*.004;state.pitch=T.MathUtils.clamp(state.pitch+(e.clientY-drag.y)*.003,-.45,world?.inside(state)?1.3:.7);drag.x=e.clientX;drag.y=e.clientY;};canvas.onpointerup=canvas.onpointercancel=()=>{drag=null;studyPicker?.setInspect(false);};
 for(const b of document.querySelectorAll('[data-key]')){b.onpointerdown=e=>{if(duelPanel?.isOpen)return;e.preventDefault();b.setPointerCapture(e.pointerId);keys.add(b.dataset.key);state.path=null;};b.onpointerup=b.onpointercancel=()=>keys.delete(b.dataset.key);}
 addEventListener('resize',resize);document.addEventListener('visibilitychange',()=>{clearInput();studyPicker?.setInspect(false);clock.getDelta();if(state.ready)renderer.setAnimationLoop(document.hidden?null:frame);});
-function dispose(){if(disposed)return;disposed=true;clearInput();clearTimeout(toastTimer);hudObserver.disconnect();renderer.setAnimationLoop(null);duelPanel?.dispose();presence?.dispose();bridge.dispose();avatar?.dispose();opponent?.dispose();duel?.dispose();duelHint?.remove();studyPicker?.disable();world?.dispose();effects.dispose();sky?.dispose();orbit.dispose();sun.shadow.dispose();scene.environment?.dispose();if(scene.background?.isTexture)scene.background.dispose();renderer.dispose();renderer.forceContextLoss();}
+function dispose(){if(disposed)return;disposed=true;clearInput();clearTimeout(toastTimer);hudObserver.disconnect();renderer.setAnimationLoop(null);duelPanel?.dispose();presence?.dispose();bridge.dispose();document.querySelector('#skin-shop-dialog')?.dispatchEvent(new Event('campus-dispose'));avatar?.dispose();opponent?.dispose();duel?.dispose();duelHint?.remove();studyPicker?.disable();world?.dispose();effects.dispose();sky?.dispose();orbit.dispose();sun.shadow.dispose();scene.environment?.dispose();if(scene.background?.isTexture)scene.background.dispose();renderer.dispose();renderer.forceContextLoss();}
 addEventListener('pagehide',dispose);addEventListener('pageshow',e=>{if(e.persisted)location.reload();});
 async function init(){try{
  resize();const hdr=await new RGBELoader().loadAsync(new URL('../../../examples/campus-3d-v5/assets/sky.hdr',document.baseURI).href),pmrem=new T.PMREMGenerator(renderer);scene.environment=pmrem.fromEquirectangular(hdr).texture;scene.environmentIntensity=.5;sky=createSkyEnvironment(hdr);scene.add(sky.mesh);pmrem.dispose();
@@ -321,18 +335,20 @@ async function init(){try{
  await import(new URL('../study/pick.js?campus=interiors6',document.baseURI).href);studyPicker=window.StudyDistrict.pick.createPicker({THREE:T,camera,root:world.study.root,scene,dom:canvas,colliders:world.study.colliders,externalInput:true});
   configureWater();
  cameraBoxes=[...world.boxes,...world.cameraObstacles].map(b=>new T.Box3(new T.Vector3(b.minX,b.minY??0,b.minZ),new T.Vector3(b.maxX,b.maxY??(b.id?.startsWith('academy')?18:b.id==='library'?6:b.id==='study'?4.2:b.id==='bench'?.5:b.id==='lamp'?4:3),b.maxZ)));
- $('#progress').textContent='加载校园人物…';avatar=await createStudentAvatar(scene);
+ avatar=createAvatarManager(scene,{changed:()=>{renderer.shadowMap.needsUpdate=true;presence?.appearance();}});
  /* 擂台现场（第十五轮）：化身、连接、对手状态，三样都**可选**。
      单独 try：他加载失败只该"台上只有我一个人"，不该让整个校园打不开。 */
- try{$('#progress').textContent='加载擂台化身…';opponent=await createArenaDuelAvatar(scene);}catch(error){console.warn('擂台化身加载失败',error);}
+ try{$('#progress').textContent='加载擂台化身…';createArenaDuelAvatar(scene).then(value=>{if(disposed)value.dispose();else opponent=value;}).catch(error=>console.warn('擂台化身加载失败',error));}catch(error){console.warn('擂台化身加载失败',error);}
  /* 擂台现场（第十五轮）：连一条 /community socket，进出作答位时告诉服务端我在哪，
      对手的动作从 duel:act 回来。这里不读挑战列表——挑哪一场交给 duel.js 的候选规则，
      它只需要知道「有没有已开始、未交卷的挑战」，那件事在就位那一刻由 socket 回话给出。 */
- duel=createArenaDuel({toast});
+ duel=createArenaDuel({toast,campusConnection:()=>presence?.connection()});
  const record=readReturn(sessionStorage);if(record){Object.assign(state,restorePose(record,navigation));state.returnRestored=!!record.pending;record.pending=false;sessionStorage.setItem(KEY,JSON.stringify(record));}studentYaw=Number.isFinite(record?.heading)?record.heading:Math.PI-state.yaw;lastX=state.x;lastZ=state.z;state.ready=true;
  smoothGround=groundAt(state.x,state.z);
  setMode(record?'walk':'overview');avatar.update({position:{x:state.x,z:state.z,groundY:smoothGround},yaw:studentYaw,dt:0});avatar.setVisible(true);await renderer.compileAsync(scene,camera);renderer.shadowMap.needsUpdate=true;
-presence=createCampusPresence({scene,camera,getPose:()=>({x:state.x,y:smoothGround,z:state.z,yaw:studentYaw,height:avatar.jumpHeight,time:avatar.actionState.elapsed,clip:bridge.paused||state.seated||state.stance?'idle':avatar.clip,avatar:avatar.variant,studying:bridge.paused||!!state.seated||!!state.stance}),setSpawn:(p,sent)=>{if(Math.hypot(state.x-sent.x,state.z-sent.z)<.2&&!navigation.blocked(p.x,p.z)){state.x=p.x;state.z=p.z;lastX=p.x;lastZ=p.z;}},openAccount:()=>bridge.openFeature('account'),prepareAvatar:peer=>renderer.compileAsync(peer.root,camera,scene),shadowChanged:()=>{renderer.shadowMap.needsUpdate=true;}});
+const shop=createSkinShop({avatar,clearInput,status:()=>{if(document.querySelector('#skin-shop-dialog[open]'))presence?.closeChat(false);syncControls();},toast,openAccount:()=>bridge.openFeature('account')});
+ shop.restore();
+presence=createCampusPresence({scene,camera,clearInput,chatChanged:()=>{clearInput();avatar?.cancelAction();syncControls();},getOwnHead:()=>{const p=avatar.headPosition(ownHead);return p?{x:p.x,y:p.y,z:p.z,visible:avatar.root.visible}:null;},getPose:()=>({x:state.x,y:smoothGround,z:state.z,yaw:studentYaw,height:avatar.jumpHeight,time:avatar.actionState.elapsed,clip:(bridge.paused||!!document.querySelector('#skin-shop-dialog[open]'))||state.seated||state.stance?'idle':avatar.clip,avatar:avatar.variant,studying:(bridge.paused||!!document.querySelector('#skin-shop-dialog[open]'))||!!state.seated||!!state.stance}),setSpawn:(p,sent)=>{if(Math.hypot(state.x-sent.x,state.z-sent.z)<.2&&!navigation.blocked(p.x,p.z)){state.x=p.x;state.z=p.z;lastX=p.x;lastZ=p.z;}},openAccount:()=>bridge.openFeature('account'),prepareAvatar:peer=>renderer.compileAsync(peer.root,camera,scene),shadowChanged:()=>{renderer.shadowMap.needsUpdate=true;}});
 /* 对面没人在那个位时挂一块牌子：空台对读不出"我在等谁"，而凭空放一个替身
    又会被读成"和人机对打"。牌子只用一句话说清楚状态，不参与任何判定。 */
 duelHint=document.createElement('p');duelHint.id='duel-hint';duelHint.hidden=true;duelHint.setAttribute('role','status');document.body.append(duelHint);
@@ -352,7 +368,7 @@ $('#loading').hidden=true;clock.getDelta();renderer.setAnimationLoop(frame);if(s
  const at=new URLSearchParams(location.search).get('at');
  if(at)setTimeout(()=>{try{teleportTo(at);}catch(error){console.warn('深链落点失败',error);}},350);
  }catch(error){console.error(error);$('#loading strong').textContent='校园暂时无法加载';$('#progress').textContent=error.message;$('#retry').hidden=false;}}
-window.__campusHub={snapshot:()=>({ready:state.ready,mode:state.mode,pos:[state.x,groundAt(state.x,state.z),state.z],yaw:state.yaw,path:state.path,modal:bridge.paused,returnRestored:state.returnRestored,seated:!!state.seated,stance:state.stance?.id||null,ground:smoothGround,opponent:opponent?.snapshot()||null,duel:duel?.snapshot||null,frames:state.frames,interior:world?.inside(state),rooms:world?.interiors.snapshot(),picker:studyPicker?{held:studyPicker.isHolding(),open:studyPicker.isBookOpen(),aim:studyPicker.getAim()}:null,entries:ENTRIES,nearest:nearest?.id||null,avatar:avatar?.snapshot(),boxes:world?.boxes.length,render:renderer.info.render}),route:id=>goTo(id),teleport:id=>teleportTo(id),setPose:(x,z,yaw=0,pitch=0)=>{if(!navigation||navigation.blocked(x,z))return false;clearInput();setMode('walk');Object.assign(state,{x,z,yaw,pitch});lastX=x;lastZ=z;return true;},blocked:(x,z)=>navigation?.blocked(x,z),entry:id=>world?.enter(id),openFeature:(...args)=>bridge.openFeature(...args),dispose};
+window.__campusHub={snapshot:()=>({ready:state.ready,mode:state.mode,pos:[state.x,groundAt(state.x,state.z),state.z],yaw:state.yaw,path:state.path,modal:(bridge.paused||!!document.querySelector('#skin-shop-dialog[open]')),returnRestored:state.returnRestored,seated:!!state.seated,stance:state.stance?.id||null,ground:smoothGround,opponent:opponent?.snapshot()||null,duel:duel?.snapshot||null,frames:state.frames,interior:world?.inside(state),rooms:world?.interiors.snapshot(),picker:studyPicker?{held:studyPicker.isHolding(),open:studyPicker.isBookOpen(),aim:studyPicker.getAim()}:null,entries:ENTRIES,nearest:nearest?.id||null,avatar:avatar?.snapshot(),boxes:world?.boxes.length,render:renderer.info.render}),route:id=>goTo(id),teleport:id=>teleportTo(id),setPose:(x,z,yaw=0,pitch=0)=>{if(!navigation||navigation.blocked(x,z))return false;clearInput();setMode('walk');Object.assign(state,{x,z,yaw,pitch});lastX=x;lastZ=z;return true;},blocked:(x,z)=>navigation?.blocked(x,z),entry:id=>world?.enter(id),openFeature:(...args)=>bridge.openFeature(...args),dispose};
 window.__campusHub.studyObjects=()=>{const out=[];world?.study.root.updateMatrixWorld(true);world?.study.root.traverse(n=>{if(n.userData.pickables)for(const ids of n.userData.pickables.groups.slice(0,16)){const m=new T.Matrix4();n.getMatrixAt(ids[0],m);out.push({label:n.userData.pickables.label,position:new T.Vector3().setFromMatrixPosition(m).applyMatrix4(n.matrixWorld).toArray()});}});return out;};
 window.__campusHub.interactions=()=>world?.interactions.map(i=>({id:i.id,label:i.label,position:i.object.getWorldPosition(new T.Vector3()).toArray(),radius:i.radius}));
 window.__campusHub.nearbyInteractions=()=>interactionSelection.items.map(i=>({id:i.id,label:i.label,distance:i.distance,radius:i.radius}));
@@ -365,6 +381,7 @@ window.__campusHub.districts=()=>world?.districts.map(d=>{
 });
 window.__campusHub.visuals=()=>({...effects.snapshot(),memory:{...renderer.info.memory},programs:renderer.info.programs.length,water:world?.courtyard.snapshot().water,paving:world?.pavingSnapshot()});
 window.__campusHub.presence=()=>presence?.snapshot();
+window.__campusHub.chat=()=>presence?.chatSnapshot();
 /* 擂台现场的自检入口：把 duel 本体的接口和 enter() 的**原始返回值**交出来。
    只读，不改状态；排查"人在台上但对面看不见"的时候，看这个比看 3D 快得多。 */
 window.__campusHub.duelApi=()=>duel?{snapshot:duel.snapshot,challenge:duel.challenge,peer:duel.peer,peerAct:duel.peerAct,enter:seat=>duel.enter(seat),match:seat=>duel.match(seat),act:kind=>duel.act(kind),connect:()=>duel.connect()}:null;
