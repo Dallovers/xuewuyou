@@ -1,13 +1,14 @@
 /* 学无忧 · 好友竞技场（擂台）
  *
  * 内容：场地铺装、擂台台基与围护（木扶手 + 赛带）、西侧牌坊与开赛锣、报名处、对战牌、看台、围栏、灯柱、树池，
- *       以及三个实物交互点。
+ *       以及六个交互点（擂台、开赛锣、报名处、彩蛋纸条、甲乙两个作答位）。
  *
  * 边界（与社交广场同一套契约）：
  *   - 只产出本板块的 THREE.Group，不自建 renderer、不启动 RAF、不改公共相机与输入。
  *   - root 保持单位变换；与社交广场并排时由宿主按 ARENA_LAYOUT.neighbor.offset 摆放。
  *   - 台基碰撞沿围护四条铺、西门留空：人可以走台阶上台面（第十三轮），
- *     但台上只有"走上去、站着"，挑战仍在 DOM 面板里作答，3D 侧不写第二套状态。
+ *     站到甲乙作答位后由宿主播动作（第十四轮；hub 里有 VRM 人物，独立页只摆机位）。
+ *     3D 侧不写第二套比赛状态——谁作答、答了几题，仍归服务端与 DOM 面板。
  *   - 不伪造战绩数据：对战牌只有场地标识，没有从接口读到的比分。
  *
  * 坐标约定：米制，Y 向上；站点中心为原点，X 向东，Z 向南。
@@ -77,6 +78,14 @@ const MATERIAL_SPEC = {
   fabric_greygreen: { color: 0x777d6e, roughness: 0.9, metalness: 0.0 },
   accent_amber: { color: 0xc98b3f, roughness: 0.4, metalness: 0.2, emissive: 0xc98b3f, emissiveIntensity: 0.3 },
   arena_olive: { color: 0x9a9e67, roughness: 0.82, metalness: 0.0, envMapIntensity: 0.45 },
+  /* 台心八角「对决区」专用：平时是哑的橄榄色地贴（emissiveIntensity 0），
+     台上有人时才点亮。必须是**独立一份材质**——橄榄色还被台面色带、赛带、幡共用，
+     共用的话人一站上台，整块场地的色带会一起发光。
+     发光色取暖白而不是橄榄：绿色自发光读成霓虹/法阵，暖白才是"地贴底下埋了灯"。 */
+  stage_mark: {
+    color: 0x9a9e67, roughness: 0.78, metalness: 0.0, envMapIntensity: 0.45,
+    emissive: 0xffd9a0, emissiveIntensity: 0.0,
+  },
   /* 米白布件：台面赛线、赛带、篷布收边、报名簿的内页都用这一档。
      粗糙度拉到 0.95、环境强度压到 0.25——布不能有金属感，也不能有一层环境反光。 */
   rope_cream: { color: 0xe0d7b9, roughness: 0.95, metalness: 0.0, envMapIntensity: 0.25 },
@@ -638,6 +647,10 @@ export function createDistrict(ctx = {}) {
   const colliders = [];
   const interactions = [];
   const animated = [];
+  /* 台面占用权重（0..1）与它的平滑值：宿主每帧把玩家世界坐标交给 update()，
+     人一站上台面，台心八角就亮起来。见 update() 里的 want/stageOn。 */
+  let stageOn = 0;
+  const stageProbe = new THREE.Vector3();
 
   function boxGeo(w, h, d) {
     const key = 'b' + w.toFixed(3) + '|' + h.toFixed(3) + '|' + d.toFixed(3);
@@ -1679,8 +1692,10 @@ export function createDistrict(ctx = {}) {
     /* 台心：一个八角的"对决区"。
        原来是两道同心圆 + 中心点——那是拳击台的标准台标，一眼就是格斗场。
        八边形读的是"令牌 / 答题卡 / 印章"，和这块场地的其他中式元素同族，
-       而且它是空心的，中间留给答题台和站位，不像靶心那样把视线钉在正中。 */
-    add(new THREE.RingGeometry(0.66, 0.80, 8, 1, Math.PI / 8), M.arena_olive, R.cx, topY + 0.010, R.cz, {
+       而且它是空心的，中间留给答题台和站位，不像靶心那样把视线钉在正中。
+       第十四轮起它多一个职责：**台上有人时点亮**（见 update 里的 stageOn）。
+       所以它换成独立的 stage_mark 材质——橄榄色是共用的，共用会连色带和赛带一起亮。 */
+    add(new THREE.RingGeometry(0.66, 0.80, 8, 1, Math.PI / 8), M.stage_mark, R.cx, topY + 0.010, R.cz, {
       rotX: -Math.PI / 2, name: 'arena:ring-mark-oct', cast: false,
     });
 
@@ -1977,6 +1992,57 @@ export function createDistrict(ctx = {}) {
       /* 光晕挂在 root 上（世界坐标）：组的 ±90° 旋转把局部 +0.19 转到了 -Z/+Z，
          所以世界 z 是 cz + sgn·(1.62 − 0.19)。 */
       lanternGlow(R.cx, topY + 1.10, R.cz + sgn * 1.43, 0.55);
+
+    /* ---------- 作答位（第十四轮） ----------
+     * 第十三轮人能走上台面了，但台上只有"走上去、站着"——两座答题台是空台。
+     * 这一轮给每座台子配一个**站位**：人站到台后、面向对面那座台。
+     *
+     * 站位离开台心 2.14 = 1.62（台位）+ 0.26（台面挑边，0.66/2 − 0.04）+ 0.26（人贴住台面的距离）。
+     * 前两段是量出来的：台面沿 Z 铺到 1.88，人的胸口要在台面外侧，不能插进板子里。
+     * 第三段是"手能扶到台面"——再近人就压进台板，再远读不出"在用这张桌子"。
+     *
+     * 交互锚点放在**站位**上，不放答题台本体：答题台 0.88 高、占着台面，
+     * 锚点若落在台子中心，人在台面走动时判定会先命中台子——提示变成"这有个柜子"，而不是"站到这里"。
+     */
+    const stationZ = R.cz + sgn * 2.14;
+    const station = new THREE.Group();
+    station.name = 'arena:stage-station';
+    station.position.set(R.cx, topY, stationZ);
+    root.add(station);
+
+    /* 地面上的三面"站位线"：开口朝答题台，人从八角区走过来正好站进这个缺口。
+       用米白布色（rope_cream）而不是橄榄色——橄榄色在这块台面是"识别色"，
+       再画一圈会和赛线、色带抢；米白只做"这里有个人站的位置"这一件事。 */
+    const mw = 1.04, md = 0.56, mt = 0.035;
+    const openSign = -sgn;
+    for (const sx of [-1, 1]) {
+      add(boxGeo(mt, 0.004, md), M.rope_cream, R.cx + sx * (mw / 2), topY + 0.012, stationZ, {
+        name: 'arena:stage-mark', cast: false,
+      });
+    }
+    add(boxGeo(mw + mt, 0.004, mt), M.rope_cream, R.cx, topY + 0.012, stationZ - openSign * (md / 2), {
+      name: 'arena:stage-mark', cast: false,
+    });
+
+    const stationId = sgn > 0 ? 'jia' : 'yi';
+    const stationYaw = sgn > 0 ? 0 : Math.PI;   // 都朝台心：南位朝 -Z，北位朝 +Z
+    interactions.push({
+      id: 'arena.stage.' + stationId,
+      label: '作答位 · ' + text,
+      prompt: '按 E 就位作答',
+      object: station,
+      radius: 1.7,
+      /* 只报"站到哪、朝哪、做什么动作"，姿态本身归宿主：
+         hub 里有 VRM 人物，播一个举手的 clip；独立页是第一人称，没有身体，就把机位摆到站位上。
+         3D 侧不写第二套比赛状态——谁作答、答了几题，仍归服务端与 DOM 面板。 */
+      action() {
+        return {
+          ok: true, kind: 'pose', station: stationId, seat: text,
+          stand: [R.cx, topY, stationZ], yaw: stationYaw, clip: 'wave',
+          message: '已就位：' + text + '位 · 面向对手',
+        };
+      },
+    });
     }
   }
 
@@ -3017,15 +3083,38 @@ export function createDistrict(ctx = {}) {
 
   let elapsed = 0;
 
+  /* 玩家是不是站在台面上。宿主给的是**世界坐标**（两个宿主的 root 偏移各不相同），
+     这里用 root 的逆矩阵换成本地坐标再比。
+     matrixWorld 由渲染器每帧更新，而 update() 在渲染之前调，所以最多差一帧——
+     对一个 0.6 秒的亮起过渡没有影响，不值得为它多做一次 updateMatrixWorld。 */
+  function onStage(x, z) {
+    if (!Number.isFinite(x) || !Number.isFinite(z)) return false;
+    stageProbe.set(x, 0, z);
+    root.worldToLocal(stageProbe);
+    const half = L.ring.size / 2;
+    return Math.abs(stageProbe.x - L.ring.cx) <= half && Math.abs(stageProbe.z - L.ring.cz) <= half;
+  }
+
   return {
     root,
     colliders,
     interactions,
     ready: texturesReady,
-    /** 由宿主主循环调用；本模块不启动自己的 RAF */
-    update(dt) {
+    /** 台面占用状态，给验收脚本读；不参与任何业务判定 */
+    get stage() { return { on: stageOn, lit: stageOn > 0.5 }; },
+    /**
+     * 由宿主主循环调用；本模块不启动自己的 RAF。
+     * player 可选：`{ x, z }` 世界坐标。给了就点亮台心八角（有人在台面上），
+     * 不给就保持熄灭——旧宿主（preview.html）不改也不会出错。
+     */
+    update(dt, player) {
       const step = Math.min(Math.max(dt || 0, 0), 0.1);
       elapsed += step;
+      const want = player && onStage(player.x, player.z) ? 1 : 0;
+      stageOn += (want - stageOn) * (1 - Math.exp(-step * 5));
+      if (want === 0 && stageOn < 0.003) stageOn = 0;
+      /* 亮起来之后带一点呼吸（±0.10），静止的发光面在动画场景里会读成贴图 */
+      M.stage_mark.emissiveIntensity = stageOn * (0.74 + 0.10 * Math.sin(elapsed * 2.2));
       for (const fn of animated) fn(elapsed, step);
     },
     dispose() {
