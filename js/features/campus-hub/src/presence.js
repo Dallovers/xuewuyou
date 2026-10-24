@@ -71,7 +71,10 @@ export function createCampusPresence({scene,camera,getPose,setSpawn,openAccount,
  return {
   update(dt){
    if(disposed)return;publish();const now=performance.now();
-   if(joined&&lastSnapshot&&now-lastSnapshot>5000){clear();paint('同步中断，正在重新连接…','取消连接');socket?.disconnect().connect();}
+   // Asset decoding, background throttling and brief network jitter can delay
+   // volatile snapshots. Give the server's 15s membership expiry time to run
+   // before replacing an otherwise healthy transport and all visible avatars.
+   if(joined&&lastSnapshot&&now-lastSnapshot>20000){clear();paint('同步中断，正在重新连接…','取消连接');socket?.disconnect().connect();}
    const me=getPose(),near=[...peers.values()].filter(p=>Math.hypot(p.to.x-me.x,p.to.z-me.z)<42).sort((a,b)=>Math.hypot(a.to.x-me.x,a.to.z-me.z)-Math.hypot(b.to.x-me.x,b.to.z-me.z)).slice(0,cap()),visible=new Set(near.map(p=>p.id));
    for(const peer of peers.values()){
     if(peer.avatar&&!visible.has(peer.id)){peer.avatar.dispose();peer.avatar=null;peer.label?.remove();peer.label=null;shadowChanged();}
