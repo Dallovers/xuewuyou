@@ -13,6 +13,8 @@ Source: [Khronos glTF Sample Assets / Fox, pinned commit](https://github.com/Khr
 - Adventurers / Skeletons by **Kay Lousberg (KayKit)** — <https://www.kaylousberg.com/>。资源包内 LICENSE.txt 明确包含资源内容并允许 personal、educational、commercial 使用；署名非强制。
 - Mini Characters 1.0 / Graveyard Kit 5.0 by **Kenney** — <https://kenney.nl/>。原始 License.txt 允许 personal、educational、commercial 使用；署名非强制。
 
-- Animated Mech Pack (March 2021) by **Quaternius** — <https://quaternius.com/packs/animatedmech.html>。作品页 CC0 与官方 Drive 包内原始 [License.txt](licenses/quaternius-mechs/License.txt) 对照保存；模型、内嵌贴图和自带动画均属于该包。四个原始内嵌 glTF 仅重新封装为 GLB，未改网格、材质、贴图、骨骼或动作。署名非强制。完整来源链与原始文件哈希见 [provenance.json](licenses/quaternius-mechs/provenance.json)。
+- Old VRoid beta samples **Vivi / Vita / Victoria Rubin / Sakurada Fumiriya** by **pixiv Inc. / VRoid Project** — CC0；模型和内嵌贴图均适用，无自带动画。官方逐模型声明：[Vivi](https://vroid.pixiv.help/hc/en-us/articles/360014900273)、[Vita](https://vroid.pixiv.help/hc/en-us/articles/360014900113)、[Victoria](https://vroid.pixiv.help/hc/en-us/articles/360014900233)、[Fumiriya](https://vroid.pixiv.help/hc/en-us/articles/360014788554)。原始许可片段与文件内嵌元数据保留在 [vroid-beta/](licenses/vroid-beta/)，下载来源为固定提交第三方镜像，原字节未修改；完整链路见 provenance.json，署名非强制。
+- 本独立预览使用的 **three-vrm 3.3.3** 及其子包为 pixiv Inc. 的 MIT 代码，原始许可见 [preview-three-vrm/](licenses/preview-three-vrm/)。这个代码许可不决定任何模型的许可。
+- 已弃选 Quaternius 机甲的历史 CC0 记录仍在 quaternius-mechs/ 与 archive/wave2-mechs.json，当前不分发其模型。
 
-保留本文件和原始授权。CC0 仅覆盖下载资源，不宣称获得作者商标、网站素材或品牌标识的额外权利。十三个 CC0 人物的模型、随包贴图与动画都在相应资产包授权范围内；未混入外部动作。
+保留本文件和原始授权。CC0 仅覆盖下载资源，不宣称获得作者商标、网站素材或品牌标识的额外权利。十三个 CC0 人物的模型及随包贴图均在相应资源声明范围内。新四个 VRM 无自带动画；第一批自带动作按原包授权，Fox 另按上文 CC-BY 署名。未向新 VRM 混入外部动作。

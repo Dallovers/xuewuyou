@@ -1,0 +1,119 @@
+{
+  "date": "2026-10-24",
+  "passed": true,
+  "engine": "Three.js 0.170.0 GLTFLoader / Edge headless WebGL",
+  "firstScreenModelRequests": 0,
+  "batchFilterVerified": true,
+  "batchDirectLinkVerified": true,
+  "lifecycleGpuCounts": [
+    {
+      "geometries": 18,
+      "textures": 2
+    },
+    {
+      "geometries": 18,
+      "textures": 2
+    },
+    {
+      "geometries": 18,
+      "textures": 2
+    }
+  ],
+  "mobileNoOverflow": true,
+  "pagesPrefixVerified": true,
+  "reducedMotionVerified": true,
+  "errors": [],
+  "warnings": [],
+  "rows": [
+    {
+      "id": "vroid-vivi",
+      "status": "可显示",
+      "campusActionsVerified": false,
+      "displayed": {
+        "id": "vroid-vivi",
+        "ready": true,
+        "frames": 47,
+        "animationSource": "bundled",
+        "presentationPose": "relaxed",
+        "nativeAnimationCount": 0,
+        "vrmVersion": "0",
+        "normalizedBindingBoneCount": 0,
+        "animations": [],
+        "bounds": [
+          0.8095672956145679,
+          1.72,
+          0.5121360307447835
+        ],
+        "renderCalls": 98,
+        "triangles": 25836,
+        "memory": {
+          "geometries": 98,
+          "textures": 38
+        },
+        "failure": null
+      },
+      "clipChecks": [],
+      "modelRequests": 1
+    },
+    {
+      "id": "vroid-vita",
+      "status": "可显示",
+      "campusActionsVerified": false,
+      "displayed": {
+        "id": "vroid-vita",
+        "ready": true,
+        "frames": 87,
+        "animationSource": "bundled",
+        "presentationPose": "relaxed",
+        "nativeAnimationCount": 0,
+        "vrmVersion": "0",
+        "normalizedBindingBoneCount": 0,
+        "animations": [],
+        "bounds": [
+          0.7940689688111842,
+          1.7199999999999998,
+          0.4398651797628104
+        ],
+        "renderCalls": 85,
+        "triangles": 26132,
+        "memory": {
+          "geometries": 85,
+          "textures": 63
+        },
+        "failure": null
+      },
+      "clipChecks": [],
+      "modelRequests": 1
+    },
+    {
+      "id": "vroid-victoria",
+      "status": "可显示",
+      "campusActionsVerified": false,
+      "displayed": {
+        "id": "vroid-victoria",
+        "ready": true,
+        "frames": 127,
+        "animationSource": "bundled",
+        "presentationPose": "relaxed",
+        "nativeAnimationCount": 0,
+        "vrmVersion": "0",
+        "normalizedBindingBoneCount": 0,
+        "animations": [],
+        "bounds": [
+          0.7829817604307219,
+          1.72,
+          0.5092704926891467
+        ],
+        "renderCalls": 80,
+        "triangles": 28930,
+        "memory": {
+          "geometries": 80,
+          "textures": 88
+        },
+        "failure": null
+      },
+      "clipChecks": [],
+      "modelRequests": 1
+    }
+  ]
+}

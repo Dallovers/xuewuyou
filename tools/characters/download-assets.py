@@ -65,7 +65,7 @@ def main():
                 data = pack_embedded_gltf(source)
             elif row.get('repo'):
                 relative = item['path'][len(str(Path(row['modelPath']).parent).replace('\\', '/')) + 1:]
-                upstream = row['sourcePath'] if relative == 'model.glb' else str(Path(row['sourcePath']).parent / relative).replace('\\', '/')
+                upstream = row['sourcePath'] if item['path'] == row['modelPath'] else str(Path(row['sourcePath']).parent / relative).replace('\\', '/')
                 url = 'https://raw.githubusercontent.com/' + row['repo'] + '/' + row['revision'] + '/' + urllib.parse.quote(upstream)
                 data = get(url)
             else:
@@ -79,7 +79,7 @@ def main():
                         cache.write_bytes(archive_bytes)
                     archives[key] = zipfile.ZipFile(io.BytesIO(cache.read_bytes()))
                 relative = item['path'][len(str(Path(row['modelPath']).parent).replace('\\', '/')) + 1:]
-                member = row['sourcePath'] if relative == 'model.glb' else str(Path(row['sourcePath']).parent / relative).replace('\\', '/')
+                member = row['sourcePath'] if item['path'] == row['modelPath'] else str(Path(row['sourcePath']).parent / relative).replace('\\', '/')
                 data = archives[key].read(member)
             if len(data) != item['bytes'] or digest(data) != item['sha256']:
                 raise ValueError('File checksum mismatch: ' + item['path'])

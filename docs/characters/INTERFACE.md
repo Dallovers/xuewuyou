@@ -41,4 +41,4 @@
 
 本次累计十四个文件与既有角色模型 SHA-256 均不相同。未下载 RobotExpressive 的重复版本，未把 Rogue/Rogue_Hooded 或同模型改色算成两个。KayKit 四个人物有不同网格、服饰和轮廓；Kenney 四个也不是贴图换色。
 
-第二批补充：四款 Quaternius 机甲使用各自原生骨骼与片段，47/17/43/43 个 joint，并非通用 VRM humanoid。已有 Idle/Walk/Run/Jump/Punch，Hello 仅为挥手候选。KHR_materials_unlit 由当前 GLTFLoader 支持，无新解码器。原始内嵌 glTF 已无损封装为 GLB，仍沿用 candidates/<id>/model.glb；预览增加批次筛选，不改变校园 avatar 白名单。
+二次元批次补充：四款为旧 VRoidStudio-0.8.1 导出的 VRM0，现有 three-vrm 3.3.3 可加载 MToon 和 54 个标准人形映射。当前校园默认 anime 是 VRM1；直接复用现有 VRM1 片段在前三款出现抬臂异常，未保留该绑定。四款均无自带动画，六动作需要坐标与 rest-pose 校正/重定向。仅在独立预览提供静态自然站姿与 T 姿，冻结 spring bone、隐藏 outline、归一高度并修正 VRM0 朝向；这些都是实例展示设置，不改 VRM 字节。模型路径为 candidates/<id>/model.vrm。弃选机甲已移出当前目录，记录见 archive/wave2-mechs.json。
