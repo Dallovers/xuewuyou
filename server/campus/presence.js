@@ -35,6 +35,19 @@ function pose(body){
 }
 module.exports=function({authUser,store,namespace}){
   const members=new Map(),rooms=new Map();let ns,timer,closed=false;
+  /* ---------- 一个账号可以有好几条连接 ----------
+   * 整合版校园里，同一个页面会开两条：化身（campus:pose 那条）一条、擂台（duel:*）一条。
+   * 以前这里按"一个账号一条连接"建模，后连的会把先连的清理掉（leave + campus:replaced），
+   * 后果是一边掉线把另一边的状态一起清了 —— 人坐在台上等匹配，化身那条连接一断，
+   * 队列里的他就没了，界面还写着「正在匹配对手」，于是谁也配不上谁。
+   *
+   * 现在把**账号**当单位：connections 记一个账号手上有哪些连接，
+   * 只有最后一条也断开时，才算人真的走了（退座、广播离开、清队列）。
+   * 顶号仍然存在——被顶掉的那条会收到 campus:replaced（另一个标签页据此停手），
+   * 但它断开时不再连带清掉同账号仍在用的那条。
+   */
+  const connections=new Map();   // uid → Set<socket>
+  const online=(uid)=>!!connections.get(uid)?.size;
   /* 挑战变化的旁听者。server.js 在 community.attach 之后把它接到 challenges 上：
    * 挑战一开始，就把两位成员拉进这间房（房间是懒建的，没人就位就不占内存）。 */
   const challengeById=new Map(),hooks=new Set();
@@ -42,9 +55,22 @@ module.exports=function({authUser,store,namespace}){
   const players=()=>[...members.values()].map(publicPlayer);
   function stopIdleTimer(){if(!members.size&&!rooms.size){clearInterval(timer);timer=null;}}
   function leave(socket){
-    const m=members.get(socket.data.uid);
-    queue.delete(socket.data.uid);
-    if(m?.socket===socket){members.delete(socket.data.uid);socket.leave(ROOM);ns.to(ROOM).emit('campus:left',{id:m.id});duelLeave(m.id);}
+    const uid=socket.data.uid;
+    const set=connections.get(uid);
+    if(set){set.delete(socket);if(!set.size)connections.delete(uid);}
+    const m=members.get(uid);
+    if(online(uid)){
+      /* 账号还在线：只把这条连接从房间里摘掉，人不算走。
+         被顶掉的旧连接、化身那条重连，都属于这种情况。 */
+      socket.leave(ROOM);
+      if(m&&m.socket===socket){
+        const next=[...connections.get(uid)].find(s=>s.connected);
+        if(next)m.socket=next;      // 主连接换人，位置/化身继续由剩下那条上报
+      }
+    }else{
+      queue.delete(uid);
+      if(m){members.delete(uid);socket.leave(ROOM);ns.to(ROOM).emit('campus:left',{id:m.id});duelLeave(m.id);}
+    }
     stopIdleTimer();
   }
   /* ---------- 擂台房 ----------
@@ -82,7 +108,7 @@ module.exports=function({authUser,store,namespace}){
   }
   function duelEnter(socket,challengeId,stationId){
     const m=members.get(socket.data.uid);
-    if(!m||m.socket!==socket)return {ok:false,error:'请先加入校园同场'};
+    if(!m||!connections.get(socket.data.uid)?.has(socket))return {ok:false,error:'请先加入校园同场'};
     let room=rooms.get(challengeId);
     if(!room){
       /* 「rooms 里没有」不等于「挑战不在进行中」：服务重启过、刚被匹配上、
@@ -125,21 +151,31 @@ module.exports=function({authUser,store,namespace}){
    */
   let challengeFactory=null;
   const queue=new Map();   // uid → {uid,playerId,nick,socket,station,topic,since}
-  const QUEUE_TTL=120000;
+  /* 队列里只留"确实还在等的人"，判据是账号**还有连接在线**。
+   * 以前这里有两处把活人当幽灵清掉：
+   *   1) 等超过 120 秒就清（人还站在台上等，只是后来的人来得晚）；
+   *   2) 「排队那条 socket 不是账号当前主连接」也清（同账号两条连接会互相顶号）。
+   * 两种情况下人的状态都没变，界面还写着「正在匹配对手」，服务端却先把他清了——
+   * 后来的人只能跟自己排队，两个人都配不上。幽灵由连接状态识别，不靠时间或主从猜。 */
   async function duelMatch(socket,body,ack){
     const reply=value=>{if(typeof ack==='function')ack(value);};
     const m=members.get(socket.data.uid);
-    if(!m||m.socket!==socket)return reply({ok:false,error:'请先加入校园同场'});
+    if(!m||!connections.get(socket.data.uid)?.has(socket))return reply({ok:false,error:'请先加入校园同场'});
     const at=station(body);if(!at)return reply({ok:false,error:'作答位无效'});
     if(!challengeFactory)return reply({ok:false,error:'现场匹配暂不可用，请稍后再试'});
     const now=Date.now();
-    /* 清掉等太久的、断线的、被同账号顶掉的——队列里不留"已经不在的人"，
-     * 否则后来者会跟一个幽灵配成一场没人答题的挑战。 */
-    for(const [uid,row] of [...queue])if(now-row.since>QUEUE_TTL||!row.socket.connected||members.get(uid)?.socket!==row.socket)queue.delete(uid);
-    queue.delete(socket.data.uid);      // 连点两次以最后一次的位为准
-    const partner=[...queue.values()][0]||null;
+    const uid=socket.data.uid;
+    for(const key of [...queue.keys()])if(!online(key))queue.delete(key);
+    queue.delete(uid);      // 连点两次以最后一次的位为准
+    /* 取第一个"确实还有活连接"的等待者。队列里不该有幽灵，但真出现也不该
+     * 让后来的人跟一个不会应答的位配对（那会开出没人答题的挑战）。 */
+    let partner=null;
+    for(const [key,row] of [...queue]){
+      if(![...(connections.get(key)||[])].some(s=>s.connected)){queue.delete(key);continue;}
+      partner=row;break;
+    }
     if(!partner){
-      queue.set(socket.data.uid,{uid:socket.data.uid,playerId:m.id,nick:m.nick,socket,station:at.station,topic:typeof body?.topic==='string'?body.topic:'',since:now});
+      queue.set(uid,{uid,playerId:m.id,nick:m.nick,socket,station:at.station,topic:typeof body?.topic==='string'?body.topic:'',since:now});
       return reply({ok:true,waiting:true,count:queue.size});
     }
     queue.delete(partner.uid);
@@ -151,7 +187,11 @@ module.exports=function({authUser,store,namespace}){
      * 两个人都站在甲位按 E 时，后来的那位会被挪到乙位（客户端会跟着挪人），
      * 而不是两个人叠在同一个位子上然后互相顶掉。 */
     const partnerSeat=partner.station,mySeat=partnerSeat==='jia'?'yi':'jia';
-    if(partner.socket.connected)partner.socket.emit('duel:matched',{challenge:challenge.id,station:partnerSeat,topic:challenge.topic||''});
+    /* 「配到了」要发给他账号上的**每一条连接**：他自己在等的是擂台那条，
+     * 这条消息如果只发给化身那条，界面上就永远等不到开局。 */
+    for(const target of connections.get(partner.uid)||[]){
+      if(target.connected)target.emit('duel:matched',{challenge:challenge.id,station:partnerSeat,topic:challenge.topic||''});
+    }
     reply({ok:true,matched:true,challenge:challenge.id,station:mySeat,topic:challenge.topic||''});
   }
   function duelAct(socket,body){
@@ -229,7 +269,12 @@ module.exports=function({authUser,store,namespace}){
     stopIdleTimer();
   }
   function startTimer(){if(timer)return;timer=setInterval(()=>{
-    const now=Date.now();for(const m of members.values())if(now-m.lastSeen>15000){leave(m.socket);m.socket.emit('campus:expired');}
+    /* 这里以前有一条「15 秒没上报位置就从校园里踢掉」（leave + campus:expired）。
+     * 那是个误判：位置只在走动时上报，**站在台上等匹配的人当然不动**。
+     * 于是等着等着就被当成掉线，连正在排的队一起清掉——
+     * 两个人都在台上、界面都写着「正在匹配对手」，却永远配不上。
+     * 真正的掉线由 socket 的 disconnect 判定（关页面、断网、被顶号都会走到那里），
+     * 切到后台的标签页由客户端自己断开，不需要这里靠"多久没动"来猜。 */
     if(members.size)ns.to(ROOM).volatile.emit('campus:state',{world:WORLD,players:players()});
   },100);timer.unref();}
   function spawn(p){
@@ -263,8 +308,15 @@ module.exports=function({authUser,store,namespace}){
         const old=members.get(identity.uid);
         if(!old&&members.size>=MAX_PLAYERS)return reply({ok:false,error:'当前校园已满，请稍后再来'});
         if(old?.socket===socket)return reply({ok:true,self:publicPlayer(old),players:players()});
-        if(old){leave(old.socket);old.socket.emit('campus:replaced');}
-        const id=randomUUID(),m={id,uid:identity.uid,socket,nick:identity.nick||'同学 '+id.slice(0,4),avatar:body.avatar,pose:spawn(initial),seq:0,lastSeen:Date.now(),lastPose:0};
+        /* 先把这条连接登记进来，再通知旧连接。顺序不能反：
+         * 旧连接收到 campus:replaced 会立刻断开，那时 leave() 要能看到"账号还有别的连接在线"，
+         * 才不会把人正在排的队、正在坐的位一起清掉。 */
+        const set=connections.get(identity.uid)||new Set();
+        set.add(socket);connections.set(identity.uid,set);
+        if(old)old.socket.emit('campus:replaced');
+        /* 玩家 id 跟着**账号**走：换连接（刷新、顶号、同页第二条）不该变成另一个人，
+         * 否则座位表、对手箭头、已交卷记录全都对不上。 */
+        const id=old?.id||randomUUID(),m={id,uid:identity.uid,socket,nick:identity.nick||'同学 '+id.slice(0,4),avatar:body.avatar,pose:spawn(initial),seq:0,lastSeen:Date.now(),lastPose:0};
         members.set(identity.uid,m);socket.join(ROOM);startTimer();
         const mine=identity.challenges||[];
         /* 进来时顺手把已经在进行的挑战房全部补上：刷新页面不该丢掉「我在台上」这件事。
@@ -274,8 +326,12 @@ module.exports=function({authUser,store,namespace}){
         reply({ok:true,self:publicPlayer(m),players:players(),duels:mine.map(c=>({challenge:c.id,topic:c.topic||'',status:c.status}))});
       }catch{reply({ok:false,error:'校园连接暂不可用，请重试'});}finally{joining=false;}
     });
+    /* 位置可以来自这个账号的**任何一条**连接：整合版校园里化身上报走 presence 那条、
+     * 擂台走 duel 那条，两条会互相顶号。只认"当前主连接"的话，
+     * 主连接换成不发位置的那条时，位置就再也收不到，人会被误判成掉线。 */
     socket.on('campus:pose',body=>{
-      const m=members.get(socket.data.uid),now=Date.now();if(!m||m.socket!==socket||now-m.lastPose<60)return;
+      const uid=socket.data.uid,m=members.get(uid),now=Date.now();
+      if(!m||!connections.get(uid)?.has(socket)||now-m.lastPose<60)return;
       const next=pose(body);if(!next)return;
       // Loose speed envelope tolerates normal interpolation/collision corrections.
       if(Math.hypot(next.x-m.pose.x,next.z-m.pose.z)>3+Math.min(3,(now-m.lastSeen)/1000)*7)return;
@@ -286,7 +342,8 @@ module.exports=function({authUser,store,namespace}){
      * 所以移动必须单独一条通道：不做包络，但**限频 1.2 秒**，它不是用来刷位置的。
      * 位置本身仍要过 pose() 的合法性与边界校验（越界一样拒）。 */
     socket.on('campus:teleport',body=>{
-      const m=members.get(socket.data.uid),now=Date.now();if(!m||m.socket!==socket)return;
+      const uid=socket.data.uid,m=members.get(uid),now=Date.now();
+      if(!m||!connections.get(uid)?.has(socket))return;
       if(now-(m.lastTeleport||0)<1200)return;
       const next=pose(body);if(!next)return;
       m.pose=next;m.seq++;m.lastSeen=now;m.lastPose=now;m.lastTeleport=now;
@@ -335,7 +392,7 @@ module.exports=function({authUser,store,namespace}){
     onChallengeEvent(fn){hooks.add(fn);return()=>hooks.delete(fn);},
     close(){
       closed=true;clearInterval(timer);timer=null;
-      for(const m of [...members.values()])leave(m.socket);
+      for(const set of [...connections.values()])for(const s of [...set])leave(s);
       rooms.clear();stationOwner.clear();challengeById.clear();hooks.clear();queue.clear();
     },
     snapshot:()=>({world:WORLD,count:members.size,max:MAX_PLAYERS,waiting:queue.size,rooms:[...rooms].map(([challenge,r])=>({challenge,members:r.members.length,seats:[...r.seats.values()].map(s=>({station:s.station,id:s.id}))}))})
