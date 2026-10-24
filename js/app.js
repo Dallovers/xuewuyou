@@ -709,9 +709,28 @@ var WG_App = (function () {
       '</div>';
   }
 
+  var wenkuRequest = 0;
+  function showWenkuUnavailable(message) {
+    $('wenkuList').innerHTML = '<div class="empty-state" role="status"><div class="es-t">学习资料暂时未加载成功</div>' +
+      '<div class="es-d">' + escHtml(message || '请检查网络后重试，已有学习记录不会受影响。') + '</div>' +
+      '<button type="button" class="btn primary" data-wenku-retry>重新加载资料</button></div>';
+    $('wenkuList')._list = [];
+  }
+  function openWenku() {
+    var request = ++wenkuRequest;
+    showView('wenku');
+    if (typeof WENKU !== 'undefined' && typeof WG_WenkuCat !== 'undefined') { renderWenku(); return Promise.resolve(); }
+    $('wenkuList').innerHTML = window.WG_Heavy ? WG_Heavy.placeholder('正在加载学习资料目录…') : '<p role="status">正在加载学习资料目录…</p>';
+    var ready = window.WG_Heavy && WG_Heavy.readyWenku ? WG_Heavy.readyWenku() : Promise.reject(new Error('资料加载组件未就绪，请刷新后重试'));
+    return ready.then(function () {
+      if (request === wenkuRequest && state.view === 'wenku') renderWenku();
+    }).catch(function (error) {
+      if (request === wenkuRequest && state.view === 'wenku') showWenkuUnavailable(error.message);
+    });
+  }
   function renderWenku(cat) {
     stopGames();
-    if (typeof WG_WenkuCat === 'undefined') { showView('home'); return; }
+    if (typeof WENKU === 'undefined' || typeof WG_WenkuCat === 'undefined') { showWenkuUnavailable(); return; }
     /* 切换大类时把下级筛选清空，避免残留一个选不中的院校 */
     if (cat && cat !== wkState.cat) {
       wkState.cat = cat;
@@ -2051,6 +2070,7 @@ var WG_App = (function () {
     /* 加载更多 */
     if ($('wenkuList')) {
       $('wenkuList').addEventListener('click', function (e) {
+        if (e.target.closest && e.target.closest('[data-wenku-retry]')) { openWenku(); return; }
         var more = e.target.closest ? e.target.closest('#wkMore') : null;
         if (more) { wkState.page++; renderWenku(); }
       });
@@ -3000,7 +3020,7 @@ var WG_App = (function () {
     /* 好友竞技场与图书馆同样是独立 3D 页：整页跳转，不在同一页加载第二套引擎。
        页面在 js/ 下，服务端静态白名单不用改。 */
     else if (name === 'arena3d') location.assign(new URL('js/features/arena/index.html', document.baseURI).href);
-    else if (name === 'wenku') gateData(function () { renderWenku(); });
+    else if (name === 'wenku') return openWenku();
     else if (name === 'mistakes') gateData(function () { renderMistakes(); });
     else if (name === 'report') renderReport();
     else if (name === 'review') { showView(name); window.WG_Integrations && WG_Integrations.open(name); }
@@ -3125,7 +3145,6 @@ var WG_App = (function () {
          原来这里调 readyBank() 会抛 TypeError，校园里点「刷题」直接报
          「WG_Heavy.readyBank is not a function」。用 ready() 等同一批数据。 */
       if (name === 'bank' && window.WG_Heavy) await WG_Heavy.ready();
-      else if (name === 'wenku' && window.WG_Heavy) await WG_Heavy.ready();
       if (request !== campusFeatureEpoch) return;
       refreshNickUI();
       if (name === 'account') { $('nickBtn').click(); return; }

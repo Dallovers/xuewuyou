@@ -17,6 +17,47 @@ window.WG_Heavy = (function () {
   var promise = null;
   var done = false;
   var loadedFiles = Object.create(null);
+  var pendingFiles = Object.create(null);
+  var sourceRoot = new URL('../', document.currentScript.src);
+
+  // A slow question bank must not hold the small materials catalogue hostage.
+  // Share requests with background loading and bound failures so retry works.
+  function loadFile(f) {
+    if (loadedFiles[f]) return Promise.resolve();
+    if (pendingFiles[f]) return pendingFiles[f];
+    var request = new Promise(function (resolve, reject) {
+      var s = document.createElement('script');
+      var timer = setTimeout(function () { finish(new Error('数据请求超时')); }, 15000);
+      function finish(error) {
+        clearTimeout(timer); s.onload = s.onerror = null;
+        if (error) { s.remove(); reject(error); }
+        else { loadedFiles[f] = true; resolve(); }
+      }
+      s.src = new URL(f, sourceRoot).href;
+      // Materials are explicitly sequenced by readyWenku(). They must not sit
+      // in the browser's async=false execution queue behind a stalled bank.
+      s.async = true;
+      s.onload = function () { finish(); };
+      s.onerror = function () { finish(new Error('数据文件未能下载')); };
+      document.head.appendChild(s);
+    });
+    pendingFiles[f] = request.then(function () {
+      delete pendingFiles[f];
+    }, function (error) {
+      delete pendingFiles[f];
+      throw error;
+    });
+    return pendingFiles[f];
+  }
+
+  function readyWenku() {
+    if (typeof WENKU !== 'undefined' && typeof WG_WenkuCat !== 'undefined') return Promise.resolve();
+    return loadFile(FILES[3]).then(function () { return loadFile(FILES[4]); }).then(function () {
+      if (typeof WENKU === 'undefined' || typeof WG_WenkuCat === 'undefined') throw new Error('学习资料目录未能初始化');
+    }).catch(function () {
+      throw new Error('学习资料暂时加载失败，请检查网络后重试');
+    });
+  }
 
   /* 后台开始加载（幂等，可多次调用）。串行加载避免并发解析大文件卡顿。 */
   function load() {
@@ -25,17 +66,11 @@ window.WG_Heavy = (function () {
       var chain = Promise.resolve();
       FILES.forEach(function (f) {
         chain = chain.then(function () {
-          if (loadedFiles[f]) return;
-          return new Promise(function (ok) {
-            var s = document.createElement('script');
-            s.src = f;
-            s.async = false;
-            s.onload = function () { loadedFiles[f] = true; ok(); };
-            s.onerror = function () {
-              console.warn('[学无忧] 数据文件加载失败(可忽略):', f);
-              ok();
-            };
-            document.head.appendChild(s);
+          // The classifier snapshots WENKU at initialization. Loading it after
+          // a failed catalogue request would cache an empty library forever.
+          if (f === FILES[4] && typeof WENKU === 'undefined') return;
+          return loadFile(f).catch(function () {
+            console.warn('[学无忧] 数据文件加载失败，可重试:', f);
           });
         });
       });
@@ -75,5 +110,5 @@ window.WG_Heavy = (function () {
       (label || '题库数据加载中，请稍候…') + '</div>';
   }
 
-  return { load: load, ready: ready, readyBank: readyBank, isReady: isReady, placeholder: placeholder };
+  return { load: load, ready: ready, readyBank: readyBank, readyWenku: readyWenku, isReady: isReady, placeholder: placeholder };
 })();
