@@ -20,7 +20,7 @@ const ARENA_STEP_RUN=0.44,ARENA_STEP_RISE=0.21,ARENA_STEP_HALFW=1.7;
 export const SITE_EXIT={id:'site-exit',label:'校园出口',description:'返回网站首页',at:[0,37.2],outside:[0,35.3]};
 // Scene names are local route IDs, not replacements for stable business IDs.
 export const ENTRIES=[
- {id:'classroom',label:'教学楼',description:'进入现有教室',at:[0,-24],outside:[0,-22],path:'examples/campus-3d-v5/index.html?view=classroom'},
+ {id:'classroom',label:'教学楼',description:'入座刷题、解析与错题本',at:[0,-24],outside:[0,-22],path:'examples/campus-3d-v5/index.html?view=classroom'},
  {id:'library',label:'图书馆',description:'检索馆藏与阅读',at:[-24,1],outside:[-22,1],path:'examples/library-3d/index.html'},
  {id:'study',label:'自习室',description:'进入自习空间',at:[-23.72,18.39],outside:[-21.53,17.17],path:'js/features/study/preview.html'},
  {id:'social',label:'社交广场',description:'好友、留言与休息',at:[9,11],outside:[7,11],path:'js/features/social/preview.html'},

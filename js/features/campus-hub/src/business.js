@@ -51,6 +51,9 @@ export function createBusinessBridge({clearInput,status,route,equipment}){
   dialog.dataset.feature=name;frame.hidden=true;note.hidden=true;guide.hidden=true;tools.hidden=true;controls.hidden=true;
   const titles={account:'校园账号',community:'校园同伴',bank:'教室 · 正式题库',library:'图书馆 · 资料与阅读',wenku:'学习资料',courses:'教室刷题',equipment:'教室设备',controls:'操作指南',note:'一张对折的纸条','campus-guide':'从庭院出发'};
   document.querySelector('#business-title').textContent=titles[name]||'自习室';message.textContent='正在打开学习功能…';
+  const linked=['account','community','study','rooms','wenku','bank','library','courses'].includes(name);
+  dialog.querySelector('.panel-eyebrow').textContent=linked?'网站功能 · 同一账号与学习记录':'学无忧 · 开放校园';
+  if(name==='community')document.querySelector('#business-title').textContent=({friends:'好友与学习搭子',posts:'校园留言板',arena:'好友竞技挑战'})[options.tab]||'校园同伴';
   if(name==='controls'||name==='note'||name==='campus-guide'){
    const section=name==='controls'?controls:name==='note'?note:guide;section.hidden=false;
    if(name==='note')note.querySelector('p').textContent=String(options.text||'');
