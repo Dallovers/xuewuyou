@@ -5,6 +5,8 @@ const { questions } = require('../integrations/questions');
 const SUBJECTS = ['高等数学','线性代数','概率论','英语','雅思'];
 const objective = [...questions.values()].filter(q => !q.selfAssessed);
 const topicOptions = [...new Set(objective.map(q => q.topic))].map(topic => ({topic,subject:objective.find(q=>q.topic===topic).subject,count:objective.filter(q=>q.topic===topic).length})).filter(t=>t.count>=5);
+/* 擂台现场匹配的默认主题：不指定就抽这个（必须真在题库里，否则建挑战会因不够五题失败）。 */
+const LIVE_TOPIC = (topicOptions.find(t => t.topic === '函数与极限') || topicOptions[0]).topic;
 const fail = (message,status=400) => {throw Object.assign(new Error(message),{status});};
 const { muteRemainingMs, formatDuration } = require('../lib/moderation');
 const clone = value => JSON.parse(JSON.stringify(value));
@@ -136,13 +138,20 @@ module.exports = function({route,authUser,sendJson,readBody,store,syncReviews}) 
     return result;
   }
   own('GET','challenges',user=>{const s=state();return {challenges:s.challenges.filter(c=>c.members.includes(user.id)).slice(-50).reverse().map(c=>summary(s,c,user))};});
+  /* 建一场挑战的**唯一**实现：好友挑战与擂台现场匹配都走这里。
+   * 题库、容量、每人进行中上限、落库、通知——规则只写一遍，
+   * 免得两条路各长一份，日后改一处忘一处。 */
+  function createChallenge(s,creatorId,memberIds,topic) {
+    const bank=objective.filter(q=>q.topic===topic);if(bank.length<5)fail('请选择至少有五道客观题的主题');
+    if(s.challenges.length>=2000)fail('挑战记录已达到当前容量，请联系网站维护者');
+    if(s.challenges.filter(c=>c.status==='active'&&c.expiresAt>Date.now()&&c.members.includes(creatorId)).length>=10)fail('请先完成或取消已有挑战');
+    for(let i=bank.length-1;i>0;i--){const j=crypto.randomInt(i+1);[bank[i],bank[j]]=[bank[j],bank[i]];}
+    const c={id:crypto.randomUUID(),creator:creatorId,members:[...memberIds],topic,qids:bank.slice(0,5).map(q=>q.id),sessions:{},status:'active',createdAt:Date.now(),expiresAt:Date.now()+86400000};s.challenges.push(c);save(s);notify(c.members,'challenges');changed(c);return c;
+  }
   own('POST','challenges',(user,_,body)=>{
     limited(user.id,'challenges',10);const s=state(),target=String(body.to||'');if(!friendship(s,user.id,target))fail('请先添加并确认学习搭子',403);
-    const bank=objective.filter(q=>q.topic===body.topic);if(bank.length<5)fail('请选择至少有五道客观题的主题');
-    if(s.challenges.length>=2000)fail('挑战记录已达到当前容量，请联系网站维护者');
-    if(s.challenges.filter(c=>c.status==='active'&&c.expiresAt>Date.now()&&c.members.includes(user.id)).length>=10)fail('请先完成或取消已有挑战');
-    for(let i=bank.length-1;i>0;i--){const j=crypto.randomInt(i+1);[bank[i],bank[j]]=[bank[j],bank[i]];}
-    const c={id:crypto.randomUUID(),creator:user.id,members:[user.id,target],topic:body.topic,qids:bank.slice(0,5).map(q=>q.id),sessions:{},status:'active',createdAt:Date.now(),expiresAt:Date.now()+86400000};s.challenges.push(c);save(s);notify(c.members,'challenges');changed(c);return {challenge:summary(s,c,user)};
+    const c=createChallenge(s,user.id,[user.id,target],body.topic);
+    return {challenge:summary(s,c,user)};
   });
   own('GET','challenge',(user,query)=>{const s=state();return {challenge:summary(s,duel(s,query.get('id'),user),user,true)};});
   own('POST','challenge/start',(user,_,body)=>{
@@ -191,6 +200,18 @@ module.exports = function({route,authUser,sendJson,readBody,store,syncReviews}) 
     /* 只读旁听：谁需要知道「挑战变了」，在这里注册。拿到的是已提交的挑战对象，
      * 房间怎么开、谁能在里面说话仍归各自模块，这里不替它们做判断。 */
     onChallengeEvent(fn) { challengeListeners.add(fn); return () => challengeListeners.delete(fn); },
+    /* 擂台现场匹配（server/campus/presence.js 调）：
+     * 两个人都站在台上点了「开始匹配」= 双向同意，所以**这一步不要求先加学习搭子**。
+     * 除了「好友」这个前置，其余规则（题库、容量、进行中上限、落库、通知）与好友挑战完全一致——
+     * 它们都写在上面的 createChallenge 里，不存在第二套。
+     * 调用方必须已经在 store.run() 事务里（presence 的匹配处理就是这么做的）。 */
+    createLiveChallenge(a, b, topic) {
+      if (typeof a !== 'string' || typeof b !== 'string' || !a || !b || a === b)
+        throw Object.assign(new Error('匹配对手无效'), { status: 400 });
+      const picked = typeof topic === 'string' && objective.filter(q => q.topic === topic).length >= 5 ? topic : LIVE_TOPIC;
+      const s = state();
+      return createChallenge(s, a, [a, b], picked);
+    },
     close: () => new Promise(resolve => { if (io) io.close(resolve); else resolve(); })
   };
 };

@@ -87,6 +87,7 @@ export function createArenaDuel(options = {}) {
   let detail = null;                 // 服务端给的挑战详情（含题目/得分/对面状态）
   let topic = '';
   let status = 'idle';               // idle | connecting | seated | error
+  let matching = false;              // 正在等对手（服务端队列里有我）
   let connecting = null, joining = null, closed = false;
   let listeners = new Set();
 
@@ -162,6 +163,9 @@ export function createArenaDuel(options = {}) {
         socket.on('duel:seat', (m) => { if (m?.id) upsertSeat(m); onSeats(m); });
         socket.on('duel:state', onState);
         socket.on('duel:act', onAct);
+        /* 匹配成功：由服务端告诉我"配到哪一场、坐哪个位"。
+         * 这时候人已经站在台上了，所以直接走就位那一步，不再问一次挑战列表。 */
+        socket.on('duel:matched', (m) => { onMatched(m); });
         socket.on('duel:left', (m) => {
           if (!m?.id) return;
           seats.delete(m.id);
@@ -364,8 +368,63 @@ export function createArenaDuel(options = {}) {
     return { ok: true, online: true, challenge: chosen, station: seat, peer: sent.peer };
   }
 
+  /* 匹配成功（服务端 emit 回来）：把我放到服务端指定的位上。
+   * 为什么用事件而不是"让调用方 await"：配对要等另一边坐上来，
+   * 可能在我点完按钮之后几十秒才发生，这不是一次请求的时长。 */
+  async function onMatched(message) {
+    if (!message || typeof message.challenge !== 'string') return null;
+    if (message.challenge === challenge && status === 'seated') return null;
+    const seat = message.station === 'jia' || message.station === 'yi' ? message.station : null;
+    if (!seat) return null;
+    matching = false;
+    challenge = message.challenge;
+    station = seat;
+    seats = new Map();
+    peer = null;
+    const sent = await sendEnter(challenge, seat);
+    if (!sent.ok) {
+      status = 'error';
+      toast('就位失败：' + sent.error);
+      emit();
+      return { ok: false, error: sent.error };
+    }
+    return { ok: true, matched: true, challenge, station: seat, peer: sent.peer };
+  }
+
+  /**
+   * 现场匹配：两个都站在竞技场的人各自点一次，服务端把两人配成一场挑战。
+   * 不需要先加学习搭子——点「开始匹配」本身就是同意。
+   * @param {'jia'|'yi'} seat 我想坐的位；配对时先等的人保持原位，后来的人去另一边
+   */
+  async function match(seat) {
+    const s = session();
+    if (s.state !== 'cloud') {
+      status = s.state === 'guest' ? 'guest' : 'local';
+      emit();
+      return { ok: false, online: false, state: s.state, message: '未登录云端账号' };
+    }
+    await connect();
+    if (!joined) { if (await waitConnected()) await ensureJoined(); }
+    if (!joined) { status = 'connecting'; emit(); return { ok: false, online: false, message: '正在连接擂台现场' }; }
+    const result = await new Promise((resolve) => {
+      socket.timeout(8000).emit('duel:match', { station: seat }, (error, value) => resolve(error ? { ok: false, error: '匹配超时（服务端没有回应）' } : value));
+    });
+    if (!result?.ok) { matching = false; emit(); return result; }
+    if (result.matched) {
+      /* 自己配对成功：直接落座（服务端可能把我挪到另一个位，以它给的为准） */
+      return (await onMatched({ challenge: result.challenge, station: result.station })) || { ok: false, error: '配对成功但落座失败' };
+    }
+    matching = true;
+    emit();
+    return { ok: true, waiting: true, station: seat };
+  }
+
   function leave() {
     if (socket?.connected && joined && challenge) socket.emit('duel:leave', { challenge });
+    /* 还在队列里的时候下台，要顺手把自己从匹配队列摘掉，
+     * 否则对面点匹配会跟一个"已经走开的人"配成一场没人答的挑战。 */
+    if (socket?.connected && matching) socket.emit('duel:match/cancel');
+    matching = false;
     challenge = null; station = null; seats = new Map(); submitted = new Map(); peer = null; topic = ''; status = 'idle';
     detail = null;
     emit();
@@ -460,6 +519,7 @@ export function createArenaDuel(options = {}) {
       seated: [...seats.values()].map((s) => ({ nick: s.nick, station: s.station, self: s.id === selfId })),
       candidate: candidate(),
       status,
+      matching,
       online: joined,
       detail,
     };
@@ -475,6 +535,7 @@ export function createArenaDuel(options = {}) {
     setMeta,
     connect,
     enter,
+    match,
     leave,
     act,
     fetchDetail,
