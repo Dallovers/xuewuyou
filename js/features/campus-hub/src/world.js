@@ -1,4 +1,4 @@
-import * as T from 'three';
+﻿import * as T from 'three';
 import {STUDY_PLACEMENT,ARENA_ROOT} from './layout.js';
 import {worldBoxes} from './navigation.js';
 import {createCourtyard} from './courtyard.js';
@@ -7,6 +7,7 @@ import {createCampusContext} from './campus-context.js';
 import {createWhitePaving} from './paving-material.js';
 import {faceSocialCourtyard} from './social-placement.js';
 import {createInteriors} from './interiors.js';
+import {batchStaticMeshes} from './static-batch.js';
 
 export async function createWorld(scene,openFeature,progress,getPose){
  const root=new T.Group();root.name='Campus shared public ground';scene.add(root);
@@ -79,5 +80,10 @@ export async function createWorld(scene,openFeature,progress,getPose){
   const add=(geo,m,px,py,pz,opts={})=>{const mesh=new T.Mesh(geo,m);mesh.position.set(px,py,pz);mesh.name=opts.name||'Tree';mesh.castShadow=mesh.receiveShadow=true;tree.add(mesh);return mesh;};
   landscape.buildCampusTree({THREE:T,root:tree,add,M:{leaf,bark,soil},x:0,z:0,leafCount:2400,seedOffset:100+i*197});boxes.push({id:'tree',minX:x-.35,maxX:x+.35,minZ:z-.35,maxZ:z+.35});
  }
- return{root,boxes,interiors,study:studyDistrict,inside(p){const q=studyDistrict.root.worldToLocal(new T.Vector3(p.x,0,p.z));return Math.abs(q.x)<5.95&&Math.abs(q.z)<4.45?'study':interiors.inside(p);},enter(id){if(id==='classroom'||id==='library')return interiors.open(id);if(id==='study')return{ok:true,message:'自习室入口开放，可以直接走进房间。'};return openFeature('community',{tab:id==='arena'?'arena':'friends'});},cameraObstacles,interactions,districts,courtyard,pavingSnapshot:()=>({name:pavingMaterial.name,meshes:pavingMeshes.length,materials:[...new Set(pavingMeshes.map(m=>m.material.uuid))].length}),update(dt,player){interiors.update(dt);courtyard.update(dt);for(const d of districts)d.update?.(dt,player);},dispose(){interiors.dispose();courtyard.dispose();for(const d of districts)d.dispose?.();const geos=new Set(),mats=new Set(owned),maps=new Set([...textures,...surfaces.textures]);root.traverse(n=>{if(n.geometry)geos.add(n.geometry);for(const m of n.material?(Array.isArray(n.material)?n.material:[n.material]):[]){mats.add(m);for(const v of Object.values(m))if(v?.isTexture)maps.add(v);}});for(const g of geos)g.dispose();for(const t of maps)t.dispose();for(const m of mats)m.dispose();scene.remove(root);}};
+ /* 静态合批：把「材质相同 + 不会动」的小 Mesh 烘成一批，专治 draw call。
+    整站 1348 个 Mesh、平均每个几十个三角形，卡顿几乎全花在提交上。
+    交互对象、门/钟/水花/自己挂 onBeforeRender 的（水面）都在模块内跳过；
+    URL 加 ?batch=0 可整体关掉，用于对照或出事时回退。 */
+ const batch=batchStaticMeshes(root,[root],{protect:interactions.map(item=>item.object),exclude:[],enabled:!/[?&]batch=0/.test(location.search)});
+ return{root,boxes,interiors,study:studyDistrict,batch,inside(p){const q=studyDistrict.root.worldToLocal(new T.Vector3(p.x,0,p.z));return Math.abs(q.x)<5.95&&Math.abs(q.z)<4.45?'study':interiors.inside(p);},enter(id){if(id==='classroom'||id==='library')return interiors.open(id);if(id==='study')return{ok:true,message:'自习室入口开放，可以直接走进房间。'};return openFeature('community',{tab:id==='arena'?'arena':'friends'});},cameraObstacles,interactions,districts,courtyard,pavingSnapshot:()=>({name:pavingMaterial.name,meshes:pavingMeshes.length,materials:[...new Set(pavingMeshes.map(m=>m.material.uuid))].length}),update(dt,player){interiors.update(dt);courtyard.update(dt);for(const d of districts)d.update?.(dt,player);},dispose(){interiors.dispose();courtyard.dispose();for(const d of districts)d.dispose?.();const geos=new Set(),mats=new Set(owned),maps=new Set([...textures,...surfaces.textures]);root.traverse(n=>{if(n.geometry)geos.add(n.geometry);for(const m of n.material?(Array.isArray(n.material)?n.material:[n.material]):[]){mats.add(m);for(const v of Object.values(m))if(v?.isTexture)maps.add(v);}});for(const g of geos)g.dispose();for(const t of maps)t.dispose();for(const m of mats)m.dispose();scene.remove(root);}};
 }
