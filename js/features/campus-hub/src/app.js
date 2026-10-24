@@ -346,6 +346,11 @@ duel.onChange(()=>{
   else if(state.stance&&duel.snapshot.status==='seated')openDuelPanel();
 });
 $('#loading').hidden=true;clock.getDelta();renderer.setAnimationLoop(frame);if(state.returnRestored)toast('已返回对应入口。');
+ /* 深链落点（第二十轮）：`?at=arena` 这类参数把人和相机直接放到那个地点的门口。
+    主站的「3D 竞技场」「进入 3D 校园」都从这里进来，落点一致，用户不用自己找路。
+    参数非法就当没写——一个手滑的 URL 不该把整个校园卡在加载态。 */
+ const at=new URLSearchParams(location.search).get('at');
+ if(at)setTimeout(()=>{try{teleportTo(at);}catch(error){console.warn('深链落点失败',error);}},350);
  }catch(error){console.error(error);$('#loading strong').textContent='校园暂时无法加载';$('#progress').textContent=error.message;$('#retry').hidden=false;}}
 window.__campusHub={snapshot:()=>({ready:state.ready,mode:state.mode,pos:[state.x,groundAt(state.x,state.z),state.z],yaw:state.yaw,path:state.path,modal:bridge.paused,returnRestored:state.returnRestored,seated:!!state.seated,stance:state.stance?.id||null,ground:smoothGround,opponent:opponent?.snapshot()||null,duel:duel?.snapshot||null,frames:state.frames,interior:world?.inside(state),rooms:world?.interiors.snapshot(),picker:studyPicker?{held:studyPicker.isHolding(),open:studyPicker.isBookOpen(),aim:studyPicker.getAim()}:null,entries:ENTRIES,nearest:nearest?.id||null,avatar:avatar?.snapshot(),boxes:world?.boxes.length,render:renderer.info.render}),route:id=>goTo(id),teleport:id=>teleportTo(id),setPose:(x,z,yaw=0,pitch=0)=>{if(!navigation||navigation.blocked(x,z))return false;clearInput();setMode('walk');Object.assign(state,{x,z,yaw,pitch});lastX=x;lastZ=z;return true;},blocked:(x,z)=>navigation?.blocked(x,z),entry:id=>world?.enter(id),openFeature:(...args)=>bridge.openFeature(...args),dispose};
 window.__campusHub.studyObjects=()=>{const out=[];world?.study.root.updateMatrixWorld(true);world?.study.root.traverse(n=>{if(n.userData.pickables)for(const ids of n.userData.pickables.groups.slice(0,16)){const m=new T.Matrix4();n.getMatrixAt(ids[0],m);out.push({label:n.userData.pickables.label,position:new T.Vector3().setFromMatrixPosition(m).applyMatrix4(n.matrixWorld).toArray()});}});return out;};
