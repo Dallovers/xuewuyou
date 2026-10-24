@@ -12,7 +12,7 @@
 
 2026-10-09 界面更新：已移除学习工作台整页及知识图、排程、数学实验的页面入口；题目白板保留在练习、复习和挑战复盘中，章节地图继续展示真实学习状态。校园留言改成木框软木便签墙，支持展开回复、长文、题目讨论和手机单列。原学习工作台的技术记录与数据仍保留，下面涉及它的旧操作路径不再适用于当前界面。可选背景素材见 [留言板美术提示词](留言板美术提示词.md)。
 
-网站：[打开学无忧](https://dallovers.github.io/xuewuyou/) · 后端：[健康检查](https://xuewuyou-campus.onrender.com/api/health)。免费后端闲置后需要唤醒，请稍等约一分钟。
+网站：[打开学无忧](https://dallovers.github.io/xuewuyou/) · 后端：[健康检查](https://1.94.225.173/api/health)。前端与 3D 资源继续由 GitHub Pages 托管，后端迁至华为云，使用免费公网 IP HTTPS 证书。账号数据库和登录密钥保持一致，迁移说明与回退步骤见 [华为云后端交接](docs/team/huawei-backend.md)。
 
 [![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/Dallovers/xuewuyou)
 
