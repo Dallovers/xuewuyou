@@ -19,9 +19,15 @@ const fs=require('node:fs/promises'),assert=require('node:assert/strict');
   await page.goto(base+'/examples/character-preview/');
   await page.waitForFunction(()=>!!window.__characterPreview);
   assert.equal(requests.length,0,'No models requested on first screen');
-  let entries=await page.evaluate(()=>window.__characterPreview.entries());
+  const allEntries=await page.evaluate(()=>window.__characterPreview.entries());
+  let entries=allEntries;
+  await page.selectOption('#batch','wave2-mechs');
+  assert.equal(await page.locator('#character option').count(),entries.filter(e=>e.batch==='wave2-mechs').length,'Mech batch filter');
+  assert.equal(requests.length,0,'Filtering does not request models');
+  await page.selectOption('#batch','all');
   const requested=process.env.CHARACTER_IDS?.split(',');
-  if(requested)entries=entries.filter(e=>requested.includes(e.id));
+  if(requested){for(const id of requested)assert(allEntries.some(e=>e.id===id),'Unknown requested ID '+id);entries=entries.filter(e=>requested.includes(e.id));}
+  assert(entries.length>0,'At least one model must be validated');
   const rows=[];
   for(const entry of entries){
    const before=requests.length;
@@ -45,6 +51,13 @@ const fs=require('node:fs/promises'),assert=require('node:assert/strict');
    rows.push({id:entry.id,status:'可显示',campusActionsVerified:false,displayed,clipChecks:checks,modelRequests:requests.length-before});
    console.log('PASS',entry.id,checks.length,'clips',checks.filter(c=>c.changed).length,'changed');
   }
+  const beforeBatchPage=requests.length;
+  await page.goto(base+'/examples/character-preview/?batch=wave2-mechs');
+  await page.waitForFunction(()=>!!window.__characterPreview);
+  assert.equal(await page.locator('#batch').inputValue(),'wave2-mechs','Direct batch link');
+  assert.equal(await page.locator('#character option').count(),allEntries.filter(e=>e.batch==='wave2-mechs').length,'Direct link lists four mechs');
+  assert.equal(requests.length,beforeBatchPage,'Direct batch link does not autoload');
+  await page.selectOption('#batch','all');
   const lifecycle=[];
   for(let i=0;i<3;i++){
    await page.evaluate(()=>window.__characterPreview.load('kaykit-knight'));
@@ -68,8 +81,10 @@ const fs=require('node:fs/promises'),assert=require('node:assert/strict');
   await page.emulateMedia({reducedMotion:'reduce'});await page.reload();await page.waitForFunction(()=>window.__characterPreview);
   await page.evaluate(()=>window.__characterPreview.load('kaykit-mage'));
   assert.equal(await page.locator('#pause').textContent(),'继续','Reduced motion starts paused');
-  const report={date:'2026-10-24',passed:errors.length===0&&warnings.length===0,engine:'Three.js 0.170.0 GLTFLoader / Edge headless WebGL',firstScreenModelRequests:0,lifecycleGpuCounts:lifecycle,mobileNoOverflow:true,pagesPrefixVerified:true,reducedMotionVerified:true,errors,warnings,rows};
-  await fs.writeFile(path.join(out,requested?'batch-1.json':'browser.json'),JSON.stringify(report,null,2));
+  const report={date:'2026-10-24',passed:errors.length===0&&warnings.length===0,engine:'Three.js 0.170.0 GLTFLoader / Edge headless WebGL',firstScreenModelRequests:0,batchFilterVerified:true,batchDirectLinkVerified:true,lifecycleGpuCounts:lifecycle,mobileNoOverflow:true,pagesPrefixVerified:true,reducedMotionVerified:true,errors,warnings,rows};
+  const reportName=process.env.CHARACTER_REPORT||(requested?'filtered-browser.json':'browser.json');
+  assert(/^[a-zA-Z0-9_-]+\.json$/.test(reportName),'Report must be a JSON filename');
+  await fs.writeFile(path.join(out,reportName),JSON.stringify(report,null,2));
   assert(report.passed,JSON.stringify({errors,warnings}));
  }finally{await browser.close();if(proxy){proxy.closeAllConnections();await new Promise(r=>proxy.close(r));}}
 })().catch(e=>{console.error(e);process.exitCode=1;});

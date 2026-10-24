@@ -3513,5 +3513,947 @@
       "path": "docs/characters/licenses/fox/LICENSE.md",
       "sha256": "9ddaa2edd6a8f72117eec9709d38cd7d284f61f77752d342c32c828e61f78eae"
     }
+  },
+  {
+    "id": "quaternius-mech-george",
+    "displayName": "乔治重装机甲",
+    "style": "科幻机甲 / 工业机器人",
+    "batch": "wave2-mechs",
+    "author": "Quaternius",
+    "sourceUrl": "https://quaternius.com/packs/animatedmech.html",
+    "downloadUrl": "https://drive.google.com/uc?export=download&id=1-LVJXIGatBYD9ldy_BgCvr-rcpWss_wW",
+    "downloadDate": "2026-10-24",
+    "sourcePath": "George.gltf",
+    "sourceFormat": "gltf-embedded",
+    "sourceSha256": "eccc45d82701f32d67b4480346757b1656c649d9d40e4a1484f57d660596285e",
+    "sourceBytes": 5152038,
+    "version": "Animated Mech Pack / March 2021",
+    "license": "CC0-1.0",
+    "licensePath": "docs/characters/licenses/quaternius-mechs/License.txt",
+    "attributionRequired": false,
+    "attribution": "Models, embedded textures and included animations by Quaternius (CC0 1.0); credit optional. Original embedded glTF repackaged losslessly as GLB.",
+    "modelPath": "examples/campus-3d-v5/assets/characters/candidates/quaternius-mech-george/model.glb",
+    "status": "可显示",
+    "files": [
+      {
+        "path": "examples/campus-3d-v5/assets/characters/candidates/quaternius-mech-george/model.glb",
+        "bytes": 3392028,
+        "sha256": "230933433316257a6233481600a5802a41852b6af49e92085d7ae6c88523d5dd"
+      }
+    ],
+    "totalBytes": 3392028,
+    "conversionPerformed": "glTF data URI→GLB：仅移除 buffer URI 并添加 GLB 容器，JSON 其余内容及原始二进制 buffer 逐字节验证一致。",
+    "licenseScope": {
+      "model": "CC0-1.0",
+      "textures": "CC0-1.0",
+      "animations": "CC0-1.0"
+    },
+    "licenseReview": "作者作品页明确为 CC0，直接链接官方 Drive 发布包；保留包内原始 License.txt。许可覆盖该包模型、内嵌贴图和自带动画，允许修改与网站分发；可作为项目兑换皮肤候选，仍需技术适配。",
+    "licenseFile": {
+      "path": "docs/characters/licenses/quaternius-mechs/License.txt",
+      "bytes": 364,
+      "sha256": "83d8959f9fc56353ed571fbe2dc52e4bcd64508e2399501cd45ac2ce3df0bf8c",
+      "downloadUrl": "https://drive.google.com/uc?export=download&id=1za89GDUfFtTyq8f2uL0_U0Nw_anSzGir"
+    },
+    "provenancePath": "docs/characters/licenses/quaternius-mechs/provenance.json",
+    "validation": {
+      "downloaded": true,
+      "parseVerified": true,
+      "displayVerified": true,
+      "bundledAnimationSamplingVerified": true,
+      "campusActionsVerified": false,
+      "sampledClips": 20,
+      "changedNodeClips": 20,
+      "limitation": "每段仅从 0 至 min(.37,duration*.37) 采样，检查节点有限和变化；未验证完整时间轴视觉、脚滑、校园动作与跳跃时序。"
+    },
+    "triangles": 7864,
+    "vertices": 7755,
+    "materialCount": 1,
+    "materials": [
+      {
+        "name": "George_Texture",
+        "baseColorFactor": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "baseColorTexture": "George_Texture",
+        "doubleSided": true
+      }
+    ],
+    "textures": [
+      {
+        "name": "George_Texture",
+        "uri": "embedded GLB bufferView",
+        "mimeType": "image/png",
+        "bytes": 2295756,
+        "width": 2048,
+        "height": 2048,
+        "sha256": "6a2f8ae21d007641a209bb70a094eac4f8d0e3c402cc30f48ffb370a5c609b70"
+      }
+    ],
+    "skins": [
+      {
+        "name": "RobotArmature",
+        "joints": [
+          "Body",
+          "Torso",
+          "Chest",
+          "Neck",
+          "Head",
+          "Shoulder.L",
+          "UpperArm.L",
+          "LowerArm.L",
+          "PalmP.L",
+          "Pinky1.L",
+          "Pinky2.L",
+          "PalmR.L",
+          "Ring1.L",
+          "Ring2.L",
+          "PalmI.L",
+          "Index1.L",
+          "Index2.L",
+          "PalmT.L",
+          "Thumb1.L",
+          "Thumb2.L",
+          "Shoulder.R",
+          "UpperArm.R",
+          "LowerArm.R",
+          "PalmP.R",
+          "Pinky1.R",
+          "Pinky2.R",
+          "PalmR.R",
+          "Ring1.R",
+          "Ring2.R",
+          "PalmI.R",
+          "Index1.R",
+          "Index2.R",
+          "PalmT.R",
+          "Thumb1.R",
+          "Thumb2.R",
+          "UpperLeg.L",
+          "MidLeg.L",
+          "LowerLeg.L",
+          "FootBack.L",
+          "UpperLeg.R",
+          "MidLeg.R",
+          "LowerLeg.R",
+          "FootBack.R",
+          "PoleTarget.L",
+          "PoleTarget.R",
+          "Foot.L",
+          "Foot.R"
+        ]
+      }
+    ],
+    "extensionsUsed": [
+      "KHR_materials_unlit"
+    ],
+    "extensionsRequired": [],
+    "texturePaths": [],
+    "embeddedTextureCount": 1,
+    "animations": [
+      {
+        "name": "Dance",
+        "duration": 0.800000011920929
+      },
+      {
+        "name": "Death",
+        "duration": 1.4333332777023315
+      },
+      {
+        "name": "Hello",
+        "duration": 1.5
+      },
+      {
+        "name": "HitRecieve_1",
+        "duration": 0.46666666865348816
+      },
+      {
+        "name": "HitRecieve_2",
+        "duration": 0.46666666865348816
+      },
+      {
+        "name": "Idle",
+        "duration": 3.3333332538604736
+      },
+      {
+        "name": "Jump",
+        "duration": 0.8666666746139526
+      },
+      {
+        "name": "Kick",
+        "duration": 0.6000000238418579
+      },
+      {
+        "name": "No",
+        "duration": 1.399999976158142
+      },
+      {
+        "name": "Pickup",
+        "duration": 1.399999976158142
+      },
+      {
+        "name": "Punch",
+        "duration": 0.5666666626930237
+      },
+      {
+        "name": "Run",
+        "duration": 0.8333333134651184
+      },
+      {
+        "name": "Run_Holding",
+        "duration": 0.8333333134651184
+      },
+      {
+        "name": "Run_Tall",
+        "duration": 0.8333333134651184
+      },
+      {
+        "name": "Shoot",
+        "duration": 0.5
+      },
+      {
+        "name": "SwordSlash",
+        "duration": 0.6000000238418579
+      },
+      {
+        "name": "Walk",
+        "duration": 0.8333333134651184
+      },
+      {
+        "name": "Walk_Holding",
+        "duration": 0.8333333134651184
+      },
+      {
+        "name": "Walk_Tall",
+        "duration": 0.8333333134651184
+      },
+      {
+        "name": "Yes",
+        "duration": 1.399999976158142
+      }
+    ],
+    "skeletonType": "模型专属蒙皮骨骼；47 joints，详见 skins.joints",
+    "formatConversionRequired": false,
+    "retargetingRequired": "播放自带片段无需跨骨骼重定向；若复用校园现有其他模型动画，需要单独重定向，当前未做。",
+    "suggestedActionMap": {
+      "idle": "Idle",
+      "walk": "Walk",
+      "run": "Run",
+      "jump": "Jump",
+      "punch": "Punch"
+    },
+    "tentativeActionMap": {
+      "wave": "Hello（候选；未核验完整手势语义与时序）"
+    },
+    "missingActions": [
+      "校园挥手映射未确认；Hello 仅作为候选"
+    ],
+    "compatibility": "现有 Three.js GLTFLoader 可显示，自带 AnimationMixer 动画可采样；未注册校园 variant、未验证校园动作。KHR_materials_unlit 由现有加载器支持。",
+    "adaptationNeeded": [
+      "独立 variant 注册与资源路径映射（本次未修改控制器）",
+      "映射原生 Idle/Walk/Run/Jump/Punch，审查 Hello 能否用于挥手",
+      "校准 +Z 朝向、1.72m 高度和脚底；预览只是临时实例归一",
+      "跳跃片段含原生骨骼位移，需核对与 createAvatarActions 跳高是否叠加",
+      "校准机器人宽度与 .30m 导航半径，以及移动速度与脚滑；不混套其他模型骨骼"
+    ],
+    "knownIssues": [
+      "仅独立预览及自带动画单点采样通过；未验证校园碰撞、多人同步、完整六动作或手机帧率。",
+      "原始 2048×2048 PNG 已内嵌，压缩体积不等于 GPU 解码显存；本次未降纹理尺寸。",
+      "四款虽同一作者与动作命名系列，骨骼节点数量并不完全一致，必须逐模型绑定自己的片段。"
+    ]
+  },
+  {
+    "id": "quaternius-mech-leela",
+    "displayName": "莉拉独眼机甲",
+    "style": "科幻机甲 / 工业机器人",
+    "batch": "wave2-mechs",
+    "author": "Quaternius",
+    "sourceUrl": "https://quaternius.com/packs/animatedmech.html",
+    "downloadUrl": "https://drive.google.com/uc?export=download&id=1Q1YGX60Ze2WI5oCSel8tYUy8DduEoaCC",
+    "downloadDate": "2026-10-24",
+    "sourcePath": "Leela.gltf",
+    "sourceFormat": "gltf-embedded",
+    "sourceSha256": "79f9afe3172f9157c91aaa272f7aacc9bbb279bfd947a5f8c18ec3ced44b938b",
+    "sourceBytes": 3382594,
+    "version": "Animated Mech Pack / March 2021",
+    "license": "CC0-1.0",
+    "licensePath": "docs/characters/licenses/quaternius-mechs/License.txt",
+    "attributionRequired": false,
+    "attribution": "Models, embedded textures and included animations by Quaternius (CC0 1.0); credit optional. Original embedded glTF repackaged losslessly as GLB.",
+    "modelPath": "examples/campus-3d-v5/assets/characters/candidates/quaternius-mech-leela/model.glb",
+    "status": "可显示",
+    "files": [
+      {
+        "path": "examples/campus-3d-v5/assets/characters/candidates/quaternius-mech-leela/model.glb",
+        "bytes": 2379244,
+        "sha256": "4cfec379f11b8fdea245fa5bfcf2f4ab7284ddfaeeb77c3cd3a0c82510a4ff02"
+      }
+    ],
+    "totalBytes": 2379244,
+    "conversionPerformed": "glTF data URI→GLB：仅移除 buffer URI 并添加 GLB 容器，JSON 其余内容及原始二进制 buffer 逐字节验证一致。",
+    "licenseScope": {
+      "model": "CC0-1.0",
+      "textures": "CC0-1.0",
+      "animations": "CC0-1.0"
+    },
+    "licenseReview": "作者作品页明确为 CC0，直接链接官方 Drive 发布包；保留包内原始 License.txt。许可覆盖该包模型、内嵌贴图和自带动画，允许修改与网站分发；可作为项目兑换皮肤候选，仍需技术适配。",
+    "licenseFile": {
+      "path": "docs/characters/licenses/quaternius-mechs/License.txt",
+      "bytes": 364,
+      "sha256": "83d8959f9fc56353ed571fbe2dc52e4bcd64508e2399501cd45ac2ce3df0bf8c",
+      "downloadUrl": "https://drive.google.com/uc?export=download&id=1za89GDUfFtTyq8f2uL0_U0Nw_anSzGir"
+    },
+    "provenancePath": "docs/characters/licenses/quaternius-mechs/provenance.json",
+    "validation": {
+      "downloaded": true,
+      "parseVerified": true,
+      "displayVerified": true,
+      "bundledAnimationSamplingVerified": true,
+      "campusActionsVerified": false,
+      "sampledClips": 18,
+      "changedNodeClips": 18,
+      "limitation": "每段仅从 0 至 min(.37,duration*.37) 采样，检查节点有限和变化；未验证完整时间轴视觉、脚滑、校园动作与跳跃时序。"
+    },
+    "triangles": 2368,
+    "vertices": 3163,
+    "materialCount": 1,
+    "materials": [
+      {
+        "name": "Leela_Texture",
+        "baseColorFactor": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "baseColorTexture": "Leela_Texture",
+        "doubleSided": true
+      }
+    ],
+    "textures": [
+      {
+        "name": "Leela_Texture",
+        "uri": "embedded GLB bufferView",
+        "mimeType": "image/png",
+        "bytes": 1929427,
+        "width": 2048,
+        "height": 2048,
+        "sha256": "2ee1b71e542746c76cdb1a7cd80249660962b35855166a681937cc8e61d1517d"
+      }
+    ],
+    "skins": [
+      {
+        "name": "RobotArmature",
+        "joints": [
+          "Body",
+          "Torso",
+          "Chest",
+          "Neck",
+          "Head",
+          "UpperLeg.L",
+          "MidLeg.L",
+          "LowerLeg.L",
+          "FootBack.L",
+          "UpperLeg.R",
+          "MidLeg.R",
+          "LowerLeg.R",
+          "FootBack.R",
+          "PoleTarget.L",
+          "PoleTarget.R",
+          "Foot.L",
+          "Foot.R"
+        ]
+      }
+    ],
+    "extensionsUsed": [
+      "KHR_materials_unlit"
+    ],
+    "extensionsRequired": [],
+    "texturePaths": [],
+    "embeddedTextureCount": 1,
+    "animations": [
+      {
+        "name": "Dance",
+        "duration": 1
+      },
+      {
+        "name": "Death",
+        "duration": 1.7916666269302368
+      },
+      {
+        "name": "Hello",
+        "duration": 1.875
+      },
+      {
+        "name": "HitRecieve_1",
+        "duration": 0.5833333134651184
+      },
+      {
+        "name": "HitRecieve_2",
+        "duration": 0.5833333134651184
+      },
+      {
+        "name": "Idle",
+        "duration": 4.166666507720947
+      },
+      {
+        "name": "Jump",
+        "duration": 1.0833333730697632
+      },
+      {
+        "name": "Kick",
+        "duration": 0.75
+      },
+      {
+        "name": "No",
+        "duration": 1.75
+      },
+      {
+        "name": "Pickup",
+        "duration": 1.75
+      },
+      {
+        "name": "Punch",
+        "duration": 0.7083333134651184
+      },
+      {
+        "name": "Run",
+        "duration": 1.0416666269302368
+      },
+      {
+        "name": "Run_Tall",
+        "duration": 1.0416666269302368
+      },
+      {
+        "name": "Shoot",
+        "duration": 0.625
+      },
+      {
+        "name": "SwordSlash",
+        "duration": 0.75
+      },
+      {
+        "name": "Walk",
+        "duration": 1.0416666269302368
+      },
+      {
+        "name": "Walk_Tall",
+        "duration": 1.0416666269302368
+      },
+      {
+        "name": "Yes",
+        "duration": 1.75
+      }
+    ],
+    "skeletonType": "模型专属蒙皮骨骼；17 joints，详见 skins.joints",
+    "formatConversionRequired": false,
+    "retargetingRequired": "播放自带片段无需跨骨骼重定向；若复用校园现有其他模型动画，需要单独重定向，当前未做。",
+    "suggestedActionMap": {
+      "idle": "Idle",
+      "walk": "Walk",
+      "run": "Run",
+      "jump": "Jump",
+      "punch": "Punch"
+    },
+    "tentativeActionMap": {
+      "wave": "Hello（候选；未核验完整手势语义与时序）"
+    },
+    "missingActions": [
+      "校园挥手映射未确认；Hello 仅作为候选"
+    ],
+    "compatibility": "现有 Three.js GLTFLoader 可显示，自带 AnimationMixer 动画可采样；未注册校园 variant、未验证校园动作。KHR_materials_unlit 由现有加载器支持。",
+    "adaptationNeeded": [
+      "独立 variant 注册与资源路径映射（本次未修改控制器）",
+      "映射原生 Idle/Walk/Run/Jump/Punch，审查 Hello 能否用于挥手",
+      "校准 +Z 朝向、1.72m 高度和脚底；预览只是临时实例归一",
+      "跳跃片段含原生骨骼位移，需核对与 createAvatarActions 跳高是否叠加",
+      "校准机器人宽度与 .30m 导航半径，以及移动速度与脚滑；不混套其他模型骨骼"
+    ],
+    "knownIssues": [
+      "仅独立预览及自带动画单点采样通过；未验证校园碰撞、多人同步、完整六动作或手机帧率。",
+      "原始 2048×2048 PNG 已内嵌，压缩体积不等于 GPU 解码显存；本次未降纹理尺寸。",
+      "四款虽同一作者与动作命名系列，骨骼节点数量并不完全一致，必须逐模型绑定自己的片段。"
+    ]
+  },
+  {
+    "id": "quaternius-mech-mike",
+    "displayName": "迈克战术机甲",
+    "style": "科幻机甲 / 工业机器人",
+    "batch": "wave2-mechs",
+    "author": "Quaternius",
+    "sourceUrl": "https://quaternius.com/packs/animatedmech.html",
+    "downloadUrl": "https://drive.google.com/uc?export=download&id=1XekqFS2x8IRz3W_vYuAvbz0mfDMvD74a",
+    "downloadDate": "2026-10-24",
+    "sourcePath": "Mike.gltf",
+    "sourceFormat": "gltf-embedded",
+    "sourceSha256": "cc742d3b4960e79e7772c06a465e20958353ab7bd3e6e50c3f46ebccb2a94fa5",
+    "sourceBytes": 4423046,
+    "version": "Animated Mech Pack / March 2021",
+    "license": "CC0-1.0",
+    "licensePath": "docs/characters/licenses/quaternius-mechs/License.txt",
+    "attributionRequired": false,
+    "attribution": "Models, embedded textures and included animations by Quaternius (CC0 1.0); credit optional. Original embedded glTF repackaged losslessly as GLB.",
+    "modelPath": "examples/campus-3d-v5/assets/characters/candidates/quaternius-mech-mike/model.glb",
+    "status": "可显示",
+    "files": [
+      {
+        "path": "examples/campus-3d-v5/assets/characters/candidates/quaternius-mech-mike/model.glb",
+        "bytes": 2926776,
+        "sha256": "66cfba4d406b084ded632eaf6636684eb5389fa911dcd416e86d6e18edd736f4"
+      }
+    ],
+    "totalBytes": 2926776,
+    "conversionPerformed": "glTF data URI→GLB：仅移除 buffer URI 并添加 GLB 容器，JSON 其余内容及原始二进制 buffer 逐字节验证一致。",
+    "licenseScope": {
+      "model": "CC0-1.0",
+      "textures": "CC0-1.0",
+      "animations": "CC0-1.0"
+    },
+    "licenseReview": "作者作品页明确为 CC0，直接链接官方 Drive 发布包；保留包内原始 License.txt。许可覆盖该包模型、内嵌贴图和自带动画，允许修改与网站分发；可作为项目兑换皮肤候选，仍需技术适配。",
+    "licenseFile": {
+      "path": "docs/characters/licenses/quaternius-mechs/License.txt",
+      "bytes": 364,
+      "sha256": "83d8959f9fc56353ed571fbe2dc52e4bcd64508e2399501cd45ac2ce3df0bf8c",
+      "downloadUrl": "https://drive.google.com/uc?export=download&id=1za89GDUfFtTyq8f2uL0_U0Nw_anSzGir"
+    },
+    "provenancePath": "docs/characters/licenses/quaternius-mechs/provenance.json",
+    "validation": {
+      "downloaded": true,
+      "parseVerified": true,
+      "displayVerified": true,
+      "bundledAnimationSamplingVerified": true,
+      "campusActionsVerified": false,
+      "sampledClips": 18,
+      "changedNodeClips": 18,
+      "limitation": "每段仅从 0 至 min(.37,duration*.37) 采样，检查节点有限和变化；未验证完整时间轴视觉、脚滑、校园动作与跳跃时序。"
+    },
+    "triangles": 6062,
+    "vertices": 5813,
+    "materialCount": 1,
+    "materials": [
+      {
+        "name": "Mike_Texture",
+        "baseColorFactor": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "baseColorTexture": "Mike_Texture",
+        "doubleSided": true
+      }
+    ],
+    "textures": [
+      {
+        "name": "Mike_Texture",
+        "uri": "embedded GLB bufferView",
+        "mimeType": "image/png",
+        "bytes": 2065288,
+        "width": 2048,
+        "height": 2048,
+        "sha256": "100128ef553e31a1ae90f0bfc291341fa29b6ce2753b0a17e3e85b1a69404d92"
+      }
+    ],
+    "skins": [
+      {
+        "name": "RobotArmature",
+        "joints": [
+          "Body",
+          "Torso",
+          "Chest",
+          "Neck",
+          "Head",
+          "Shoulder.L",
+          "UpperArm.L",
+          "LowerArm.L",
+          "PalmP.L",
+          "Pinky1.L",
+          "Pinky2.L",
+          "PalmR.L",
+          "Ring1.L",
+          "Ring2.L",
+          "PalmI.L",
+          "Index1.L",
+          "Index2.L",
+          "PalmT.L",
+          "Thumb1.L",
+          "Thumb2.L",
+          "Shoulder.R",
+          "UpperArm.R",
+          "LowerArm.R",
+          "PalmP.R",
+          "Pinky1.R",
+          "Pinky2.R",
+          "PalmR.R",
+          "Ring1.R",
+          "Ring2.R",
+          "PalmI.R",
+          "Index1.R",
+          "Index2.R",
+          "PalmT.R",
+          "Thumb1.R",
+          "Thumb2.R",
+          "UpperLeg.L",
+          "LowerLeg.L",
+          "UpperLeg.R",
+          "LowerLeg.R",
+          "PoleTarget.L",
+          "PoleTarget.R",
+          "Foot.L",
+          "Foot.R"
+        ]
+      }
+    ],
+    "extensionsUsed": [
+      "KHR_materials_unlit"
+    ],
+    "extensionsRequired": [],
+    "texturePaths": [],
+    "embeddedTextureCount": 1,
+    "animations": [
+      {
+        "name": "Dance",
+        "duration": 1
+      },
+      {
+        "name": "Death",
+        "duration": 1.7916666269302368
+      },
+      {
+        "name": "Hello",
+        "duration": 1.875
+      },
+      {
+        "name": "HitRecieve_1",
+        "duration": 0.5833333134651184
+      },
+      {
+        "name": "HitRecieve_2",
+        "duration": 0.5833333134651184
+      },
+      {
+        "name": "Idle",
+        "duration": 4.166666507720947
+      },
+      {
+        "name": "Jump",
+        "duration": 1.0833333730697632
+      },
+      {
+        "name": "Kick",
+        "duration": 0.75
+      },
+      {
+        "name": "No",
+        "duration": 1.75
+      },
+      {
+        "name": "Pickup",
+        "duration": 1.75
+      },
+      {
+        "name": "Punch",
+        "duration": 0.7083333134651184
+      },
+      {
+        "name": "Run",
+        "duration": 1.0416666269302368
+      },
+      {
+        "name": "Run_Holding",
+        "duration": 1.0416666269302368
+      },
+      {
+        "name": "Shoot",
+        "duration": 0.625
+      },
+      {
+        "name": "SwordSlash",
+        "duration": 0.75
+      },
+      {
+        "name": "Walk",
+        "duration": 1.0416666269302368
+      },
+      {
+        "name": "Walk_Holding",
+        "duration": 1.0416666269302368
+      },
+      {
+        "name": "Yes",
+        "duration": 1.75
+      }
+    ],
+    "skeletonType": "模型专属蒙皮骨骼；43 joints，详见 skins.joints",
+    "formatConversionRequired": false,
+    "retargetingRequired": "播放自带片段无需跨骨骼重定向；若复用校园现有其他模型动画，需要单独重定向，当前未做。",
+    "suggestedActionMap": {
+      "idle": "Idle",
+      "walk": "Walk",
+      "run": "Run",
+      "jump": "Jump",
+      "punch": "Punch"
+    },
+    "tentativeActionMap": {
+      "wave": "Hello（候选；未核验完整手势语义与时序）"
+    },
+    "missingActions": [
+      "校园挥手映射未确认；Hello 仅作为候选"
+    ],
+    "compatibility": "现有 Three.js GLTFLoader 可显示，自带 AnimationMixer 动画可采样；未注册校园 variant、未验证校园动作。KHR_materials_unlit 由现有加载器支持。",
+    "adaptationNeeded": [
+      "独立 variant 注册与资源路径映射（本次未修改控制器）",
+      "映射原生 Idle/Walk/Run/Jump/Punch，审查 Hello 能否用于挥手",
+      "校准 +Z 朝向、1.72m 高度和脚底；预览只是临时实例归一",
+      "跳跃片段含原生骨骼位移，需核对与 createAvatarActions 跳高是否叠加",
+      "校准机器人宽度与 .30m 导航半径，以及移动速度与脚滑；不混套其他模型骨骼"
+    ],
+    "knownIssues": [
+      "仅独立预览及自带动画单点采样通过；未验证校园碰撞、多人同步、完整六动作或手机帧率。",
+      "原始 2048×2048 PNG 已内嵌，压缩体积不等于 GPU 解码显存；本次未降纹理尺寸。",
+      "四款虽同一作者与动作命名系列，骨骼节点数量并不完全一致，必须逐模型绑定自己的片段。"
+    ]
+  },
+  {
+    "id": "quaternius-mech-stan",
+    "displayName": "斯坦工程机甲",
+    "style": "科幻机甲 / 工业机器人",
+    "batch": "wave2-mechs",
+    "author": "Quaternius",
+    "sourceUrl": "https://quaternius.com/packs/animatedmech.html",
+    "downloadUrl": "https://drive.google.com/uc?export=download&id=1Wkj9SVzI3SMD-leUFWeREo0PfudxmG8Z",
+    "downloadDate": "2026-10-24",
+    "sourcePath": "Stan.gltf",
+    "sourceFormat": "gltf-embedded",
+    "sourceSha256": "e6903fee7458bbd804395c0d9dcc7545e3716bde865d05138e769d18299610b7",
+    "sourceBytes": 3787080,
+    "version": "Animated Mech Pack / March 2021",
+    "license": "CC0-1.0",
+    "licensePath": "docs/characters/licenses/quaternius-mechs/License.txt",
+    "attributionRequired": false,
+    "attribution": "Models, embedded textures and included animations by Quaternius (CC0 1.0); credit optional. Original embedded glTF repackaged losslessly as GLB.",
+    "modelPath": "examples/campus-3d-v5/assets/characters/candidates/quaternius-mech-stan/model.glb",
+    "status": "可显示",
+    "files": [
+      {
+        "path": "examples/campus-3d-v5/assets/characters/candidates/quaternius-mech-stan/model.glb",
+        "bytes": 2449932,
+        "sha256": "9f5aed9126bf1cb95000e0b6593ee84e2c5eb07ee5d3dfb2c07b010b88ceac4c"
+      }
+    ],
+    "totalBytes": 2449932,
+    "conversionPerformed": "glTF data URI→GLB：仅移除 buffer URI 并添加 GLB 容器，JSON 其余内容及原始二进制 buffer 逐字节验证一致。",
+    "licenseScope": {
+      "model": "CC0-1.0",
+      "textures": "CC0-1.0",
+      "animations": "CC0-1.0"
+    },
+    "licenseReview": "作者作品页明确为 CC0，直接链接官方 Drive 发布包；保留包内原始 License.txt。许可覆盖该包模型、内嵌贴图和自带动画，允许修改与网站分发；可作为项目兑换皮肤候选，仍需技术适配。",
+    "licenseFile": {
+      "path": "docs/characters/licenses/quaternius-mechs/License.txt",
+      "bytes": 364,
+      "sha256": "83d8959f9fc56353ed571fbe2dc52e4bcd64508e2399501cd45ac2ce3df0bf8c",
+      "downloadUrl": "https://drive.google.com/uc?export=download&id=1za89GDUfFtTyq8f2uL0_U0Nw_anSzGir"
+    },
+    "provenancePath": "docs/characters/licenses/quaternius-mechs/provenance.json",
+    "validation": {
+      "downloaded": true,
+      "parseVerified": true,
+      "displayVerified": true,
+      "bundledAnimationSamplingVerified": true,
+      "campusActionsVerified": false,
+      "sampledClips": 18,
+      "changedNodeClips": 18,
+      "limitation": "每段仅从 0 至 min(.37,duration*.37) 采样，检查节点有限和变化；未验证完整时间轴视觉、脚滑、校园动作与跳跃时序。"
+    },
+    "triangles": 6110,
+    "vertices": 6339,
+    "materialCount": 1,
+    "materials": [
+      {
+        "name": "Stan_Texture",
+        "baseColorFactor": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "baseColorTexture": "Stan_Texture",
+        "doubleSided": true
+      }
+    ],
+    "textures": [
+      {
+        "name": "Stan_Texture",
+        "uri": "embedded GLB bufferView",
+        "mimeType": "image/png",
+        "bytes": 1560762,
+        "width": 2048,
+        "height": 2048,
+        "sha256": "396ce9997423f52943908f29f210175e624e6c58451026311d988aea0f658f54"
+      }
+    ],
+    "skins": [
+      {
+        "name": "RobotArmature",
+        "joints": [
+          "Body",
+          "Torso",
+          "Chest",
+          "Neck",
+          "Head",
+          "Shoulder.L",
+          "UpperArm.L",
+          "LowerArm.L",
+          "PalmP.L",
+          "Pinky1.L",
+          "Pinky2.L",
+          "PalmR.L",
+          "Ring1.L",
+          "Ring2.L",
+          "PalmI.L",
+          "Index1.L",
+          "Index2.L",
+          "PalmT.L",
+          "Thumb1.L",
+          "Thumb2.L",
+          "Shoulder.R",
+          "UpperArm.R",
+          "LowerArm.R",
+          "PalmP.R",
+          "Pinky1.R",
+          "Pinky2.R",
+          "PalmR.R",
+          "Ring1.R",
+          "Ring2.R",
+          "PalmI.R",
+          "Index1.R",
+          "Index2.R",
+          "PalmT.R",
+          "Thumb1.R",
+          "Thumb2.R",
+          "UpperLeg.L",
+          "LowerLeg.L",
+          "UpperLeg.R",
+          "LowerLeg.R",
+          "PoleTarget.L",
+          "PoleTarget.R",
+          "Foot.L",
+          "Foot.R"
+        ]
+      }
+    ],
+    "extensionsUsed": [
+      "KHR_materials_unlit"
+    ],
+    "extensionsRequired": [],
+    "texturePaths": [],
+    "embeddedTextureCount": 1,
+    "animations": [
+      {
+        "name": "Dance",
+        "duration": 1
+      },
+      {
+        "name": "Death",
+        "duration": 1.7916666269302368
+      },
+      {
+        "name": "Hello",
+        "duration": 1.875
+      },
+      {
+        "name": "HitRecieve_1",
+        "duration": 0.5833333134651184
+      },
+      {
+        "name": "HitRecieve_2",
+        "duration": 0.5833333134651184
+      },
+      {
+        "name": "Idle",
+        "duration": 4.166666507720947
+      },
+      {
+        "name": "Jump",
+        "duration": 1.0833333730697632
+      },
+      {
+        "name": "Kick",
+        "duration": 0.75
+      },
+      {
+        "name": "No",
+        "duration": 1.75
+      },
+      {
+        "name": "Pickup",
+        "duration": 1.75
+      },
+      {
+        "name": "Punch",
+        "duration": 0.7083333134651184
+      },
+      {
+        "name": "Run",
+        "duration": 1.0416666269302368
+      },
+      {
+        "name": "Run_Holding",
+        "duration": 1.0416666269302368
+      },
+      {
+        "name": "Shoot",
+        "duration": 0.625
+      },
+      {
+        "name": "SwordSlash",
+        "duration": 0.75
+      },
+      {
+        "name": "Walk",
+        "duration": 1.0416666269302368
+      },
+      {
+        "name": "Walk_Holding",
+        "duration": 1.0416666269302368
+      },
+      {
+        "name": "Yes",
+        "duration": 1.75
+      }
+    ],
+    "skeletonType": "模型专属蒙皮骨骼；43 joints，详见 skins.joints",
+    "formatConversionRequired": false,
+    "retargetingRequired": "播放自带片段无需跨骨骼重定向；若复用校园现有其他模型动画，需要单独重定向，当前未做。",
+    "suggestedActionMap": {
+      "idle": "Idle",
+      "walk": "Walk",
+      "run": "Run",
+      "jump": "Jump",
+      "punch": "Punch"
+    },
+    "tentativeActionMap": {
+      "wave": "Hello（候选；未核验完整手势语义与时序）"
+    },
+    "missingActions": [
+      "校园挥手映射未确认；Hello 仅作为候选"
+    ],
+    "compatibility": "现有 Three.js GLTFLoader 可显示，自带 AnimationMixer 动画可采样；未注册校园 variant、未验证校园动作。KHR_materials_unlit 由现有加载器支持。",
+    "adaptationNeeded": [
+      "独立 variant 注册与资源路径映射（本次未修改控制器）",
+      "映射原生 Idle/Walk/Run/Jump/Punch，审查 Hello 能否用于挥手",
+      "校准 +Z 朝向、1.72m 高度和脚底；预览只是临时实例归一",
+      "跳跃片段含原生骨骼位移，需核对与 createAvatarActions 跳高是否叠加",
+      "校准机器人宽度与 .30m 导航半径，以及移动速度与脚滑；不混套其他模型骨骼"
+    ],
+    "knownIssues": [
+      "仅独立预览及自带动画单点采样通过；未验证校园碰撞、多人同步、完整六动作或手机帧率。",
+      "原始 2048×2048 PNG 已内嵌，压缩体积不等于 GPU 解码显存；本次未降纹理尺寸。",
+      "四款虽同一作者与动作命名系列，骨骼节点数量并不完全一致，必须逐模型绑定自己的片段。"
+    ]
   }
 ]

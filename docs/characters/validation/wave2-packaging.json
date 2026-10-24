@@ -1,0 +1,47 @@
+{
+  "date": "2026-10-24",
+  "passed": true,
+  "method": "gltf_pack.py checks parsed JSON equality except buffer URI and exact binary-buffer equality; then compare complete GLB bytes and manifest hashes.",
+  "rows": [
+    {
+      "id": "quaternius-mech-george",
+      "sourceBytes": 5152038,
+      "glbBytes": 3392028,
+      "sourceSha256": "eccc45d82701f32d67b4480346757b1656c649d9d40e4a1484f57d660596285e",
+      "glbSha256": "230933433316257a6233481600a5802a41852b6af49e92085d7ae6c88523d5dd",
+      "sceneJsonUnchangedExceptBufferUri": true,
+      "originalBinaryBufferUnchanged": true,
+      "deterministicPackagingVerified": true
+    },
+    {
+      "id": "quaternius-mech-leela",
+      "sourceBytes": 3382594,
+      "glbBytes": 2379244,
+      "sourceSha256": "79f9afe3172f9157c91aaa272f7aacc9bbb279bfd947a5f8c18ec3ced44b938b",
+      "glbSha256": "4cfec379f11b8fdea245fa5bfcf2f4ab7284ddfaeeb77c3cd3a0c82510a4ff02",
+      "sceneJsonUnchangedExceptBufferUri": true,
+      "originalBinaryBufferUnchanged": true,
+      "deterministicPackagingVerified": true
+    },
+    {
+      "id": "quaternius-mech-mike",
+      "sourceBytes": 4423046,
+      "glbBytes": 2926776,
+      "sourceSha256": "cc742d3b4960e79e7772c06a465e20958353ab7bd3e6e50c3f46ebccb2a94fa5",
+      "glbSha256": "66cfba4d406b084ded632eaf6636684eb5389fa911dcd416e86d6e18edd736f4",
+      "sceneJsonUnchangedExceptBufferUri": true,
+      "originalBinaryBufferUnchanged": true,
+      "deterministicPackagingVerified": true
+    },
+    {
+      "id": "quaternius-mech-stan",
+      "sourceBytes": 3787080,
+      "glbBytes": 2449932,
+      "sourceSha256": "e6903fee7458bbd804395c0d9dcc7545e3716bde865d05138e769d18299610b7",
+      "glbSha256": "9f5aed9126bf1cb95000e0b6593ee84e2c5eb07ee5d3dfb2c07b010b88ceac4c",
+      "sceneJsonUnchangedExceptBufferUri": true,
+      "originalBinaryBufferUnchanged": true,
+      "deterministicPackagingVerified": true
+    }
+  ]
+}

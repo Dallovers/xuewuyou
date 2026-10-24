@@ -13,6 +13,7 @@ import urllib.parse
 import urllib.request
 import zipfile
 import time
+from gltf_pack import pack_embedded_gltf
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -56,7 +57,13 @@ def main():
             if not args.force and dest.is_file() and digest(dest.read_bytes()) == item['sha256']:
                 print('OK', item['path'])
                 continue
-            if row.get('repo'):
+            if row.get('sourceFormat') == 'gltf-embedded':
+                source = get(row['downloadUrl'])
+                if digest(source) != row['sourceSha256']:
+                    raise ValueError('Source glTF checksum mismatch: ' + row['id'])
+                (args.cache_dir / (row['sourceSha256'] + '.gltf')).write_bytes(source)
+                data = pack_embedded_gltf(source)
+            elif row.get('repo'):
                 relative = item['path'][len(str(Path(row['modelPath']).parent).replace('\\', '/')) + 1:]
                 upstream = row['sourcePath'] if relative == 'model.glb' else str(Path(row['sourcePath']).parent / relative).replace('\\', '/')
                 url = 'https://raw.githubusercontent.com/' + row['repo'] + '/' + row['revision'] + '/' + urllib.parse.quote(upstream)

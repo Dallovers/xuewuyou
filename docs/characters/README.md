@@ -1,7 +1,8 @@
 # 学无忧人物资源准备
 
-本目录交付资源候选，不注册皮肤、替换默认角色或实现商城。10 个真实 3D 外观已下载，模型和必要贴图 **20,393,514 字节 / 19.45 MiB**，9 个 CC0，Fox 的动画和转换部分为 CC-BY-4.0，必须按 [ATTRIBUTION.md](ATTRIBUTION.md) 署名。
+本目录交付资源候选，不注册皮肤、替换默认角色或实现商城。14 个真实 3D 外观已下载，模型和必要贴图 **31,541,494 字节 / 30.08 MiB**，13 个 CC0，Fox 的动画和转换部分为 CC-BY-4.0，必须按 [ATTRIBUTION.md](ATTRIBUTION.md) 署名。
 
+- [第二批：科幻机甲](WAVE2.md)：新增 4 款工业机器人，CC0，含原生动画与真实渲染对照。
 - [资源清单](INVENTORY.md)：每个人物的大小、面数、材质、骨骼、动画与状态。
 - [机器可读清单](sources.json)：逐文件 SHA-256、来源、固定提交/压缩包校验值、贴图尺寸、原生片段映射和已知问题。
 - [接口核对](INTERFACE.md)：当前 loader、动作、朝向、身高、脚底和导航约定。
@@ -10,7 +11,13 @@
 
 ![实际模型渲染，不是作者海报或 AI 图](validation/contact-sheet.png)
 
-## 推荐先接入
+## 第二批：换一种风格
+
+新增 Quaternius 的乔治、莉拉、迈克、斯坦四款科幻机甲，11,147,980 字节 / 10.63 MiB；均为不同网格和轮廓，非同一模型换色。原作模型、内嵌贴图、自带动画同属 CC0。第二批推荐先看**莉拉独眼机甲、迈克战术机甲、乔治重装机甲**。四款共 74 段自带动画已单点采样，但均未接入校园动作。
+
+![第二批实际 WebGL 渲染](validation/wave2-contact-sheet.png)
+
+## 第一批推荐先接入
 
 1. **星帽法师 / kaykit-mage**：尖帽、法袍和明亮配色辨识度高，5,683 三角面，自带 76 段动画，有待机、行走、奔跑、完整跳跃和空手拳击。推荐第一名。
 2. **银甲骑士 / kaykit-knight**：银甲披风与法师轮廓差异明显，6,952 三角面，同套原生动作命名，可复用后续的映射适配工作。
@@ -28,9 +35,9 @@
 python -m http.server 4197 --bind 127.0.0.1
 ```
 
-访问 <http://127.0.0.1:4197/examples/character-preview/>。如果 4197 被占用，选择其他空闲端口即可。首屏只读取清单和预览代码；点击“加载人物”才请求所选模型，切换时释放上一个模型的 GPU 资源。路径为相对路径，支持 GitHub Pages 仓库前缀。不经过校园启动入口，也不自动加载十个人物。
+访问 <http://127.0.0.1:4197/examples/character-preview/>。如果 4197 被占用，选择其他空闲端口即可。首屏只读取清单和预览代码；点击“加载人物”才请求所选模型，切换时释放上一个模型的 GPU 资源。路径为相对路径，支持 GitHub Pages 仓库前缀。不经过校园启动入口，也不自动加载任何候选人物。
 
-预览使用现有 Three.js 0.170.0 GLTFLoader、AnimationMixer 和 OrbitControls，无新控制框架。检查自带动作、暂停、朝向、拖动和缩放。预览中临时缩放为 1.72m，仅用于对比，模型文件未修改。
+预览使用现有 Three.js 0.170.0 GLTFLoader、AnimationMixer 和 OrbitControls，无新控制框架。检查自带动作、暂停、朝向、拖动和缩放。新增批次选择器；访问 <http://127.0.0.1:4197/examples/character-preview/?batch=wave2-mechs> 直接筛选第二批，仍需点击加载。预览中临时缩放为 1.72m，仅改变实例变换。第一批文件未修改，第二批仅做无损 glTF→GLB 封装。
 
 构建与复验（先使用本项目原有 lockfile 安装依赖；不要运行校园 build 来生成本预览）：
 
@@ -38,6 +45,8 @@ python -m http.server 4197 --bind 127.0.0.1
 npm ci --prefix js/features/campus-hub
 node tools/characters/build-preview.mjs
 node tools/characters/validate-structure.mjs
+# 使用保存的原始 glTF 复验第二批封装（原始文件在 D 盘下载缓存）
+python tools/characters/validate-packaging.py
 # 另一个终端启动上述静态服务器；浏览器检查需要已安装 Microsoft Edge
 node tools/characters/validate-browser.cjs
 ```
@@ -51,7 +60,7 @@ python tools/characters/download-assets.py --cache-dir D:\xuewuyou-cache\charact
 # 可选代理：--proxy http://127.0.0.1:7897
 ```
 
-下载器按固定来源逐文件获取 KayKit 与 Fox；Kenney 官方只提供小型发布包，下载到指定缓存后只提取选中的人物与必要贴图，整个发布包和其他模型不进 Git。所有最终文件逐一核对清单中的 SHA-256。缓存默认 worktree 的同级目录；本次均在 D 盘。大模型、下载缓存、中间文件均未写入 C 盘。
+下载器按固定来源逐文件获取 KayKit 与 Fox；Kenney 官方只提供小型发布包，下载到指定缓存后只提取选中的人物与必要贴图，整个发布包和其他模型不进 Git。第二批按作者 Drive 单文件 ID 下载原始内嵌 glTF，校验原始 SHA-256 后保存至缓存并无损封装为 GLB；原始与最终文件都固定哈希，无需整包下载。所有最终文件逐一核对清单中的 SHA-256。缓存默认 worktree 的同级目录；本次均在 D 盘。大模型、下载缓存、中间文件均未写入 C 盘。若干净检出缺少原始 glTF 缓存，先用 `download-assets.py --force --ids quaternius-mech-george quaternius-mech-leela quaternius-mech-mike quaternius-mech-stan` 获取，再执行 `validate-packaging.py`；自定义缓存时两个命令使用同一 `--cache-dir`。
 
 ## 本次边界
 

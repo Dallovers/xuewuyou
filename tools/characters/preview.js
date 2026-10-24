@@ -17,5 +17,8 @@ $('load').onclick=()=>load($('character').value).catch(console.error);$('clip').
 new ResizeObserver(()=>{const r=canvas.parentElement.getBoundingClientRect();renderer.setSize(r.width,r.height,false);camera.aspect=r.width/r.height;camera.updateProjectionMatrix();}).observe(canvas.parentElement);
 renderer.setAnimationLoop(now=>{const dt=Math.min((now-last)/1000,.05);last=now;if(playing)mixer?.update(dt);controls.update();renderer.render(scene,camera);frames++;});
 $('pause').textContent=playing?'暂停':'继续';
-entries=await (await fetch(new URL('../../docs/characters/sources.json',import.meta.url))).json();$('character').replaceChildren(...entries.map(e=>new Option(e.displayName||e.id,e.id)));$('status').textContent=entries.length+' 个人物候选 · 点击加载查看';
+entries=await (await fetch(new URL('../../docs/characters/sources.json',import.meta.url))).json();
+function filterEntries(){const batch=$('batch').value,visible=entries.filter(e=>batch==='all'||(e.batch||'wave1')===batch),selected=$('character').value;$('character').replaceChildren(...visible.map(e=>new Option(e.displayName||e.id,e.id)));if(visible.some(e=>e.id===selected))$('character').value=selected;$('status').textContent=visible.length+' 个人物候选 · 点击加载查看';return visible.map(e=>e.id);}
+const initialBatch=new URLSearchParams(location.search).get('batch');if([...$('batch').options].some(o=>o.value===initialBatch))$('batch').value=initialBatch;
+$('batch').onchange=filterEntries;filterEntries();
 window.__characterPreview={load,play,snapshot,step(dt){mixer?.update(dt);scene.updateMatrixWorld(true);renderer.render(scene,camera);return snapshot();},probe(){const values=[];current?.gltf.scene.traverse(n=>{values.push(...n.position.toArray(),...n.quaternion.toArray(),...n.scale.toArray());});return values;},entries:()=>entries};

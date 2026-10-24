@@ -39,4 +39,6 @@
 
 原有：student-anime.vrm（10,776,032 字节）、student-formal.glb（7,949,492）、student-hoodie.glb（1,456,760）、student-robot.glb（463,988），另有 student-anime-motion.json。以上不是本次下载。
 
-本次十个文件与既有角色模型 SHA-256 均不相同。未下载 RobotExpressive 的重复版本，未把 Rogue/Rogue_Hooded 或同模型改色算成两个。KayKit 四个人物有不同网格、服饰和轮廓；Kenney 四个也不是贴图换色。
+本次累计十四个文件与既有角色模型 SHA-256 均不相同。未下载 RobotExpressive 的重复版本，未把 Rogue/Rogue_Hooded 或同模型改色算成两个。KayKit 四个人物有不同网格、服饰和轮廓；Kenney 四个也不是贴图换色。
+
+第二批补充：四款 Quaternius 机甲使用各自原生骨骼与片段，47/17/43/43 个 joint，并非通用 VRM humanoid。已有 Idle/Walk/Run/Jump/Punch，Hello 仅为挥手候选。KHR_materials_unlit 由当前 GLTFLoader 支持，无新解码器。原始内嵌 glTF 已无损封装为 GLB，仍沿用 candidates/<id>/model.glb；预览增加批次筛选，不改变校园 avatar 白名单。

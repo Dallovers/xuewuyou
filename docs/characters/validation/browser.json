@@ -3,6 +3,8 @@
   "passed": true,
   "engine": "Three.js 0.170.0 GLTFLoader / Edge headless WebGL",
   "firstScreenModelRequests": 0,
+  "batchFilterVerified": true,
+  "batchDirectLinkVerified": true,
   "lifecycleGpuCounts": [
     {
       "geometries": 18,
@@ -30,9 +32,9 @@
       "displayed": {
         "id": "kaykit-knight",
         "ready": true,
-        "frames": 23,
+        "frames": 29,
         "clip": "Idle",
-        "animationTime": 0.004099999999999966,
+        "animationTime": 0.004100000000000023,
         "animations": [
           {
             "name": "1H_Melee_Attack_Chop",
@@ -416,9 +418,9 @@
           }
         ],
         "bounds": [
-          1.4395440329159523,
-          1.7104933414318322,
-          1.926172947616837
+          1.4395440329159526,
+          1.7104933414318324,
+          1.9261729476168377
         ],
         "renderCalls": 18,
         "triangles": 6954,
@@ -895,9 +897,9 @@
       "displayed": {
         "id": "kaykit-mage",
         "ready": true,
-        "frames": 73,
+        "frames": 70,
         "clip": "Idle",
-        "animationTime": 0.004200000000000046,
+        "animationTime": 0.004199999999999932,
         "animations": [
           {
             "name": "1H_Melee_Attack_Chop",
@@ -1283,7 +1285,7 @@
         "bounds": [
           1.2298403515088827,
           1.7121905542622486,
-          1.5371117702029664
+          1.537111770202966
         ],
         "renderCalls": 15,
         "triangles": 5685,
@@ -1760,9 +1762,9 @@
       "displayed": {
         "id": "kaykit-rogue",
         "ready": true,
-        "frames": 114,
+        "frames": 102,
         "clip": "Idle",
-        "animationTime": 0.004199999999999932,
+        "animationTime": 0.0041999999999998185,
         "animations": [
           {
             "name": "1H_Melee_Attack_Chop",
@@ -2147,8 +2149,8 @@
         ],
         "bounds": [
           1.6606800629745289,
-          2.048357189473538,
-          1.2458580954353469
+          2.0483571894735384,
+          1.2458580954353475
         ],
         "renderCalls": 15,
         "triangles": 6379,
@@ -2625,9 +2627,9 @@
       "displayed": {
         "id": "kaykit-barbarian",
         "ready": true,
-        "frames": 157,
+        "frames": 143,
         "clip": "Idle",
-        "animationTime": 0.004099999999999909,
+        "animationTime": 0.0041000000000001365,
         "animations": [
           {
             "name": "1H_Melee_Attack_Chop",
@@ -3490,9 +3492,9 @@
       "displayed": {
         "id": "kaykit-skeleton-minion",
         "ready": true,
-        "frames": 205,
+        "frames": 179,
         "clip": "Idle",
-        "animationTime": 0.004299999999999955,
+        "animationTime": 0.004399999999999636,
         "animations": [
           {
             "name": "1H_Melee_Attack_Chop",
@@ -4564,9 +4566,9 @@
       "displayed": {
         "id": "kenney-female-a",
         "ready": true,
-        "frames": 252,
+        "frames": 220,
         "clip": "idle",
-        "animationTime": 0.004200000000000046,
+        "animationTime": 0.0041999999999998185,
         "animations": [
           {
             "name": "static",
@@ -4945,9 +4947,9 @@
       "displayed": {
         "id": "kenney-male-c",
         "ready": true,
-        "frames": 277,
+        "frames": 247,
         "clip": "idle",
-        "animationTime": 0.0041999999999998185,
+        "animationTime": 0.008300000000000182,
         "animations": [
           {
             "name": "static",
@@ -5326,9 +5328,9 @@
       "displayed": {
         "id": "kenney-ghost",
         "ready": true,
-        "frames": 304,
+        "frames": 278,
         "clip": "idle",
-        "animationTime": 0.004099999999999909,
+        "animationTime": 0.004200000000000273,
         "animations": [
           {
             "name": "static",
@@ -5492,9 +5494,9 @@
           }
         ],
         "bounds": [
-          2.00561228319555,
-          1.7203810767269072,
-          1.2687246076120764
+          2.005625911503449,
+          1.7203903693400528,
+          1.2687372130432422
         ],
         "renderCalls": 6,
         "triangles": 415,
@@ -5707,7 +5709,7 @@
       "displayed": {
         "id": "kenney-vampire",
         "ready": true,
-        "frames": 330,
+        "frames": 307,
         "clip": "idle",
         "animationTime": 0.004200000000000273,
         "animations": [
@@ -6088,9 +6090,9 @@
       "displayed": {
         "id": "fox",
         "ready": true,
-        "frames": 357,
+        "frames": 333,
         "clip": "Survey",
-        "animationTime": 0.004300000000000182,
+        "animationTime": 0.0035999999999999093,
         "animations": [
           {
             "name": "Survey",
@@ -6139,6 +6141,936 @@
           "changed": true,
           "finite": true,
           "nodeTransformValues": 270
+        }
+      ],
+      "modelRequests": 1
+    },
+    {
+      "id": "quaternius-mech-george",
+      "status": "可显示",
+      "campusActionsVerified": false,
+      "displayed": {
+        "id": "quaternius-mech-george",
+        "ready": true,
+        "frames": 372,
+        "clip": "Idle",
+        "animationTime": 0.0041999999999998185,
+        "animations": [
+          {
+            "name": "Dance",
+            "duration": 0.800000011920929,
+            "tracks": 94
+          },
+          {
+            "name": "Death",
+            "duration": 1.4333332777023315,
+            "tracks": 94
+          },
+          {
+            "name": "Hello",
+            "duration": 1.5,
+            "tracks": 94
+          },
+          {
+            "name": "HitRecieve_1",
+            "duration": 0.46666666865348816,
+            "tracks": 94
+          },
+          {
+            "name": "HitRecieve_2",
+            "duration": 0.46666666865348816,
+            "tracks": 94
+          },
+          {
+            "name": "Idle",
+            "duration": 3.3333332538604736,
+            "tracks": 94
+          },
+          {
+            "name": "Jump",
+            "duration": 0.8666666746139526,
+            "tracks": 94
+          },
+          {
+            "name": "Kick",
+            "duration": 0.6000000238418579,
+            "tracks": 94
+          },
+          {
+            "name": "No",
+            "duration": 1.399999976158142,
+            "tracks": 94
+          },
+          {
+            "name": "Pickup",
+            "duration": 1.399999976158142,
+            "tracks": 94
+          },
+          {
+            "name": "Punch",
+            "duration": 0.5666666626930237,
+            "tracks": 94
+          },
+          {
+            "name": "Run",
+            "duration": 0.8333333134651184,
+            "tracks": 94
+          },
+          {
+            "name": "Run_Holding",
+            "duration": 0.8333333134651184,
+            "tracks": 94
+          },
+          {
+            "name": "Run_Tall",
+            "duration": 0.8333333134651184,
+            "tracks": 94
+          },
+          {
+            "name": "Shoot",
+            "duration": 0.5,
+            "tracks": 94
+          },
+          {
+            "name": "SwordSlash",
+            "duration": 0.6000000238418579,
+            "tracks": 94
+          },
+          {
+            "name": "Walk",
+            "duration": 0.8333333134651184,
+            "tracks": 94
+          },
+          {
+            "name": "Walk_Holding",
+            "duration": 0.8333333134651184,
+            "tracks": 94
+          },
+          {
+            "name": "Walk_Tall",
+            "duration": 0.8333333134651184,
+            "tracks": 94
+          },
+          {
+            "name": "Yes",
+            "duration": 1.399999976158142,
+            "tracks": 94
+          }
+        ],
+        "bounds": [
+          1.106501017746262,
+          1.7200000000000002,
+          0.7038381272081085
+        ],
+        "renderCalls": 4,
+        "triangles": 7866,
+        "memory": {
+          "geometries": 4,
+          "textures": 2
+        },
+        "failure": null
+      },
+      "clipChecks": [
+        {
+          "name": "Dance",
+          "changed": true,
+          "finite": true,
+          "nodeTransformValues": 500
+        },
+        {
+          "name": "Death",
+          "changed": true,
+          "finite": true,
+          "nodeTransformValues": 500
+        },
+        {
+          "name": "Hello",
+          "changed": true,
+          "finite": true,
+          "nodeTransformValues": 500
+        },
+        {
+          "name": "HitRecieve_1",
+          "changed": true,
+          "finite": true,
+          "nodeTransformValues": 500
+        },
+        {
+          "name": "HitRecieve_2",
+          "changed": true,
+          "finite": true,
+          "nodeTransformValues": 500
+        },
+        {
+          "name": "Idle",
+          "changed": true,
+          "finite": true,
+          "nodeTransformValues": 500
+        },
+        {
+          "name": "Jump",
+          "changed": true,
+          "finite": true,
+          "nodeTransformValues": 500
+        },
+        {
+          "name": "Kick",
+          "changed": true,
+          "finite": true,
+          "nodeTransformValues": 500
+        },
+        {
+          "name": "No",
+          "changed": true,
+          "finite": true,
+          "nodeTransformValues": 500
+        },
+        {
+          "name": "Pickup",
+          "changed": true,
+          "finite": true,
+          "nodeTransformValues": 500
+        },
+        {
+          "name": "Punch",
+          "changed": true,
+          "finite": true,
+          "nodeTransformValues": 500
+        },
+        {
+          "name": "Run",
+          "changed": true,
+          "finite": true,
+          "nodeTransformValues": 500
+        },
+        {
+          "name": "Run_Holding",
+          "changed": true,
+          "finite": true,
+          "nodeTransformValues": 500
+        },
+        {
+          "name": "Run_Tall",
+          "changed": true,
+          "finite": true,
+          "nodeTransformValues": 500
+        },
+        {
+          "name": "Shoot",
+          "changed": true,
+          "finite": true,
+          "nodeTransformValues": 500
+        },
+        {
+          "name": "SwordSlash",
+          "changed": true,
+          "finite": true,
+          "nodeTransformValues": 500
+        },
+        {
+          "name": "Walk",
+          "changed": true,
+          "finite": true,
+          "nodeTransformValues": 500
+        },
+        {
+          "name": "Walk_Holding",
+          "changed": true,
+          "finite": true,
+          "nodeTransformValues": 500
+        },
+        {
+          "name": "Walk_Tall",
+          "changed": true,
+          "finite": true,
+          "nodeTransformValues": 500
+        },
+        {
+          "name": "Yes",
+          "changed": true,
+          "finite": true,
+          "nodeTransformValues": 500
+        }
+      ],
+      "modelRequests": 1
+    },
+    {
+      "id": "quaternius-mech-leela",
+      "status": "可显示",
+      "campusActionsVerified": false,
+      "displayed": {
+        "id": "quaternius-mech-leela",
+        "ready": true,
+        "frames": 412,
+        "clip": "Idle",
+        "animationTime": 0.012299999999999272,
+        "animations": [
+          {
+            "name": "Dance",
+            "duration": 1,
+            "tracks": 34
+          },
+          {
+            "name": "Death",
+            "duration": 1.7916666269302368,
+            "tracks": 34
+          },
+          {
+            "name": "Hello",
+            "duration": 1.875,
+            "tracks": 34
+          },
+          {
+            "name": "HitRecieve_1",
+            "duration": 0.5833333134651184,
+            "tracks": 34
+          },
+          {
+            "name": "HitRecieve_2",
+            "duration": 0.5833333134651184,
+            "tracks": 34
+          },
+          {
+            "name": "Idle",
+            "duration": 4.166666507720947,
+            "tracks": 34
+          },
+          {
+            "name": "Jump",
+            "duration": 1.0833333730697632,
+            "tracks": 34
+          },
+          {
+            "name": "Kick",
+            "duration": 0.75,
+            "tracks": 34
+          },
+          {
+            "name": "No",
+            "duration": 1.75,
+            "tracks": 34
+          },
+          {
+            "name": "Pickup",
+            "duration": 1.75,
+            "tracks": 34
+          },
+          {
+            "name": "Punch",
+            "duration": 0.7083333134651184,
+            "tracks": 34
+          },
+          {
+            "name": "Run",
+            "duration": 1.0416666269302368,
+            "tracks": 34
+          },
+          {
+            "name": "Run_Tall",
+            "duration": 1.0416666269302368,
+            "tracks": 34
+          },
+          {
+            "name": "Shoot",
+            "duration": 0.625,
+            "tracks": 34
+          },
+          {
+            "name": "SwordSlash",
+            "duration": 0.75,
+            "tracks": 34
+          },
+          {
+            "name": "Walk",
+            "duration": 1.0416666269302368,
+            "tracks": 34
+          },
+          {
+            "name": "Walk_Tall",
+            "duration": 1.0416666269302368,
+            "tracks": 34
+          },
+          {
+            "name": "Yes",
+            "duration": 1.75,
+            "tracks": 34
+          }
+        ],
+        "bounds": [
+          0.9755593918535465,
+          1.7199999999999998,
+          0.9137872559483513
+        ],
+        "renderCalls": 4,
+        "triangles": 2370,
+        "memory": {
+          "geometries": 4,
+          "textures": 2
+        },
+        "failure": null
+      },
+      "clipChecks": [
+        {
+          "name": "Dance",
+          "changed": true,
+          "finite": true,
+          "nodeTransformValues": 200
+        },
+        {
+          "name": "Death",
+          "changed": true,
+          "finite": true,
+          "nodeTransformValues": 200
+        },
+        {
+          "name": "Hello",
+          "changed": true,
+          "finite": true,
+          "nodeTransformValues": 200
+        },
+        {
+          "name": "HitRecieve_1",
+          "changed": true,
+          "finite": true,
+          "nodeTransformValues": 200
+        },
+        {
+          "name": "HitRecieve_2",
+          "changed": true,
+          "finite": true,
+          "nodeTransformValues": 200
+        },
+        {
+          "name": "Idle",
+          "changed": true,
+          "finite": true,
+          "nodeTransformValues": 200
+        },
+        {
+          "name": "Jump",
+          "changed": true,
+          "finite": true,
+          "nodeTransformValues": 200
+        },
+        {
+          "name": "Kick",
+          "changed": true,
+          "finite": true,
+          "nodeTransformValues": 200
+        },
+        {
+          "name": "No",
+          "changed": true,
+          "finite": true,
+          "nodeTransformValues": 200
+        },
+        {
+          "name": "Pickup",
+          "changed": true,
+          "finite": true,
+          "nodeTransformValues": 200
+        },
+        {
+          "name": "Punch",
+          "changed": true,
+          "finite": true,
+          "nodeTransformValues": 200
+        },
+        {
+          "name": "Run",
+          "changed": true,
+          "finite": true,
+          "nodeTransformValues": 200
+        },
+        {
+          "name": "Run_Tall",
+          "changed": true,
+          "finite": true,
+          "nodeTransformValues": 200
+        },
+        {
+          "name": "Shoot",
+          "changed": true,
+          "finite": true,
+          "nodeTransformValues": 200
+        },
+        {
+          "name": "SwordSlash",
+          "changed": true,
+          "finite": true,
+          "nodeTransformValues": 200
+        },
+        {
+          "name": "Walk",
+          "changed": true,
+          "finite": true,
+          "nodeTransformValues": 200
+        },
+        {
+          "name": "Walk_Tall",
+          "changed": true,
+          "finite": true,
+          "nodeTransformValues": 200
+        },
+        {
+          "name": "Yes",
+          "changed": true,
+          "finite": true,
+          "nodeTransformValues": 200
+        }
+      ],
+      "modelRequests": 1
+    },
+    {
+      "id": "quaternius-mech-mike",
+      "status": "可显示",
+      "campusActionsVerified": false,
+      "displayed": {
+        "id": "quaternius-mech-mike",
+        "ready": true,
+        "frames": 451,
+        "clip": "Idle",
+        "animationTime": 0.004100000000000364,
+        "animations": [
+          {
+            "name": "Dance",
+            "duration": 1,
+            "tracks": 86
+          },
+          {
+            "name": "Death",
+            "duration": 1.7916666269302368,
+            "tracks": 86
+          },
+          {
+            "name": "Hello",
+            "duration": 1.875,
+            "tracks": 86
+          },
+          {
+            "name": "HitRecieve_1",
+            "duration": 0.5833333134651184,
+            "tracks": 86
+          },
+          {
+            "name": "HitRecieve_2",
+            "duration": 0.5833333134651184,
+            "tracks": 86
+          },
+          {
+            "name": "Idle",
+            "duration": 4.166666507720947,
+            "tracks": 86
+          },
+          {
+            "name": "Jump",
+            "duration": 1.0833333730697632,
+            "tracks": 86
+          },
+          {
+            "name": "Kick",
+            "duration": 0.75,
+            "tracks": 86
+          },
+          {
+            "name": "No",
+            "duration": 1.75,
+            "tracks": 86
+          },
+          {
+            "name": "Pickup",
+            "duration": 1.75,
+            "tracks": 86
+          },
+          {
+            "name": "Punch",
+            "duration": 0.7083333134651184,
+            "tracks": 86
+          },
+          {
+            "name": "Run",
+            "duration": 1.0416666269302368,
+            "tracks": 86
+          },
+          {
+            "name": "Run_Holding",
+            "duration": 1.0416666269302368,
+            "tracks": 86
+          },
+          {
+            "name": "Shoot",
+            "duration": 0.625,
+            "tracks": 86
+          },
+          {
+            "name": "SwordSlash",
+            "duration": 0.75,
+            "tracks": 86
+          },
+          {
+            "name": "Walk",
+            "duration": 1.0416666269302368,
+            "tracks": 86
+          },
+          {
+            "name": "Walk_Holding",
+            "duration": 1.0416666269302368,
+            "tracks": 86
+          },
+          {
+            "name": "Yes",
+            "duration": 1.75,
+            "tracks": 86
+          }
+        ],
+        "bounds": [
+          1.7919515661166319,
+          1.7199999999999998,
+          0.660388013579895
+        ],
+        "renderCalls": 4,
+        "triangles": 6064,
+        "memory": {
+          "geometries": 4,
+          "textures": 2
+        },
+        "failure": null
+      },
+      "clipChecks": [
+        {
+          "name": "Dance",
+          "changed": true,
+          "finite": true,
+          "nodeTransformValues": 460
+        },
+        {
+          "name": "Death",
+          "changed": true,
+          "finite": true,
+          "nodeTransformValues": 460
+        },
+        {
+          "name": "Hello",
+          "changed": true,
+          "finite": true,
+          "nodeTransformValues": 460
+        },
+        {
+          "name": "HitRecieve_1",
+          "changed": true,
+          "finite": true,
+          "nodeTransformValues": 460
+        },
+        {
+          "name": "HitRecieve_2",
+          "changed": true,
+          "finite": true,
+          "nodeTransformValues": 460
+        },
+        {
+          "name": "Idle",
+          "changed": true,
+          "finite": true,
+          "nodeTransformValues": 460
+        },
+        {
+          "name": "Jump",
+          "changed": true,
+          "finite": true,
+          "nodeTransformValues": 460
+        },
+        {
+          "name": "Kick",
+          "changed": true,
+          "finite": true,
+          "nodeTransformValues": 460
+        },
+        {
+          "name": "No",
+          "changed": true,
+          "finite": true,
+          "nodeTransformValues": 460
+        },
+        {
+          "name": "Pickup",
+          "changed": true,
+          "finite": true,
+          "nodeTransformValues": 460
+        },
+        {
+          "name": "Punch",
+          "changed": true,
+          "finite": true,
+          "nodeTransformValues": 460
+        },
+        {
+          "name": "Run",
+          "changed": true,
+          "finite": true,
+          "nodeTransformValues": 460
+        },
+        {
+          "name": "Run_Holding",
+          "changed": true,
+          "finite": true,
+          "nodeTransformValues": 460
+        },
+        {
+          "name": "Shoot",
+          "changed": true,
+          "finite": true,
+          "nodeTransformValues": 460
+        },
+        {
+          "name": "SwordSlash",
+          "changed": true,
+          "finite": true,
+          "nodeTransformValues": 460
+        },
+        {
+          "name": "Walk",
+          "changed": true,
+          "finite": true,
+          "nodeTransformValues": 460
+        },
+        {
+          "name": "Walk_Holding",
+          "changed": true,
+          "finite": true,
+          "nodeTransformValues": 460
+        },
+        {
+          "name": "Yes",
+          "changed": true,
+          "finite": true,
+          "nodeTransformValues": 460
+        }
+      ],
+      "modelRequests": 1
+    },
+    {
+      "id": "quaternius-mech-stan",
+      "status": "可显示",
+      "campusActionsVerified": false,
+      "displayed": {
+        "id": "quaternius-mech-stan",
+        "ready": true,
+        "frames": 483,
+        "clip": "Idle",
+        "animationTime": 0.008199999999999819,
+        "animations": [
+          {
+            "name": "Dance",
+            "duration": 1,
+            "tracks": 86
+          },
+          {
+            "name": "Death",
+            "duration": 1.7916666269302368,
+            "tracks": 86
+          },
+          {
+            "name": "Hello",
+            "duration": 1.875,
+            "tracks": 86
+          },
+          {
+            "name": "HitRecieve_1",
+            "duration": 0.5833333134651184,
+            "tracks": 86
+          },
+          {
+            "name": "HitRecieve_2",
+            "duration": 0.5833333134651184,
+            "tracks": 86
+          },
+          {
+            "name": "Idle",
+            "duration": 4.166666507720947,
+            "tracks": 86
+          },
+          {
+            "name": "Jump",
+            "duration": 1.0833333730697632,
+            "tracks": 86
+          },
+          {
+            "name": "Kick",
+            "duration": 0.75,
+            "tracks": 86
+          },
+          {
+            "name": "No",
+            "duration": 1.75,
+            "tracks": 86
+          },
+          {
+            "name": "Pickup",
+            "duration": 1.75,
+            "tracks": 86
+          },
+          {
+            "name": "Punch",
+            "duration": 0.7083333134651184,
+            "tracks": 86
+          },
+          {
+            "name": "Run",
+            "duration": 1.0416666269302368,
+            "tracks": 86
+          },
+          {
+            "name": "Run_Holding",
+            "duration": 1.0416666269302368,
+            "tracks": 86
+          },
+          {
+            "name": "Shoot",
+            "duration": 0.625,
+            "tracks": 86
+          },
+          {
+            "name": "SwordSlash",
+            "duration": 0.75,
+            "tracks": 86
+          },
+          {
+            "name": "Walk",
+            "duration": 1.0416666269302368,
+            "tracks": 86
+          },
+          {
+            "name": "Walk_Holding",
+            "duration": 1.0416666269302368,
+            "tracks": 86
+          },
+          {
+            "name": "Yes",
+            "duration": 1.75,
+            "tracks": 86
+          }
+        ],
+        "bounds": [
+          1.4722967969184038,
+          1.7200000000000002,
+          0.5780615850994395
+        ],
+        "renderCalls": 4,
+        "triangles": 6112,
+        "memory": {
+          "geometries": 4,
+          "textures": 2
+        },
+        "failure": null
+      },
+      "clipChecks": [
+        {
+          "name": "Dance",
+          "changed": true,
+          "finite": true,
+          "nodeTransformValues": 460
+        },
+        {
+          "name": "Death",
+          "changed": true,
+          "finite": true,
+          "nodeTransformValues": 460
+        },
+        {
+          "name": "Hello",
+          "changed": true,
+          "finite": true,
+          "nodeTransformValues": 460
+        },
+        {
+          "name": "HitRecieve_1",
+          "changed": true,
+          "finite": true,
+          "nodeTransformValues": 460
+        },
+        {
+          "name": "HitRecieve_2",
+          "changed": true,
+          "finite": true,
+          "nodeTransformValues": 460
+        },
+        {
+          "name": "Idle",
+          "changed": true,
+          "finite": true,
+          "nodeTransformValues": 460
+        },
+        {
+          "name": "Jump",
+          "changed": true,
+          "finite": true,
+          "nodeTransformValues": 460
+        },
+        {
+          "name": "Kick",
+          "changed": true,
+          "finite": true,
+          "nodeTransformValues": 460
+        },
+        {
+          "name": "No",
+          "changed": true,
+          "finite": true,
+          "nodeTransformValues": 460
+        },
+        {
+          "name": "Pickup",
+          "changed": true,
+          "finite": true,
+          "nodeTransformValues": 460
+        },
+        {
+          "name": "Punch",
+          "changed": true,
+          "finite": true,
+          "nodeTransformValues": 460
+        },
+        {
+          "name": "Run",
+          "changed": true,
+          "finite": true,
+          "nodeTransformValues": 460
+        },
+        {
+          "name": "Run_Holding",
+          "changed": true,
+          "finite": true,
+          "nodeTransformValues": 460
+        },
+        {
+          "name": "Shoot",
+          "changed": true,
+          "finite": true,
+          "nodeTransformValues": 460
+        },
+        {
+          "name": "SwordSlash",
+          "changed": true,
+          "finite": true,
+          "nodeTransformValues": 460
+        },
+        {
+          "name": "Walk",
+          "changed": true,
+          "finite": true,
+          "nodeTransformValues": 460
+        },
+        {
+          "name": "Walk_Holding",
+          "changed": true,
+          "finite": true,
+          "nodeTransformValues": 460
+        },
+        {
+          "name": "Yes",
+          "changed": true,
+          "finite": true,
+          "nodeTransformValues": 460
         }
       ],
       "modelRequests": 1

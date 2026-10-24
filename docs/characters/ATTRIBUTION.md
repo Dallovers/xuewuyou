@@ -13,4 +13,6 @@ Source: [Khronos glTF Sample Assets / Fox, pinned commit](https://github.com/Khr
 - Adventurers / Skeletons by **Kay Lousberg (KayKit)** — <https://www.kaylousberg.com/>。资源包内 LICENSE.txt 明确包含资源内容并允许 personal、educational、commercial 使用；署名非强制。
 - Mini Characters 1.0 / Graveyard Kit 5.0 by **Kenney** — <https://kenney.nl/>。原始 License.txt 允许 personal、educational、commercial 使用；署名非强制。
 
-保留本文件和原始授权。CC0 仅覆盖下载资源，不宣称获得作者商标、网站素材或品牌标识的额外权利。九个 CC0 人物的模型、随包贴图与动画都在相应资产包授权范围内；未混入外部动作。
+- Animated Mech Pack (March 2021) by **Quaternius** — <https://quaternius.com/packs/animatedmech.html>。作品页 CC0 与官方 Drive 包内原始 [License.txt](licenses/quaternius-mechs/License.txt) 对照保存；模型、内嵌贴图和自带动画均属于该包。四个原始内嵌 glTF 仅重新封装为 GLB，未改网格、材质、贴图、骨骼或动作。署名非强制。完整来源链与原始文件哈希见 [provenance.json](licenses/quaternius-mechs/provenance.json)。
+
+保留本文件和原始授权。CC0 仅覆盖下载资源，不宣称获得作者商标、网站素材或品牌标识的额外权利。十三个 CC0 人物的模型、随包贴图与动画都在相应资产包授权范围内；未混入外部动作。
