@@ -63,7 +63,7 @@ state.mode=mode;orbit.enabled=mode==='overview';$('#overview').setAttribute('ari
    作答位是先锁住移动的，所以没有"走开就自动取消"这条路，只能就地解除。 */
 function stand(){if(state.stance){closeDuelPanel();duel?.leave();state.stance=null;avatar.cancelAction();focusScene();toast('已离开作答位');return;}if(!state.seated)return;state.seated.onStand?.();state.seated=null;clearInput();focusScene();toast('已起身');}
 function goTo(id){if(!state.ready||bridge.paused)return;stand();setMode('walk');if(world.inside(state))world.interiors.open(world.inside(state),true);const entry=ENTRIES.find(e=>e.id===id)||(id===SITE_EXIT.id?SITE_EXIT:null);if(!entry)return;const goal={x:entry.outside[0],z:entry.outside[1]};const route=navigation.route(state,goal);if(!route){toast('暂时找不到通路，请换个站位重试。');return;}state.path=route;toast('正在前往'+entry.label+(id===SITE_EXIT.id?'，走近后按 E 返回网站。':'，走近后按 E 互动。'));}
-/* 瞬移（第十七轮）：不走寻路，直接把人和相机落到门口。
+/* 移动（第十七轮，界面上叫「移动」，接口是 teleport）：不走寻路，直接把人和相机落到门口。
  * 与 goTo 共用同一套出口逻辑（起身 → 退室内 → 切漫游），区别只在"走过去"还是"落过去"。
  * 落点用 ENTRIES[].outside——那本来就是寻路的目标点，必然是能站的合法位置；
  * 朝向指向门窗（entry.at），落地就正对着门，不用再自己转身。
@@ -77,7 +77,7 @@ function teleportTo(id){
  stand();setMode('walk');
  const insideId=world.inside(state);if(insideId)world.interiors.open(insideId,true);
  /* 落到门口顺手把门推开（只有教学楼/图书馆有门，其余 id 是 no-op）。
-    不然人会正对着门站着、按 W 却撞在门板上——"瞬移到门口"的下一步本来就该是走进去。 */
+    不然人会正对着门站着、按 W 却撞在门板上——"移动到门口"的下一步本来就该是走进去。 */
  world.interiors.open(entry.id,true);
  const x=entry.outside[0],z=entry.outside[1];
  state.x=x;state.z=z;state.path=null;state.pitch=0;
@@ -86,7 +86,7 @@ function teleportTo(id){
  avatar.cancelAction();avatar.update({position:{x,z,groundY:smoothGround},yaw:studentYaw,dt:0});
  presence?.teleport();
  setPlaces(false);updateCamera(.1);focusScene();
- toast('已瞬移到'+entry.label+'前'+(id===SITE_EXIT.id?'，按 E 返回网站':'，按 E 进入'));
+ toast('已移动到'+entry.label+'前'+(id===SITE_EXIT.id?'，按 E 返回网站':'，按 E 进入'));
  return {ok:true,x,z,yaw:state.yaw};
 }
 function exitSite(){clearInput();try{sessionStorage.removeItem(KEY);}catch{}location.assign(new URL('../../../index.html#home',document.baseURI).href);return{ok:true};}
@@ -244,8 +244,8 @@ const seatTools=document.createElement('div');seatTools.id='seat-tools';seatTool
 for(const [label,fn,kind]of [['选择学科',()=>state.seated?.feature==='courses'?bridge.openFeature('courses'):state.seated?.feature==='study'?bridge.openFeature('rooms'):bridge.openFeature('library',{mode:'catalog',seated:true}),'primary'],['阅读计时',()=>bridge.openFeature('library',{mode:'focus',seated:true}),'reading'],['书签摘记',()=>bridge.openFeature('library',{mode:'shelf',seated:true}),'reading'],['起身',stand]]){const b=document.createElement('button');b.type='button';b.textContent=label;b.onclick=fn;if(kind==='primary')b.id='seat-feature';if(kind==='reading')b.dataset.readingTool='';seatTools.append(b);}
 const bookActions=document.createElement('div');bookActions.id='book-actions';bookActions.hidden=true;bookActions.setAttribute('role','group');bookActions.setAttribute('aria-label','手中书本');$('#context-actions').append(bookActions);for(const [label,fn]of [['翻书 Q',()=>studyPicker.toggleOpen()],['举起细看',()=>studyPicker.setInspect(!studyPicker.isInspecting())],['放下 G',()=>studyPicker.drop()]]){const b=document.createElement('button');b.textContent=label;b.onclick=()=>{fn();focusScene();};bookActions.append(b);}
 $('#overview').onclick=()=>setMode('overview');$('#walk').onclick=()=>setMode('walk');$('#directory').onclick=()=>setPlaces($('#places').hidden,true);$('#close-places').onclick=()=>setPlaces(false,true);$('#controls-help').onclick=()=>{setPlaces(false);bridge.openFeature('controls');};$('#enter').onclick=activate;$('#jump').onclick=()=>{jump();canvas.focus();};$('#quality').onchange=()=>{resize();focusScene();};$('#retry').onclick=()=>location.reload();
-/* 每个目的地两个动作：走过去（默认）/ 瞬移到门口。
-   分开成两颗按钮而不是"长按瞬移"之类的隐藏交互——隐藏手势没人会发现，
+/* 每个目的地两个动作：走过去（默认）/ 直接移动到门口。
+   分开成两颗按钮而不是"长按"之类的隐藏交互——隐藏手势没人会发现，
    而且要让人清楚知道自己选了哪种（一个会沿途看风景，一个会直接闪过去）。
    data-place 仍然挂在"前往"那颗上：老测试和自动化都按这个选择器点步行。 */
 for(const entry of [...ENTRIES,SITE_EXIT]){
@@ -255,7 +255,7 @@ for(const entry of [...ENTRIES,SITE_EXIT]){
  const hint=document.createElement('span');hint.className='dest-go';hint.textContent='前往';
  walk.append(label,hint);walk.onclick=()=>goTo(entry.id);
  const jump=document.createElement('button');jump.type='button';jump.className='dest-jump';jump.dataset.jump=entry.id;
- jump.textContent='瞬移';jump.title='直接瞬移到'+entry.label+'门口';jump.setAttribute('aria-label','瞬移到'+entry.label+'门口');
+ jump.textContent='移动';jump.title='直接移动到'+entry.label+'门口';jump.setAttribute('aria-label','移动到'+entry.label+'门口');
  jump.onclick=()=>teleportTo(entry.id);
  row.append(walk,jump);$('#destinations').append(row);
 }
