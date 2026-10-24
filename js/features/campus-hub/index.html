@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>学无忧 · 校园庭院</title><link rel="stylesheet" href="hub.css?v=7b9eb2837b16"></head>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>学无忧 · 校园庭院</title><link rel="stylesheet" href="hub.css?v=7b698a2a308b"></head>
 <body>
 <canvas id="world" tabindex="0" aria-label="校园三维场景，可用 WASD 行走，空格跳跃，E 进入"></canvas>
 <header><a href="../../../index.html#home" class="brand">学无忧<span>校园庭院</span></a><div class="views"><button id="overview" aria-pressed="true">看总图</button><button id="walk">开始漫游</button><button id="directory">地点</button><a id="site-exit" href="../../../index.html#home">返回网站</a></div></header>
@@ -7,7 +7,7 @@
 <div id="loading" role="status"><div class="spinner"></div><strong>正在连接校园</strong><span id="progress">加载建筑与人物…</span><a href="../../../index.html">使用功能列表</a><button id="retry" hidden>重新加载</button></div>
 <div id="toast" role="status" hidden></div>
 <div id="touch" aria-label="移动方向" hidden><button data-key="KeyW" aria-label="向前">↑</button><button data-key="KeyA" aria-label="向左">←</button><button data-key="KeyS" aria-label="向后">↓</button><button data-key="KeyD" aria-label="向右">→</button></div>
-<div id="actions" hidden><button id="jump">跳跃<span>空格</span></button></div>
+<div id="actions" hidden><button id="view" aria-pressed="false">第一人称<span>V</span></button><button id="jump">跳跃<span>空格</span></button></div>
 <footer><div><strong id="location">中央庭院</strong><small id="instructions">拖动旋转 · 滚轮缩放 · 进入漫游后可行走</small></div><button id="enter" disabled>走近入口或互动设施</button><select id="quality" aria-label="画质"><option value="auto">自适应画质</option><option value="fluid">流畅</option><option value="high">精细</option></select></footer>
 <dialog id="business"><div class="dialog-head"><strong id="business-title">校园功能</strong><button id="close-business">关闭</button></div><p id="business-status" role="status"></p><section id="campus-guide" hidden><h2>学习、阅读，也停下来坐一会儿。</h2><p>教学楼在庭院北侧，图书馆与自习室沿西侧相邻。东侧的广场和竞技场可以直接步行探索。</p><nav aria-label="选择校园目的地"></nav><p class="guide-tip">走近水景控制柱可开关流水；阅读廊架中，长椅可以坐下，桌上的书连接学习资料。</p></section><section id="campus-note" hidden aria-label="拾起的纸条"><p></p></section><iframe id="business-frame" title="学无忧原有功能"></iframe></dialog>
-<script src="../../../js/deploy-config.js"></script><script type="module" src="app.bundle.js?v=26835690a14e"></script></body></html>
+<script src="../../../js/deploy-config.js"></script><script type="module" src="app.bundle.js?v=accbb17c1c6c"></script></body></html>

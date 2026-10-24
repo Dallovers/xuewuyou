@@ -19,9 +19,10 @@ scene.background=new T.Color(0xd4ddd8);scene.fog=new T.Fog(0xd4ddd8,145,270);
 const hemisphere=new T.HemisphereLight(0xe3edf1,0x686c5c,.36);scene.add(hemisphere);const sun=new T.DirectionalLight(0xffefd9,2.6);sun.position.set(-40,62,35);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);sun.shadow.radius=2.2;Object.assign(sun.shadow.camera,{left:-65,right:65,top:65,bottom:-65,near:1,far:170});sun.shadow.normalBias=.016;sun.shadow.bias=-.00002;scene.add(sun);scene.add(sun.target);
 const effects=createVisualEffects(renderer,scene,camera,sun);
 const orbit=new OrbitControls(camera,canvas);orbit.enableDamping=true;orbit.minDistance=8;orbit.maxDistance=180;orbit.maxPolarAngle=Math.PI*.49;
-const state={ready:false,mode:'overview',...START,seated:null,stance:null,path:null,frames:0,returnRestored:false};
+const state={ready:false,mode:'overview',...START,seated:null,stance:null,path:null,view:'third',frames:0,returnRestored:false};
 const keys=new Set(),clock=new T.Clock();let presence,studyPicker,pickerEnabled=false,world,avatar,opponent,sky,navigation,drag,nearest,disposed=false,toastTimer,lastShadow=0,studentYaw=0,lastX=0,lastZ=START.z,cameraCheck=0,cameraDistance=5.3,cameraBoxes=[],smoothGround=0;
 const ray=new T.Raycaster(),aim=new T.Vector3(),direction=new T.Vector3(),targetCamera=new T.Vector3();
+const coarsePointer=matchMedia('(pointer:coarse)');
 const bridge=createBusinessBridge({clearInput,route:goTo,equipment:()=>world?.interiors.systems,status:()=>{if(bridge.paused)avatar?.cancelAction();}});
 function clearInput(){keys.clear();drag=null;state.path=null;}
 function focusScene(){if(state.ready&&state.mode==='walk'&&!bridge.paused&&!disposed)canvas.focus({preventScroll:true});}
@@ -31,6 +32,27 @@ function setMode(mode){if(!state.ready)return;state.seated?.onStand?.();clearInp
 /* 起身：两个"定点"共用一条出口——自习室的座位（state.seated）和擂台的作答位（state.stance）。
    作答位是先锁住移动的，所以没有"走开就自动取消"这条路，只能就地解除。 */
 function stand(){if(state.stance){state.stance=null;avatar.cancelAction();opponent?.setStation(null);focusScene();toast('已离开作答位');return;}if(!state.seated)return;state.seated.onStand?.();state.seated=null;clearInput();focusScene();toast('已起身');}
+/* 视角切换（V）：室外默认第三人称，能看见自己的学生；切到第一人称就是站进他的眼睛。
+   室内、坐下、台上作答位都是"人不在画面里"的定点视角，本来就只有第一人称这一种读法，
+   所以那几种状态下不切换，只给一句提示——切了看不出区别，反而让人以为按键失灵。
+   按钮同理：定死的场合置灰并直接写出"第一人称"，不留一个"能点但没反应"的假按钮。
+   人物的隐藏不在 toggleView 里做，交给 frame() 的 setVisible 统一判断，避免两处状态打架。 */
+let viewSignature='';
+function syncView(fixed){
+ const btn=$('#view');if(!btn)return;
+ const label=fixed?'第一人称':(state.view==='first'?'第三人称':'第一人称');
+ const sig=(fixed?'fixed:':'live:')+label;
+ btn.disabled=!!fixed;
+ if(sig!==viewSignature){viewSignature=sig;btn.firstChild.textContent=label;btn.setAttribute('aria-pressed',String(!fixed&&state.view==='first'));}
+}
+function toggleView(){
+ if(!state.ready)return;
+ if(state.mode!=='walk'){toast('先点“开始漫游”，再切换视角。');return;}
+ if(state.seated||state.stance){toast('先起身，再切换视角。');return;}
+ if(world?.inside(state)){toast('室内固定第一人称，走到室外可切换。');return;}
+ state.view=state.view==='first'?'third':'first';syncView(false);
+ toast(state.view==='first'?'第一人称视角 · 按 V 切回':'第三人称视角 · 按 V 切到第一人称');
+}
 function goTo(id){if(!state.ready||bridge.paused)return;stand();setMode('walk');if(world.inside(state))world.interiors.open(world.inside(state),true);const entry=ENTRIES.find(e=>e.id===id)||(id===SITE_EXIT.id?SITE_EXIT:null);if(!entry)return;const goal={x:entry.outside[0],z:entry.outside[1]};const route=navigation.route(state,goal);if(!route){toast('暂时找不到通路，请换个站位重试。');return;}state.path=route;toast('正在前往'+entry.label+(id===SITE_EXIT.id?'，走近后按 E 返回网站。':'，走近后按 E 互动。'));}
 function exitSite(){clearInput();try{sessionStorage.removeItem(KEY);}catch{}location.assign(new URL('../../../index.html#home',document.baseURI).href);return{ok:true};}
 function findNearest(){
@@ -67,7 +89,10 @@ async function activate(){if(!state.ready||bridge.paused)return;if(state.mode===
   }else if(result?.kind==='equipment'){bridge.openFeature('equipment');}else if(result?.kind==='note'){bridge.openFeature('note',{text:result.text});}else if(result?.message)toast(result.message);}catch(error){toast('操作未完成：'+error.message);}finally{focusScene();}}
 function jump(){if(state.mode==='walk'&&!bridge.paused&&!state.seated&&!state.stance)avatar?.act('jump',smoothGround);}
 function updateCamera(dt){
- if(!state.seated&&world?.inside(state)){camera.position.set(state.x,smoothGround+1.6+(avatar?.jumpHeight||0),state.z);camera.lookAt(state.x+Math.sin(state.yaw),camera.position.y-state.pitch,state.z-Math.cos(state.yaw));return;}
+ /* 第一人称直接复用"室内"那条分支：相机落在眼睛高度（1.6 m）、朝向由 yaw/pitch 给出，
+    和屋里的第一人称是同一套手脚，视角切换后手感不会变。
+    室外的第三人称（下面那条）才做避让盒收缩。 */
+ if(!state.seated&&(world?.inside(state)||state.view==='first')){camera.position.set(state.x,smoothGround+1.6+(avatar?.jumpHeight||0),state.z);camera.lookAt(state.x+Math.sin(state.yaw),camera.position.y-state.pitch,state.z-Math.cos(state.yaw));return;}
  if(state.seated){camera.position.fromArray(state.seated.position);camera.lookAt(camera.position.x+Math.sin(state.yaw),camera.position.y-state.pitch,camera.position.z-Math.cos(state.yaw));return;}
  const ground=smoothGround,height=avatar?.jumpHeight||0;aim.set(state.x,ground+1.12+height*.65,state.z);direction.set(-Math.sin(state.yaw)*5,1.7+state.pitch*3,Math.cos(state.yaw)*5).normalize();
  if(performance.now()-cameraCheck>90){ray.set(aim,direction);cameraDistance=5.3;for(const box of cameraBoxes){const hit=ray.ray.intersectBox(box,new T.Vector3());if(hit)cameraDistance=Math.min(cameraDistance,Math.max(.5,hit.distanceTo(aim)-.2));}cameraCheck=performance.now();}
@@ -92,15 +117,19 @@ function frame(){
   const rawGround=groundAt(state.x,state.z);
   if(Math.abs(rawGround-smoothGround)>1.2)smoothGround=rawGround;
   else smoothGround+=(rawGround-smoothGround)*(1-Math.exp(-(paused?0:dt)*15));
-  const inside=world.inside(state);hemisphere.intensity=inside?1.05:.36;avatar.setVisible(!state.seated&&!inside);avatar.update({position:{x:state.x,z:state.z,groundY:smoothGround},yaw:studentYaw,dt:paused?0:dt,moving:!paused&&moving,sprinting:keys.has('ShiftLeft')||keys.has('ShiftRight')||!!state.path});lastX=state.x;lastZ=state.z;
+  const inside=world.inside(state);hemisphere.intensity=inside?1.05:.36;avatar.setVisible(!state.seated&&!inside&&state.view!=='first');avatar.update({position:{x:state.x,z:state.z,groundY:smoothGround},yaw:studentYaw,dt:paused?0:dt,moving:!paused&&moving,sprinting:keys.has('ShiftLeft')||keys.has('ShiftRight')||!!state.path});lastX=state.x;lastZ=state.z;
   opponent?.update(paused?0:dt);
   world.update(paused?0:dt,{x:state.x,z:state.z});effects.fitShadow(state);if(state.mode==='overview')orbit.update();else updateCamera(dt);
   if(inside==='study'&&!pickerEnabled){studyPicker?.enable();pickerEnabled=!!studyPicker;}else if(inside!=='study'&&pickerEnabled){studyPicker.disable();pickerEnabled=false;}
   if(pickerEnabled)studyPicker.update(paused?0:dt);
   $('#room-exit').hidden=!inside;$('#seat-tools').hidden=!state.seated;$('#book-actions').hidden=!pickerEnabled||!studyPicker.isHolding();$('#actions').hidden=state.mode!=='walk'||!!state.seated;
+  syncView(!!inside||!!state.seated||!!state.stance);
   findNearest();$('#enter').disabled=bridge.paused||(state.mode!=='overview'&&!nearest);$('#enter').textContent=state.mode==='overview'?'开始漫游 · 开启互动':nearest?'E · '+nearest.label:'走近设施后按 E 互动';$('#jump').disabled=!!avatar.actionState.current||!!state.seated||!!state.stance;
   $('#location').textContent=inside?({classroom:'教学楼 · 门厅与示范教室',library:'知识图书馆',study:'自习室'})[inside]:state.seated?(state.seated.label||'社交广场 · 休息'):state.stance?state.stance.name:state.z<-15?'教学楼前庭':state.x<-20&&state.z<15?'图书馆前庭':state.x<-20&&state.z>=15?'自习室前庭':state.x>28?'竞技场':state.x>7&&state.z<14?'社交广场':'中央庭院';
-  $('#instructions').textContent=state.mode==='overview'?'总览模式 · 点击“开始漫游”或按 E 开启互动':state.stance?'作答中 · E 举手抢答 · Esc 起身':state.seated?'拖动环顾 · E / Esc 起身':'WASD 移动 · Shift 快跑 · 空格跳跃 · E 互动';
+  /* 双手在键盘上的时候才提 V；手机/窄屏上那个按钮就在右下角，文案里再写按键反而多余。
+     室内、坐下、作答位这三个"定死第一人称"的场合也不提——那里按 V 只会弹一句解释。 */
+  const viewHint=(coarsePointer.matches||innerWidth<700||inside||state.seated||state.stance)?'':' · V 切换视角';
+  $('#instructions').textContent=state.mode==='overview'?'总览模式 · 点击“开始漫游”或按 E 开启互动':state.stance?'作答中 · E 举手抢答 · Esc 起身':state.seated?'拖动环顾 · E / Esc 起身':state.view==='first'?'第一人称 · WASD 移动'+viewHint:'WASD 移动 · Shift 快跑 · 空格跳跃 · E 互动'+viewHint;
   if(!paused&&(moving||avatar.actionState.current||opponent?.moving||world.interiors.moving())&&performance.now()-lastShadow>110){renderer.shadowMap.needsUpdate=true;lastShadow=performance.now();}state.frames++;
  }presence?.update(dt);effects.render();
 }
@@ -108,7 +137,7 @@ const roomExit=document.createElement('button');roomExit.id='room-exit';roomExit
 const seatTools=document.createElement('div');seatTools.id='seat-tools';seatTools.hidden=true;document.body.append(seatTools);
 for(const [label,fn]of [['起身',stand],['课程 / 资料',()=>state.seated?.feature==='courses'?bridge.openFeature('courses'):bridge.openFeature('library',{mode:'catalog',seated:true})],['阅读计时',()=>bridge.openFeature('library',{mode:'focus',seated:true})],['书签摘记',()=>bridge.openFeature('library',{mode:'shelf',seated:true})],['自习房间',()=>bridge.openFeature('rooms')]]){const b=document.createElement('button');b.textContent=label;b.onclick=fn;seatTools.append(b);}
 const bookActions=document.createElement('div');bookActions.id='book-actions';bookActions.hidden=true;document.body.append(bookActions);for(const [label,fn]of [['翻书 Q',()=>studyPicker.toggleOpen()],['举起细看',()=>studyPicker.setInspect(!studyPicker.isInspecting())],['放下 G',()=>studyPicker.drop()]]){const b=document.createElement('button');b.textContent=label;b.onclick=()=>{fn();focusScene();};bookActions.append(b);}
-$('#overview').onclick=()=>setMode('overview');$('#walk').onclick=()=>setMode('walk');$('#directory').onclick=()=>{$('#places').hidden=!$('#places').hidden;};$('#enter').onclick=activate;$('#jump').onclick=()=>{jump();canvas.focus();};$('#quality').onchange=()=>{resize();focusScene();};$('#retry').onclick=()=>location.reload();
+$('#overview').onclick=()=>setMode('overview');$('#walk').onclick=()=>setMode('walk');$('#directory').onclick=()=>{$('#places').hidden=!$('#places').hidden;};$('#enter').onclick=activate;$('#jump').onclick=()=>{jump();canvas.focus();};$('#view').onclick=()=>{toggleView();canvas.focus();};$('#quality').onchange=()=>{resize();focusScene();};$('#retry').onclick=()=>location.reload();
 for(const entry of [...ENTRIES,SITE_EXIT]){const b=document.createElement('button');b.textContent=entry.label;b.dataset.place=entry.id;const span=document.createElement('span');span.textContent='前往';b.append(span);b.onclick=()=>goTo(entry.id);$('#destinations').append(b);}
 $('#site-exit').onclick=e=>{if(e.button!==0||e.ctrlKey||e.metaKey||e.shiftKey||e.altKey)return;e.preventDefault();exitSite();};
 addEventListener('keydown',e=>{
@@ -117,6 +146,7 @@ addEventListener('keydown',e=>{
  if(state.mode!=='walk'){if(e.code==='KeyE'&&!e.repeat){e.preventDefault();activate();}return;}
  if(!e.repeat&&pickerEnabled&&['KeyQ','KeyR','KeyG'].includes(e.code)){e.preventDefault();if(e.code==='KeyQ')studyPicker.toggleOpen();else studyPicker.drop();return;}
  if(!e.repeat&&e.code==='KeyC'&&world.inside(state)==='study'){e.preventDefault();if(state.seated){stand();return;}const seats=world.interactions.filter(i=>i.id.startsWith('study.seat.')).map(i=>({i,d:i.object.getWorldPosition(new T.Vector3()).distanceTo(new T.Vector3(state.x,0,state.z))})).sort((a,b)=>a.d-b.d);if(seats[0]?.d<1.65){nearest=seats[0].i;activate();}return;}
+ if(!e.repeat&&e.code==='KeyV'){e.preventDefault();toggleView();return;}
  if(['KeyW','KeyA','KeyS','KeyD','ArrowUp','ArrowDown','ArrowLeft','ArrowRight','ShiftLeft','ShiftRight','KeyJ','KeyL'].includes(e.code)){e.preventDefault();focusScene();keys.add(e.code);state.path=null;}
  if(e.code==='KeyE'||e.code==='Space'&&!e.target.closest?.('button,a')){e.preventDefault();if(!e.repeat){if(e.code==='Space')jump();else activate();}}
 });addEventListener('keyup',e=>keys.delete(e.code));addEventListener('blur',clearInput);
@@ -138,11 +168,11 @@ async function init(){try{
  try{$('#progress').textContent='加载竞技场对手…';opponent=await createArenaOpponent(scene);}catch(error){console.warn('竞技场对手加载失败',error);}
  const record=readReturn(sessionStorage);if(record){Object.assign(state,restorePose(record,navigation));state.returnRestored=!!record.pending;record.pending=false;sessionStorage.setItem(KEY,JSON.stringify(record));}studentYaw=Number.isFinite(record?.heading)?record.heading:Math.PI-state.yaw;lastX=state.x;lastZ=state.z;state.ready=true;
  smoothGround=groundAt(state.x,state.z);
- setMode(record?'walk':'overview');avatar.update({position:{x:state.x,z:state.z,groundY:smoothGround},yaw:studentYaw,dt:0});avatar.setVisible(true);await renderer.compileAsync(scene,camera);renderer.shadowMap.needsUpdate=true;
+ setMode(record?'walk':'overview');syncView(false);avatar.update({position:{x:state.x,z:state.z,groundY:smoothGround},yaw:studentYaw,dt:0});avatar.setVisible(true);await renderer.compileAsync(scene,camera);renderer.shadowMap.needsUpdate=true;
  presence=createCampusPresence({scene,camera,getPose:()=>({x:state.x,y:smoothGround,z:state.z,yaw:studentYaw,height:avatar.jumpHeight,time:avatar.actionState.elapsed,clip:bridge.paused||state.seated||state.stance?'idle':avatar.clip,avatar:avatar.variant,studying:bridge.paused||!!state.seated||!!state.stance}),setSpawn:(p,sent)=>{if(Math.hypot(state.x-sent.x,state.z-sent.z)<.2&&!navigation.blocked(p.x,p.z)){state.x=p.x;state.z=p.z;lastX=p.x;lastZ=p.z;}},openAccount:()=>bridge.openFeature('account'),shadowChanged:()=>{renderer.shadowMap.needsUpdate=true;}});
  $('#loading').hidden=true;clock.getDelta();renderer.setAnimationLoop(frame);if(state.returnRestored)toast('已返回对应入口。');
  }catch(error){console.error(error);$('#loading strong').textContent='校园暂时无法加载';$('#progress').textContent=error.message;$('#retry').hidden=false;}}
-window.__campusHub={snapshot:()=>({ready:state.ready,mode:state.mode,pos:[state.x,groundAt(state.x,state.z),state.z],yaw:state.yaw,path:state.path,modal:bridge.paused,returnRestored:state.returnRestored,seated:!!state.seated,stance:state.stance?.id||null,ground:smoothGround,opponent:opponent?.snapshot()||null,frames:state.frames,interior:world?.inside(state),rooms:world?.interiors.snapshot(),picker:studyPicker?{held:studyPicker.isHolding(),open:studyPicker.isBookOpen(),aim:studyPicker.getAim()}:null,entries:ENTRIES,nearest:nearest?.id||null,avatar:avatar?.snapshot(),boxes:world?.boxes.length,render:renderer.info.render}),route:id=>goTo(id),setPose:(x,z,yaw=0,pitch=0)=>{if(!navigation||navigation.blocked(x,z))return false;clearInput();setMode('walk');Object.assign(state,{x,z,yaw,pitch});lastX=x;lastZ=z;return true;},blocked:(x,z)=>navigation?.blocked(x,z),entry:id=>world?.enter(id),openFeature:(...args)=>bridge.openFeature(...args),dispose};
+window.__campusHub={snapshot:()=>({ready:state.ready,mode:state.mode,pos:[state.x,groundAt(state.x,state.z),state.z],yaw:state.yaw,path:state.path,modal:bridge.paused,returnRestored:state.returnRestored,seated:!!state.seated,stance:state.stance?.id||null,view:state.view,ground:smoothGround,opponent:opponent?.snapshot()||null,frames:state.frames,interior:world?.inside(state),rooms:world?.interiors.snapshot(),picker:studyPicker?{held:studyPicker.isHolding(),open:studyPicker.isBookOpen(),aim:studyPicker.getAim()}:null,entries:ENTRIES,nearest:nearest?.id||null,avatar:avatar?.snapshot(),camera:camera.position.toArray(),avatarVisible:!!avatar?.root?.visible,boxes:world?.boxes.length,render:renderer.info.render}),route:id=>goTo(id),toggleView:()=>{toggleView();return state.view;},setPose:(x,z,yaw=0,pitch=0)=>{if(!navigation||navigation.blocked(x,z))return false;clearInput();setMode('walk');Object.assign(state,{x,z,yaw,pitch});lastX=x;lastZ=z;return true;},blocked:(x,z)=>navigation?.blocked(x,z),entry:id=>world?.enter(id),openFeature:(...args)=>bridge.openFeature(...args),dispose};
 window.__campusHub.studyObjects=()=>{const out=[];world?.study.root.updateMatrixWorld(true);world?.study.root.traverse(n=>{if(n.userData.pickables)for(const ids of n.userData.pickables.groups.slice(0,16)){const m=new T.Matrix4();n.getMatrixAt(ids[0],m);out.push({label:n.userData.pickables.label,position:new T.Vector3().setFromMatrixPosition(m).applyMatrix4(n.matrixWorld).toArray()});}});return out;};
 window.__campusHub.interactions=()=>world?.interactions.map(i=>({id:i.id,label:i.label,position:i.object.getWorldPosition(new T.Vector3()).toArray(),radius:i.radius}));
 window.__campusHub.courtyard=()=>world?.courtyard.snapshot();
