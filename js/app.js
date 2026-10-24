@@ -213,6 +213,9 @@ var WG_App = (function () {
   }
   var lastPrimarySection = null;
   function showView(name) {
+    // The reader lives at body level so page animation and main-content stacking
+    // cannot move it offscreen. Keep its lifetime tied to the materials view.
+    if (name !== 'wenku' && $('wenkuDetail')) $('wenkuDetail').classList.add('hidden');
     document.body.classList.toggle('integration-view', name === 'review' || name === 'community' || name === 'rooms');
     if (state.view === 'rooms' && name !== 'rooms' && window.WG_Rooms) WG_Rooms.onViewHidden();
     /* 离开自习室视图时通知 StudyRoom 暂停计时（如去刷题、切到其他页面） */
@@ -830,6 +833,15 @@ var WG_App = (function () {
     if (!x) return;
     var el = $('wenkuDetail');
     if (!el) return;
+    // Fixed descendants of the animated view are centered in its full scroll
+    // height, and mainContent's stacking context puts them behind the header.
+    if (el.parentNode !== document.body) document.body.appendChild(el);
+    // Keep selection tools above the reader and hide them with their owner.
+    ['wkdAiFloatBtn', 'wkdAiAnswerMask'].forEach(function (id) {
+      var tool = $(id);
+      if (tool && tool.parentNode !== el) el.appendChild(tool);
+    });
+    $('wkdAiAnswerMask').classList.add('hidden');
     $('wkdTitle').textContent = x.title || '';
     var meta = [];
     if (x.tags && x.tags.length) meta.push(x.tags.slice(0, 5).join(' · '));
@@ -2894,6 +2906,7 @@ var WG_App = (function () {
     $('wkdAiAnswerContent').innerHTML = '<div class="ai-answer-pending">⏳</div>';
     $('wkdAiAnswerLoading').classList.remove('hidden');
     $('wkdAiAnswerMask').classList.remove('hidden');
+    $('wkdAiAnswerMask').classList.add('show');
     var systemPrompt = '你是一位大学数学/英语教学名师，擅长用口语化、深入浅出的方式讲解。';
     if (type === '数学公式/计算') {
       systemPrompt += '用户选中了一段数学公式或计算过程。请：1) 解释该公式/定理的含义；2) 拆解计算步骤；3) 指出考试中常见的考法和易错点。控制在 350 字以内，适当使用符号表达。';
