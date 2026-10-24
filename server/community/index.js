@@ -19,6 +19,13 @@ module.exports = function({route,authUser,sendJson,readBody,store,syncReviews}) 
   const friendship = (data,a,b) => !!data.friends[key(a,b)];
   const notify = (ids,kind) => store.afterCommit(() => {if(namespace)for(const id of new Set(ids))namespace.to('user:'+id).emit('community:changed',{kind});});
   const postNotice = () => store.afterCommit(() => namespace?.emit('community:changed',{kind:'posts'}));
+  /* 挑战变化的旁听者（目前只有 server/campus/presence.js 的「擂台房」）。
+   * 回调拿到的是**已提交**的挑战对象，谁在线谁没交卷由它自己去判断；
+   * 这里只负责"发生了变化"这一件事，不往 socket 里写第二套比赛规则。 */
+  const challengeListeners = new Set();
+  const changed = (c) => {
+    for (const fn of challengeListeners) { try { fn(c); } catch (e) { console.error('[community] 挑战变化回调失败', e); } }
+  };
   function deliverLearning(s,c,id){
     const mine=c.sessions[id];if(!mine?.records||mine.delivered)return;
     const existing=store.get('userData',id,{payload:{}}),payload=clone(existing.payload||{});payload.answers=payload.answers||[];payload.mistakes=payload.mistakes||[];
@@ -135,12 +142,12 @@ module.exports = function({route,authUser,sendJson,readBody,store,syncReviews}) 
     if(s.challenges.length>=2000)fail('挑战记录已达到当前容量，请联系网站维护者');
     if(s.challenges.filter(c=>c.status==='active'&&c.expiresAt>Date.now()&&c.members.includes(user.id)).length>=10)fail('请先完成或取消已有挑战');
     for(let i=bank.length-1;i>0;i--){const j=crypto.randomInt(i+1);[bank[i],bank[j]]=[bank[j],bank[i]];}
-    const c={id:crypto.randomUUID(),creator:user.id,members:[user.id,target],topic:body.topic,qids:bank.slice(0,5).map(q=>q.id),sessions:{},status:'active',createdAt:Date.now(),expiresAt:Date.now()+86400000};s.challenges.push(c);save(s);notify(c.members,'challenges');return {challenge:summary(s,c,user)};
+    const c={id:crypto.randomUUID(),creator:user.id,members:[user.id,target],topic:body.topic,qids:bank.slice(0,5).map(q=>q.id),sessions:{},status:'active',createdAt:Date.now(),expiresAt:Date.now()+86400000};s.challenges.push(c);save(s);notify(c.members,'challenges');changed(c);return {challenge:summary(s,c,user)};
   });
   own('GET','challenge',(user,query)=>{const s=state();return {challenge:summary(s,duel(s,query.get('id'),user),user,true)};});
   own('POST','challenge/start',(user,_,body)=>{
     const s=state(),c=duel(s,body.id,user);if(c.status!=='active'||Date.now()>c.expiresAt)fail('挑战已结束或过期',409);
-    if(!c.sessions[user.id]){c.sessions[user.id]={startedAt:Date.now(),finishedAt:null};save(s);notify(c.members,'challenges');}
+    if(!c.sessions[user.id]){c.sessions[user.id]={startedAt:Date.now(),finishedAt:null};save(s);notify(c.members,'challenges');changed(c);}
     return {challenge:summary(s,c,user,true)};
   });
   own('POST','challenge/submit',(user,_,body)=>{
@@ -158,11 +165,11 @@ module.exports = function({route,authUser,sendJson,readBody,store,syncReviews}) 
     // Persist the result and its learning events before delivery; retries/restarts deduplicate events.
     mine.records=c.qids.map((id,i)=>payload.answers.findLast(a=>a.eventId==='challenge-'+c.id+'-'+id));
     mine.mistakes=payload.mistakes.filter(m=>c.qids.includes(String(m.qid)));
-    save(s);deliverLearning(s,c,user.id);notify(c.members,'challenges');return {challenge:summary(s,c,user,true),recorded:c.qids.length};
+    save(s);deliverLearning(s,c,user.id);notify(c.members,'challenges');changed(c);return {challenge:summary(s,c,user,true),recorded:c.qids.length};
   });
   own('PUT','challenge/cancel',(user,_,body)=>{
     const s=state(),c=duel(s,body.id,user);if(c.status!=='active')fail('挑战已结束',409);if(c.members.some(id=>c.sessions[id]?.finishedAt))fail('已有同学完成作答，请完成挑战后查看结果',409);
-    c.status='cancelled';save(s);notify(c.members,'challenges');return {};
+    c.status='cancelled';save(s);notify(c.members,'challenges');changed(c);return {};
   });
   function attach(server) {
     io=new Server(server,{serveClient:false,maxHttpBufferSize:10000,cors:{origin:process.env.FRONTEND_ORIGIN || 'https://dallovers.github.io',methods:['GET','POST']}});namespace=io.of('/community');
@@ -174,5 +181,16 @@ module.exports = function({route,authUser,sendJson,readBody,store,syncReviews}) 
     });
     return namespace;
   }
-  return {attach,recover,close:()=>new Promise(resolve=>{if(io)io.close(resolve);else resolve();})};
+  return {
+    attach,
+    recover,
+    /* 同场（server/campus/presence.js）挂同一个 namespace：
+     * 挑战的实时通知与校园位置同步本来就是「同一个登录态的同一条长连接」，
+     * 开两条会让每个页面多一个 WebSocket，而且两边的登录态会各自过期。 */
+    get namespace() { return namespace; },
+    /* 只读旁听：谁需要知道「挑战变了」，在这里注册。拿到的是已提交的挑战对象，
+     * 房间怎么开、谁能在里面说话仍归各自模块，这里不替它们做判断。 */
+    onChallengeEvent(fn) { challengeListeners.add(fn); return () => challengeListeners.delete(fn); },
+    close: () => new Promise(resolve => { if (io) io.close(resolve); else resolve(); })
+  };
 };

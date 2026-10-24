@@ -563,7 +563,9 @@ require('./learning')({ route, authUser, sendJson, readBody, store, syncReviews:
 require('./practice')({ route, authUser, sendJson, readBody, store });
 require('./campus')({ route, authUser, sendJson, readBody, store, studyRooms });
 const community = require('./community')({route,authUser,sendJson,readBody,store,syncReviews:integrations.syncReviews});
-const campusLive = require('./campus/presence')({authUser,store});
+/* 同场在线状态与好友挑战共用一个 namespace（/community）：挑战的开始/交卷也走
+ * community:changed，同场只加 campus:* 与 duel:* 这几个事件名，两边互不覆盖。 */
+const campusLive = require('./campus/presence')({authUser,store,namespace:community.namespace});
 require('./questions')({ route, authUser, sendJson, readBody });
 
 /* 管理员后台最后挂载：它要用到 cleanPresence，也要保证 authUser 已带上封号判定 */
@@ -658,6 +660,10 @@ const server = http.createServer(async (req, res) => {
 });
 
 studyRooms.attach(campusLive.attach(community.attach(server)));
+/* 挑战开始时要把双方拉进同一间「擂台房」——3D 侧就位后靠这间房互相看见对方的动作。
+ * 房间的生命周期归 presence 管（有人就位才建，人走光就散），这里只把「挑战变了」告诉它：
+ * 挑战与同场用的是同一个登录态，uid 就是两边的公共键。 */
+community.onChallengeEvent((challenge) => campusLive.duel(challenge));
 server.requestTimeout = 30000;
 async function start(port=PORT,host=process.env.HOST || '127.0.0.1') {
   await store.init();

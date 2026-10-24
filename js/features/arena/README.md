@@ -1125,7 +1125,136 @@ headless 的帧率每次都不一样（软件光栅），这一轮多出来的 ~
 - **`findNearest()` 里"动作播放中"那一条要放行作答位**：原本 `avatar.actionState.current` 会整体吞掉提示，
   而作答位的人是锁在站位上的，动作播完还要再按，提示中途消失会让人以为卡住了。
 
-## 与社交广场并排
+## 第十五轮：两个真人一起答（2026-10-23）
+
+第十四轮交付的「候场对手」是个本地 NPC——玩家去甲位，他就走到乙位站定。
+**那不是用户要的**：他要的是两个真实玩家同场，互相看得见。这一轮把它换掉。
+
+### 分工：表现归 3D，规则归服务端
+
+| 谁 | 负责 |
+|---|---|
+| `server/community` | 谁发起挑战、答几题、答对几道、谁已交卷、比分。唯一真相 |
+| `server/campus/presence.js` | 谁站在哪个位、在做什么动作。一次性表现，刷新即失 |
+| `campus-hub/src/duel.js` | 把上面两件事接到 3D：连 socket、进出位、转发动作 |
+| `campus-hub/src/arena-opponent.js` | 只画「对手那个真人」的化身，不自己走位 |
+
+判分/计时/交卷**全部不进 3D**。擂台现场丢了顶多是两个人看不见对方，刷新就回来。
+
+### 事件（都在 `/community` 这条既有连接上，不另开 namespace）
+
+`duel:enter`(ack) / `duel:seats`（自己收全表）/ `duel:seat`（别人收增量）/
+`duel:state`（挑战变化广播）/ `duel:act` / `duel:leave` / `duel:left`。
+
+### 「房」什么时候存在
+
+**挑战创建时 `status` 就已经是 `active` 了**——那只是邀请发出去了，台上还没人。
+这一轮把建房条件改成「至少一个成员 `sessions[uid].startedAt` 有值」，也就是
+**真的有人点了「开始作答」**。所以邀请阶段去按 E，服务端回「这场挑战不在进行中」，
+台上不会出现一个空擂台让人以为对面正在准备。
+
+### 一个位只能一个人
+
+服务端在 `room.seats` 里按 `station` 去重，撞位直接回「这个作答位已经有人了」。
+客户端 `enter()` 的返回值分成四种处境，提示文案一一对应，不合并成一句「正在等」：
+
+| 返回 | 提示 |
+|---|---|
+| `ok:false` | 服务端拒了（位子被占 / 不是你的挑战） |
+| `online:false` + 有 challenge | 正在连接擂台现场 |
+| `online:false` + 无 challenge | 还没有进行中的挑战 |
+| `online:true` + `peer` | 对面是 X（X 位） |
+| `online:true` 无 `peer` | 已在甲/乙位，正在等搭子就位 |
+
+### 踩过的坑
+
+- **`duel:enter` 一直回「挑战或作答位无效」**：`station()` 收的是 `{station:'jia'}` 这样的对象
+  （和 `campus:join` 的 `pose` 同一套写法），而 handler 传的是 `body.station` 那个字符串。
+  改成传 `body` 整包。这个 bug 在浏览器里也是同样的症状。
+- **一个账号只能有一条同场连接**：后连的会把前一条顶掉（`campus:join` 的 replace 分支）。
+  写测试时每个 case 重新 `connect()` 会让上一个 case 的 socket 静默失效，
+  后面 `once(sa,'duel:seat')` 永远等不到 → 整个测试挂死。改成 `before` 里连一次、全 case 复用。
+- **`once()` 没有超时**：事件不来就永久挂住，`node --test` 也不会自己报。
+  测试里统一换成带超时的 `wait()`。
+
+### 第二轮修复：**`peers` 一直是 `null`、「正在连接擂台现场」永不结束**（2026-10-24）
+
+上一轮的服务端单测（直接连 socket）全绿，但**在真实浏览器里两个人谁也离不开自己的位**：
+`snapshot().duel.status` 卡在 `connecting`、`peer` 一直是 `null`、`opponent.visible=false`。
+查下来是三个独立的问题叠在一起，只有真机（两个隔离的浏览器进程）才暴露得出来。
+
+#### 坑 1：`enter()` 没等握手完成就去 join
+
+`await connect()` 只保证 `io(...)` 这个**客户端对象**建好了；它内部的握手是异步的，
+回来时 `socket.connected` 往往还是 `false`。接着 `ensureJoined()` → `join()` 第一句
+`if (!socket?.connected) return false`，**静默**返回失败，`joined` 仍为 `false`，
+于是 `enter()` 走了 `if (!joined) → status='connecting'` 这条提前返回分支。
+
+界面看起来像"正在连"，实际上连接半秒后就好了，只是没有人再回来补这一步。
+
+改法：新增 `waitConnected(ms)`，显式等 `connect` 事件（已连上直接过）；
+`enter()` 和 `join()` 都先经它，`join()` 里那句静默 `return false` 也去掉——
+"还没连上"和"连接坏了"本来就是两件事，不能都返回 `false`。
+
+#### 坑 2：座位空了就删房 → 同账号第二条连接一来，房就没了
+
+`duelLeave()` 和 `duel:leave` handler 里都有 `if(!room.seats.size) rooms.delete(id)`。
+**房间的生命周期属于挑战，不属于座位**：挑战一开始就该有房（有人在答、另一个随时能坐进来），
+`seats=0` 是常态。
+
+真实场景：整合版校园里，`presence.js` 会为漫游同场开一条 socket，`duel.js` 自己再开一条。
+第二条 `campus:join` 进来时走 replace 分支 → `leave(旧socket)` → `duelLeave()`，
+**第一件事就是把刚建好的空房删掉**，紧接着 `duel:enter` 一律回「这场挑战不在进行中」。
+台上明明有比赛，两个人谁也坐不上。
+
+改法：删房只由「挑战失效」决定。抽出唯一的判定
+
+```js
+const isLive = (c) => c.status==='active' && (!c.expiresAt || c.expiresAt>Date.now()) && started(c);
+```
+
+`duelLeave` / `duel:leave` 后只调用 `syncChallenges()` 扫一遍**已经结束/过期**的房。
+
+#### 坑 3：`duel:leave` 不回 ack
+
+客户端起身之后没有任何回音，只能靠猜或干等超时（测试里就是这么暴露的）。
+现在 `duel:leave` 也带 ack，回 `{ok:true,station:null}`。
+
+#### 三个坑为什么只有浏览器能发现
+
+| 坑 | 服务端单测 | 浏览器 |
+|---|---|---|
+| 1 握手时序 | 看不到——测试是 `await once(s,'connect')` 之后才发事件 | 必现：`io()` 之后直接 `enter()` |
+| 2 空房被删 | 看不到——测试里每个账号只连**一条** socket | 必现：`presence.js` + `duel.js` 各一条 |
+| 3 缺 ack | 看不到——测试没对 `duel:leave` 取 ack | 表现成"起身后状态不更新" |
+
+坑 2 是这轮最值钱的一条：**"座位空了"不等于"比赛结束了"**。
+把这两个概念混在一个 `if` 里，本地单 socket 永远测不出来，因为它需要"同一个 uid 的第二条连接"。
+
+### 验证
+
+- `server/test/campus-duel.test.js` **6 个 case 全绿**：邀请阶段无房 → 非成员不能就位 →
+  撞位被拒且对面收到 `duel:seat` → 动作只到对面且不写 `learning` → 离开/断线清位 →
+  **同账号第二条连接不拆房**（新增，专门守住坑 2）。
+- 收紧了一条旧断言：原来 `assert.ok(!room||room.seats.length<=1)` 容忍房间被删，
+  现在断言"房必须还在、只是座位表里没有那个人"。
+- `campus-presence.test.js` 6 个 + `campus.test.js` 8 个，**合计 20/20 通过**。
+- 双人同场端到端（两个隔离的浏览器进程，各登录一个真实账号，都打开整合版 campus-hub
+  走到甲/乙位按 E）：
+
+  ```
+  A final duel:  status=seated  station=jia  peer={nick:乙同学, seat:yi}
+  B final duel:  status=seated  station=yi   peer={nick:甲同学, seat:jia}
+  A sees opponent: visible=true  position=[40.8,0.63,-0.14]   ← 乙位
+  B sees opponent: visible=true  position=[40.8,0.63, 4.14]   ← 甲位
+  after A cheer:   B.peer.act=cheer                            ← 举手真的传过去了
+  ```
+
+  截图 `duel-a-jia.png` / `duel-b-yi.png` / `duel-b-sees-a-cheer.png`（最后一张：
+  B 的画面里对面甲同学举起了手）。
+  对照修复前：`status=connecting`、`peer=null`、`opponent.visible=false`。
+
+
 
 `?with=social` 下两片场地共用一个 renderer、一个相机、一套碰撞判定（`preview.html` 里 `collide()` 对两个板块是同一个函数，避免两套判定不一致）。
 
@@ -1138,11 +1267,13 @@ headless 的帧率每次都不一样（软件光栅），这一轮多出来的 ~
 
 ## 未完成 / 明确不做
 
-- **台上有人，但没有比赛**：第十四轮加了甲乙两个作答位与一个候场对手 NPC，
-  就位、举手、换边都是**本地动作**——谁作答、答对没有、比分多少，仍归服务端与 DOM 面板，
-  3D 侧不写第二套状态。台上没有观众、没有对打动画，也没有计时器。
-- **对手是宿主的，不是板块的**：`src/arena-opponent.js` 只在 `campus-hub` 里，
-  入口页（第一人称）和自测页没有他。竞技场模块只报站位与动作，不带人物资源。
+- **台上是真人，但只同步"在场"**：第十五轮起甲乙两个位坐的是**真实玩家**（服务端 `duel:*` 事件），
+  没有 NPC 也没有机器人。但同步的只是"谁在哪个位、在做什么动作"——
+  谁作答、答对没有、比分多少，仍归服务端与 DOM 面板，3D 侧不写第二套状态。
+  台上没有观众、没有对打动画，也没有 3D 里的计时器。
+- **对手化身的资源挂在 hub**：`js/features/campus-hub/src/arena-opponent.js` 只在 `campus-hub` 里渲染；
+  独立入口页（第一人称）复用的是 `campus-hub/src/duel.js` 的现场层，但不画对手的 GLB 模型。
+  竞技场模块本身只报站位与动作，不带人物资源。
 - **对战牌没有实时比分**：只有场地标识。挑战的发起与判分都在服务端，3D 侧不显示假战绩。
 - **锣只响不判**：本地计数 + 2.4 秒阻尼摆动，不写服务端、不发 Socket 事件。
 - **树被移除了**：第一版在场地内放了树，从并排机位读过去像「擂台里有几个绿球」。绿化交给旁边的社交广场，本板块只留草坪。

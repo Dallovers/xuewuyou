@@ -67,15 +67,16 @@
       <li><b>判分</b><span>服务器判分；先比正确题数，再比用时</span></li>
       <li><b>复盘</b><span>双方交卷后开放解析，结果计入答题记录与错题本</span></li>
     </ul>
-    <p style="margin-top:16px">场地上有三个实物交互点：</p>
+    <p style="margin-top:16px">场地上有三处实物交互点：</p>
     <ul class="kv">
       <li><b>擂台台阶</b><span>按 E 读出真实挑战列表，也能就地发起、开始或取消</span></li>
       <li><b>报名处</b><span>按 E 读学习搭子与待处理邀请，可以直接接受或婉拒</span></li>
-      <li><b>开赛锣</b><span>按 E 敲一下，纯本地动作，不上报服务端</span></li>
+      <li><b>作答位 · 甲 / 乙</b><span>按 E 就位：站到台后会被报到服务端，对面若有人就位，你们互相看得见</span></li>
     </ul>
     <div class="dialog-note">
-      这两个面板读的是主站同一套接口（<code>/api/community/*</code>）、同一个登录态，不另存一份数据。
-      答题与复盘要排数学式子，仍回主站「校园互动 → 好友竞技场」那一栏完成。
+      这三个地方读的是主站同一套接口（<code>/api/community/*</code>）、同一个登录态，不另存一份数据。
+      就位只同步「谁在哪、在做什么动作」，判分与计时仍由服务器负责；答题和复盘要排数学式子，
+      仍在主站「校园互动 → 好友竞技场」那一栏完成。
     </div>
   </div>
 </dialog>
@@ -107,6 +108,9 @@
 <script type="module">
 /* 擂台与报名处的面板走业务层：读真实挑战/搭子，不再放说明卡 */
 import { createPanels, session } from './arena-business.js';
+/* 擂台现场（第十五轮）：就位之后告诉服务端我在哪个位，对手的动作从 duel:act 回来。
+   这一页是第一人称，没有身体——它关心的是"对面有没有真人"，不是自己怎么站。 */
+import { createArenaDuel } from '../campus-hub/src/duel.js';
 
 const $ = (id) => document.getElementById(id);
 const loading = $('loading');
@@ -451,6 +455,7 @@ function setView(name) {
   /* 退出漫游要把姿态清干净：留着最后一步的横移/滚转，下一帧检视机位会歪着头 */
   if (document.pointerLockElement) document.exitPointerLock();
   /* 作答位也要一起解：否则下次进漫游人还锁在台上，WASD 按不动 */
+  if (state.stance) duel.leave();
   state.stance = null;
   RIG.amp = 0; RIG.offX = 0; RIG.offY = 0; RIG.roll = 0;
   applyOrbit();
@@ -663,13 +668,15 @@ addEventListener('keydown', (e) => {
     if (featureDialog.open || $('rules-dialog').open) closeDialogs();
     /* 作答位锁着移动，Esc 先解这一层，再才是"退出漫游"——
        不然人一按 Esc 就被甩回检视机位，等于把就位这件事抹掉了 */
-    else if (state.stance) { state.stance = null; updateLocation(); toast('已离开作答位'); }
+    else if (state.stance) { duel.leave(); state.stance = null; updateLocation(); toast('已离开作答位'); }
     else if (state.mode === 'walk') setView('entrance');
     return;
   }
   if (state.modal) return;
   if (e.code === 'KeyE' && state.mode === 'walk') {
-    if (state.nearest) { e.preventDefault(); interact(); }
+    /* interact 现在是 async（作答位要等服务端 ack），返回的 promise 必须有归宿，
+       否则一次失败就成了未捕获的 rejection，控制台报错而人看不到任何提示。 */
+    if (state.nearest) { e.preventDefault(); Promise.resolve(interact()).catch((err) => toast('操作未完成：' + ((err && err.message) || err))); }
     return;
   }
   if (e.code === 'KeyW' || e.code === 'KeyA' || e.code === 'KeyS' || e.code === 'KeyD' ||
@@ -738,6 +745,10 @@ const panels = createPanels({
   toast: (m) => toast(m),
 });
 
+/* 擂台现场：只回答问题「对面有没有真人」。没登录云端时它会停在 guest 状态，
+   就位照常可以（机位摆过去、移动锁住），只是不会有人回应。 */
+const duel = createArenaDuel({ toast });
+
 function findNearest() {
   if (state.mode !== 'walk' || state.modal) return null;
   /* 站上作答位之后，E 不再是"再就位一次"，而是重复那个动作。
@@ -750,7 +761,14 @@ function findNearest() {
       prompt: '按 E 举手抢答',
       action() {
         state.handAt = performance.now();
-        return { ok: true, kind: 'hand', message: '举手抢答（本地动作，不写服务端）' };
+        /* 同步给服务端：对面那位也看得见这个动作。没连上 / 对面没人时只是本地抬手，
+           所以提示里说清楚——不写服务端这件事不该藏着。 */
+        const sent = duel.act('cheer');
+        return {
+          ok: true,
+          kind: 'hand',
+          message: sent ? '举手抢答 · 已同步给对面的同学' : '举手抢答（对面还没人就位，动作只在本地）',
+        };
       },
     };
   }
@@ -768,7 +786,8 @@ function findNearest() {
   return best;
 }
 
-function interact() {
+/* 需要 await：作答位要向服务端报「我在哪个位」并等 ack 回来（见下方 arena.stage.* 分支）。 */
+async function interact() {
   if (!state.ready || state.modal || !state.nearest) return;
   const it = state.nearest;
 
@@ -796,10 +815,9 @@ function interact() {
     return;
   }
 
-  /* 作答位（第十四轮）：把人摆到台后、面向对面那座答题台，锁住移动。
-     这一页是第一人称、没有身体，所以"就位"能读出来的只有机位——
-     不硬造一个姿态，只把人真正放到站位上；这一步本身是可验证的：
-     位置和朝向都变了，WASD 失效，Esc 才解得开。 */
+  /* 作答位（第十五轮）：把人摆到台后、面向对面那座答题台，锁住移动，
+     然后向服务端报「我在哪个位」。这一页是第一人称、没有身体，所以"就位"能读出来的
+     只有机位和一句"对面是谁"——不硬造一个姿态，也不预置一个占位对手。 */
   if (it.id === 'arena.stage.jia' || it.id === 'arena.stage.yi') {
     let posed;
     try { posed = it.action(); } catch (err) { posed = { ok: false, message: String((err && err.message) || err) }; }
@@ -814,7 +832,16 @@ function interact() {
     groundSmooth = arenaGroundAt(state.pos.x, state.pos.z);
     updateLocation();
     applyWalk();
-    toast(posed.message + ' · 按 E 举手，Esc 起身');
+    const seat = posed.station;
+    const online = await duel.enter(seat).catch(() => null);
+    /* 四种处境要分开说，别一律说成"没有进行中的挑战"：
+       服务端拒了 / 还没连上 / 真的没有挑战 / 坐下了（对面可能还没人）。 */
+    const tail = !online ? ' · 本地站位（未登录云端）'
+      : !online.ok ? ' · ' + online.message
+      : !online.online ? (online.challenge ? ' · 正在连接擂台现场' : ' · 还没有进行中的挑战')
+      : online.peer ? ' · 对面是 ' + online.peer.nick
+      : ' · 已在' + (seat === 'jia' ? '甲' : '乙') + '位，正在等搭子就位';
+    toast((posed.message || '已就位') + tail + ' · 按 E 举手，Esc 起身');
     return;
   }
 
@@ -1058,6 +1085,9 @@ window.__arena = {
   get stance() { return state.stance; },
   get ground() { return +groundSmooth.toFixed(4); },
   get stage() { return arena.stage; },
+  /* 第十五轮：擂台现场。peer 是站在对面那个位的真人（没有就是 null），
+     seats 是服务端报的座位表，joined 表示这条 socket 已经加入同场。 */
+  get duel() { return duel.snapshot; },
   get dialogOpen() { return featureDialog.open || $('rules-dialog').open; },
   get location() { return $('location').textContent; },
   get panelTitle() { return $('feature-title').textContent; },
