@@ -611,8 +611,25 @@ var WG_App = (function () {
      bankFilter 为 null 时展示全科；传学科 id 时只展示该学科的子板块，
      首页大入口点进来走的就是后者。 */
   var bankFilter = null;
+  /* 题库主文件 gaoshu_bank.js 有 3.7MB，弱网/被拦截时会加载失败。
+     而 renderBank / renderModule 是直接读 GAOSHU_BANK 的，缺了就是
+     ReferenceError: GAOSHU_BANK is not defined —— 整个页面白屏，什么提示都没有。
+     这里给它一个能看懂的落地页，用户刷新就能重试。 */
+  function bankReady() {
+    return typeof GAOSHU_BANK !== 'undefined';
+  }
+  function showBankUnavailable() {
+    showView('bank');
+    var grid = $('bankGrid');
+    if (grid) grid.innerHTML = '<div class="hg-loading">题库暂时没有加载成功，请刷新页面重试。</div>';
+    if ($('bankSubBar')) $('bankSubBar').classList.add('hidden');
+    if ($('bankTitle')) { $('bankTitle').textContent = '课程目录'; $('bankTitle').style.color = 'var(--acc)'; }
+    if ($('bankDesc')) $('bankDesc').textContent = '题库数据未就绪';
+  }
+
   function renderBank(contId) {
     stopGames();
+    if (!bankReady()) { showBankUnavailable(); return; }
     bankFilter = contId || null;
     var cont = bankFilter ? getContinent(bankFilter) : null;
 
@@ -3062,6 +3079,26 @@ var WG_App = (function () {
     }
     /* 图书馆独立页面返回现有资料目录，沿用主站数据加载和账号。 */
     if (location.hash === '#wenku') navTo('wenku');
+    /* 3D 校园里的「刷题」整页跳转落到这里（campus-hub 的 business.js 不再套小窗）：
+       #bank 落到题库，#bank/<moduleId> 直接进某个模块。
+       渲染都走 gateData，会等 WG_Heavy 就绪，不会出现只画了个空壳的题库页。 */
+    if (/^#bank(\/|$)/.test(location.hash)) {
+      var campusModuleId = location.hash.split('/')[1];
+      if (!campusModuleId) {
+        navTo('bank');
+      } else {
+        campusModuleId = decodeURIComponent(campusModuleId);
+        gateData(function () {
+          /* 题库没下来时 renderModule 会读 GAOSHU_BANK 抛错，这里先挡一层，
+             退回题库列表那条「题库暂时没有加载成功」的提示。 */
+          var campusLevel = bankReady() && typeof findLevel === 'function' ? findLevel(campusModuleId) : null;
+          /* 模块 id 对不上（拼错、题库没加载出来）同样退回目录，别留个白屏 */
+          if (!campusLevel) { renderBank(); return; }
+          if (campusLevel.type === 'gaoshu') renderModule(campusLevel);
+          else enterLevel(campusLevel.id, 0);
+        });
+      }
+    }
     /* 好友竞技场独立页里的「在主站继续」带 #community/arena 回来：
        直接落在校园互动的好友竞技场那一栏，不用用户再点一次。
        标签名只认这三个，避免把随便什么 hash 当成路由。 */
@@ -3084,7 +3121,10 @@ var WG_App = (function () {
     openCampusFeature: async function (name, options) {
       var request = ++campusFeatureEpoch;
       options = options || {};
-      if (name === 'bank' && window.WG_Heavy) await WG_Heavy.readyBank();
+      /* WG_Heavy 只导出 {load, ready, isReady, placeholder}，没有 readyBank；
+         原来这里调 readyBank() 会抛 TypeError，校园里点「刷题」直接报
+         「WG_Heavy.readyBank is not a function」。用 ready() 等同一批数据。 */
+      if (name === 'bank' && window.WG_Heavy) await WG_Heavy.ready();
       else if (name === 'wenku' && window.WG_Heavy) await WG_Heavy.ready();
       if (request !== campusFeatureEpoch) return;
       refreshNickUI();
