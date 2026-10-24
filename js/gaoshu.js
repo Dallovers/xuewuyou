@@ -1102,6 +1102,7 @@ var WG_Gaoshu = (function () {
     if (ans) {
       var ok = letters[i] === ans;
       p._correct = ok;
+      if(window.WG_SkinWallet)window.WG_SkinWallet.answer(p.id,letters[i]);
       if (ok) { correct++; } else { wrong++; }
       fb.innerHTML = fxBar(ok ? 'ok' : 'no',
         ok ? '回答正确！' : '回答错误，正确答案是 ' + ans);

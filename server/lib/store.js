@@ -16,6 +16,7 @@ const path = require('path');
 const DATA_DIR = process.env.DATA_DIR ? path.resolve(process.env.DATA_DIR) : path.join(__dirname, '..', 'data');
 
 const FILES = {
+  wardrobe: 'wardrobe.json',
   users: 'users.json',
   userData: 'user_data.json',
   studyDaily: 'study_daily.json',
