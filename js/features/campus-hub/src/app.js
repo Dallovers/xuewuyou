@@ -20,7 +20,7 @@ const hemisphere=new T.HemisphereLight(0xe3edf1,0x686c5c,.36);scene.add(hemisphe
 const effects=createVisualEffects(renderer,scene,camera,sun);
 const orbit=new OrbitControls(camera,canvas);orbit.enableDamping=true;orbit.minDistance=8;orbit.maxDistance=180;orbit.maxPolarAngle=Math.PI*.49;
 const state={ready:false,mode:'overview',...START,seated:null,stance:null,path:null,frames:0,returnRestored:false};
-const keys=new Set(),clock=new T.Clock();let presence,studyPicker,pickerEnabled=false,world,avatar,opponent,sky,navigation,drag,nearest,disposed=false,toastTimer,lastShadow=0,studentYaw=0,lastX=0,lastZ=START.z,cameraCheck=0,cameraDistance=5.3,cameraBoxes=[],smoothGround=0;
+const keys=new Set(),clock=new T.Clock();let presence,studyPicker,pickerEnabled=false,world,avatar,opponent,sky,navigation,drag,nearest,disposed=false,toastTimer,lastShadow=0,studentYaw=0,lastX=0,lastZ=START.z,cameraCheck=0,cameraDistance=5.3,cameraBoxes=[],smoothGround=0,lastPanelSync=0;
 const coarsePointer=matchMedia('(pointer:coarse)');
 const ray=new T.Raycaster(),aim=new T.Vector3(),direction=new T.Vector3(),targetCamera=new T.Vector3();
 const bridge=createBusinessBridge({clearInput,route:goTo,equipment:()=>world?.interiors.systems,status:()=>{if(bridge.paused)avatar?.cancelAction();syncControls();}});
@@ -94,6 +94,9 @@ function updateCamera(dt){
 }
 function frame(){
  if(disposed)return;const dt=Math.min(clock.getDelta(),.10),paused=bridge.paused||document.hidden;
+ // Keep the shared-campus connection alive while the 2D tool owns the screen.
+ // The unchanged 3D background needs no GPU passes during reading or practice.
+ if(bridge.paused){if(performance.now()-lastPanelSync>=250){lastPanelSync=performance.now();presence?.update(.1);}return;}
  if(state.ready){
   const oldX=state.x,oldZ=state.z;
   if(state.mode==='walk'&&!paused&&!state.seated&&!state.stance&&!avatar.locksMovement){

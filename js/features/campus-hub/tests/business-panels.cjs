@@ -1,0 +1,75 @@
+const {chromium}=require('playwright');
+const assert=require('node:assert/strict');
+
+(async()=>{
+ const browser=await chromium.launch({channel:'msedge',headless:true,args:['--use-angle=d3d11','--ignore-gpu-blocklist']});
+ const page=await browser.newPage({viewport:{width:1440,height:900}}),errors=[],navigations=[];
+ page.on('pageerror',error=>errors.push(error.message));
+ page.on('request',request=>{if(request.isNavigationRequest()&&request.url().includes('embedded=campus'))navigations.push(request.url());});
+ try{
+  await page.goto('http://127.0.0.1:4184/js/features/campus-hub/index.html');
+  await page.waitForFunction(()=>window.__campusHub?.snapshot().ready&&window.__campusHub.snapshot().frames>3,null,{timeout:120000});
+  const pose=await page.evaluate(()=>window.__campusHub.snapshot().pos);
+  const rendered=await page.evaluate(()=>window.__campusHub.snapshot().frames);
+  await page.evaluate(()=>window.__campusHub.openFeature('courses'));
+  await page.getByRole('button',{name:'高等数学',exact:true}).click();
+  const frame=page.frameLocator('#business-frame');
+  await frame.locator('#view-module').waitFor({state:'visible',timeout:30000});
+  await frame.locator('#modFilter [data-form="choice"]').click();
+  await frame.locator('#subGrid [data-topic]:not(.mod-card-empty)').first().click();
+  await frame.locator('.bank-opt').first().waitFor({state:'visible',timeout:30000});
+  assert.equal(await frame.locator('.bank-opt').count(),4,'real question options render');
+  await frame.locator('.bank-opt').first().click();
+  await frame.locator('#bankGrasp button[data-g="weak"]').click();
+  const appPage=page.frames().find(child=>child.url().includes('embedded=campus'));
+  assert(appPage,'embedded learning page is available');
+  const records=await appPage.evaluate(()=>JSON.parse(localStorage.getItem('wenguo_v1')));
+  assert.equal(records.answers.length,1,'answer saved in the main study record');
+  assert.equal(records.mistakes.length,1,'wrong answer is added to the wrong-question list');
+  assert(records.answers[0].qid,'saved answer has the original bank question ID');
+  await page.waitForFunction(()=>document.querySelector('#business-status').textContent==='关闭后回到当前站位。');
+  const modalFrames=await page.evaluate(()=>window.__campusHub.snapshot().frames);
+  await page.waitForTimeout(700);
+  assert.equal(await page.evaluate(()=>window.__campusHub.snapshot().frames),modalFrames,'3D rendering pauses behind the open panel');
+  await page.locator('#close-business').click();
+  assert.deepEqual(await page.evaluate(()=>window.__campusHub.snapshot().pos),pose,'closing returns to the same position');
+  await page.waitForFunction(frames=>window.__campusHub.snapshot().frames>frames,modalFrames,{timeout:5000});
+  const firstTimeOrigin=await appPage.evaluate(()=>performance.timeOrigin);
+  const started=performance.now();
+  await page.evaluate(()=>window.__campusHub.openFeature('courses'));
+  await page.getByRole('button',{name:'高等数学',exact:true}).click();
+  await frame.locator('#view-module').waitFor({state:'visible',timeout:10000});
+  const repeatMs=performance.now()-started;
+  assert.equal(await appPage.evaluate(()=>performance.timeOrigin),firstTimeOrigin,'the site and downloaded bank are reused');
+  assert.equal(navigations.length,1,'only one embedded site document is loaded');
+  for(const [subject,title]of [['线性代数','线代综合刷题'],['概率论','概率综合刷题']]){
+   await page.evaluate(()=>window.__campusHub.openFeature('courses'));
+   await page.getByRole('button',{name:subject,exact:true}).click();
+   await frame.locator('#view-module').waitFor({state:'visible'});
+   assert.equal(await frame.locator('#modTitle').innerText(),title,subject+' opens its formal subject module');
+   assert((await frame.locator('#modFilterHint').innerText()).match(/共 [1-9]\d* 题/),subject+' has real questions');
+  }
+  await page.setViewportSize({width:390,height:844});
+  assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'campus page has no mobile horizontal overflow');
+  await frame.locator('#modFilter [data-form="choice"]').click();
+  await frame.locator('#subGrid [data-topic]:not(.mod-card-empty)').first().click();
+  await frame.locator('.bank-opt').first().waitFor({state:'visible'});
+  await page.screenshot({path:require('node:path').resolve(__dirname,'../test-results/classroom-real-practice-mobile.png')});
+  assert.equal(errors.length,0,'no uncaught browser errors: '+errors.join('; '));
+  const retryPage=await browser.newPage({viewport:{width:1440,height:900}});let blockedBank=false;
+  await retryPage.route('**/js/gaoshu_bank.js*',route=>{if(!blockedBank){blockedBank=true;route.abort();}else route.continue();});
+  await retryPage.goto('http://127.0.0.1:4184/js/features/campus-hub/index.html');
+  await retryPage.waitForFunction(()=>window.__campusHub?.snapshot().ready&&window.__campusHub.snapshot().frames>3,null,{timeout:120000});
+  await retryPage.evaluate(()=>window.__campusHub.openFeature('courses'));
+  await retryPage.getByRole('button',{name:'高等数学',exact:true}).click();
+  await retryPage.waitForFunction(()=>document.querySelector('#business-status').textContent.includes('题库暂时没有加载成功'),null,{timeout:30000});
+  await retryPage.locator('#close-business').click();
+  await retryPage.evaluate(()=>window.__campusHub.openFeature('courses'));
+  await retryPage.getByRole('button',{name:'高等数学',exact:true}).click();
+  await retryPage.frameLocator('#business-frame').locator('#view-module').waitFor({state:'visible',timeout:30000});
+  assert(blockedBank,'the first question-bank request was deliberately interrupted');
+  assert.equal(await retryPage.frameLocator('#business-frame').locator('#modTitle').innerText(),'高数综合刷题','retry opens the real question bank');
+  console.log(JSON.stringify({passed:true,initialFrames:rendered,framesAfterClose:await page.evaluate(()=>window.__campusHub.snapshot().frames),repeatOpenMs:Math.round(repeatMs),siteNavigations:navigations.length,answers:records.answers.length,mistakes:records.mistakes.length,viewport:'390x844',bankFailureRetry:true,errors},null,2));
+  await retryPage.close();
+ }finally{await browser.close();}
+})().catch(error=>{console.error(error);process.exitCode=1;});

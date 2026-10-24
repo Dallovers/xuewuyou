@@ -2654,7 +2654,7 @@ var WG_App = (function () {
 
   function initPdfJsWorker() {
     if (window.pdfjsLib && !pdfjsLib.GlobalWorkerOptions.workerSrc) {
-      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+      pdfjsLib.GlobalWorkerOptions.workerSrc = new URL('examples/library-3d/vendor/pdfjs/pdf.worker.min.js', document.baseURI).href;
     }
   }
 
@@ -3018,7 +3018,7 @@ var WG_App = (function () {
     bind();
     refreshNickUI();
     /* 首屏（登录/注册界面）立即渲染，重型题库数据后台异步加载不阻塞 */
-    if (window.WG_Heavy) WG_Heavy.load();
+    if (window.WG_Heavy && !window.WG_Runtime?.campusPanel) WG_Heavy.load();
     /* 深链：#study 直接进入自习室（默认设置），方便分享直达 */
     if (location.hash === '#study') {
       if (window.StudyRoom && typeof window.StudyRoom.enter === 'function') {
@@ -3044,6 +3044,9 @@ var WG_App = (function () {
         refreshNickUI();
       });
     }
+    // Campus panels are routed by their parent after the application is ready.
+    // Avoid rendering the homepage and its assets before opening the requested tool.
+    if (window.WG_Runtime?.campusPanel) { showView('bank'); return; }
     if (!WG_Data.get().profile) {
       showOnboard();
     } else {
@@ -3067,7 +3070,29 @@ var WG_App = (function () {
   }
 
   /* 供自习室引擎调用：重新打开入场设置弹窗 */
+  var campusFeatureEpoch = 0;
   window.StudyAppBridge = {
+    ready: false,
+    openCampusFeature: async function (name, options) {
+      var request = ++campusFeatureEpoch;
+      options = options || {};
+      if (name === 'bank' && window.WG_Heavy) await WG_Heavy.readyBank();
+      else if (name === 'wenku' && window.WG_Heavy) await WG_Heavy.ready();
+      if (request !== campusFeatureEpoch) return;
+      refreshNickUI();
+      if (name === 'account') { $('nickBtn').click(); return; }
+      if (name === 'bank' && options.moduleId) { window.StudyAppBridge.openModule(options.moduleId); return; }
+      if (name === 'community' && options.tab && window.WG_Community) { WG_Community.open(options.tab); return; }
+      navTo(name);
+    },
+    suspend: function () {
+      campusFeatureEpoch++;
+      stopGames();
+      closeLogin(); closeStudySetup(); closeModal();
+      document.querySelectorAll('dialog[open]').forEach(function (dialog) { dialog.close(); });
+      if (state.view === 'study' && window.StudyRoom?.onViewHidden) StudyRoom.onViewHidden();
+      if (state.view === 'rooms' && window.WG_Rooms?.onViewHidden) WG_Rooms.onViewHidden();
+    },
     openSetup: function () { openStudySetup(); },
     navTo: function (name) { navTo(name); },
     openBank: function(id){gateData(function(){renderBank(id || null);});},
@@ -3092,3 +3117,6 @@ var WG_App = (function () {
 })();
 
 document.addEventListener('DOMContentLoaded', WG_App.init);
+document.addEventListener('DOMContentLoaded', function () {
+  setTimeout(function () { window.StudyAppBridge.ready = true; }, 0);
+});
