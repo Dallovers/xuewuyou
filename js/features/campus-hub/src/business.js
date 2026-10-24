@@ -47,6 +47,17 @@ export function createBusinessBridge({clearInput,status,route,equipment}){
  dialog.addEventListener('cancel',e=>{e.preventDefault();close();});
  async function openFeature(name,options={}){
   if(!['account','community','study','rooms','wenku','bank','library','courses','equipment','campus-guide','controls','note'].includes(name))return{ok:false,message:'未知校园功能'};
+  /* 刷题不开小窗（2026-10-24）：题库要整屏、要连着做几十道、还要键盘输入和公式排版，
+     塞在 dialog 的 iframe 里既窄又闷。直接整页跳到主站题库——不带模块是 #bank，
+     带模块（课程面板那三张卡）是 #bank/<moduleId>，两条深链在 js/app.js 的 init 里。
+     在 showModal() 之前就返回，所以小窗根本不会出现。 */
+  if(name==='bank'){
+   clearInput();suspendApp();
+   const url=new URL('../../../index.html#bank',document.baseURI);
+   if(options.moduleId)url.hash='#bank/'+encodeURIComponent(options.moduleId);
+   location.assign(url.href);
+   return{ok:true};
+  }
   const current=++generation;suspendApp();releaseLibrary();clearInput();if(!dialog.open)dialog.showModal();status();
   dialog.dataset.feature=name;frame.hidden=true;note.hidden=true;guide.hidden=true;tools.hidden=true;controls.hidden=true;
   const titles={account:'校园账号',community:'校园同伴',bank:'教室 · 正式题库',library:'图书馆 · 资料与阅读',wenku:'学习资料',courses:'教室刷题',equipment:'教室设备',controls:'操作指南',note:'一张对折的纸条','campus-guide':'从庭院出发'};
