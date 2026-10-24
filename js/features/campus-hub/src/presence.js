@@ -16,6 +16,7 @@ export function createCampusPresence({scene,camera,getPose,setSpawn,openAccount,
  const status=document.createElement('span'),button=document.createElement('button');status.id='presence-status';status.setAttribute('role','status');button.id='presence-toggle';panel.append(status,button);document.body.append(panel);
  const labels=document.createElement('div');labels.id='peer-labels';labels.setAttribute('aria-hidden','true');document.body.append(labels);
  const peers=new Map(),project=new T.Vector3();let socket,selfId='',joined=false,wanted=true,disposed=false,generation=0,lastToken=token(),lastSend=0,lastSnapshot=0,loading=false,remoteRevision=0,painted='';
+ let activeDuels=[],appearanceTimer;
  const cap=()=>innerWidth<700?2:4;
  function paint(text,action){const value=text+'|'+action;if(value===painted)return;painted=value;status.textContent=text;button.textContent=action;}
  function release(peer){peer.cancelled=true;peer.avatar?.dispose();peer.label?.remove();peers.delete(peer.id);shadowChanged();}
@@ -38,7 +39,7 @@ export function createCampusPresence({scene,camera,getPose,setSpawn,openAccount,
   const sent=getPose(),activeSocket=socket,current=generation;socket.timeout(8000).emit('campus:join',{world:VERSION,avatar:sent.avatar,pose:sent},(error,result)=>{
    if(disposed||current!==generation||socket!==activeSocket||!socket?.connected||!wanted)return;
    if(error||!result?.ok){paint(result?.error||'同场连接超时','重新连接');return;}
-   selfId=result.self.id;joined=true;setSpawn(result.self,sent);receive({world:VERSION,players:result.players});publish(true);
+   selfId=result.self.id;activeDuels=result.duels||[];joined=true;setSpawn(result.self,sent);receive({world:VERSION,players:result.players});publish(true);
   });
  }
  async function connect(){
@@ -101,9 +102,11 @@ export function createCampusPresence({scene,camera,getPose,setSpawn,openAccount,
     }).catch(()=>{peer.retries=(peer.retries||0)+1;peer.retryAt=performance.now()+Math.min(30000,3000*2**(peer.retries-1));paint('同学已在线，角色正在重试加载','重新连接');}).finally(()=>{loading=false;peer.loading=false;});
    }
   },
-  snapshot:()=>({joined,wanted,selfId,players:peers.size+Number(joined),loaded:[...peers.values()].filter(p=>p.avatar).length,remoteRevision,peers:[...peers.values()].map(p=>({id:p.id,nick:p.nick,pose:p.to,rendered:p.avatar?.root.position.toArray(),clip:p.avatar?.snapshot().clip})),status:status.textContent}),
-  appearance(){if(joined&&socket?.connected)socket.timeout(8000).emit('campus:appearance',{avatar:getPose().avatar},()=>{});},
+  snapshot:()=>({joined,wanted,selfId,players:peers.size+Number(joined),loaded:[...peers.values()].filter(p=>p.avatar).length,remoteRevision,peers:[...peers.values()].map(p=>({id:p.id,nick:p.nick,variant:p.variant,pose:p.to,rendered:p.avatar?.root.position.toArray(),clip:p.avatar?.snapshot().clip})),status:status.textContent}),
+  async connection(){wanted=true;if(!socket?.connected)await connect();const until=performance.now()+10000;while(!joined&&!disposed&&wanted&&performance.now()<until)await new Promise(r=>setTimeout(r,60));if(!joined)return null;return {socket,selfId,duels:activeDuels};},
+  hasPeer:id=>joined&&peers.has(id),
+  appearance(){clearTimeout(appearanceTimer);appearanceTimer=setTimeout(()=>{if(joined&&socket?.connected)socket.timeout(8000).emit('campus:appearance',{avatar:getPose().avatar},()=>{});},600);},
   teleport,
-  dispose(){disposed=true;wanted=false;disconnect();clearInterval(authTimer);removeEventListener('storage',syncAuth);removeEventListener('online',online);document.removeEventListener('visibilitychange',visibility);panel.remove();labels.remove();}
+  dispose(){disposed=true;wanted=false;clearTimeout(appearanceTimer);disconnect();clearInterval(authTimer);removeEventListener('storage',syncAuth);removeEventListener('online',online);document.removeEventListener('visibilitychange',visibility);panel.remove();labels.remove();}
  };
 }

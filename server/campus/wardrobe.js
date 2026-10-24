@@ -1,6 +1,7 @@
 'use strict';
 const catalog=require('./skin-catalog.json');
 const {questions}=require('../integrations/questions');
+const {correctChoice}=require('./quiz-grader');
 const skins=new Map(catalog.skins.map(s=>[s.id,s]));
 const starters=catalog.skins.filter(s=>s.starter).map(s=>s.id);
 function wallet(store,uid){return store.get('wardrobe',uid,{balance:0,owned:[...starters],equipped:'anime',earned:0,spent:0,day:'',rewarded:[]});}
@@ -12,12 +13,12 @@ function redeem(store,uid,id){
  w.balance-=skin.price;w.spent+=skin.price;w.owned.push(id);store.set('wardrobe',uid,w);return w;
 }
 function reward(store,uid,qid,answer,now=new Date()){
- const q=questions.get(String(qid));
- if(!q||q.selfAssessed||! /^[A-D]$/.test(String(answer)))throw Error('此题暂不支持学习币奖励');
+ const q=questions.get(String(qid)),correct=correctChoice(q);
+ if(!correct||typeof answer!=='string'||! /^[A-D]$/.test(answer))throw Error('此题暂不支持学习币奖励');
  const w=wallet(store,uid),day=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Shanghai'}).format(now);
  if(w.day!==day){w.day=day;w.rewarded=[];}
  let gained=0;
- if(q.answer===answer&&!w.rewarded.includes(q.id)&&w.rewarded.length*catalog.rewardPerQuestion<catalog.dailyRewardLimit){
+ if(correct===answer&&!w.rewarded.includes(q.id)&&w.rewarded.length*catalog.rewardPerQuestion<catalog.dailyRewardLimit){
   gained=catalog.rewardPerQuestion;w.rewarded.push(q.id);w.balance+=gained;w.earned+=gained;
  }
  store.set('wardrobe',uid,w);return {wallet:w,gained};

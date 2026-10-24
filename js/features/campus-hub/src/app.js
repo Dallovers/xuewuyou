@@ -196,6 +196,7 @@ function syncDuel(){
   return;
  }
  /* 别人朝我，正好是我朝向的 π：我在甲位（yaw π）时他在乙位（yaw 0） */
+ if(presence?.hasPeer(peer.id)){if(opponent?.visible)opponent.depart();showDuelHint(peer.submitted?peer.nick+' · 已交卷':peer.nick+' · 已在对面');return;}
  const facing=Math.PI-(peer.seat==='jia'?Math.PI:0);
  if(opponent?.visible&&opponent.seat===peer.seat){
   showDuelHint(peer.submitted?peer.nick+' · 已交卷':peer.nick+' · 已在对面');
@@ -332,7 +333,7 @@ async function init(){try{
  /* 擂台现场（第十五轮）：连一条 /community socket，进出作答位时告诉服务端我在哪，
      对手的动作从 duel:act 回来。这里不读挑战列表——挑哪一场交给 duel.js 的候选规则，
      它只需要知道「有没有已开始、未交卷的挑战」，那件事在就位那一刻由 socket 回话给出。 */
- duel=createArenaDuel({toast});
+ duel=createArenaDuel({toast,campusConnection:()=>presence?.connection()});
  const record=readReturn(sessionStorage);if(record){Object.assign(state,restorePose(record,navigation));state.returnRestored=!!record.pending;record.pending=false;sessionStorage.setItem(KEY,JSON.stringify(record));}studentYaw=Number.isFinite(record?.heading)?record.heading:Math.PI-state.yaw;lastX=state.x;lastZ=state.z;state.ready=true;
  smoothGround=groundAt(state.x,state.z);
  setMode(record?'walk':'overview');avatar.update({position:{x:state.x,z:state.z,groundY:smoothGround},yaw:studentYaw,dt:0});avatar.setVisible(true);await renderer.compileAsync(scene,camera);renderer.shadowMap.needsUpdate=true;

@@ -28,8 +28,12 @@ KayKit、Kenney 使用各自原生骨骼动画。KayKit 的招呼为原生 Cheer
 
 模型按当前选择加载，原始下载缓存最多 3 项；更换和关闭预览释放模型、材质、贴图、动画与渲染器。商城打开时暂停校园绘制，保持同场心跳。角色下载不再阻塞整个校园进入；下载失败仍可漫游和重试。初始机器人加载较小，随后切换保存的形象。
 
-已本地验证：18 个形象及可用动作、四个 VRM0 的待机手臂位置、390px 布局、免费换装；钱包服务端单测 4 项，真实 HTTP 与双账号 Socket 测试 2 项（包括奖励去重、权属、重复兑换、外观与挥拳同步）。完整服务端回归在学习引擎配置正确后 224 项通过、4 项 PostgreSQL 环境测试本地跳过；PostgreSQL 由 PR CI 检查。
+已本地验证：18 个形象及可用动作、四个 VRM0 的待机手臂位置、390px 布局、免费换装；钱包服务端单测 5 项，真实 HTTP 与双账号 Socket 测试 2 项（包括奖励去重、权属、重复兑换、外观与挥拳同步）。完整服务端回归在学习引擎配置正确后 224 项通过、4 项 PostgreSQL 环境测试本地跳过；PostgreSQL 由 PR CI 检查。
 
 构建：`node tools/characters/optimize-runtime.mjs` → `node tools/characters/build-campus-catalog.mjs` → `node js/features/campus-hub/build.mjs`。浏览器检查：`node js/features/campus-hub/tests/skins.cjs`。仅生成缩略图时设置 `GENERATE_SKIN_THUMBNAILS=1`。
 
 后端运行在华为云；GitHub 合并不会自动部署 API。发布必须同时更新 Pages 与后端镜像，保留生产数据库、JWT 和环境文件。
+
+浏览器真实双账号追加 10 项通过：真实按钮答题奖励、兑换扣费、他人看见换装与挥拳、连续三次重开商城、保持 player id、两人现场匹配同一挑战、无重复默认替身。竞技场复用校园 socket，避免第二条连接重置皮肤和替换同账号。
+
+华为云 API 源码包还必须包含 `js/qenhance.js`：服务端复用同一受版本控制的纯解析器，校验题干内嵌选项和解析答案；不执行用户题目文本，不采信客户端 correct 或余额。

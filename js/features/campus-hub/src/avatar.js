@@ -21,6 +21,8 @@ function loadSource(url,type){
  const value=sources.get(key);if(sources.size>3)sources.delete(sources.keys().next().value);return value;
 }
 
+function disposeModel(model){const images=new Set();model.traverse(node=>{for(const material of node.material?(Array.isArray(node.material)?node.material:[node.material]):[])for(const value of Object.values(material))if(value?.isTexture&&value.image?.close)images.add(value.image);});VRMUtils.deepDispose(model);for(const image of images)image.close();}
+
 export async function createStudentAvatar(scene,options={}){
  const avatar=options.variant||new URLSearchParams(location.search).get('avatar')||'anime';
  const skin=catalog.skins.find(s=>s.id===avatar)||catalog.skins[0],variant=skin.id;
@@ -30,11 +32,11 @@ export async function createStudentAvatar(scene,options={}){
  const site=new URL('../../../',document.baseURI),modelUrl=new URL(skin.model,site),assets=new URL('.',modelUrl);
  const source=await loadSource(modelUrl,'arraybuffer');
  const gltf=await loader.parseAsync(source,assets.href),vrm=gltf.userData.vrm;
- if(skin.rig.startsWith('vrm')&&!vrm)throw Error('VRM humanoid unavailable');
+ if(skin.rig.startsWith('vrm')&&!vrm){disposeModel(gltf.scene);throw Error('VRM humanoid unavailable');}
  let animations=gltf.animations,actionTimings={};
  if(vrm){
   VRMUtils.combineSkeletons(vrm.scene);
-  const motion=await loadSource(new URL('examples/campus-3d-v5/assets/characters/student-anime-motion.json',site),'json');
+  let motion;try{motion=await loadSource(new URL('examples/campus-3d-v5/assets/characters/student-anime-motion.json',site),'json');}catch(error){disposeModel(gltf.scene);throw error;}
   actionTimings=motion.actions||{};
   if(vrm.meta.metaVersion==='0')VRMUtils.rotateVRM0(vrm);
   animations=retargetVrmMotion(vrm,motion);
@@ -111,6 +113,6 @@ export async function createStudentAvatar(scene,options={}){
    }
   },
   setVisible(value){root.visible=!!value;},
-  dispose(){scene.remove(root);mixer.stopAllAction();mixer.uncacheRoot(model);if(vrm)VRMUtils.deepDispose(model);else gltf.scene.traverse(n=>{if(n.isMesh){n.geometry.dispose();for(const material of Array.isArray(n.material)?n.material:[n.material]){for(const value of Object.values(material))if(value?.isTexture)value.dispose();material.dispose();}}});shadow.geometry.dispose();shadow.material.dispose();contactMap.dispose();}
+  dispose(){scene.remove(root);mixer.stopAllAction();mixer.uncacheRoot(model);disposeModel(model);shadow.geometry.dispose();shadow.material.dispose();contactMap.dispose();}
  };
 }
