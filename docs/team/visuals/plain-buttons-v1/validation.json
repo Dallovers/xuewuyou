@@ -1,0 +1,15 @@
+{
+  "passed": true,
+  "checks": [
+    "onboarding action and all primary controls use plain CSS buttons",
+    "hover no longer adds a texture, glare or shadow",
+    "keyboard focus stays visible",
+    "rooms buttons have readable normal styling",
+    "start-study action works and completion has no image border",
+    "pause control still changes its state",
+    "390px study buttons fit and remain touch sized",
+    "textured button image is no longer requested and click aura is gone",
+    "no uncaught page errors"
+  ],
+  "errors": []
+}
