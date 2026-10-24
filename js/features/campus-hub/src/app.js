@@ -5,6 +5,7 @@ import {createWorld} from './world.js';
 import {createStudentAvatar} from './avatar.js';
 import {createArenaDuelAvatar} from './arena-opponent.js';
 import {createArenaDuel, DUEL_TOP, DUEL_STATIONS, otherSeat} from './duel.js';
+import {createDuelPanel} from './duel-panel.js';
 import {createNavigation} from './navigation.js';
 import {ENTRIES,SITE_EXIT,START,ARENA_ROOT,groundAt} from './layout.js';
 import {readReturn,restorePose,KEY} from './return-state.js';
@@ -21,7 +22,7 @@ const hemisphere=new T.HemisphereLight(0xe3edf1,0x686c5c,.36);scene.add(hemisphe
 const effects=createVisualEffects(renderer,scene,camera,sun);
 const orbit=new OrbitControls(camera,canvas);orbit.enableDamping=true;orbit.minDistance=8;orbit.maxDistance=180;orbit.maxPolarAngle=Math.PI*.49;
 const state={ready:false,mode:'overview',...START,seated:null,stance:null,path:null,frames:0,returnRestored:false};
-const keys=new Set(),clock=new T.Clock();let presence,studyPicker,pickerEnabled=false,world,avatar,opponent,duel,duelHint,sky,navigation,drag,nearest,disposed=false,toastTimer,lastShadow=0,studentYaw=0,lastX=0,lastZ=START.z,cameraCheck=0,cameraDistance=5.3,cameraBoxes=[],smoothGround=0;
+const keys=new Set(),clock=new T.Clock();let presence,studyPicker,pickerEnabled=false,world,avatar,opponent,duel,duelHint,duelPanel,sky,navigation,drag,nearest,disposed=false,toastTimer,lastShadow=0,studentYaw=0,lastX=0,lastZ=START.z,cameraCheck=0,cameraDistance=5.3,cameraBoxes=[],smoothGround=0;
 const coarsePointer=matchMedia('(pointer:coarse)');
 const ray=new T.Raycaster(),aim=new T.Vector3(),direction=new T.Vector3(),targetCamera=new T.Vector3();
 const bridge=createBusinessBridge({clearInput,route:goTo,equipment:()=>world?.interiors.systems,status:()=>{if(bridge.paused)avatar?.cancelAction();syncControls();}});
@@ -51,11 +52,11 @@ function setMode(mode){if(!state.ready)return;state.seated?.onStand?.();clearInp
 /* 旧版化身有 setStation(null)，第十五轮换成 duel 驱动的 arrive/depart：
    离开作答位时这里要主动撤人，否则换模式后对手会留在台上。 */
 if(opponent?.visible)opponent.depart();
-duel?.leave();showDuelHint('');
+closeDuelPanel();duel?.leave();showDuelHint('');
 state.mode=mode;orbit.enabled=mode==='overview';$('#overview').setAttribute('aria-pressed',String(mode==='overview'));$('#walk').setAttribute('aria-pressed',String(mode==='walk'));syncControls();setPlaces(false);configureWater();if(mode==='overview'){camera.position.set(56,57,68);orbit.target.set(3,1,-4);orbit.update();}else{canvas.focus();updateCamera(.1);}}
 /* 起身：两个"定点"共用一条出口——自习室的座位（state.seated）和擂台的作答位（state.stance）。
    作答位是先锁住移动的，所以没有"走开就自动取消"这条路，只能就地解除。 */
-function stand(){if(state.stance){duel?.leave();state.stance=null;avatar.cancelAction();focusScene();toast('已离开作答位');return;}if(!state.seated)return;state.seated.onStand?.();state.seated=null;clearInput();focusScene();toast('已起身');}
+function stand(){if(state.stance){closeDuelPanel();duel?.leave();state.stance=null;avatar.cancelAction();focusScene();toast('已离开作答位');return;}if(!state.seated)return;state.seated.onStand?.();state.seated=null;clearInput();focusScene();toast('已起身');}
 function goTo(id){if(!state.ready||bridge.paused)return;stand();setMode('walk');if(world.inside(state))world.interiors.open(world.inside(state),true);const entry=ENTRIES.find(e=>e.id===id)||(id===SITE_EXIT.id?SITE_EXIT:null);if(!entry)return;const goal={x:entry.outside[0],z:entry.outside[1]};const route=navigation.route(state,goal);if(!route){toast('暂时找不到通路，请换个站位重试。');return;}state.path=route;toast('正在前往'+entry.label+(id===SITE_EXIT.id?'，走近后按 E 返回网站。':'，走近后按 E 互动。'));}
 function exitSite(){clearInput();try{sessionStorage.removeItem(KEY);}catch{}location.assign(new URL('../../../index.html#home',document.baseURI).href);return{ok:true};}
 function findNearest(){
@@ -103,6 +104,9 @@ async function activate(){if(!state.ready||bridge.paused)return;if(state.mode===
      :posed.peer?' · 对面是 '+posed.peer.nick+'（'+posed.peer.seat+'位）'
      :' · 已在'+posed.station+'位，正在等搭子就位';
    toast((result.message||'已就位')+hint+' · 按 E 举手，Esc 起身');
+   /* 坐到作答位就把题目端上来：真正「在台上一起答题」靠的就是这一步。
+     只有真的坐到台上（online）才开面板；离线/没有挑战时台上只有人、没有题。 */
+   if(posed?.online&&posed.challenge)openDuelPanel();
   }else if(result?.kind==='equipment'){bridge.openFeature('equipment');}else if(result?.kind==='note'){bridge.openFeature('note',{text:result.text});}else if(result?.message)toast(result.message);}catch(error){toast('操作未完成：'+error.message);}finally{focusScene();}}
 function jump(){if(state.mode==='walk'&&!bridge.paused&&!state.seated&&!state.stance)avatar?.act('jump',smoothGround);}
 /* ---------- 擂台现场：把服务端的状态落到 3D 上（第十五轮） ----------
@@ -140,6 +144,9 @@ function syncDuel(){
  if(act)opponent?.act(act.act,act.at);
  /* 对手那头交卷了：本地只换提示，不替他宣布成绩 */
  if(peer.submitted)showDuelHint(peer.nick+' · 已交卷');
+ /* 注意：作答面板不在这里刷。syncDuel 每帧都跑，而面板重绘要重建题目 DOM，
+   每帧做一次等于把答题卡在地上摩擦。面板改为订阅 duel.onChange（见 init），
+   只在 socket 事件真正带来变化时刷新。 */
 }
 function showDuelHint(text){
  if(!duelHint)return;
@@ -149,6 +156,14 @@ function showDuelHint(text){
  duelHint.textContent=text;
  duelHint.hidden=!text;
 }
+/* ---------- 作答面板（第十六轮） ----------
+ * 坐到作答位上就把题目端出来，人在台上直接答题、直接交卷。
+ * 面板只负责显示和收集选择；判分/计时/胜负全在服务端（见 duel-panel.js 顶部说明）。
+ * 打开期间角色不能走：WASD 会被面板吃掉，键盘交给选项和交卷。 */
+function openDuelPanel(){if(!duelPanel)return;clearInput();duelPanel.open();}
+function closeDuelPanel(){duelPanel?.close();}
+/* 面板开着时，键盘归面板：移动键、E、空格都不该再驱动角色。 */
+const duelPanelOpen=()=>!!duelPanel?.isOpen;
 function updateCamera(dt){
  if(!state.seated&&world?.inside(state)){camera.position.set(state.x,smoothGround+1.6+(avatar?.jumpHeight||0),state.z);camera.lookAt(state.x+Math.sin(state.yaw),camera.position.y-state.pitch,state.z-Math.cos(state.yaw));return;}
  if(state.seated){camera.position.fromArray(state.seated.position);camera.lookAt(camera.position.x+Math.sin(state.yaw),camera.position.y-state.pitch,camera.position.z-Math.cos(state.yaw));return;}
@@ -198,6 +213,11 @@ for(const entry of [...ENTRIES,SITE_EXIT]){const b=document.createElement('butto
 $('#site-exit').onclick=e=>{if(e.button!==0||e.ctrlKey||e.metaKey||e.shiftKey||e.altKey)return;e.preventDefault();exitSite();};
 addEventListener('keydown',e=>{
  if(!state.ready||e.target.closest?.('input,textarea,select,[contenteditable=true]')||bridge.paused)return;
+ /* 作答面板开着时键盘全归面板：A/B/C/D 选项、Enter 交卷、Esc 下台。
+    面板吃掉一切（连移动键也吃），人锁在作答位上，不该边走边答题。
+    唯一例外是面板明确交回来的键（现在是 E）——底部写着「E 举手抢答」，
+    那就得真的还能举手，不能给一个按了没反应的按钮。 */
+ if(duelPanel?.isOpen&&duelPanel.handleKey(e)){e.preventDefault();return;}
  if(e.code==='Escape'){if(!$('#places').hidden){e.preventDefault();setPlaces(false,true);return;}stand();clearInput();return;}
  if(state.mode!=='walk'){if(e.code==='KeyE'&&!e.repeat){e.preventDefault();activate();}return;}
  if(!e.repeat&&pickerEnabled&&['KeyQ','KeyR','KeyG'].includes(e.code)){e.preventDefault();if(e.code==='KeyQ')studyPicker.toggleOpen();else studyPicker.drop();return;}
@@ -205,11 +225,11 @@ addEventListener('keydown',e=>{
  if(['KeyW','KeyA','KeyS','KeyD','ArrowUp','ArrowDown','ArrowLeft','ArrowRight','ShiftLeft','ShiftRight','KeyJ','KeyL'].includes(e.code)){e.preventDefault();focusScene();keys.add(e.code);state.path=null;}
  if(e.code==='KeyE'||e.code==='Space'&&!e.target.closest?.('button,a')){e.preventDefault();if(!e.repeat){if(e.code==='Space')jump();else activate();}}
 });addEventListener('keyup',e=>keys.delete(e.code));addEventListener('blur',clearInput);
-canvas.onpointerdown=e=>{if(e.button===2&&pickerEnabled&&!bridge.paused){studyPicker.setInspect(true);return;}if(bridge.paused||state.mode!=='walk')return;canvas.focus();canvas.setPointerCapture(e.pointerId);drag={id:e.pointerId,x:e.clientX,y:e.clientY};};
-canvas.onpointermove=e=>{if(drag?.id!==e.pointerId||bridge.paused)return;state.yaw+=(e.clientX-drag.x)*.004;state.pitch=T.MathUtils.clamp(state.pitch+(e.clientY-drag.y)*.003,-.45,.7);drag.x=e.clientX;drag.y=e.clientY;};canvas.onpointerup=canvas.onpointercancel=()=>{drag=null;studyPicker?.setInspect(false);};
-for(const b of document.querySelectorAll('[data-key]')){b.onpointerdown=e=>{e.preventDefault();b.setPointerCapture(e.pointerId);keys.add(b.dataset.key);state.path=null;};b.onpointerup=b.onpointercancel=()=>keys.delete(b.dataset.key);}
+canvas.onpointerdown=e=>{if(duelPanel?.isOpen)return;if(e.button===2&&pickerEnabled&&!bridge.paused){studyPicker.setInspect(true);return;}if(bridge.paused||state.mode!=='walk')return;canvas.focus();canvas.setPointerCapture(e.pointerId);drag={id:e.pointerId,x:e.clientX,y:e.clientY};};
+canvas.onpointermove=e=>{if(duelPanel?.isOpen)return;if(drag?.id!==e.pointerId||bridge.paused)return;state.yaw+=(e.clientX-drag.x)*.004;state.pitch=T.MathUtils.clamp(state.pitch+(e.clientY-drag.y)*.003,-.45,.7);drag.x=e.clientX;drag.y=e.clientY;};canvas.onpointerup=canvas.onpointercancel=()=>{drag=null;studyPicker?.setInspect(false);};
+for(const b of document.querySelectorAll('[data-key]')){b.onpointerdown=e=>{if(duelPanel?.isOpen)return;e.preventDefault();b.setPointerCapture(e.pointerId);keys.add(b.dataset.key);state.path=null;};b.onpointerup=b.onpointercancel=()=>keys.delete(b.dataset.key);}
 addEventListener('resize',resize);document.addEventListener('visibilitychange',()=>{clearInput();studyPicker?.setInspect(false);clock.getDelta();if(state.ready)renderer.setAnimationLoop(document.hidden?null:frame);});
-function dispose(){if(disposed)return;disposed=true;clearInput();clearTimeout(toastTimer);hudObserver.disconnect();renderer.setAnimationLoop(null);presence?.dispose();bridge.dispose();avatar?.dispose();opponent?.dispose();duel?.dispose();duelHint?.remove();studyPicker?.disable();world?.dispose();effects.dispose();sky?.dispose();orbit.dispose();sun.shadow.dispose();scene.environment?.dispose();if(scene.background?.isTexture)scene.background.dispose();renderer.dispose();renderer.forceContextLoss();}
+function dispose(){if(disposed)return;disposed=true;clearInput();clearTimeout(toastTimer);hudObserver.disconnect();renderer.setAnimationLoop(null);duelPanel?.dispose();presence?.dispose();bridge.dispose();avatar?.dispose();opponent?.dispose();duel?.dispose();duelHint?.remove();studyPicker?.disable();world?.dispose();effects.dispose();sky?.dispose();orbit.dispose();sun.shadow.dispose();scene.environment?.dispose();if(scene.background?.isTexture)scene.background.dispose();renderer.dispose();renderer.forceContextLoss();}
 addEventListener('pagehide',dispose);addEventListener('pageshow',e=>{if(e.persisted)location.reload();});
 async function init(){try{
  resize();const hdr=await new RGBELoader().loadAsync(new URL('../../../examples/campus-3d-v5/assets/sky.hdr',document.baseURI).href),pmrem=new T.PMREMGenerator(renderer);scene.environment=pmrem.fromEquirectangular(hdr).texture;scene.environmentIntensity=.5;sky=createSkyEnvironment(hdr);scene.add(sky.mesh);pmrem.dispose();
@@ -232,7 +252,11 @@ presence=createCampusPresence({scene,camera,getPose:()=>({x:state.x,y:smoothGrou
 /* 对面没人在那个位时挂一块牌子：空台对读不出"我在等谁"，而凭空放一个替身
    又会被读成"和人机对打"。牌子只用一句话说清楚状态，不参与任何判定。 */
 duelHint=document.createElement('p');duelHint.id='duel-hint';duelHint.hidden=true;duelHint.setAttribute('role','status');document.body.append(duelHint);
- $('#loading').hidden=true;clock.getDelta();renderer.setAnimationLoop(frame);if(state.returnRestored)toast('已返回对应入口。');
+/* 作答面板（第十六轮）：坐到作答位上就打开，题目从服务端取，交卷回服务端判。
+   它订阅 duel 的变化而不是在每帧里轮询——对面交卷、双方交完出结果都是事件驱动的。 */
+duelPanel=createDuelPanel({duel,onStand:()=>stand(),toast});
+duel.onChange(()=>{if(duelPanel?.isOpen)duelPanel.sync();});
+$('#loading').hidden=true;clock.getDelta();renderer.setAnimationLoop(frame);if(state.returnRestored)toast('已返回对应入口。');
  }catch(error){console.error(error);$('#loading strong').textContent='校园暂时无法加载';$('#progress').textContent=error.message;$('#retry').hidden=false;}}
 window.__campusHub={snapshot:()=>({ready:state.ready,mode:state.mode,pos:[state.x,groundAt(state.x,state.z),state.z],yaw:state.yaw,path:state.path,modal:bridge.paused,returnRestored:state.returnRestored,seated:!!state.seated,stance:state.stance?.id||null,ground:smoothGround,opponent:opponent?.snapshot()||null,duel:duel?.snapshot||null,frames:state.frames,interior:world?.inside(state),rooms:world?.interiors.snapshot(),picker:studyPicker?{held:studyPicker.isHolding(),open:studyPicker.isBookOpen(),aim:studyPicker.getAim()}:null,entries:ENTRIES,nearest:nearest?.id||null,avatar:avatar?.snapshot(),boxes:world?.boxes.length,render:renderer.info.render}),route:id=>goTo(id),setPose:(x,z,yaw=0,pitch=0)=>{if(!navigation||navigation.blocked(x,z))return false;clearInput();setMode('walk');Object.assign(state,{x,z,yaw,pitch});lastX=x;lastZ=z;return true;},blocked:(x,z)=>navigation?.blocked(x,z),entry:id=>world?.enter(id),openFeature:(...args)=>bridge.openFeature(...args),dispose};
 window.__campusHub.studyObjects=()=>{const out=[];world?.study.root.updateMatrixWorld(true);world?.study.root.traverse(n=>{if(n.userData.pickables)for(const ids of n.userData.pickables.groups.slice(0,16)){const m=new T.Matrix4();n.getMatrixAt(ids[0],m);out.push({label:n.userData.pickables.label,position:new T.Vector3().setFromMatrixPosition(m).applyMatrix4(n.matrixWorld).toArray()});}});return out;};
