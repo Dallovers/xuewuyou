@@ -288,6 +288,8 @@ const state = {
   yaw: -50 * Math.PI / 180,
   pitch: -3 * Math.PI / 180,
   nearest: null,
+  stance: null,       // 作答位：'arena.stage.jia' / 'arena.stage.yi'，非空时锁住移动
+  handAt: -1e9,       // 最近一次"举手抢答"的时刻（ms），只驱动机位那一下抬升
   modal: false,
   ready: false,
 };
@@ -338,15 +340,40 @@ function arenaGroundAt(x, z) {
   return 0;
 }
 
-function applyWalk() {
+/* 地面高度平滑（第十四轮）。
+   三跑台阶每级 0.21，把这个函数的返回值直接当相机高度，走上台是"一帧抬 21cm"——
+   在 60fps 下等于瞬移，读成掉帧，而且完全不是抬腿的样子。
+   这里按 15/s 指数趋近：0.21 约 0.15 秒抬完，正好一个抬腿的时间。
+   跳变超过 1.2m（切机位、验收脚本 setPose）直接吸附，否则相机会在空中飘一段。 */
+let groundSmooth = 0;
+function stepGround(dt) {
+  const target = arenaGroundAt(state.pos.x, state.pos.z);
+  if (Math.abs(target - groundSmooth) > 1.2) groundSmooth = target;
+  else groundSmooth += (target - groundSmooth) * (1 - Math.exp(-dt * 15));
+  return groundSmooth;
+}
+
+/* 举手：一个 0.55 秒的一次性动作。第一人称没有手臂可抬，只能让机位抬 6cm——
+   站着的时候呼吸的起伏是 3.5mm，6cm 足够读出"有人做了个动作"，又不像在点头。 */
+function handLift() {
+  const t = (performance.now() - state.handAt) / 1000;
+  if (!(t >= 0) || t > 0.55) return 0;
+  return Math.sin((t / 0.55) * Math.PI) * 0.06;
+}
+
+function applyWalk(dt) {
   if (RIG.frozen) return;
+  /* 带 dt 就平滑（主循环每帧调用）；不带就是"摆到位"，直接吸附——
+     lookBy / setPose 这类瞬移入口走的是这一条。 */
+  if (dt > 0) stepGround(dt);
+  else groundSmooth = arenaGroundAt(state.pos.x, state.pos.z);
   /* 横向摆幅要沿"屏幕右"的方向加：right = (cos yaw, −sin yaw)。
      直接加在 x 上的话，面朝 +X 时横向摆动会变成前后摆动。 */
   const sin = Math.sin(state.yaw);
   const cos = Math.cos(state.yaw);
   camera.position.set(
     state.pos.x + RIG.offX * cos,
-    arenaGroundAt(state.pos.x, state.pos.z) + EYE + RIG.offY,
+    groundSmooth + EYE + RIG.offY + handLift(),
     state.pos.z - RIG.offX * sin,
   );
   camera.rotation.set(state.pitch, state.yaw, RIG.roll, 'YXZ');
@@ -423,6 +450,8 @@ function setView(name) {
   $('statusDot').classList.remove('is-live');
   /* 退出漫游要把姿态清干净：留着最后一步的横移/滚转，下一帧检视机位会歪着头 */
   if (document.pointerLockElement) document.exitPointerLock();
+  /* 作答位也要一起解：否则下次进漫游人还锁在台上，WASD 按不动 */
+  state.stance = null;
   RIG.amp = 0; RIG.offX = 0; RIG.offY = 0; RIG.roll = 0;
   applyOrbit();
   updateLocation();
@@ -505,7 +534,9 @@ function updateLocation() {
   /* 西门做成能走之后，人真的会站上台面（0.63m）。
      用地面高度判断比再算一遍矩形可靠：第三跑台阶和台面同高，一起算「擂台上」。 */
   if (arenaGroundAt(x, z) > 0.5) {
-    $('location').textContent = '擂台上';
+    $('location').textContent = state.stance
+      ? '擂台上 · ' + (state.stance === 'arena.stage.jia' ? '甲' : '乙') + '位作答'
+      : '擂台上';
     return;
   }
   if (x < -ARENA_LAYOUT.site.w / 2) $('location').textContent = '场外草地';
@@ -630,6 +661,9 @@ document.addEventListener('mousemove', (e) => {
 addEventListener('keydown', (e) => {
   if (e.code === 'Escape') {
     if (featureDialog.open || $('rules-dialog').open) closeDialogs();
+    /* 作答位锁着移动，Esc 先解这一层，再才是"退出漫游"——
+       不然人一按 Esc 就被甩回检视机位，等于把就位这件事抹掉了 */
+    else if (state.stance) { state.stance = null; updateLocation(); toast('已离开作答位'); }
     else if (state.mode === 'walk') setView('entrance');
     return;
   }
@@ -706,6 +740,20 @@ const panels = createPanels({
 
 function findNearest() {
   if (state.mode !== 'walk' || state.modal) return null;
+  /* 站上作答位之后，E 不再是"再就位一次"，而是重复那个动作。
+     提示得跟着变，否则人按了半天 E 只看到同一句"已就位"。
+     举手是纯本地的：这一页是第一人称、没有手臂可抬，只能让机位抬一下（见 handLift）。 */
+  if (state.stance) {
+    return {
+      id: 'arena.answer',
+      label: '举手抢答',
+      prompt: '按 E 举手抢答',
+      action() {
+        state.handAt = performance.now();
+        return { ok: true, kind: 'hand', message: '举手抢答（本地动作，不写服务端）' };
+      },
+    };
+  }
   let best = null;
   let bestD = Infinity;
   for (const it of interactions) {
@@ -745,6 +793,36 @@ function interact() {
     const line = body.querySelector('.note-text');
     if (line) line.textContent = picked.text || '';
     openDialog(featureDialog);
+    return;
+  }
+
+  /* 作答位（第十四轮）：把人摆到台后、面向对面那座答题台，锁住移动。
+     这一页是第一人称、没有身体，所以"就位"能读出来的只有机位——
+     不硬造一个姿态，只把人真正放到站位上；这一步本身是可验证的：
+     位置和朝向都变了，WASD 失效，Esc 才解得开。 */
+  if (it.id === 'arena.stage.jia' || it.id === 'arena.stage.yi') {
+    let posed;
+    try { posed = it.action(); } catch (err) { posed = { ok: false, message: String((err && err.message) || err) }; }
+    if (!posed || !posed.ok || !posed.stand) { toast((posed && posed.message) || '就位失败'); return; }
+    state.pos.x = posed.stand[0];
+    state.pos.z = posed.stand[2];
+    state.vel.x = 0;
+    state.vel.z = 0;
+    state.yaw = posed.yaw;
+    state.pitch = 0;
+    state.stance = it.id;
+    groundSmooth = arenaGroundAt(state.pos.x, state.pos.z);
+    updateLocation();
+    applyWalk();
+    toast(posed.message + ' · 按 E 举手，Esc 起身');
+    return;
+  }
+
+  /* 举手抢答（作答位里按 E）：纯本地动作，不弹面板——
+     弹了就要占住输入，人就动不了，反而打断了"连续抢答"这件事。 */
+  if (it.id === 'arena.answer') {
+    const r = it.action();
+    toast((r && r.message) || '举手抢答');
     return;
   }
 
@@ -841,10 +919,13 @@ function frame(now) {
   if (state.mode === 'walk' && !state.modal) {
     let f = 0;
     let r = 0;
-    if (keys.KeyW || keys.ArrowUp) f += 1;
-    if (keys.KeyS || keys.ArrowDown) f -= 1;
-    if (keys.KeyD || keys.ArrowRight) r += 1;
-    if (keys.KeyA || keys.ArrowLeft) r -= 1;
+    /* 作答位是锁住的：键还按着也不动，只能按 Esc 起身（和整合版同一条规则） */
+    if (!state.stance) {
+      if (keys.KeyW || keys.ArrowUp) f += 1;
+      if (keys.KeyS || keys.ArrowDown) f -= 1;
+      if (keys.KeyD || keys.ArrowRight) r += 1;
+      if (keys.KeyA || keys.ArrowLeft) r -= 1;
+    }
 
     sprinting = !!(keys.ShiftLeft || keys.ShiftRight);
     /* 目标速度：方向归一后乘上限；松手就是 0。
@@ -877,8 +958,9 @@ function frame(now) {
     if (keys.KeyL) state.yaw -= dt * 1.6;
 
     updateRig(dt, speedNow, moving);
-    /* 每帧都重算相机：步态偏移是连续量，靠"有事才更新"会漏帧 */
-    applyWalk();
+    /* 每帧都重算相机：步态偏移是连续量，靠"有事才更新"会漏帧。
+       带 dt 进去做地面高度平滑——擂台的三跑台阶靠这一条才是"抬腿"而不是"跳上去"。 */
+    applyWalk(dt);
   } else {
     /* 不在漫游：步态归零、速度归零（否则退出漫游那一刻还带着上一帧的横移） */
     state.vel.x = 0;
@@ -904,7 +986,8 @@ function frame(now) {
     }
   }
 
-  arena.update(dt);
+  /* 玩家世界坐标交给板块：人一站上台面，台心八角就亮起来（第十四轮） */
+  arena.update(dt, { x: state.pos.x, z: state.pos.z });
 
   if (state.mode === 'walk') {
     const near = findNearest();
@@ -970,6 +1053,11 @@ window.__arena = {
     };
   },
   get env() { return envState; },
+  /* 第十四轮：作答位与平滑地面高度。ground 是平滑后的值（相机脚高要减 EYE），
+     stage 是板块那边的台面占用状态（有人在台上时台心八角会亮）。 */
+  get stance() { return state.stance; },
+  get ground() { return +groundSmooth.toFixed(4); },
+  get stage() { return arena.stage; },
   get dialogOpen() { return featureDialog.open || $('rules-dialog').open; },
   get location() { return $('location').textContent; },
   get panelTitle() { return $('feature-title').textContent; },

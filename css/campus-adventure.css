@@ -15,8 +15,8 @@ body { background: #edf0e4; }
 .brand-emblem { border: 1px solid #a89159; box-shadow: inset 0 0 0 3px #173b2b; }
 .atlas-sidebar { border: 1px solid #849166; box-shadow: inset 0 0 0 4px #244333, inset 0 0 0 5px #d7c28733, 0 16px 40px #12302419; }
 .atlas-sidebar .topnav a { transition: background-color .18s, color .18s, box-shadow .18s; }
-.atlas-sidebar .topnav a.active { background: #eef3e8; border-color: #eef3e8; box-shadow: none; }
-.atlas-sidebar .topnav a.active:hover { background: #e3ebdb; }
+.atlas-sidebar .topnav a.active { background: linear-gradient(110deg,#f8eed0,#dfd4ae); border-color: #d8c48c; box-shadow: inset 0 1px 0 #fff8e5, 0 3px 0 #132c20; }
+.atlas-sidebar .topnav a.active:hover { background: #f8eed0; }
 .atlas-heading, .rooms-hero, .community-hero, .integration-heading, .page-title,
 #view-wenku>.page-title {
   --scene-color: #12352e;
@@ -140,27 +140,27 @@ body { background: #edf0e4; }
 .challenge-item[data-status=completed] { background: #ecf3dc; }
 .challenge-score { font-family: 'CampusNumbers',var(--font); font-size: 32px; }
 .btn, .wt-btn, .sr-ctrl-btn, .sr-btn-tool, .ssc-enter-btn, .sec-more {
-  position: relative; border: 1px solid #c9d3c8; border-radius: 7px;
-  min-height: 44px; padding: 10px 16px; line-height: 1.5;
-  background: #fffefa; color: #284c3b; font-weight: 600;
-  border-image: none; box-shadow: none; text-shadow: none; filter: none;
-  transition: background-color .16s ease, border-color .16s ease, color .16s ease;
+  position: relative; border-radius: 10px; border-bottom-width: 3px;
+  box-shadow: inset 0 1px 0 #fffefba8, 0 3px 0 #8b9b762b;
+  transition: transform .16s ease, box-shadow .16s ease, filter .16s ease, background-color .16s;
 }
-.btn:hover, .wt-btn:hover, .sr-ctrl-btn:hover, .sr-btn-tool:hover { box-shadow: none; transform: none; }
-.btn:active, .wt-btn:active, .sr-ctrl-btn:active, .sr-btn-tool:active { transform: none; box-shadow: none; }
-.wt-btn.active { background: #285540; color: #fff; border-color: #285540; }
+.btn:active, .wt-btn:active, .sr-ctrl-btn:active, .sr-btn-tool:active { transform: translateY(2px); box-shadow: inset 0 1px 3px #163f2c1c; }
 .btn.primary, .atlas-workspace .btn.primary, .community-page .btn.primary,
 .rooms-page .btn.primary, .integration-page .btn.primary {
-  border: 1px solid #285540; border-image: none;
-  border-radius: 7px; background: #285540; color: #fff;
-  padding: 10px 18px; min-height: 44px; font-weight: 600; line-height: 1.5;
-  text-shadow: none; box-shadow: none;
+  --plaque: url('../vendor/campus-theme/emerald-plaque.webp');
+  border: solid transparent; border-width: 9px 25px;
+  border-image-source: var(--plaque); border-image-slice: 25 100 fill; border-image-repeat: stretch;
+  border-radius: 12px; background: #173e2d; color: #fff4cc;
+  padding: 5px 10px; min-height: 54px; font-weight: 700; line-height: 1.5;
+  text-shadow: 0 1px 3px #031c13; box-shadow: 0 4px 8px #25442b24;
 }
-.btn.primary:hover { background: #1e4331; filter: none; box-shadow: none; }
-.btn.primary:active { background: #173728; filter: none; }
+.btn.primary:hover { background: #173e2d; filter: brightness(1.14); box-shadow: 0 6px 18px #28492b2d; }
+.btn.primary:active { filter: brightness(.96); }
+.btn.primary::after { content: ''; position: absolute; inset: 0; pointer-events: none; border-radius: 7px; background: linear-gradient(115deg,transparent 35%,#ffedaf44 50%,transparent 65%); opacity: 0; transform: translateX(-75%); }
 .btn.danger { border-image: none; color: #a53028; background: #fff0eb; }
-.btn:disabled, .btn[aria-disabled=true] { opacity: .55; transform: none; filter: none; box-shadow: none; cursor: not-allowed; }
+.btn:disabled, .btn[aria-disabled=true] { opacity: .55; transform: none; filter: grayscale(.65); box-shadow: none; }
 .btn.is-loading::after, .btn[aria-busy=true]::after { content: none; }
+.campus-click-aura { position: fixed; width: 44px; height: 44px; border-radius: 50%; border: 2px solid #e3c575; background: #edce813b; pointer-events: none; z-index: 1001; }
 .onboard-welcome { background-image: linear-gradient(180deg,#143c30d4 0%,#143c3070 38%,#143c3100 78%), var(--campus-art); }
 .onboard-welcome .logo { font-size: 43px !important; }
 .onboard-welcome p { font-size: 30px; line-height: 1.7; }
@@ -176,8 +176,7 @@ body { background: #edf0e4; }
 #view-study .sr-topbar .sr-btn-tool { background: #143c31; color: #fff1cc; border-color: #929d72; }
 #view-study .sr-topbar .sr-btn-exit { background: #563e30; color: #ffdfc9; border-color: #bb8e69; }
 .sr-ctrl-btn:not(.sr-ctrl-complete) { color: #31573e; background: #f4f7e6; border-color: #acb68a; min-height: 46px; }
-.sr-ctrl-complete { border: 1px solid #285540; border-image: none; background: #285540; color: #fff; padding: 10px 16px; text-shadow: none; min-height: 44px; }
-.sr-ctrl-complete:hover { background: #1e4331; }
+.sr-ctrl-complete { border: solid transparent; border-width: 8px 22px; border-image: url('../vendor/campus-theme/emerald-plaque.webp') 25 100 fill stretch; background: #173e2d; color: #fff4cc; padding: 5px 8px; text-shadow: 0 1px 3px #031c13; min-height: 50px; }
 .sr-clock-card { background: #f9f9ed; border-color: #c2c69e; box-shadow: 0 5px 0 #c9d3b43b; }
 .sr-clock-time { letter-spacing: -.03em; color: #305b40; }
 .study-setup-card { border: 1px solid #aeb187; background: #f6f8ec; box-shadow: inset 0 0 0 5px #c7cca72b, 0 24px 60px #173d2b33; }
@@ -189,7 +188,7 @@ body { background: #edf0e4; }
 .game-head h2 { font-family: var(--font-display); font-size: 26px; color: #fff1d0; }
 .game-head .gh-sub { color: #e8e9d5; }
 .game-head .btn { background: #fff9e9; }
-.bank-opt { border-radius: 7px; border-bottom-width: 1px; }
+.bank-opt { border-radius: 10px; border-bottom-width: 3px; }
 .bank-q { font-size: 20px; line-height: 1.9; }
 .tag-bank { border-color: #bac6a0; background: #eff3e0; }
 .exam-side .es-head { border-bottom: 1px solid #d3d7b4; padding-bottom: 12px; }
@@ -199,9 +198,12 @@ body { background: #edf0e4; }
 .question-board-dialog .board-head h2 { font-family: var(--font-display); color: #fff1cd; }
 .question-board-dialog .board-head .btn.ghost { background: #f5f4e2; color: #28432f; }
 @media (hover:hover) and (pointer:fine) {
+  .btn:hover, .wt-btn:hover, .sr-ctrl-btn:hover, .sr-btn-tool:hover { transform: translateY(-2px); }
+  .btn.primary:hover::after { animation: campus-glint .55s ease-out; }
   .atlas-map-node:hover { box-shadow: 0 0 0 3px #f8e0a78c, 0 7px 16px #17392b38; }
   .atlas-node-card:hover { background: #f5f1dc; }
 }
+@keyframes campus-glint { 0% { opacity: 0; transform: translateX(-75%); } 30% { opacity: 1; } 100% { opacity: 0; transform: translateX(75%); } }
 @media (max-width:1200px) {
   .atlas-heading, .rooms-hero, .community-hero, .integration-heading, .page-title, #view-wenku>.page-title { padding: 28px; min-height: 240px; }
   .atlas-heading .atlas-toolbar { max-width: none; justify-content: flex-start; }
@@ -266,6 +268,8 @@ body { background: #edf0e4; }
 @media (max-width:360px) { .topbar .logo { font-size: 18px; }.atlas-heading h1,.page-title h1 { font-size: 29px; } }
 @media (prefers-reduced-motion:reduce) {
   .btn, .wt-btn, .sr-ctrl-btn, .sr-btn-tool, .atlas-sidebar .topnav a { transition: none; }
+  .btn.primary::after { display: none; }
+  .campus-click-aura { display: none; }
   .sr-brand-dot { animation: none; }
   .btn:hover, .wt-btn:hover, .sr-ctrl-btn:hover, .sr-btn-tool:hover, .btn:active, .btn.is-press { transform: none; }
 }

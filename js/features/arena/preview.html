@@ -499,6 +499,17 @@ function arenaGroundAt(x, z) {
   return 0;
 }
 
+/* 平滑后的地面高度（第十四轮）。和入口页同一条 15/s 的指数趋近：
+   三跑台阶每级 0.21，直接读 arenaGroundAt() 是"一帧抬 21cm"。
+   自测页是自由飞，本来就不该有惯性——但走动时脚底贴着地面这件事得对，
+   否则验收截图里相机高度和入口页对不上。?h 路径一分不动。 */
+let groundSmooth = 0;
+function stepGround(dt) {
+  const target = arenaGroundAt(PLAYER.x, PLAYER.z);
+  if (Math.abs(target - groundSmooth) > 1.2) groundSmooth = target;
+  else groundSmooth += (target - groundSmooth) * (1 - Math.exp(-dt * 15));
+}
+
 function tick(now) {
   const dt = Math.min((now - last) / 1000, 0.1);
   last = now;
@@ -521,10 +532,17 @@ function tick(now) {
     if (keys.KeyL) yaw -= dt * 1.6;
   }
 
-  camera.position.set(PLAYER.x, PLAYER.y + (qs.has('h') ? 0 : arenaGroundAt(PLAYER.x, PLAYER.z)), PLAYER.z);
+  if (qs.has('h')) {
+    camera.position.set(PLAYER.x, PLAYER.y, PLAYER.z);
+  } else {
+    if (dt > 0) stepGround(dt); else groundSmooth = arenaGroundAt(PLAYER.x, PLAYER.z);
+    camera.position.set(PLAYER.x, PLAYER.y + groundSmooth, PLAYER.z);
+  }
   camera.rotation.set(pitch, yaw, 0, 'YXZ');
 
-  for (const w of worlds) w.district.update(dt);
+  /* 玩家坐标交给竞技场板块（世界坐标，板块自己用 root 逆矩阵换本地）：
+     人站上台面时台心八角会亮。?h 摆机位时不交，免得验收图里亮着不该亮的灯。 */
+  for (const w of worlds) w.district.update(dt, w.id === 'arena' && !qs.has('h') ? { x: PLAYER.x, z: PLAYER.z } : undefined);
 
   if (!panelOpen) {
     const near = findNearest();

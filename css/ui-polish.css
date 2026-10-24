@@ -208,10 +208,10 @@
 }
 
 /* ---------- 5. 按钮与链接：统一按压、焦点、禁用 ---------- */.btn {
-  transition: background 0.18s ease,
+  transition: transform 0.12s ease, box-shadow 0.18s ease, background 0.18s ease,
     border-color 0.18s ease, color 0.18s ease;
 }
-.btn:active:not(:disabled) { transform: none; }
+.btn:active:not(:disabled) { transform: translateY(1px) scale(0.99); }
 .btn:disabled { opacity: 0.55; cursor: not-allowed; }
 .btn:focus-visible,
 a:focus-visible,
@@ -220,12 +220,12 @@ button:focus-visible {
   outline-offset: 2px;
 }
 
-/* 侧栏保留颜色反馈，文字位置固定。 */
+/* 侧栏：hover 给一点点位移，active 有明确落点 */
 .atlas-sidebar .topnav a {
   transition: background 0.16s ease, color 0.16s ease, transform 0.16s ease,
     border-color 0.16s ease;
 }
-.atlas-sidebar .topnav a:hover { transform: none; }
+.atlas-sidebar .topnav a:hover { transform: translateX(2px); }
 .atlas-sidebar .topnav a.active { transform: none; }
 
 /* ---------- 6. 页面切换：轻微上浮，别让人以为闪了一下 ---------- */
