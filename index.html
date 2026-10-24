@@ -471,7 +471,7 @@
     </div>
     <div id="wenkuList"></div>
     <!-- 资料详情弹层 -->
-    <div id="wenkuDetail" class="hidden" style="position:fixed;inset:0;z-index:100;background:rgba(16,74,68,.34);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;padding:1rem;">
+    <div id="wenkuDetail" class="hidden" role="dialog" aria-modal="true" aria-labelledby="wkdTitle" style="position:fixed;inset:0;z-index:100;background:rgba(16,74,68,.34);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;padding:1rem;">
       <div style="width:min(100%,820px);max-height:90vh;overflow:auto;border:1px solid var(--rule);border-radius:16px;background:linear-gradient(160deg,var(--bg3),var(--bg2));padding:1.4rem 1.5rem;">
         <!-- 资料详情头部 -->
         <div style="display:flex;align-items:center;gap:0.6rem;margin-bottom:0.8rem;">
@@ -1079,7 +1079,7 @@
 <!-- 重型数据延迟加载器：gaoshu_bank / english_words / ielts_words / wenku / wenku_cat
      首屏渲染后后台加载，避免 4.3MB 同步阻塞登录界面 -->
 <script src="js/loader.js?v=materials-3" defer></script>
-<script src="js/app.js?v=materials-2" defer></script>
+<script src="js/app.js?v=materials-dialog-1" defer></script>
 <script src="js/integrations.js?v=wall-3" defer></script>
 <script src="js/whiteboard.js?v=1" defer></script>
 <script src="js/community.js?v=4" defer></script>
