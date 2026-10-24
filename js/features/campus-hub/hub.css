@@ -77,4 +77,54 @@ dialog[open]{display:flex;flex-direction:column}dialog::backdrop{background:#0c2
 }
 @media(prefers-reduced-motion:reduce){button,select,.views a{transition:none}.spinner{animation:none}}
 @media(forced-colors:active){button,select,.views a{border:1px solid ButtonText}dialog::backdrop{backdrop-filter:none}}
+/* ---------- 擂台作答面板（第十六轮） ----------
+   做成右侧抽屉而不是全屏弹窗：答题时还得看见对面那位站在台上。
+   高度用 --header-bottom / --dock-space 夹住，和 #places 用同一套变量。 */
+#duel-panel{position:fixed;right:var(--edge);top:calc(var(--header-bottom) + 12px);bottom:var(--dock-space);z-index:8;width:min(470px,calc(100vw - 2 * var(--edge)));display:flex;flex-direction:column;border:1px solid var(--line);border-radius:14px;background:var(--hud);box-shadow:0 18px 50px #0b211933;overflow:hidden}
+.duel-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:16px 18px 12px;border-bottom:1px solid var(--line)}
+.duel-eyebrow{display:block;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--gold);opacity:.85}
+.duel-topic{display:block;font-size:17px;line-height:1.5;font-weight:600;margin-top:4px;color:#edf3ef}
+.duel-head-meta{display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex:none}
+.duel-timer{font-variant-numeric:tabular-nums;font-size:17px;font-weight:600;letter-spacing:.02em;color:#cfe3d6}
+.duel-timer.is-late{color:#f0c47a}.duel-timer.is-over{color:#e8927c}
+.duel-rival{font-size:11px;line-height:1.5;color:var(--muted);white-space:nowrap}
+.duel-rival[data-state=submitted]{color:#a9d3b0}.duel-rival[data-state=done]{color:var(--gold)}.duel-rival[data-state=empty]{color:#c8b98e}
+.duel-scroll{flex:1;min-height:0;overflow:auto;padding:14px 18px 4px;scrollbar-width:thin;scrollbar-color:#7c9a8880 transparent}
+.duel-scroll::-webkit-scrollbar{width:8px}.duel-scroll::-webkit-scrollbar-thumb{background:#7c9a8860;border-radius:4px}
+.duel-loading{margin:0;padding:10px 0 18px;font-size:13px;line-height:1.8;color:var(--muted)}
+.duel-list{list-style:none;display:grid;gap:16px;margin:0;padding:0}
+.duel-q{padding-bottom:15px;border-bottom:1px solid #728d8133}.duel-q:last-child{border-bottom:0}
+.duel-stem{margin:0 0 10px;font-size:13.5px;line-height:1.95;color:#e4eee8;overflow-wrap:anywhere}
+.duel-index{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;margin-right:8px;border-radius:5px;background:#3a5347;color:#d6e9db;font-size:11px;font-weight:600;vertical-align:2px}
+.duel-options{display:grid;gap:6px}
+.duel-option{display:flex;align-items:flex-start;gap:10px;width:100%;min-height:0;padding:10px 13px;text-align:left;font-size:13px;line-height:1.8;background:#26382f;border:1px solid #8aa79540;border-radius:8px;color:#dfeae3}
+.duel-option:hover{background:#32483c;border-color:#a8c4b070}
+.duel-option b{flex:none;display:inline-flex;align-items:center;justify-content:center;width:19px;height:19px;margin-top:2px;border-radius:4px;background:#3f5a4c;color:#cfe3d6;font-size:11px;font-weight:600}
+.duel-option.is-picked{background:#39614a;border-color:#99c9a6;color:#f2fbf5}
+.duel-option.is-picked b{background:#a9d3b0;color:#12301f}
+/* 双方都交完才有对错标记（服务端 review 到手才加类），正解标绿、自己选错的那个标红 */
+.duel-option.is-right{background:#2f5643;border-color:#8fcaa1}
+.duel-option.is-right b{background:#a9d3b0;color:#12301f}
+.duel-option.is-wrong{background:#5a3a34;border-color:#d59489;color:#f6e5e1}
+.duel-option.is-wrong b{background:#d59489;color:#3a1712}
+.duel-verdict{display:inline-block;margin-left:8px;padding:1px 7px;border-radius:99px;font-size:10.5px;font-style:normal;line-height:1.6;letter-spacing:.04em;background:#3f5a4c;color:#cfe3d6;vertical-align:1px}
+.duel-q[data-judged="right"] .duel-verdict{background:#a9d3b0;color:#12301f}
+.duel-q[data-judged="wrong"] .duel-verdict{background:#e0a79c;color:#3a1712}
+#duel-panel.is-locked .duel-option{pointer-events:none;opacity:.72}
+/* 结果出来这一屏是给人复盘的，别压暗 */
+#duel-panel[data-phase="done"] .duel-option{opacity:1}
+.duel-outcome{margin:0 0 14px;padding:12px 14px;border:1px solid #8aa79550;border-left:3px solid var(--gold);border-radius:8px;background:#243a2f;font-size:12.5px;line-height:1.85;color:#e6f0ea}
+.duel-foot{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 18px;border-top:1px solid var(--line);background:#1a2a24}
+.duel-count{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.duel-actions{display:flex;gap:8px}
+.duel-leave{min-height:40px;padding:8px 14px;font-size:12px;background:transparent;border-color:var(--line);color:var(--muted)}
+.duel-leave:hover{background:#2b3f35;color:#e6f0ea}
+.duel-submit{min-height:40px;padding:8px 18px;font-size:12.5px;font-weight:600;background:#bad8c2;border-color:#bad8c2;color:#143b28}
+.duel-submit:hover:not(:disabled){background:#d0e6d5}
+.duel-submit:disabled{background:#31453c;color:#93a99c;border-color:var(--line)}
+/* 公式块在窄面板里要能横向滚，不能把面板撑出横向滚动条 */
+.duel-stem .katex-display,.duel-option .katex-display{max-width:100%;overflow:auto}
+.duel-stem .katex,.duel-option .katex{font-size:1.02em;white-space:normal}
+@media(max-width:700px){#duel-panel{left:var(--edge);right:var(--edge);width:auto;top:calc(var(--header-bottom) + 8px);bottom:var(--dock-space)}.duel-head{padding:12px 14px 10px}.duel-topic{font-size:15px}.duel-scroll{padding:12px 14px 2px}.duel-foot{padding:10px 14px}}
+@media(prefers-reduced-motion:reduce){#duel-panel{transition:none}}
 #duel-hint{position:fixed;left:50%;top:112px;transform:translateX(-50%);margin:0;padding:7px 16px;border-radius:99px;background:#2b4a3ee8;color:#fff;font-size:12.5px;line-height:1.6;letter-spacing:.4px;white-space:nowrap;z-index:6;pointer-events:none;box-shadow:0 4px 16px #22332d33}@media(max-width:700px){#duel-hint{top:168px;font-size:12px;padding:6px 12px;max-width:calc(100vw - 24px);overflow:hidden;text-overflow:ellipsis}}

@@ -84,6 +84,7 @@ export function createArenaDuel(options = {}) {
   let seats = new Map();             // id → { id, nick, station }
   let submitted = new Map();         // id → true（服务端 sessions 的投影）
   let peer = null;                   // 对手：{ id, nick, seat, act, at, here }
+  let detail = null;                 // 服务端给的挑战详情（含题目/得分/对面状态）
   let topic = '';
   let status = 'idle';               // idle | connecting | seated | error
   let connecting = null, joining = null, closed = false;
@@ -222,7 +223,10 @@ export function createArenaDuel(options = {}) {
     const found = [...seats.values()].find((s) => s.id !== selfId && (!facing || s.station === facing));
     if (!found) { peer = null; return; }
     const same = peer?.id === found.id;
-    peer = { id: found.id, nick: found.nick, seat: found.station, at: same ? peer.at : 0, act: same ? peer.act : null, here: true };
+    /* submitted 必须挂在 peer 上带出去：它是 socket 里最新的一份"对面交没交"，
+     * 比 GET /challenge 的 detail.opponent.submitted 新鲜（那份只在请求时成立）。
+     * 答题面板和台上提示都读这个字段，缺了就永远是"作答中"。 */
+    peer = { id: found.id, nick: found.nick, seat: found.station, at: same ? peer.at : 0, act: same ? peer.act : null, here: true, submitted: !!submitted.get(found.id) };
   }
 
   /* ---------- 就位 ---------- */
@@ -363,6 +367,7 @@ export function createArenaDuel(options = {}) {
   function leave() {
     if (socket?.connected && joined && challenge) socket.emit('duel:leave', { challenge });
     challenge = null; station = null; seats = new Map(); submitted = new Map(); peer = null; topic = ''; status = 'idle';
+    detail = null;
     emit();
   }
 
@@ -372,6 +377,77 @@ export function createArenaDuel(options = {}) {
     if (!['cheer', 'answer', 'done'].includes(kind)) return false;
     socket.emit('duel:act', { challenge, act: kind });
     return true;
+  }
+
+  /* ---------- 作答（题目、计时、交卷） ----------
+   * 这一段只负责"把服务端给的题目搬到界面上、把用户的选择送回去"。
+   * 判分、计时、胜负、写学习记录**全部在服务端**（server/community/index.js）：
+   *   GET  /api/community/challenge?id=   → detail=true 时，只有"我已开始未交卷"才带 questions
+   *   POST /api/community/challenge/start → 写 sessions[uid].startedAt（也是建房条件）
+   *   POST /api/community/challenge/submit→ 传 answers，回 score/elapsedMs
+   * 这里**不**自己算分、不自己计时，避免出现"界面说对、服务端说错"的第二套真相。
+   *
+   * detail 的形状（服务端 summary 的投影）：
+   *   { topic, count, status, mine:{startedAt,finishedAt,score,elapsedMs},
+   *     opponent:{submitted,score?,elapsedMs?}, maxMinutes, questions?, review?, winner? }
+   */
+
+  const authHeaders = () => {
+    const s = session();
+    return s.state === 'cloud' ? { Authorization: 'Bearer ' + s.token } : null;
+  };
+
+  async function callApi(path, options = {}) {
+    const headers = authHeaders();
+    if (!headers) return { ok: false, error: '未登录云端账号' };
+    try {
+      const response = await fetch(apiBase() + '/api/community/' + path, {
+        credentials: 'omit',
+        ...options,
+        headers: { 'Content-Type': 'application/json', ...headers, ...(options.headers || {}) },
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok || body.ok === false) return { ok: false, error: body.error || ('请求失败（' + response.status + '）') };
+      return { ok: true, ...body };
+    } catch (error) {
+      return { ok: false, error: (error && error.message) || '网络异常' };
+    }
+  }
+
+  /** 拉当前挑战的详情（题目只在"我已开始且未交卷"时才有）。 */
+  async function fetchDetail(id) {
+    const target = id || challenge;
+    if (!target) return null;
+    const result = await callApi('challenge?id=' + encodeURIComponent(target));
+    if (!result.ok) return null;
+    detail = result.challenge || null;
+    emit();
+    return detail;
+  }
+
+  /** 开始计时。坐到作答位上就等于「开始作答」，服务端据此建房/发题。 */
+  async function start(id) {
+    const target = id || challenge;
+    if (!target) return { ok: false, error: '还没有进行中的挑战' };
+    const result = await callApi('challenge/start', { method: 'POST', body: JSON.stringify({ id: target }) });
+    if (!result.ok) return result;
+    detail = result.challenge || detail;
+    emit();
+    return { ok: true, challenge: detail };
+  }
+
+  /** 交卷。answers 是 { [qid]: 'A' } 这样的映射；分数由服务端算，这里只把它读回来。 */
+  async function submit(answers) {
+    const target = challenge;
+    if (!target) return { ok: false, error: '还没有进行中的挑战' };
+    if (!detail?.questions?.length) return { ok: false, error: '题目还没拿到，请稍等' };
+    const result = await callApi('challenge/submit', { method: 'POST', body: JSON.stringify({ id: target, answers: answers || {} }) });
+    if (!result.ok) return result;
+    detail = result.challenge || detail;
+    /* 交卷动作同步给对面：他只该看到「你已经交了」，看不到分数——分数要等两边都交。 */
+    act('done');
+    emit();
+    return { ok: true, challenge: detail, recorded: result.recorded };
   }
 
   function snapshot() {
@@ -385,6 +461,7 @@ export function createArenaDuel(options = {}) {
       candidate: candidate(),
       status,
       online: joined,
+      detail,
     };
   }
 
@@ -392,6 +469,7 @@ export function createArenaDuel(options = {}) {
     get snapshot() { return snapshot(); },
     get challenge() { return challenge; },
     get peer() { return peer; },
+    get detail() { return detail; },
     /** 对手刚做了个动作（12 秒内），宿主拿它来播举手/点头 */
     get peerAct() { const p = peer; return p && p.act && Date.now() - p.at < 12000 ? p : null; },
     setMeta,
@@ -399,6 +477,9 @@ export function createArenaDuel(options = {}) {
     enter,
     leave,
     act,
+    fetchDetail,
+    start,
+    submit,
     onChange(fn) { listeners.add(fn); return () => listeners.delete(fn); },
     dispose() {
       closed = true;
@@ -406,6 +487,7 @@ export function createArenaDuel(options = {}) {
       try { leave(); } catch { }
       if (socket) { socket.removeAllListeners(); socket.disconnect(); socket = null; }
       joined = false;
+      detail = null;
     },
   };
 }

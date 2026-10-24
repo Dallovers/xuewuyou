@@ -114,8 +114,15 @@ module.exports=function({authUser,store,namespace}){
     socket.to(topic(challengeId)).emit('duel:act',{challenge:challengeId,id:m.id,station:owner.station,act:body.act});
     return true;
   }
-  /* 谁已经交卷：挑战对象里的 sessions 就是唯一真相，这里只做投影，不另存一份。 */
-  const submitted=(c)=>{const out={};for(const [uid,s] of Object.entries(c.sessions||{}))if(s?.finishedAt)out[uid]=true;return out;};
+  /* 谁已经交卷：挑战对象里的 sessions 是唯一真相，这里只做投影，不另存一份。
+   * 键必须用**玩家 id**（members 里的 m.id），不能用 uid：
+   * 客户端拿到的座位、动作、self 全是玩家 id 这一套，混用会让「对面已交卷」永远读成 false
+   * （sessions 按 uid 存，peer.id 是玩家 id，两个 id 空间不是一回事）。 */
+  const submitted=(c)=>{
+    const out={};
+    for(const m of members.values())if(c.sessions?.[m.uid]?.finishedAt)out[m.id]=true;
+    return out;
+  };
   /* 挑战「开了」和「有人在答」是两件事：
    *   创建挑战时 status 就已经是 active，但那只是邀请发出去了，台上还没有人；
    *   真有人在答的标志是 sessions[*].startedAt。
@@ -129,7 +136,23 @@ module.exports=function({authUser,store,namespace}){
   function duelChallenge(challenge){
     if(!challenge||typeof challenge!=='object'||typeof challenge.id!=='string')return;
     challengeById.set(challenge.id,challenge);
-    if(!isLive(challenge)){rooms.delete(challenge.id);for(const [uid,o] of [...stationOwner])if(o.challenge===challenge.id)stationOwner.delete(uid);return;}
+    if(!isLive(challenge)){
+      /* 房要拆，但**先发最后一帧**：挑战变 completed 的这一刻，正是「先交卷那位」唯一一次
+       * 能知道对面也交了的机会。以前这里直接 return，结果先交的人永远停在「等对面」，
+       * 分数服务端早就算好了，只是没人告诉他。emit 在 rooms.delete 之前发，
+       * 因为 topic 是 socket 自己 join 的房间名，与 rooms 这张表无关，删表不影响送达。 */
+      const room=rooms.get(challenge.id);
+      if(room){
+        ns?.to(topic(challenge.id)).emit('duel:state',{
+          challenge:challenge.id,topic:room.topic||challenge.topic||'',status:challenge.status,
+          submitted:submitted(challenge),seats:[...room.seats.values()],
+        });
+      }
+      rooms.delete(challenge.id);
+      for(const [uid,o] of [...stationOwner])if(o.challenge===challenge.id)stationOwner.delete(uid);
+      stopIdleTimer();
+      return;
+    }
     const room=rooms.get(challenge.id)||{members:[...(challenge.members||[])],seats:new Map(),topic:challenge.topic||'',status:challenge.status};
     room.members=[...(challenge.members||[])];room.status=challenge.status;room.topic=challenge.topic||room.topic;
     rooms.set(challenge.id,room);
