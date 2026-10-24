@@ -1,0 +1,16 @@
+#skin-shop{color:#f3dfab;border-color:#c3ac6d80;background:#414633}
+#skin-shop-dialog{width:min(1080px,calc(100vw - 24px));max-width:none;max-height:90dvh;padding:26px;color:#edf3ef;background:linear-gradient(135deg,#213733,#142523);border:1px solid #8fa79c66;border-radius:20px;overflow:auto;box-shadow:0 24px 80px #0009}
+#skin-shop-dialog::backdrop{background:#061510c9;backdrop-filter:blur(7px)}
+.skin-head{display:flex;justify-content:space-between;align-items:center;gap:16px}.skin-head h2{font-size:25px;margin:8px 0 20px}
+.skin-balance{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:16px;background:#0c1f1b;border:1px solid #9db4a930;border-radius:12px}.skin-balance strong{color:#e1c98e}
+.skin-rules,.skin-message{font-size:13px;line-height:1.7;color:#c2d0c7}.skin-layout{display:grid;grid-template-columns:340px minmax(0,1fr);gap:24px}
+.skin-preview{min-width:0;background:#182d28;border:1px solid #9db4a930;border-radius:14px;padding:16px}.skin-preview canvas{display:block;width:100%;height:300px;touch-action:none;border-radius:10px}
+.skin-preview h3{margin:14px 0}.skin-preview p{font-size:12px;line-height:1.6;color:#bdd0c5;overflow-wrap:anywhere}.skin-preview [data-equip]{width:100%;margin-top:12px;background:#b6c79c;color:#12251c;font-weight:700}
+.skin-motion{display:flex;flex-wrap:wrap;gap:8px}.skin-motion button{padding:8px 12px}.skin-library{min-width:0}.skin-library label{display:flex;gap:12px;align-items:center;margin-bottom:14px}
+.skin-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;max-height:530px;overflow:auto;padding:3px}.skin-card{padding:8px;text-align:left;min-width:0;display:flex;flex-direction:column;gap:8px;background:#2a4039;min-height:90px}.skin-card[aria-pressed=true]{border-color:#dac893;box-shadow:0 0 0 1px #dac893}.skin-card img{width:100%;height:128px;object-fit:contain;background:#1d302e;border-radius:5px}.skin-card strong{font-size:13px}.skin-card span{color:#d6c593;font-size:12px}.skin-message{min-height:24px}
+#skin-shop-dialog button:disabled{opacity:.5;cursor:default}
+@media(max-width:750px){#skin-shop-dialog{padding:16px;max-height:94dvh}.skin-layout{grid-template-columns:1fr;gap:14px}.skin-preview canvas{height:210px}.skin-grid{grid-template-columns:repeat(2,minmax(0,1fr));max-height:360px}.skin-head h2{font-size:20px}.skin-balance{flex-wrap:wrap}.skin-card img{height:110px}.skin-rules{font-size:12px}}
+
+#skin-shop-dialog .skin-card[aria-pressed=true]{background:#3a5142;color:#edf3ef}.skin-preview details{margin-top:8px}.skin-preview summary{cursor:pointer;color:#d5c79d}.skin-preview a{color:#d5c79d}
+
+#actions{display:flex;flex-wrap:wrap;gap:8px;max-width:calc(100vw - 170px)}.bank-coin-reward{display:block;padding:10px 0;color:#d4be81}

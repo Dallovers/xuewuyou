@@ -2,8 +2,9 @@
 // Ephemeral presentation state only. Never writes learning, attendance or scores.
 const {randomUUID}=require('node:crypto');
 const WORLD='campus-hub-v1',ROOM='campus:live:'+WORLD,MAX_PLAYERS=24;
-const AVATARS=new Set(['anime','robot','formal','prototype']);
-const CLIPS=new Set(['idle','walk','run','jump']);
+const wardrobe=require('./wardrobe');
+const AVATARS=new Set(wardrobe.skins.keys());
+const CLIPS=new Set(['idle','walk','run','jump','wave','punch']);
 /* ---------- 擂台（第十五轮） ----------
  * 好友挑战原来是「异步」的：两边各答各的，谁也不在场。这一轮让两个人真的在同一座
  * 擂台上互相看得见——但**只同步表现**，判分、计时、交卷仍然完全由 community 模块负责。
@@ -187,7 +188,7 @@ module.exports=function({authUser,store,namespace}){
       try{
         const identity=await store.run(()=>{
           const user=authUser({headers:{authorization:'Bearer '+(socket.handshake.auth?.token||'')}});
-          if(!user)return null;
+          if(!user||!wardrobe.owns(store,user.id,body.avatar))return null;
           const profile=store.get('community','main',{}).profiles?.[user.id];
           return {uid:user.id,nick:profile?.visible?String(profile.nick||'同学').replace(/[\u0000-\u001f\u007f]/g,'').slice(0,24):''};
         },{readOnly:true});
@@ -202,6 +203,16 @@ module.exports=function({authUser,store,namespace}){
         for(const [challengeId,room] of rooms)if(room.members.includes(identity.uid))socket.join(topic(challengeId));
         reply({ok:true,self:publicPlayer(m),players:players(),duels:[...rooms].filter(([,r])=>r.members.includes(identity.uid)).map(([challengeId,r])=>({challenge:challengeId,topic:r.topic,status:r.status}))});
       }catch{reply({ok:false,error:'校园连接暂不可用，请重试'});}finally{joining=false;}
+    });
+    socket.on('campus:appearance',async(body,ack)=>{
+      const reply=value=>{if(typeof ack==='function')ack(value);};
+      if(Date.now()<(socket.data.appearanceAfter||0))return reply({ok:false,error:'请稍后再换装'});
+      socket.data.appearanceAfter=Date.now()+500;
+      try{
+        const valid=await store.run(()=>{const user=authUser({headers:{authorization:'Bearer '+(socket.handshake.auth?.token||'')}});return !!user&&wardrobe.owns(store,user.id,body?.avatar);},{readOnly:true});
+        const m=members.get(socket.data.uid);if(!valid||!m||m.socket!==socket)return reply({ok:false,error:'皮肤尚未拥有或连接已失效'});
+        m.avatar=body.avatar;m.seq++;ns.to(ROOM).emit('campus:state',{world:WORLD,players:players()});reply({ok:true});
+      }catch{reply({ok:false,error:'换装同步暂不可用'});}
     });
     socket.on('campus:pose',body=>{
       const m=members.get(socket.data.uid),now=Date.now();if(!m||m.socket!==socket||now-m.lastPose<60)return;

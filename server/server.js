@@ -558,6 +558,7 @@ route('GET', '/api/ai/config', (req, res) => {
 });
 
 const integrations = require('./integrations')( { route, authUser, sendJson, readBody, store, getAiConfig, providers: AI_PROVIDERS } );
+require('./campus/wardrobe').register({route,authUser,sendJson,readBody,store});
 const studyRooms = require('./study-rooms')({route,authUser,sendJson,readBody,store});
 require('./learning')({ route, authUser, sendJson, readBody, store, syncReviews:integrations.syncReviews,studyRooms });
 require('./practice')({ route, authUser, sendJson, readBody, store });
@@ -615,7 +616,7 @@ function serveStatic(req, res) {
   const libraryAsset = /^examples\/library-3d\/(?:index\.html|library\.css|app\.bundle\.js|assets\/(?:catalog-availability\.json|wenku-library\.glb|r1-lighting\/(?:r1-bake\.json|r1-receivers-[a-f0-9]{8}\.glb|r1-indirect-[a-f0-9]{8}\.exr))|vendor\/pdfjs\/(?:pdf\.min\.js|pdf\.worker\.min\.js))$/.test(publicPath);
   const libraryMaterial = /^examples\/campus-3d-v5\/assets\/(?:[a-z]+-(?:color|normal|roughness)\.jpg|sky\.hdr)$/.test(publicPath);
   const academyAsset = /^examples\/campus-3d-v5\/(?:index\.html|style\.css|app\.bundle\.js|assets\/(?:classroom-baked\.glb|lightmaps\/(?:day-open|day-closed|led)\.hdr|characters\/student-(?:anime\.vrm|anime-motion\.json|robot\.glb|formal\.glb|hoodie\.glb)))$/.test(publicPath);
-  if (relative.startsWith('..') || path.isAbsolute(relative) || parts.some(p => p.startsWith('.')) || !(ALLOWED_ROOTS.includes(parts[0]) || libraryAsset || libraryMaterial || academyAsset)) return sendError(res, 403, '禁止访问');
+  if (relative.startsWith('..') || path.isAbsolute(relative) || parts.some(p => p.startsWith('.')) || !(ALLOWED_ROOTS.includes(parts[0]) || libraryAsset || libraryMaterial || academyAsset || /^examples\/campus-3d-v5\/assets\/characters\/candidates\/[a-z0-9-]+\/(?:model\.(?:glb|vrm)|runtime\.vrm|Textures\/colormap\.png)$/.test(publicPath))) return sendError(res, 403, '禁止访问');
   fs.readFile(filePath, (err, buf) => {
     if (err) return sendError(res, 404, '文件不存在');
     const ext = path.extname(filePath).toLowerCase();

@@ -25,7 +25,7 @@ export function createCampusPresence({scene,camera,getPose,setSpawn,openAccount,
  function receive(message){
   if(!joined||message?.world!==VERSION||!Array.isArray(message.players))return;
   lastSnapshot=performance.now();const live=new Set();
-  for(const p of message.players){if(p.id===selfId)continue;live.add(p.id);let peer=peers.get(p.id);
+  for(const p of message.players){if(p.id===selfId)continue;live.add(p.id);let peer=peers.get(p.id);if(peer&&peer.variant!==p.avatar){release(peer);peer=null;}
    if(!peer){peer={id:p.id,nick:p.nick,variant:p.avatar,from:p,to:p,received:performance.now(),seq:-1,avatar:null,label:null};peers.set(p.id,peer);}
    if(p.seq!==peer.seq){peer.from=interpolate(peer,performance.now());peer.to=p;peer.received=performance.now();peer.seq=p.seq;peer.nick=p.nick;remoteRevision++;}
   }
@@ -102,6 +102,7 @@ export function createCampusPresence({scene,camera,getPose,setSpawn,openAccount,
    }
   },
   snapshot:()=>({joined,wanted,selfId,players:peers.size+Number(joined),loaded:[...peers.values()].filter(p=>p.avatar).length,remoteRevision,peers:[...peers.values()].map(p=>({id:p.id,nick:p.nick,pose:p.to,rendered:p.avatar?.root.position.toArray(),clip:p.avatar?.snapshot().clip})),status:status.textContent}),
+  appearance(){if(joined&&socket?.connected)socket.timeout(8000).emit('campus:appearance',{avatar:getPose().avatar},()=>{});},
   teleport,
   dispose(){disposed=true;wanted=false;disconnect();clearInterval(authTimer);removeEventListener('storage',syncAuth);removeEventListener('online',online);document.removeEventListener('visibilitychange',visibility);panel.remove();labels.remove();}
  };

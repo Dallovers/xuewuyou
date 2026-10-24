@@ -1,0 +1,46 @@
+[
+  {
+    "id": "vroid-vivi",
+    "input": "examples/campus-3d-v5/assets/characters/candidates/vroid-vivi/model.vrm",
+    "inputSha256": "eaf902e041a7a810f1423599ae75682f61184ab6ef0206da9a8ed9caa8ec3a9d",
+    "output": "examples/campus-3d-v5/assets/characters/candidates/vroid-vivi/runtime.vrm",
+    "outputSha256": "c089cb0c028f4da5c085d5b870835c283aaad7c5e364aa78eb2c534f29f961a9",
+    "originalBytes": 18089136,
+    "runtimeBytes": 4109428,
+    "pixelsBefore": 27197632,
+    "pixelsAfter": 7930048
+  },
+  {
+    "id": "vroid-vita",
+    "input": "examples/campus-3d-v5/assets/characters/candidates/vroid-vita/model.vrm",
+    "inputSha256": "f2bf78f28a24e2f75f5ca0b6c3b646654c394e4b03592dfaa0d0633ef0972b4d",
+    "output": "examples/campus-3d-v5/assets/characters/candidates/vroid-vita/runtime.vrm",
+    "outputSha256": "17caf6a885826e91a5139847ca2b113bc22e4433f1caf77f2e6f11c7c61eb382",
+    "originalBytes": 14359044,
+    "runtimeBytes": 4156696,
+    "pixelsBefore": 27197632,
+    "pixelsAfter": 7930048
+  },
+  {
+    "id": "vroid-victoria",
+    "input": "examples/campus-3d-v5/assets/characters/candidates/vroid-victoria/model.vrm",
+    "inputSha256": "b1372131bdbf233f46320146d565f342a7e4f6f4b8f2aefb301f1a283ec07e1e",
+    "output": "examples/campus-3d-v5/assets/characters/candidates/vroid-victoria/runtime.vrm",
+    "outputSha256": "410b7b121adb924853bc15ec1ebd60ec76f2f372eefa44fcc89dbd50ff3a945d",
+    "originalBytes": 15479480,
+    "runtimeBytes": 4277788,
+    "pixelsBefore": 27197632,
+    "pixelsAfter": 7930048
+  },
+  {
+    "id": "vroid-fumiriya",
+    "input": "examples/campus-3d-v5/assets/characters/candidates/vroid-fumiriya/model.vrm",
+    "inputSha256": "d8fb05f33e377df028cb6b9d58c441ce68326c41fa23f6c735d40c65ae3dc710",
+    "output": "examples/campus-3d-v5/assets/characters/candidates/vroid-fumiriya/runtime.vrm",
+    "outputSha256": "410eee2689120b6692127d7300d7f1fc3b629a008ede42544fe0ea7562961a59",
+    "originalBytes": 19342280,
+    "runtimeBytes": 4778196,
+    "pixelsBefore": 28180736,
+    "pixelsAfter": 8519936
+  }
+]
