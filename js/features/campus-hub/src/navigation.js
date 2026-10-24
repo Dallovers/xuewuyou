@@ -1,6 +1,13 @@
 import {BOUNDS} from './layout.js';
 export function createNavigation(boxes,radius=.30){
- function blocked(x,z){return !Number.isFinite(x)||!Number.isFinite(z)||x<BOUNDS.minX+radius||x>BOUNDS.maxX-radius||z<BOUNDS.minZ+radius||z>BOUNDS.maxZ-radius||boxes.some(b=>b.enabled!==false&&(b.type==='circle'?Math.hypot(x-b.x,z-b.z)<b.radius+radius:x>b.minX-radius&&x<b.maxX+radius&&z>b.minZ-radius&&z<b.maxZ+radius));}
+ function blocked(x,z){return !Number.isFinite(x)||!Number.isFinite(z)||x<BOUNDS.minX+radius||x>BOUNDS.maxX-radius||z<BOUNDS.minZ+radius||z>BOUNDS.maxZ-radius||boxes.some(b=>{
+  if(b.enabled===false)return false;
+  if(b.type==='circle')return Math.hypot(x-b.x,z-b.z)<b.radius+radius;
+  if(!(x>b.minX-radius&&x<b.maxX+radius&&z>b.minZ-radius&&z<b.maxZ+radius))return false;
+  if(!b.oriented)return true;
+  const dx=x-b.oriented.x,dz=z-b.oriented.z,o=b.oriented;
+  return Math.abs(dx*o.cos-dz*o.sin)<o.halfX+radius&&Math.abs(dx*o.sin+dz*o.cos)<o.halfZ+radius;
+ });}
  function move(pos,dx,dz){const steps=Math.max(1,Math.ceil(Math.hypot(dx,dz)/.12));for(let i=0;i<steps;i++){if(!blocked(pos.x+dx/steps,pos.z))pos.x+=dx/steps;if(!blocked(pos.x,pos.z+dz/steps))pos.z+=dz/steps;}return pos;}
  function clear(a,b){const n=Math.max(1,Math.ceil(Math.hypot(b.x-a.x,b.z-a.z)/.16));for(let i=0;i<=n;i++)if(blocked(a.x+(b.x-a.x)*i/n,a.z+(b.z-a.z)*i/n))return false;return true;}
  function route(start,goal){
@@ -26,6 +33,11 @@ export function worldBoxes(THREE,district){
   if(c.enabled===false||c.disabled)continue;const p=c.center,h=c.half||(c.radius?[c.radius,(c.height||1)/2,c.radius]:null);
   if(!p||!h)continue;if(p[1]+h[1]<.12||p[1]-h[1]>1.7)continue;
   const b=new THREE.Box3(new THREE.Vector3(p[0]-h[0],p[1]-h[1],p[2]-h[2]),new THREE.Vector3(p[0]+h[0],p[1]+h[1],p[2]+h[2])).applyMatrix4(district.root.matrixWorld);
-  output.push({id:c.id||c.name,minX:b.min.x,maxX:b.max.x,minZ:b.min.z,maxZ:b.max.z,minY:b.min.y,maxY:b.max.y});
+  const box={id:c.id||c.name,minX:b.min.x,maxX:b.max.x,minZ:b.min.z,maxZ:b.max.z,minY:b.min.y,maxY:b.max.y};
+  // Keep broad bounds for camera checks; rotated room walls/furniture need
+  // their actual footprint for walking instead of an oversized enclosing box.
+  const e=district.root.matrixWorld.elements,sx=Math.hypot(e[0],e[2]),sz=Math.hypot(e[8],e[10]),cos=e[0]/sx,sin=-e[2]/sx;
+  if(Math.abs(cos*sin)>1e-6){const center=new THREE.Vector3(...p).applyMatrix4(district.root.matrixWorld);box.oriented={x:center.x,z:center.z,cos,sin,halfX:h[0]*sx,halfZ:h[2]*sz};}
+  output.push(box);
  }return output;
 }
