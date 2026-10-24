@@ -10,6 +10,14 @@ const CLIPS={
  formal:{idle:['Student_Idle'],walk:['Student_Walk'],run:['Student_Run']},
  prototype:{idle:['CharacterArmature|Idle_Neutral','CharacterArmature|Idle'],walk:['CharacterArmature|Walk'],run:['CharacterArmature|Run'],wave:['CharacterArmature|Wave'],punch:['CharacterArmature|Punch_Left']}
 };
+// Share source downloads, never live skeletons/materials: each person owns the
+// parsed model so disposing a remote player cannot damage another character.
+const sources=new Map();
+function loadSource(url,type){
+ const key=url.href;
+ if(!sources.has(key))sources.set(key,new T.FileLoader().setResponseType(type).loadAsync(key).catch(error=>{sources.delete(key);throw error;}));
+ return sources.get(key);
+}
 
 export async function createStudentAvatar(scene,options={}){
  const avatar=options.variant||new URLSearchParams(location.search).get('avatar')||'anime';
@@ -18,11 +26,13 @@ export async function createStudentAvatar(scene,options={}){
  const loader=new GLTFLoader();
  if(variant==='anime')loader.register(parser=>new VRMLoaderPlugin(parser));
  const assets=new URL('../../../examples/campus-3d-v5/assets/characters/',document.baseURI);
- const gltf=await loader.loadAsync(new URL(asset,assets).href),vrm=gltf.userData.vrm;
+ const source=await loadSource(new URL(asset,assets),'arraybuffer');
+ const gltf=await loader.parseAsync(source,assets.href),vrm=gltf.userData.vrm;
  if(variant==='anime'&&!vrm)throw Error('VRM humanoid unavailable');
  let animations=gltf.animations,actionTimings={};
  if(vrm){
-  const motion=await new T.FileLoader().setResponseType('json').loadAsync(new URL('student-anime-motion.json',assets).href);
+  VRMUtils.combineSkeletons(vrm.scene);
+  const motion=await loadSource(new URL('student-anime-motion.json',assets),'json');
   actionTimings=motion.actions||{};
   animations=motion.clips.map(json=>{
    const clip=T.AnimationClip.parse(json);
@@ -41,7 +51,7 @@ export async function createStudentAvatar(scene,options={}){
  const palette={Purple:0x424e5d,LightBlue:0x303b48,White:0xe3e0d7,Hair:0x201d1a,Eyebrows:0x30251f};
  const robotPalette={Main:0xe3e7e4,Grey:0x66aaa7,Black:0x25363e};
  const adjusted=new Set();
- model.traverse(node=>{if(node.isMesh){node.castShadow=true;node.receiveShadow=true;node.frustumCulled=false;
+ model.traverse(node=>{if(node.isMesh){node.castShadow=options.castShadow!==false;node.receiveShadow=true;node.frustumCulled=false;
   if(variant==='robot'){
    const geometry=node.geometry;node.geometry=toCreasedNormals(geometry,Math.PI/3);geometry.dispose();
    const surprised=node.morphTargetDictionary?.Surprised;

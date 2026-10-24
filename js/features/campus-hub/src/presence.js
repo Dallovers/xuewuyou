@@ -11,11 +11,11 @@ function loadClient(){
  });return clientLibrary;
 }
 const token=()=>{try{const t=localStorage.getItem('xwy_token')||'';return t.startsWith('local.')?'':t;}catch{return '';}};
-export function createCampusPresence({scene,camera,getPose,setSpawn,openAccount,shadowChanged}){
+export function createCampusPresence({scene,camera,getPose,setSpawn,openAccount,shadowChanged,prepareAvatar=async()=>{}}){
  const panel=document.createElement('section');panel.id='presence';panel.setAttribute('aria-label','校园同场');
  const status=document.createElement('span'),button=document.createElement('button');status.id='presence-status';status.setAttribute('role','status');button.id='presence-toggle';panel.append(status,button);document.body.append(panel);
  const labels=document.createElement('div');labels.id='peer-labels';labels.setAttribute('aria-hidden','true');document.body.append(labels);
- const peers=new Map(),project=new T.Vector3();let socket,selfId='',joined=false,wanted=true,disposed=false,generation=0,lastToken=token(),lastSend=0,lastSnapshot=0,loading=false,remoteRevision=0,lastRemoteShadow=0,painted='';
+ const peers=new Map(),project=new T.Vector3();let socket,selfId='',joined=false,wanted=true,disposed=false,generation=0,lastToken=token(),lastSend=0,lastSnapshot=0,loading=false,remoteRevision=0,painted='';
  const cap=()=>innerWidth<700?2:4;
  function paint(text,action){const value=text+'|'+action;if(value===painted)return;painted=value;status.textContent=text;button.textContent=action;}
  function release(peer){peer.cancelled=true;peer.avatar?.dispose();peer.label?.remove();peers.delete(peer.id);shadowChanged();}
@@ -60,7 +60,7 @@ export function createCampusPresence({scene,camera,getPose,setSpawn,openAccount,
  function publish(force=false){if(!joined||!socket?.connected||document.hidden)return;const now=performance.now();if(force||now-lastSend>=100){lastSend=now;socket.volatile.emit('campus:pose',getPose());}}
  button.onclick=()=>{
   if(button.textContent.includes('登录')){openAccount();return;}
-  if(joined||button.textContent==='取消连接'){wanted=false;disconnect();setIdle();return;}
+  if((joined&&button.textContent!=='重新连接')||button.textContent==='取消连接'){wanted=false;disconnect();setIdle();return;}
   wanted=true;connect();
  };
  function syncAuth(){const next=token();if(next!==lastToken){lastToken=next;wanted=true;connect();}else if(joined)publish();}
@@ -71,23 +71,27 @@ export function createCampusPresence({scene,camera,getPose,setSpawn,openAccount,
  return {
   update(dt){
    if(disposed)return;publish();const now=performance.now();
-   if(joined&&lastSnapshot&&now-lastSnapshot>5000){clear();paint('同步中断，正在重新连接…','取消连接');socket?.disconnect().connect();}
+   // Asset decoding, background throttling and brief network jitter can delay
+   // volatile snapshots. Give the server's 15s membership expiry time to run
+   // before replacing an otherwise healthy transport and all visible avatars.
+   if(joined&&lastSnapshot&&now-lastSnapshot>20000){clear();paint('同步中断，正在重新连接…','取消连接');socket?.disconnect().connect();}
    const me=getPose(),near=[...peers.values()].filter(p=>Math.hypot(p.to.x-me.x,p.to.z-me.z)<42).sort((a,b)=>Math.hypot(a.to.x-me.x,a.to.z-me.z)-Math.hypot(b.to.x-me.x,b.to.z-me.z)).slice(0,cap()),visible=new Set(near.map(p=>p.id));
    for(const peer of peers.values()){
     if(peer.avatar&&!visible.has(peer.id)){peer.avatar.dispose();peer.avatar=null;peer.label?.remove();peer.label=null;shadowChanged();}
     if(!peer.avatar)continue;const p=interpolate(peer,now);peer.avatar.setVisible(true);peer.avatar.update({position:{x:p.x,z:p.z,groundY:p.y},yaw:p.yaw,dt:Math.min(dt,.1),remoteState:p});
     const distance=Math.hypot(p.x-me.x,p.z-me.z);project.set(p.x,p.y+p.height+2.05,p.z).project(camera);
     peer.label.hidden=distance>20||project.z< -1||project.z>1||Math.abs(project.x)>1||Math.abs(project.y)>1;
-    peer.label.textContent=peer.nick+(p.studying?' · 学习中':'');peer.label.style.transform=`translate(-50%,-100%) translate(${(project.x*.5+.5)*innerWidth}px,${(-project.y*.5+.5)*innerHeight}px)`;
+    const text=peer.nick+(p.studying?' · 学习中':'');if(peer.label.textContent!==text)peer.label.textContent=text;peer.label.style.transform=`translate(-50%,-100%) translate(${(project.x*.5+.5)*innerWidth}px,${(-project.y*.5+.5)*innerHeight}px)`;
    }
-   const pending=near.find(p=>!p.avatar&&!p.loading&&!p.failed);
+   const pending=near.find(p=>!p.avatar&&!p.loading&&(!p.retryAt||now>=p.retryAt));
    if(pending&&!loading){loading=true;pending.loading=true;const peer=pending;
-    createStudentAvatar(scene,{variant:peer.variant}).then(avatar=>{
+    createStudentAvatar(scene,{variant:peer.variant,castShadow:false}).then(async avatar=>{
      if(disposed||peer.cancelled||!peers.has(peer.id)||!visible.has(peer.id)){avatar.dispose();return;}
+     try{await prepareAvatar(avatar);}catch(error){avatar.dispose();throw error;}
+     if(disposed||peer.cancelled||!peers.has(peer.id)){avatar.dispose();return;}
      peer.avatar=avatar;avatar.root.name='Online campus peer';peer.label=document.createElement('span');peer.label.className='peer-label';peer.label.hidden=true;labels.append(peer.label);shadowChanged();
-    }).catch(()=>{peer.failed=true;paint('同学已在线，角色加载失败；重连可重试','重新连接');}).finally(()=>{loading=false;peer.loading=false;});
+    }).catch(()=>{peer.retries=(peer.retries||0)+1;peer.retryAt=performance.now()+Math.min(30000,3000*2**(peer.retries-1));paint('同学已在线，角色正在重试加载','重新连接');}).finally(()=>{loading=false;peer.loading=false;});
    }
-   if(near.some(p=>p.to.clip!=='idle')&&now-lastRemoteShadow>160){lastRemoteShadow=now;shadowChanged();}
   },
   snapshot:()=>({joined,wanted,selfId,players:peers.size+Number(joined),loaded:[...peers.values()].filter(p=>p.avatar).length,remoteRevision,peers:[...peers.values()].map(p=>({id:p.id,nick:p.nick,pose:p.to,rendered:p.avatar?.root.position.toArray(),clip:p.avatar?.snapshot().clip})),status:status.textContent}),
   dispose(){disposed=true;wanted=false;disconnect();clearInterval(authTimer);removeEventListener('storage',syncAuth);removeEventListener('online',online);document.removeEventListener('visibilitychange',visibility);panel.remove();labels.remove();}

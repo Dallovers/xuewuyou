@@ -7,7 +7,7 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict'),fs=r
   await page.goto('http://127.0.0.1:4184/js/features/campus-hub/index.html');await page.waitForFunction(()=>window.__campusHub?.snapshot().ready&&window.__campusHub.snapshot().frames>3,null,{timeout:120000});
   check('overview offers an enabled explicit interaction start button',await page.locator('#enter').isEnabled()&&(await page.locator('#enter').textContent()).includes('开启互动'));await page.locator('#enter').click();check('start button enters walk mode and focuses scene',(await snap()).mode==='walk'&&await page.evaluate(()=>document.activeElement.id==='world'));
   // Follow normal UI navigation, with no setPose or explicit canvas.focus().
-  await page.locator('[data-place="library"]').click();await page.waitForFunction(()=>window.__campusHub.snapshot().path?.length===0,null,{timeout:60000});
+  await page.locator('#directory').click();await page.locator('[data-place="library"]').click();await page.waitForFunction(()=>window.__campusHub.snapshot().path?.length===0,null,{timeout:60000});
   await page.locator('#enter').click();await page.waitForFunction(()=>window.__campusHub.snapshot().rooms.doors.find(d=>d.id==='library').open>.9);
   check('clicking a door returns focus to the scene',await page.evaluate(()=>document.activeElement.id==='world'));
   const before=await snap();await page.keyboard.down('KeyW');await page.waitForTimeout(450);await page.keyboard.up('KeyW');check('walking still works immediately after clicking interaction',Math.hypot((await snap()).pos[0]-before.pos[0],(await snap()).pos[2]-before.pos[2])>.3);
