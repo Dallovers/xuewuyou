@@ -1,0 +1,3517 @@
+[
+  {
+    "id": "kaykit-knight",
+    "repo": "KayKit-Game-Assets/KayKit-Character-Pack-Adventures-1.0",
+    "revision": "672074b73ba276876a19e8816ecdc5241817ab47",
+    "sourcePath": "addons/kaykit_character_pack_adventures/Characters/gltf/Knight.glb",
+    "licensePath": "docs/characters/licenses/kaykit-adventurers/LICENSE.txt",
+    "modelPath": "examples/campus-3d-v5/assets/characters/candidates/kaykit-knight/model.glb",
+    "downloadDate": "2026-10-24",
+    "displayName": "银甲骑士",
+    "style": "Q版奇幻 / 披风重甲",
+    "author": "Kay Lousberg (KayKit)",
+    "sourceUrl": "https://github.com/KayKit-Game-Assets/KayKit-Character-Pack-Adventures-1.0/blob/672074b73ba276876a19e8816ecdc5241817ab47/addons/kaykit_character_pack_adventures/Characters/gltf/Knight.glb",
+    "license": "CC0-1.0",
+    "licenseScope": {
+      "model": "CC0-1.0",
+      "textures": "CC0-1.0",
+      "animations": "CC0-1.0"
+    },
+    "attributionRequired": false,
+    "attribution": "非强制；建议署名 Kay Lousberg (KayKit)",
+    "licenseReview": "原始资源包/逐模型授权已保留；允许修改及网站分发。作为项目内兑换皮肤候选，需先完成技术适配。",
+    "status": "可显示",
+    "validation": {
+      "downloaded": true,
+      "parseVerified": true,
+      "displayVerified": true,
+      "bundledAnimationSamplingVerified": true,
+      "campusActionsVerified": false,
+      "sampledClips": 76,
+      "changedNodeClips": 69,
+      "limitation": "每段采样一次，静态姿势可能不变化；不代表完整动作视觉审查、脚滑或校园跳跃时序验证。"
+    },
+    "totalBytes": 3659532,
+    "files": [
+      {
+        "path": "examples/campus-3d-v5/assets/characters/candidates/kaykit-knight/model.glb",
+        "bytes": 3659532,
+        "sha256": "60428e3abc09ba83e595d256e3af8c5c976b46cdae599f0802fc82b4a3445168"
+      }
+    ],
+    "triangles": 6952,
+    "vertices": 7024,
+    "materialCount": 1,
+    "materials": [
+      {
+        "name": "knight_texture",
+        "baseColorFactor": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "baseColorTexture": "knight_texture",
+        "doubleSided": true
+      }
+    ],
+    "textures": [
+      {
+        "name": "knight_texture",
+        "uri": "embedded GLB bufferView",
+        "mimeType": "image/png",
+        "bytes": 14172,
+        "width": 1024,
+        "height": 1024,
+        "sha256": "5d250ccc5da020e6126bfa3839f83bd9a465a951ed223e4d13c08b1925e154d4"
+      }
+    ],
+    "skins": [
+      {
+        "name": "Rig",
+        "joints": [
+          "root",
+          "hips",
+          "spine",
+          "chest",
+          "upperarm.l",
+          "lowerarm.l",
+          "wrist.l",
+          "hand.l",
+          "handslot.l",
+          "upperarm.r",
+          "lowerarm.r",
+          "wrist.r",
+          "hand.r",
+          "handslot.r",
+          "head",
+          "upperleg.l",
+          "lowerleg.l",
+          "foot.l",
+          "toes.l",
+          "upperleg.r",
+          "lowerleg.r",
+          "foot.r",
+          "toes.r",
+          "kneeIK.l",
+          "control-toe-roll.l",
+          "control-heel-roll.l",
+          "control-foot-roll.l",
+          "heelIK.l",
+          "IK-foot.l",
+          "IK-toe.l",
+          "kneeIK.r",
+          "control-toe-roll.r",
+          "control-heel-roll.r",
+          "control-foot-roll.r",
+          "heelIK.r",
+          "IK-foot.r",
+          "IK-toe.r",
+          "elbowIK.l",
+          "handIK.l",
+          "elbowIK.r",
+          "handIK.r"
+        ]
+      }
+    ],
+    "extensionsUsed": [],
+    "extensionsRequired": [],
+    "texturePaths": [],
+    "embeddedTextureCount": 1,
+    "animations": [
+      {
+        "name": "1H_Melee_Attack_Chop",
+        "duration": 1.0666667222976685
+      },
+      {
+        "name": "1H_Melee_Attack_Slice_Diagonal",
+        "duration": 1
+      },
+      {
+        "name": "1H_Melee_Attack_Slice_Horizontal",
+        "duration": 1.0666667222976685
+      },
+      {
+        "name": "1H_Melee_Attack_Stab",
+        "duration": 1.600000023841858
+      },
+      {
+        "name": "1H_Ranged_Aiming",
+        "duration": 1.0666667222976685
+      },
+      {
+        "name": "1H_Ranged_Reload",
+        "duration": 1.1666666269302368
+      },
+      {
+        "name": "1H_Ranged_Shoot",
+        "duration": 1.0666667222976685
+      },
+      {
+        "name": "1H_Ranged_Shooting",
+        "duration": 1.600000023841858
+      },
+      {
+        "name": "2H_Melee_Attack_Chop",
+        "duration": 1.6333333253860474
+      },
+      {
+        "name": "2H_Melee_Attack_Slice",
+        "duration": 1.100000023841858
+      },
+      {
+        "name": "2H_Melee_Attack_Spin",
+        "duration": 2.4000000953674316
+      },
+      {
+        "name": "2H_Melee_Attack_Spinning",
+        "duration": 0.6666666865348816
+      },
+      {
+        "name": "2H_Melee_Attack_Stab",
+        "duration": 1.600000023841858
+      },
+      {
+        "name": "2H_Melee_Idle",
+        "duration": 1.0666667222976685
+      },
+      {
+        "name": "2H_Ranged_Aiming",
+        "duration": 1.600000023841858
+      },
+      {
+        "name": "2H_Ranged_Reload",
+        "duration": 1.600000023841858
+      },
+      {
+        "name": "2H_Ranged_Shoot",
+        "duration": 1.0666667222976685
+      },
+      {
+        "name": "2H_Ranged_Shooting",
+        "duration": 1.0666667222976685
+      },
+      {
+        "name": "Block",
+        "duration": 1.0666667222976685
+      },
+      {
+        "name": "Block_Attack",
+        "duration": 1.0666667222976685
+      },
+      {
+        "name": "Block_Hit",
+        "duration": 1.0666667222976685
+      },
+      {
+        "name": "Blocking",
+        "duration": 1.0666667222976685
+      },
+      {
+        "name": "Cheer",
+        "duration": 1.6666666269302368
+      },
+      {
+        "name": "Death_A",
+        "duration": 0.800000011920929
+      },
+      {
+        "name": "Death_A_Pose",
+        "duration": 0
+      },
+      {
+        "name": "Death_B",
+        "duration": 2.633333444595337
+      },
+      {
+        "name": "Death_B_Pose",
+        "duration": 0
+      },
+      {
+        "name": "Dodge_Backward",
+        "duration": 0.4000000059604645
+      },
+      {
+        "name": "Dodge_Forward",
+        "duration": 0.4000000059604645
+      },
+      {
+        "name": "Dodge_Left",
+        "duration": 0.4000000059604645
+      },
+      {
+        "name": "Dodge_Right",
+        "duration": 0.4000000059604645
+      },
+      {
+        "name": "Dualwield_Melee_Attack_Chop",
+        "duration": 1.2666666507720947
+      },
+      {
+        "name": "Dualwield_Melee_Attack_Slice",
+        "duration": 1.1666666269302368
+      },
+      {
+        "name": "Dualwield_Melee_Attack_Stab",
+        "duration": 1.600000023841858
+      },
+      {
+        "name": "Hit_A",
+        "duration": 0.6666666865348816
+      },
+      {
+        "name": "Hit_B",
+        "duration": 0.8666666746139526
+      },
+      {
+        "name": "Idle",
+        "duration": 1.0666667222976685
+      },
+      {
+        "name": "Interact",
+        "duration": 1.2999999523162842
+      },
+      {
+        "name": "Jump_Full_Long",
+        "duration": 2.3333332538604736
+      },
+      {
+        "name": "Jump_Full_Short",
+        "duration": 1.1666666269302368
+      },
+      {
+        "name": "Jump_Idle",
+        "duration": 1.0666667222976685
+      },
+      {
+        "name": "Jump_Land",
+        "duration": 0.6666666865348816
+      },
+      {
+        "name": "Jump_Start",
+        "duration": 0.6000000238418579
+      },
+      {
+        "name": "Lie_Down",
+        "duration": 3
+      },
+      {
+        "name": "Lie_Idle",
+        "duration": 2.6666667461395264
+      },
+      {
+        "name": "Lie_Pose",
+        "duration": 0
+      },
+      {
+        "name": "Lie_StandUp",
+        "duration": 2.3333332538604736
+      },
+      {
+        "name": "PickUp",
+        "duration": 1.2999999523162842
+      },
+      {
+        "name": "Running_A",
+        "duration": 0.800000011920929
+      },
+      {
+        "name": "Running_B",
+        "duration": 1.0666667222976685
+      },
+      {
+        "name": "Running_Strafe_Left",
+        "duration": 0.800000011920929
+      },
+      {
+        "name": "Running_Strafe_Right",
+        "duration": 0.800000011920929
+      },
+      {
+        "name": "Sit_Chair_Down",
+        "duration": 0.800000011920929
+      },
+      {
+        "name": "Sit_Chair_Idle",
+        "duration": 3.5999999046325684
+      },
+      {
+        "name": "Sit_Chair_Pose",
+        "duration": 0
+      },
+      {
+        "name": "Sit_Chair_StandUp",
+        "duration": 0.800000011920929
+      },
+      {
+        "name": "Sit_Floor_Down",
+        "duration": 1
+      },
+      {
+        "name": "Sit_Floor_Idle",
+        "duration": 4
+      },
+      {
+        "name": "Sit_Floor_Pose",
+        "duration": 0
+      },
+      {
+        "name": "Sit_Floor_StandUp",
+        "duration": 1.1333333253860474
+      },
+      {
+        "name": "Spellcast_Long",
+        "duration": 2.5333333015441895
+      },
+      {
+        "name": "Spellcast_Raise",
+        "duration": 2.0999999046325684
+      },
+      {
+        "name": "Spellcast_Shoot",
+        "duration": 0.9333333373069763
+      },
+      {
+        "name": "Spellcasting",
+        "duration": 0.6666666865348816
+      },
+      {
+        "name": "T-Pose",
+        "duration": 0
+      },
+      {
+        "name": "Throw",
+        "duration": 1.3666666746139526
+      },
+      {
+        "name": "Unarmed_Idle",
+        "duration": 1.0666667222976685
+      },
+      {
+        "name": "Unarmed_Melee_Attack_Kick",
+        "duration": 0.9333333373069763
+      },
+      {
+        "name": "Unarmed_Melee_Attack_Punch_A",
+        "duration": 1.4666666984558105
+      },
+      {
+        "name": "Unarmed_Melee_Attack_Punch_B",
+        "duration": 1.6666666269302368
+      },
+      {
+        "name": "Unarmed_Pose",
+        "duration": 0
+      },
+      {
+        "name": "Use_Item",
+        "duration": 1.600000023841858
+      },
+      {
+        "name": "Walking_A",
+        "duration": 1.0666667222976685
+      },
+      {
+        "name": "Walking_B",
+        "duration": 1.0666667222976685
+      },
+      {
+        "name": "Walking_Backwards",
+        "duration": 1.0666667222976685
+      },
+      {
+        "name": "Walking_C",
+        "duration": 1.600000023841858
+      }
+    ],
+    "skeletonType": "蒙皮骨骼；详见 skins.joints",
+    "formatConversionRequired": false,
+    "retargetingRequired": "使用自带片段无需跨骨骼重定向；若复用校园现有其他模型动画则需重定向，当前未做。",
+    "suggestedActionMap": {
+      "idle": "Idle",
+      "walk": "Walking_A",
+      "run": "Running_A",
+      "jump": "Jump_Full_Short",
+      "punch": "Unarmed_Melee_Attack_Punch_A"
+    },
+    "missingActions": [
+      "wave"
+    ],
+    "compatibility": "GLTFLoader 可显示，自带 AnimationMixer 动作可采样；现有 variant 白名单未注册，不能直接用 ?avatar=kaykit-knight",
+    "adaptationNeeded": [
+      "独立 variant 注册与资源路径映射（本次未修改控制器）",
+      "按原生动作名称映射，确认循环/一次性动作、根位移及跳跃高度是否与 createAvatarActions 重复",
+      "验证 +Z 朝向，静止高度 1.72m 与脚底归零，导航半径 .30m 不随外观变化",
+      "缺少挥手动作；不得把其他骨骼动作直接套用"
+    ],
+    "knownIssues": [
+      "仅独立预览验证；未验证校园碰撞、网络同步、完整六动作或手机帧率。",
+      "原模型包含武器/配件；未删除或改色。推荐先核对空手动作下配件表现。"
+    ],
+    "licenseFile": {
+      "path": "docs/characters/licenses/kaykit-adventurers/LICENSE.txt",
+      "sha256": "ae322141814056dda0deea7540d74c41d87aee1da319977cd1bd84ee5a923629"
+    }
+  },
+  {
+    "id": "kaykit-mage",
+    "repo": "KayKit-Game-Assets/KayKit-Character-Pack-Adventures-1.0",
+    "revision": "672074b73ba276876a19e8816ecdc5241817ab47",
+    "sourcePath": "addons/kaykit_character_pack_adventures/Characters/gltf/Mage.glb",
+    "licensePath": "docs/characters/licenses/kaykit-adventurers/LICENSE.txt",
+    "modelPath": "examples/campus-3d-v5/assets/characters/candidates/kaykit-mage/model.glb",
+    "downloadDate": "2026-10-24",
+    "displayName": "星帽法师",
+    "style": "Q版奇幻 / 尖帽法袍",
+    "author": "Kay Lousberg (KayKit)",
+    "sourceUrl": "https://github.com/KayKit-Game-Assets/KayKit-Character-Pack-Adventures-1.0/blob/672074b73ba276876a19e8816ecdc5241817ab47/addons/kaykit_character_pack_adventures/Characters/gltf/Mage.glb",
+    "license": "CC0-1.0",
+    "licenseScope": {
+      "model": "CC0-1.0",
+      "textures": "CC0-1.0",
+      "animations": "CC0-1.0"
+    },
+    "attributionRequired": false,
+    "attribution": "非强制；建议署名 Kay Lousberg (KayKit)",
+    "licenseReview": "原始资源包/逐模型授权已保留；允许修改及网站分发。作为项目内兑换皮肤候选，需先完成技术适配。",
+    "status": "可显示",
+    "validation": {
+      "downloaded": true,
+      "parseVerified": true,
+      "displayVerified": true,
+      "bundledAnimationSamplingVerified": true,
+      "campusActionsVerified": false,
+      "sampledClips": 76,
+      "changedNodeClips": 69,
+      "limitation": "每段采样一次，静态姿势可能不变化；不代表完整动作视觉审查、脚滑或校园跳跃时序验证。"
+    },
+    "totalBytes": 3589240,
+    "files": [
+      {
+        "path": "examples/campus-3d-v5/assets/characters/candidates/kaykit-mage/model.glb",
+        "bytes": 3589240,
+        "sha256": "cf898585da33fab50c724d31605fb931eb2912e6d2280092141e98ca81ad507d"
+      }
+    ],
+    "triangles": 5683,
+    "vertices": 5279,
+    "materialCount": 1,
+    "materials": [
+      {
+        "name": "mage_texture",
+        "baseColorFactor": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "baseColorTexture": "mage_texture",
+        "doubleSided": true
+      }
+    ],
+    "textures": [
+      {
+        "name": "mage_texture",
+        "uri": "embedded GLB bufferView",
+        "mimeType": "image/png",
+        "bytes": 16311,
+        "width": 1024,
+        "height": 1024,
+        "sha256": "ea49f094b960402635fe51db9f1864960c97271b17f2e3554e5aca1b2bbba144"
+      }
+    ],
+    "skins": [
+      {
+        "name": "Rig",
+        "joints": [
+          "root",
+          "hips",
+          "spine",
+          "chest",
+          "upperarm.l",
+          "lowerarm.l",
+          "wrist.l",
+          "hand.l",
+          "handslot.l",
+          "upperarm.r",
+          "lowerarm.r",
+          "wrist.r",
+          "hand.r",
+          "handslot.r",
+          "head",
+          "upperleg.l",
+          "lowerleg.l",
+          "foot.l",
+          "toes.l",
+          "upperleg.r",
+          "lowerleg.r",
+          "foot.r",
+          "toes.r",
+          "kneeIK.l",
+          "control-toe-roll.l",
+          "control-heel-roll.l",
+          "control-foot-roll.l",
+          "heelIK.l",
+          "IK-foot.l",
+          "IK-toe.l",
+          "kneeIK.r",
+          "control-toe-roll.r",
+          "control-heel-roll.r",
+          "control-foot-roll.r",
+          "heelIK.r",
+          "IK-foot.r",
+          "IK-toe.r",
+          "elbowIK.l",
+          "handIK.l",
+          "elbowIK.r",
+          "handIK.r"
+        ]
+      }
+    ],
+    "extensionsUsed": [],
+    "extensionsRequired": [],
+    "texturePaths": [],
+    "embeddedTextureCount": 1,
+    "animations": [
+      {
+        "name": "1H_Melee_Attack_Chop",
+        "duration": 1.0666667222976685
+      },
+      {
+        "name": "1H_Melee_Attack_Slice_Diagonal",
+        "duration": 1
+      },
+      {
+        "name": "1H_Melee_Attack_Slice_Horizontal",
+        "duration": 1.0666667222976685
+      },
+      {
+        "name": "1H_Melee_Attack_Stab",
+        "duration": 1.600000023841858
+      },
+      {
+        "name": "1H_Ranged_Aiming",
+        "duration": 1.0666667222976685
+      },
+      {
+        "name": "1H_Ranged_Reload",
+        "duration": 1.1666666269302368
+      },
+      {
+        "name": "1H_Ranged_Shoot",
+        "duration": 1.0666667222976685
+      },
+      {
+        "name": "1H_Ranged_Shooting",
+        "duration": 1.600000023841858
+      },
+      {
+        "name": "2H_Melee_Attack_Chop",
+        "duration": 1.6333333253860474
+      },
+      {
+        "name": "2H_Melee_Attack_Slice",
+        "duration": 1.100000023841858
+      },
+      {
+        "name": "2H_Melee_Attack_Spin",
+        "duration": 2.4000000953674316
+      },
+      {
+        "name": "2H_Melee_Attack_Spinning",
+        "duration": 0.6666666865348816
+      },
+      {
+        "name": "2H_Melee_Attack_Stab",
+        "duration": 1.600000023841858
+      },
+      {
+        "name": "2H_Melee_Idle",
+        "duration": 1.0666667222976685
+      },
+      {
+        "name": "2H_Ranged_Aiming",
+        "duration": 1.600000023841858
+      },
+      {
+        "name": "2H_Ranged_Reload",
+        "duration": 1.600000023841858
+      },
+      {
+        "name": "2H_Ranged_Shoot",
+        "duration": 1.0666667222976685
+      },
+      {
+        "name": "2H_Ranged_Shooting",
+        "duration": 1.0666667222976685
+      },
+      {
+        "name": "Block",
+        "duration": 1.0666667222976685
+      },
+      {
+        "name": "Block_Attack",
+        "duration": 1.0666667222976685
+      },
+      {
+        "name": "Block_Hit",
+        "duration": 1.0666667222976685
+      },
+      {
+        "name": "Blocking",
+        "duration": 1.0666667222976685
+      },
+      {
+        "name": "Cheer",
+        "duration": 1.6666666269302368
+      },
+      {
+        "name": "Death_A",
+        "duration": 0.800000011920929
+      },
+      {
+        "name": "Death_A_Pose",
+        "duration": 0
+      },
+      {
+        "name": "Death_B",
+        "duration": 2.633333444595337
+      },
+      {
+        "name": "Death_B_Pose",
+        "duration": 0
+      },
+      {
+        "name": "Dodge_Backward",
+        "duration": 0.4000000059604645
+      },
+      {
+        "name": "Dodge_Forward",
+        "duration": 0.4000000059604645
+      },
+      {
+        "name": "Dodge_Left",
+        "duration": 0.4000000059604645
+      },
+      {
+        "name": "Dodge_Right",
+        "duration": 0.4000000059604645
+      },
+      {
+        "name": "Dualwield_Melee_Attack_Chop",
+        "duration": 1.2666666507720947
+      },
+      {
+        "name": "Dualwield_Melee_Attack_Slice",
+        "duration": 1.1666666269302368
+      },
+      {
+        "name": "Dualwield_Melee_Attack_Stab",
+        "duration": 1.600000023841858
+      },
+      {
+        "name": "Hit_A",
+        "duration": 0.6666666865348816
+      },
+      {
+        "name": "Hit_B",
+        "duration": 0.8666666746139526
+      },
+      {
+        "name": "Idle",
+        "duration": 1.0666667222976685
+      },
+      {
+        "name": "Interact",
+        "duration": 1.2999999523162842
+      },
+      {
+        "name": "Jump_Full_Long",
+        "duration": 2.3333332538604736
+      },
+      {
+        "name": "Jump_Full_Short",
+        "duration": 1.1666666269302368
+      },
+      {
+        "name": "Jump_Idle",
+        "duration": 1.0666667222976685
+      },
+      {
+        "name": "Jump_Land",
+        "duration": 0.6666666865348816
+      },
+      {
+        "name": "Jump_Start",
+        "duration": 0.6000000238418579
+      },
+      {
+        "name": "Lie_Down",
+        "duration": 3
+      },
+      {
+        "name": "Lie_Idle",
+        "duration": 2.6666667461395264
+      },
+      {
+        "name": "Lie_Pose",
+        "duration": 0
+      },
+      {
+        "name": "Lie_StandUp",
+        "duration": 2.3333332538604736
+      },
+      {
+        "name": "PickUp",
+        "duration": 1.2999999523162842
+      },
+      {
+        "name": "Running_A",
+        "duration": 0.800000011920929
+      },
+      {
+        "name": "Running_B",
+        "duration": 1.0666667222976685
+      },
+      {
+        "name": "Running_Strafe_Left",
+        "duration": 0.800000011920929
+      },
+      {
+        "name": "Running_Strafe_Right",
+        "duration": 0.800000011920929
+      },
+      {
+        "name": "Sit_Chair_Down",
+        "duration": 0.800000011920929
+      },
+      {
+        "name": "Sit_Chair_Idle",
+        "duration": 3.5999999046325684
+      },
+      {
+        "name": "Sit_Chair_Pose",
+        "duration": 0
+      },
+      {
+        "name": "Sit_Chair_StandUp",
+        "duration": 0.800000011920929
+      },
+      {
+        "name": "Sit_Floor_Down",
+        "duration": 1
+      },
+      {
+        "name": "Sit_Floor_Idle",
+        "duration": 4
+      },
+      {
+        "name": "Sit_Floor_Pose",
+        "duration": 0
+      },
+      {
+        "name": "Sit_Floor_StandUp",
+        "duration": 1.1333333253860474
+      },
+      {
+        "name": "Spellcast_Long",
+        "duration": 2.5333333015441895
+      },
+      {
+        "name": "Spellcast_Raise",
+        "duration": 2.0999999046325684
+      },
+      {
+        "name": "Spellcast_Shoot",
+        "duration": 0.9333333373069763
+      },
+      {
+        "name": "Spellcasting",
+        "duration": 0.6666666865348816
+      },
+      {
+        "name": "T-Pose",
+        "duration": 0
+      },
+      {
+        "name": "Throw",
+        "duration": 1.3666666746139526
+      },
+      {
+        "name": "Unarmed_Idle",
+        "duration": 1.0666667222976685
+      },
+      {
+        "name": "Unarmed_Melee_Attack_Kick",
+        "duration": 0.9333333373069763
+      },
+      {
+        "name": "Unarmed_Melee_Attack_Punch_A",
+        "duration": 1.4666666984558105
+      },
+      {
+        "name": "Unarmed_Melee_Attack_Punch_B",
+        "duration": 1.6666666269302368
+      },
+      {
+        "name": "Unarmed_Pose",
+        "duration": 0
+      },
+      {
+        "name": "Use_Item",
+        "duration": 1.600000023841858
+      },
+      {
+        "name": "Walking_A",
+        "duration": 1.0666667222976685
+      },
+      {
+        "name": "Walking_B",
+        "duration": 1.0666667222976685
+      },
+      {
+        "name": "Walking_Backwards",
+        "duration": 1.0666667222976685
+      },
+      {
+        "name": "Walking_C",
+        "duration": 1.600000023841858
+      }
+    ],
+    "skeletonType": "蒙皮骨骼；详见 skins.joints",
+    "formatConversionRequired": false,
+    "retargetingRequired": "使用自带片段无需跨骨骼重定向；若复用校园现有其他模型动画则需重定向，当前未做。",
+    "suggestedActionMap": {
+      "idle": "Idle",
+      "walk": "Walking_A",
+      "run": "Running_A",
+      "jump": "Jump_Full_Short",
+      "punch": "Unarmed_Melee_Attack_Punch_A"
+    },
+    "missingActions": [
+      "wave"
+    ],
+    "compatibility": "GLTFLoader 可显示，自带 AnimationMixer 动作可采样；现有 variant 白名单未注册，不能直接用 ?avatar=kaykit-mage",
+    "adaptationNeeded": [
+      "独立 variant 注册与资源路径映射（本次未修改控制器）",
+      "按原生动作名称映射，确认循环/一次性动作、根位移及跳跃高度是否与 createAvatarActions 重复",
+      "验证 +Z 朝向，静止高度 1.72m 与脚底归零，导航半径 .30m 不随外观变化",
+      "缺少挥手动作；不得把其他骨骼动作直接套用"
+    ],
+    "knownIssues": [
+      "仅独立预览验证；未验证校园碰撞、网络同步、完整六动作或手机帧率。",
+      "原模型包含武器/配件；未删除或改色。推荐先核对空手动作下配件表现。"
+    ],
+    "licenseFile": {
+      "path": "docs/characters/licenses/kaykit-adventurers/LICENSE.txt",
+      "sha256": "ae322141814056dda0deea7540d74c41d87aee1da319977cd1bd84ee5a923629"
+    }
+  },
+  {
+    "id": "kaykit-rogue",
+    "repo": "KayKit-Game-Assets/KayKit-Character-Pack-Adventures-1.0",
+    "revision": "672074b73ba276876a19e8816ecdc5241817ab47",
+    "sourcePath": "addons/kaykit_character_pack_adventures/Characters/gltf/Rogue.glb",
+    "licensePath": "docs/characters/licenses/kaykit-adventurers/LICENSE.txt",
+    "modelPath": "examples/campus-3d-v5/assets/characters/candidates/kaykit-rogue/model.glb",
+    "downloadDate": "2026-10-24",
+    "displayName": "绿披风游侠",
+    "style": "Q版奇幻 / 皮甲弩手",
+    "author": "Kay Lousberg (KayKit)",
+    "sourceUrl": "https://github.com/KayKit-Game-Assets/KayKit-Character-Pack-Adventures-1.0/blob/672074b73ba276876a19e8816ecdc5241817ab47/addons/kaykit_character_pack_adventures/Characters/gltf/Rogue.glb",
+    "license": "CC0-1.0",
+    "licenseScope": {
+      "model": "CC0-1.0",
+      "textures": "CC0-1.0",
+      "animations": "CC0-1.0"
+    },
+    "attributionRequired": false,
+    "attribution": "非强制；建议署名 Kay Lousberg (KayKit)",
+    "licenseReview": "原始资源包/逐模型授权已保留；允许修改及网站分发。作为项目内兑换皮肤候选，需先完成技术适配。",
+    "status": "可显示",
+    "validation": {
+      "downloaded": true,
+      "parseVerified": true,
+      "displayVerified": true,
+      "bundledAnimationSamplingVerified": true,
+      "campusActionsVerified": false,
+      "sampledClips": 76,
+      "changedNodeClips": 69,
+      "limitation": "每段采样一次，静态姿势可能不变化；不代表完整动作视觉审查、脚滑或校园跳跃时序验证。"
+    },
+    "totalBytes": 3616284,
+    "files": [
+      {
+        "path": "examples/campus-3d-v5/assets/characters/candidates/kaykit-rogue/model.glb",
+        "bytes": 3616284,
+        "sha256": "e825437cd4d2ee9c1960b517a74a69101e33eb409ae7fa8cedc7134a998fbb7d"
+      }
+    ],
+    "triangles": 6377,
+    "vertices": 5901,
+    "materialCount": 1,
+    "materials": [
+      {
+        "name": "rogue_texture",
+        "baseColorFactor": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "baseColorTexture": "rogue_texture",
+        "doubleSided": true
+      }
+    ],
+    "textures": [
+      {
+        "name": "rogue_texture",
+        "uri": "embedded GLB bufferView",
+        "mimeType": "image/png",
+        "bytes": 16670,
+        "width": 1024,
+        "height": 1024,
+        "sha256": "a4032e877c3b91939f5cdbb630349c1998fdbc3211bbd587c111125500fe4cc5"
+      }
+    ],
+    "skins": [
+      {
+        "name": "Rig",
+        "joints": [
+          "root",
+          "hips",
+          "spine",
+          "chest",
+          "upperarm.l",
+          "lowerarm.l",
+          "wrist.l",
+          "hand.l",
+          "handslot.l",
+          "upperarm.r",
+          "lowerarm.r",
+          "wrist.r",
+          "hand.r",
+          "handslot.r",
+          "head",
+          "upperleg.l",
+          "lowerleg.l",
+          "foot.l",
+          "toes.l",
+          "upperleg.r",
+          "lowerleg.r",
+          "foot.r",
+          "toes.r",
+          "kneeIK.l",
+          "control-toe-roll.l",
+          "control-heel-roll.l",
+          "control-foot-roll.l",
+          "heelIK.l",
+          "IK-foot.l",
+          "IK-toe.l",
+          "kneeIK.r",
+          "control-toe-roll.r",
+          "control-heel-roll.r",
+          "control-foot-roll.r",
+          "heelIK.r",
+          "IK-foot.r",
+          "IK-toe.r",
+          "elbowIK.l",
+          "handIK.l",
+          "elbowIK.r",
+          "handIK.r"
+        ]
+      }
+    ],
+    "extensionsUsed": [],
+    "extensionsRequired": [],
+    "texturePaths": [],
+    "embeddedTextureCount": 1,
+    "animations": [
+      {
+        "name": "1H_Melee_Attack_Chop",
+        "duration": 1.0666667222976685
+      },
+      {
+        "name": "1H_Melee_Attack_Slice_Diagonal",
+        "duration": 1
+      },
+      {
+        "name": "1H_Melee_Attack_Slice_Horizontal",
+        "duration": 1.0666667222976685
+      },
+      {
+        "name": "1H_Melee_Attack_Stab",
+        "duration": 1.600000023841858
+      },
+      {
+        "name": "1H_Ranged_Aiming",
+        "duration": 1.0666667222976685
+      },
+      {
+        "name": "1H_Ranged_Reload",
+        "duration": 1.1666666269302368
+      },
+      {
+        "name": "1H_Ranged_Shoot",
+        "duration": 1.0666667222976685
+      },
+      {
+        "name": "1H_Ranged_Shooting",
+        "duration": 1.600000023841858
+      },
+      {
+        "name": "2H_Melee_Attack_Chop",
+        "duration": 1.6333333253860474
+      },
+      {
+        "name": "2H_Melee_Attack_Slice",
+        "duration": 1.100000023841858
+      },
+      {
+        "name": "2H_Melee_Attack_Spin",
+        "duration": 2.4000000953674316
+      },
+      {
+        "name": "2H_Melee_Attack_Spinning",
+        "duration": 0.6666666865348816
+      },
+      {
+        "name": "2H_Melee_Attack_Stab",
+        "duration": 1.600000023841858
+      },
+      {
+        "name": "2H_Melee_Idle",
+        "duration": 1.0666667222976685
+      },
+      {
+        "name": "2H_Ranged_Aiming",
+        "duration": 1.600000023841858
+      },
+      {
+        "name": "2H_Ranged_Reload",
+        "duration": 1.600000023841858
+      },
+      {
+        "name": "2H_Ranged_Shoot",
+        "duration": 1.0666667222976685
+      },
+      {
+        "name": "2H_Ranged_Shooting",
+        "duration": 1.0666667222976685
+      },
+      {
+        "name": "Block",
+        "duration": 1.0666667222976685
+      },
+      {
+        "name": "Block_Attack",
+        "duration": 1.0666667222976685
+      },
+      {
+        "name": "Block_Hit",
+        "duration": 1.0666667222976685
+      },
+      {
+        "name": "Blocking",
+        "duration": 1.0666667222976685
+      },
+      {
+        "name": "Cheer",
+        "duration": 1.6666666269302368
+      },
+      {
+        "name": "Death_A",
+        "duration": 0.800000011920929
+      },
+      {
+        "name": "Death_A_Pose",
+        "duration": 0
+      },
+      {
+        "name": "Death_B",
+        "duration": 2.633333444595337
+      },
+      {
+        "name": "Death_B_Pose",
+        "duration": 0
+      },
+      {
+        "name": "Dodge_Backward",
+        "duration": 0.4000000059604645
+      },
+      {
+        "name": "Dodge_Forward",
+        "duration": 0.4000000059604645
+      },
+      {
+        "name": "Dodge_Left",
+        "duration": 0.4000000059604645
+      },
+      {
+        "name": "Dodge_Right",
+        "duration": 0.4000000059604645
+      },
+      {
+        "name": "Dualwield_Melee_Attack_Chop",
+        "duration": 1.2666666507720947
+      },
+      {
+        "name": "Dualwield_Melee_Attack_Slice",
+        "duration": 1.1666666269302368
+      },
+      {
+        "name": "Dualwield_Melee_Attack_Stab",
+        "duration": 1.600000023841858
+      },
+      {
+        "name": "Hit_A",
+        "duration": 0.6666666865348816
+      },
+      {
+        "name": "Hit_B",
+        "duration": 0.8666666746139526
+      },
+      {
+        "name": "Idle",
+        "duration": 1.0666667222976685
+      },
+      {
+        "name": "Interact",
+        "duration": 1.2999999523162842
+      },
+      {
+        "name": "Jump_Full_Long",
+        "duration": 2.3333332538604736
+      },
+      {
+        "name": "Jump_Full_Short",
+        "duration": 1.1666666269302368
+      },
+      {
+        "name": "Jump_Idle",
+        "duration": 1.0666667222976685
+      },
+      {
+        "name": "Jump_Land",
+        "duration": 0.6666666865348816
+      },
+      {
+        "name": "Jump_Start",
+        "duration": 0.6000000238418579
+      },
+      {
+        "name": "Lie_Down",
+        "duration": 3
+      },
+      {
+        "name": "Lie_Idle",
+        "duration": 2.6666667461395264
+      },
+      {
+        "name": "Lie_Pose",
+        "duration": 0
+      },
+      {
+        "name": "Lie_StandUp",
+        "duration": 2.3333332538604736
+      },
+      {
+        "name": "PickUp",
+        "duration": 1.2999999523162842
+      },
+      {
+        "name": "Running_A",
+        "duration": 0.800000011920929
+      },
+      {
+        "name": "Running_B",
+        "duration": 1.0666667222976685
+      },
+      {
+        "name": "Running_Strafe_Left",
+        "duration": 0.800000011920929
+      },
+      {
+        "name": "Running_Strafe_Right",
+        "duration": 0.800000011920929
+      },
+      {
+        "name": "Sit_Chair_Down",
+        "duration": 0.800000011920929
+      },
+      {
+        "name": "Sit_Chair_Idle",
+        "duration": 3.5999999046325684
+      },
+      {
+        "name": "Sit_Chair_Pose",
+        "duration": 0
+      },
+      {
+        "name": "Sit_Chair_StandUp",
+        "duration": 0.800000011920929
+      },
+      {
+        "name": "Sit_Floor_Down",
+        "duration": 1
+      },
+      {
+        "name": "Sit_Floor_Idle",
+        "duration": 4
+      },
+      {
+        "name": "Sit_Floor_Pose",
+        "duration": 0
+      },
+      {
+        "name": "Sit_Floor_StandUp",
+        "duration": 1.1333333253860474
+      },
+      {
+        "name": "Spellcast_Long",
+        "duration": 2.5333333015441895
+      },
+      {
+        "name": "Spellcast_Raise",
+        "duration": 2.0999999046325684
+      },
+      {
+        "name": "Spellcast_Shoot",
+        "duration": 0.9333333373069763
+      },
+      {
+        "name": "Spellcasting",
+        "duration": 0.6666666865348816
+      },
+      {
+        "name": "T-Pose",
+        "duration": 0
+      },
+      {
+        "name": "Throw",
+        "duration": 1.3666666746139526
+      },
+      {
+        "name": "Unarmed_Idle",
+        "duration": 1.0666667222976685
+      },
+      {
+        "name": "Unarmed_Melee_Attack_Kick",
+        "duration": 0.9333333373069763
+      },
+      {
+        "name": "Unarmed_Melee_Attack_Punch_A",
+        "duration": 1.4666666984558105
+      },
+      {
+        "name": "Unarmed_Melee_Attack_Punch_B",
+        "duration": 1.6666666269302368
+      },
+      {
+        "name": "Unarmed_Pose",
+        "duration": 0
+      },
+      {
+        "name": "Use_Item",
+        "duration": 1.600000023841858
+      },
+      {
+        "name": "Walking_A",
+        "duration": 1.0666667222976685
+      },
+      {
+        "name": "Walking_B",
+        "duration": 1.0666667222976685
+      },
+      {
+        "name": "Walking_Backwards",
+        "duration": 1.0666667222976685
+      },
+      {
+        "name": "Walking_C",
+        "duration": 1.600000023841858
+      }
+    ],
+    "skeletonType": "蒙皮骨骼；详见 skins.joints",
+    "formatConversionRequired": false,
+    "retargetingRequired": "使用自带片段无需跨骨骼重定向；若复用校园现有其他模型动画则需重定向，当前未做。",
+    "suggestedActionMap": {
+      "idle": "Idle",
+      "walk": "Walking_A",
+      "run": "Running_A",
+      "jump": "Jump_Full_Short",
+      "punch": "Unarmed_Melee_Attack_Punch_A"
+    },
+    "missingActions": [
+      "wave"
+    ],
+    "compatibility": "GLTFLoader 可显示，自带 AnimationMixer 动作可采样；现有 variant 白名单未注册，不能直接用 ?avatar=kaykit-rogue",
+    "adaptationNeeded": [
+      "独立 variant 注册与资源路径映射（本次未修改控制器）",
+      "按原生动作名称映射，确认循环/一次性动作、根位移及跳跃高度是否与 createAvatarActions 重复",
+      "验证 +Z 朝向，静止高度 1.72m 与脚底归零，导航半径 .30m 不随外观变化",
+      "缺少挥手动作；不得把其他骨骼动作直接套用"
+    ],
+    "knownIssues": [
+      "仅独立预览验证；未验证校园碰撞、网络同步、完整六动作或手机帧率。",
+      "原模型包含武器/配件；未删除或改色。推荐先核对空手动作下配件表现。"
+    ],
+    "licenseFile": {
+      "path": "docs/characters/licenses/kaykit-adventurers/LICENSE.txt",
+      "sha256": "ae322141814056dda0deea7540d74c41d87aee1da319977cd1bd84ee5a923629"
+    }
+  },
+  {
+    "id": "kaykit-barbarian",
+    "repo": "KayKit-Game-Assets/KayKit-Character-Pack-Adventures-1.0",
+    "revision": "672074b73ba276876a19e8816ecdc5241817ab47",
+    "sourcePath": "addons/kaykit_character_pack_adventures/Characters/gltf/Barbarian.glb",
+    "sourceUrl": "https://github.com/KayKit-Game-Assets/KayKit-Character-Pack-Adventures-1.0/blob/672074b73ba276876a19e8816ecdc5241817ab47/addons/kaykit_character_pack_adventures/Characters/gltf/Barbarian.glb",
+    "licensePath": "docs/characters/licenses/kaykit-adventurers/LICENSE.txt",
+    "modelPath": "examples/campus-3d-v5/assets/characters/candidates/kaykit-barbarian/model.glb",
+    "downloadDate": "2026-10-24",
+    "displayName": "熊帽勇士",
+    "style": "Q版奇幻 / 熊帽巨斧",
+    "author": "Kay Lousberg (KayKit)",
+    "license": "CC0-1.0",
+    "licenseScope": {
+      "model": "CC0-1.0",
+      "textures": "CC0-1.0",
+      "animations": "CC0-1.0"
+    },
+    "attributionRequired": false,
+    "attribution": "非强制；建议署名 Kay Lousberg (KayKit)",
+    "licenseReview": "原始资源包/逐模型授权已保留；允许修改及网站分发。作为项目内兑换皮肤候选，需先完成技术适配。",
+    "status": "可显示",
+    "validation": {
+      "downloaded": true,
+      "parseVerified": true,
+      "displayVerified": true,
+      "bundledAnimationSamplingVerified": true,
+      "campusActionsVerified": false,
+      "sampledClips": 76,
+      "changedNodeClips": 69,
+      "limitation": "每段采样一次，静态姿势可能不变化；不代表完整动作视觉审查、脚滑或校园跳跃时序验证。"
+    },
+    "totalBytes": 3613268,
+    "files": [
+      {
+        "path": "examples/campus-3d-v5/assets/characters/candidates/kaykit-barbarian/model.glb",
+        "bytes": 3613268,
+        "sha256": "cefc311a0e10c7858b6141f5ada7e33268727564fb8ac1347aab97d000669cc6"
+      }
+    ],
+    "triangles": 6543,
+    "vertices": 5922,
+    "materialCount": 1,
+    "materials": [
+      {
+        "name": "barbarian_texture",
+        "baseColorFactor": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "baseColorTexture": "barbarian_texture",
+        "doubleSided": true
+      }
+    ],
+    "textures": [
+      {
+        "name": "barbarian_texture",
+        "uri": "embedded GLB bufferView",
+        "mimeType": "image/png",
+        "bytes": 15089,
+        "width": 1024,
+        "height": 1024,
+        "sha256": "7329b2ff9709e8d54c886d5ef49c08bd42b12be3bbb2facb1488a6b48b1e8a80"
+      }
+    ],
+    "skins": [
+      {
+        "name": "Rig",
+        "joints": [
+          "root",
+          "hips",
+          "spine",
+          "chest",
+          "upperarm.l",
+          "lowerarm.l",
+          "wrist.l",
+          "hand.l",
+          "handslot.l",
+          "upperarm.r",
+          "lowerarm.r",
+          "wrist.r",
+          "hand.r",
+          "handslot.r",
+          "head",
+          "upperleg.l",
+          "lowerleg.l",
+          "foot.l",
+          "toes.l",
+          "upperleg.r",
+          "lowerleg.r",
+          "foot.r",
+          "toes.r",
+          "kneeIK.l",
+          "control-toe-roll.l",
+          "control-heel-roll.l",
+          "control-foot-roll.l",
+          "heelIK.l",
+          "IK-foot.l",
+          "IK-toe.l",
+          "kneeIK.r",
+          "control-toe-roll.r",
+          "control-heel-roll.r",
+          "control-foot-roll.r",
+          "heelIK.r",
+          "IK-foot.r",
+          "IK-toe.r",
+          "elbowIK.l",
+          "handIK.l",
+          "elbowIK.r",
+          "handIK.r"
+        ]
+      }
+    ],
+    "extensionsUsed": [],
+    "extensionsRequired": [],
+    "texturePaths": [],
+    "embeddedTextureCount": 1,
+    "animations": [
+      {
+        "name": "1H_Melee_Attack_Chop",
+        "duration": 1.0666667222976685
+      },
+      {
+        "name": "1H_Melee_Attack_Slice_Diagonal",
+        "duration": 1
+      },
+      {
+        "name": "1H_Melee_Attack_Slice_Horizontal",
+        "duration": 1.0666667222976685
+      },
+      {
+        "name": "1H_Melee_Attack_Stab",
+        "duration": 1.600000023841858
+      },
+      {
+        "name": "1H_Ranged_Aiming",
+        "duration": 1.0666667222976685
+      },
+      {
+        "name": "1H_Ranged_Reload",
+        "duration": 1.1666666269302368
+      },
+      {
+        "name": "1H_Ranged_Shoot",
+        "duration": 1.0666667222976685
+      },
+      {
+        "name": "1H_Ranged_Shooting",
+        "duration": 1.600000023841858
+      },
+      {
+        "name": "2H_Melee_Attack_Chop",
+        "duration": 1.6333333253860474
+      },
+      {
+        "name": "2H_Melee_Attack_Slice",
+        "duration": 1.100000023841858
+      },
+      {
+        "name": "2H_Melee_Attack_Spin",
+        "duration": 2.4000000953674316
+      },
+      {
+        "name": "2H_Melee_Attack_Spinning",
+        "duration": 0.6666666865348816
+      },
+      {
+        "name": "2H_Melee_Attack_Stab",
+        "duration": 1.600000023841858
+      },
+      {
+        "name": "2H_Melee_Idle",
+        "duration": 1.0666667222976685
+      },
+      {
+        "name": "2H_Ranged_Aiming",
+        "duration": 1.600000023841858
+      },
+      {
+        "name": "2H_Ranged_Reload",
+        "duration": 1.600000023841858
+      },
+      {
+        "name": "2H_Ranged_Shoot",
+        "duration": 1.0666667222976685
+      },
+      {
+        "name": "2H_Ranged_Shooting",
+        "duration": 1.0666667222976685
+      },
+      {
+        "name": "Block",
+        "duration": 1.0666667222976685
+      },
+      {
+        "name": "Block_Attack",
+        "duration": 1.0666667222976685
+      },
+      {
+        "name": "Block_Hit",
+        "duration": 1.0666667222976685
+      },
+      {
+        "name": "Blocking",
+        "duration": 1.0666667222976685
+      },
+      {
+        "name": "Cheer",
+        "duration": 1.6666666269302368
+      },
+      {
+        "name": "Death_A",
+        "duration": 0.800000011920929
+      },
+      {
+        "name": "Death_A_Pose",
+        "duration": 0
+      },
+      {
+        "name": "Death_B",
+        "duration": 2.633333444595337
+      },
+      {
+        "name": "Death_B_Pose",
+        "duration": 0
+      },
+      {
+        "name": "Dodge_Backward",
+        "duration": 0.4000000059604645
+      },
+      {
+        "name": "Dodge_Forward",
+        "duration": 0.4000000059604645
+      },
+      {
+        "name": "Dodge_Left",
+        "duration": 0.4000000059604645
+      },
+      {
+        "name": "Dodge_Right",
+        "duration": 0.4000000059604645
+      },
+      {
+        "name": "Dualwield_Melee_Attack_Chop",
+        "duration": 1.2666666507720947
+      },
+      {
+        "name": "Dualwield_Melee_Attack_Slice",
+        "duration": 1.1666666269302368
+      },
+      {
+        "name": "Dualwield_Melee_Attack_Stab",
+        "duration": 1.600000023841858
+      },
+      {
+        "name": "Hit_A",
+        "duration": 0.6666666865348816
+      },
+      {
+        "name": "Hit_B",
+        "duration": 0.8666666746139526
+      },
+      {
+        "name": "Idle",
+        "duration": 1.0666667222976685
+      },
+      {
+        "name": "Interact",
+        "duration": 1.2999999523162842
+      },
+      {
+        "name": "Jump_Full_Long",
+        "duration": 2.3333332538604736
+      },
+      {
+        "name": "Jump_Full_Short",
+        "duration": 1.1666666269302368
+      },
+      {
+        "name": "Jump_Idle",
+        "duration": 1.0666667222976685
+      },
+      {
+        "name": "Jump_Land",
+        "duration": 0.6666666865348816
+      },
+      {
+        "name": "Jump_Start",
+        "duration": 0.6000000238418579
+      },
+      {
+        "name": "Lie_Down",
+        "duration": 3
+      },
+      {
+        "name": "Lie_Idle",
+        "duration": 2.6666667461395264
+      },
+      {
+        "name": "Lie_Pose",
+        "duration": 0
+      },
+      {
+        "name": "Lie_StandUp",
+        "duration": 2.3333332538604736
+      },
+      {
+        "name": "PickUp",
+        "duration": 1.2999999523162842
+      },
+      {
+        "name": "Running_A",
+        "duration": 0.800000011920929
+      },
+      {
+        "name": "Running_B",
+        "duration": 1.0666667222976685
+      },
+      {
+        "name": "Running_Strafe_Left",
+        "duration": 0.800000011920929
+      },
+      {
+        "name": "Running_Strafe_Right",
+        "duration": 0.800000011920929
+      },
+      {
+        "name": "Sit_Chair_Down",
+        "duration": 0.800000011920929
+      },
+      {
+        "name": "Sit_Chair_Idle",
+        "duration": 3.5999999046325684
+      },
+      {
+        "name": "Sit_Chair_Pose",
+        "duration": 0
+      },
+      {
+        "name": "Sit_Chair_StandUp",
+        "duration": 0.800000011920929
+      },
+      {
+        "name": "Sit_Floor_Down",
+        "duration": 1
+      },
+      {
+        "name": "Sit_Floor_Idle",
+        "duration": 4
+      },
+      {
+        "name": "Sit_Floor_Pose",
+        "duration": 0
+      },
+      {
+        "name": "Sit_Floor_StandUp",
+        "duration": 1.1333333253860474
+      },
+      {
+        "name": "Spellcast_Long",
+        "duration": 2.5333333015441895
+      },
+      {
+        "name": "Spellcast_Raise",
+        "duration": 2.0999999046325684
+      },
+      {
+        "name": "Spellcast_Shoot",
+        "duration": 0.9333333373069763
+      },
+      {
+        "name": "Spellcasting",
+        "duration": 0.6666666865348816
+      },
+      {
+        "name": "T-Pose",
+        "duration": 0
+      },
+      {
+        "name": "Throw",
+        "duration": 1.3666666746139526
+      },
+      {
+        "name": "Unarmed_Idle",
+        "duration": 1.0666667222976685
+      },
+      {
+        "name": "Unarmed_Melee_Attack_Kick",
+        "duration": 0.9333333373069763
+      },
+      {
+        "name": "Unarmed_Melee_Attack_Punch_A",
+        "duration": 1.4666666984558105
+      },
+      {
+        "name": "Unarmed_Melee_Attack_Punch_B",
+        "duration": 1.6666666269302368
+      },
+      {
+        "name": "Unarmed_Pose",
+        "duration": 0
+      },
+      {
+        "name": "Use_Item",
+        "duration": 1.600000023841858
+      },
+      {
+        "name": "Walking_A",
+        "duration": 1.0666667222976685
+      },
+      {
+        "name": "Walking_B",
+        "duration": 1.0666667222976685
+      },
+      {
+        "name": "Walking_Backwards",
+        "duration": 1.0666667222976685
+      },
+      {
+        "name": "Walking_C",
+        "duration": 1.600000023841858
+      }
+    ],
+    "skeletonType": "蒙皮骨骼；详见 skins.joints",
+    "formatConversionRequired": false,
+    "retargetingRequired": "使用自带片段无需跨骨骼重定向；若复用校园现有其他模型动画则需重定向，当前未做。",
+    "suggestedActionMap": {
+      "idle": "Idle",
+      "walk": "Walking_A",
+      "run": "Running_A",
+      "jump": "Jump_Full_Short",
+      "punch": "Unarmed_Melee_Attack_Punch_A"
+    },
+    "missingActions": [
+      "wave"
+    ],
+    "compatibility": "GLTFLoader 可显示，自带 AnimationMixer 动作可采样；现有 variant 白名单未注册，不能直接用 ?avatar=kaykit-barbarian",
+    "adaptationNeeded": [
+      "独立 variant 注册与资源路径映射（本次未修改控制器）",
+      "按原生动作名称映射，确认循环/一次性动作、根位移及跳跃高度是否与 createAvatarActions 重复",
+      "验证 +Z 朝向，静止高度 1.72m 与脚底归零，导航半径 .30m 不随外观变化",
+      "缺少挥手动作；不得把其他骨骼动作直接套用"
+    ],
+    "knownIssues": [
+      "仅独立预览验证；未验证校园碰撞、网络同步、完整六动作或手机帧率。",
+      "原模型包含武器/配件；未删除或改色。推荐先核对空手动作下配件表现。"
+    ],
+    "licenseFile": {
+      "path": "docs/characters/licenses/kaykit-adventurers/LICENSE.txt",
+      "sha256": "ae322141814056dda0deea7540d74c41d87aee1da319977cd1bd84ee5a923629"
+    }
+  },
+  {
+    "id": "kaykit-skeleton-minion",
+    "repo": "KayKit-Game-Assets/KayKit-Character-Pack-Skeletons-1.0",
+    "revision": "15b62b9bad122f72926c10fb14d622c73819fa54",
+    "sourcePath": "addons/kaykit_character_pack_skeletons/Characters/gltf/Skeleton_Minion.glb",
+    "sourceUrl": "https://github.com/KayKit-Game-Assets/KayKit-Character-Pack-Skeletons-1.0/blob/15b62b9bad122f72926c10fb14d622c73819fa54/addons/kaykit_character_pack_skeletons/Characters/gltf/Skeleton_Minion.glb",
+    "licensePath": "docs/characters/licenses/kaykit-skeletons/LICENSE.txt",
+    "modelPath": "examples/campus-3d-v5/assets/characters/candidates/kaykit-skeleton-minion/model.glb",
+    "downloadDate": "2026-10-24",
+    "displayName": "骷髅小兵",
+    "style": "卡通骷髅 / 非人类",
+    "author": "Kay Lousberg (KayKit)",
+    "license": "CC0-1.0",
+    "licenseScope": {
+      "model": "CC0-1.0",
+      "textures": "CC0-1.0",
+      "animations": "CC0-1.0"
+    },
+    "attributionRequired": false,
+    "attribution": "非强制；建议署名 Kay Lousberg (KayKit)",
+    "licenseReview": "原始资源包/逐模型授权已保留；允许修改及网站分发。作为项目内兑换皮肤候选，需先完成技术适配。",
+    "status": "可显示",
+    "validation": {
+      "downloaded": true,
+      "parseVerified": true,
+      "displayVerified": true,
+      "bundledAnimationSamplingVerified": true,
+      "campusActionsVerified": false,
+      "sampledClips": 95,
+      "changedNodeClips": 85,
+      "limitation": "每段采样一次，静态姿势可能不变化；不代表完整动作视觉审查、脚滑或校园跳跃时序验证。"
+    },
+    "totalBytes": 4814296,
+    "files": [
+      {
+        "path": "examples/campus-3d-v5/assets/characters/candidates/kaykit-skeleton-minion/model.glb",
+        "bytes": 4814296,
+        "sha256": "6ffc003f895bed0b074791e0e490846210a2e2f8fc7da300aba53cc185f95968"
+      }
+    ],
+    "triangles": 5288,
+    "vertices": 4858,
+    "materialCount": 2,
+    "materials": [
+      {
+        "name": "skeleton",
+        "baseColorFactor": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "baseColorTexture": "skeleton_texture",
+        "doubleSided": false
+      },
+      {
+        "name": "Glow",
+        "baseColorFactor": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "baseColorTexture": null,
+        "doubleSided": false
+      }
+    ],
+    "textures": [
+      {
+        "name": "skeleton_texture",
+        "uri": "embedded GLB bufferView",
+        "mimeType": "image/png",
+        "bytes": 17037,
+        "width": 1024,
+        "height": 1024,
+        "sha256": "15741a25c53e04fa9bf3beac3bc0de442359404b1ff9be863b892cb551ad3657"
+      }
+    ],
+    "skins": [
+      {
+        "name": "Rig",
+        "joints": [
+          "root",
+          "hips",
+          "spine",
+          "chest",
+          "upperarm.l",
+          "lowerarm.l",
+          "wrist.l",
+          "hand.l",
+          "handslot.l",
+          "upperarm.r",
+          "lowerarm.r",
+          "wrist.r",
+          "hand.r",
+          "handslot.r",
+          "head",
+          "upperleg.l",
+          "lowerleg.l",
+          "foot.l",
+          "toes.l",
+          "upperleg.r",
+          "lowerleg.r",
+          "foot.r",
+          "toes.r",
+          "kneeIK.l",
+          "control-toe-roll.l",
+          "control-heel-roll.l",
+          "control-foot-roll.l",
+          "heelIK.l",
+          "IK-foot.l",
+          "IK-toe.l",
+          "kneeIK.r",
+          "control-toe-roll.r",
+          "control-heel-roll.r",
+          "control-foot-roll.r",
+          "heelIK.r",
+          "IK-foot.r",
+          "IK-toe.r",
+          "elbowIK.l",
+          "handIK.l",
+          "elbowIK.r",
+          "handIK.r"
+        ]
+      }
+    ],
+    "extensionsUsed": [],
+    "extensionsRequired": [],
+    "texturePaths": [],
+    "embeddedTextureCount": 1,
+    "animations": [
+      {
+        "name": "1H_Melee_Attack_Chop",
+        "duration": 1.0666667222976685
+      },
+      {
+        "name": "1H_Melee_Attack_Jump_Chop",
+        "duration": 1.3333333730697632
+      },
+      {
+        "name": "1H_Melee_Attack_Slice_Diagonal",
+        "duration": 1
+      },
+      {
+        "name": "1H_Melee_Attack_Slice_Horizontal",
+        "duration": 1.0666667222976685
+      },
+      {
+        "name": "1H_Melee_Attack_Stab",
+        "duration": 1.600000023841858
+      },
+      {
+        "name": "1H_Ranged_Aiming",
+        "duration": 1.0666667222976685
+      },
+      {
+        "name": "1H_Ranged_Reload",
+        "duration": 1.1666666269302368
+      },
+      {
+        "name": "1H_Ranged_Shoot",
+        "duration": 1.0666667222976685
+      },
+      {
+        "name": "1H_Ranged_Shooting",
+        "duration": 1.600000023841858
+      },
+      {
+        "name": "2H_Melee_Attack_Chop",
+        "duration": 1.6333333253860474
+      },
+      {
+        "name": "2H_Melee_Attack_Slice",
+        "duration": 1.100000023841858
+      },
+      {
+        "name": "2H_Melee_Attack_Spin",
+        "duration": 2.4000000953674316
+      },
+      {
+        "name": "2H_Melee_Attack_Spinning",
+        "duration": 0.6666666865348816
+      },
+      {
+        "name": "2H_Melee_Attack_Stab",
+        "duration": 1.600000023841858
+      },
+      {
+        "name": "2H_Melee_Idle",
+        "duration": 1.0666667222976685
+      },
+      {
+        "name": "2H_Ranged_Aiming",
+        "duration": 1.600000023841858
+      },
+      {
+        "name": "2H_Ranged_Reload",
+        "duration": 1.600000023841858
+      },
+      {
+        "name": "2H_Ranged_Shoot",
+        "duration": 1.0666667222976685
+      },
+      {
+        "name": "2H_Ranged_Shooting",
+        "duration": 1.0666667222976685
+      },
+      {
+        "name": "Block",
+        "duration": 1.0666667222976685
+      },
+      {
+        "name": "Block_Attack",
+        "duration": 1.0666667222976685
+      },
+      {
+        "name": "Block_Hit",
+        "duration": 1.0666667222976685
+      },
+      {
+        "name": "Blocking",
+        "duration": 1.0666667222976685
+      },
+      {
+        "name": "Cheer",
+        "duration": 1.6666666269302368
+      },
+      {
+        "name": "Death_A",
+        "duration": 0.800000011920929
+      },
+      {
+        "name": "Death_A_Pose",
+        "duration": 0
+      },
+      {
+        "name": "Death_B",
+        "duration": 2.633333444595337
+      },
+      {
+        "name": "Death_B_Pose",
+        "duration": 0
+      },
+      {
+        "name": "Death_C_Pose",
+        "duration": 0
+      },
+      {
+        "name": "Death_C_Skeletons",
+        "duration": 2
+      },
+      {
+        "name": "Death_C_Skeletons_Resurrect",
+        "duration": 2.700000047683716
+      },
+      {
+        "name": "Dodge_Backward",
+        "duration": 0.4000000059604645
+      },
+      {
+        "name": "Dodge_Forward",
+        "duration": 0.4000000059604645
+      },
+      {
+        "name": "Dodge_Left",
+        "duration": 0.4000000059604645
+      },
+      {
+        "name": "Dodge_Right",
+        "duration": 0.4000000059604645
+      },
+      {
+        "name": "Dualwield_Melee_Attack_Chop",
+        "duration": 1.2666666507720947
+      },
+      {
+        "name": "Dualwield_Melee_Attack_Slice",
+        "duration": 1.1666666269302368
+      },
+      {
+        "name": "Dualwield_Melee_Attack_Stab",
+        "duration": 1.600000023841858
+      },
+      {
+        "name": "Hit_A",
+        "duration": 0.6666666865348816
+      },
+      {
+        "name": "Hit_B",
+        "duration": 0.8666666746139526
+      },
+      {
+        "name": "Idle",
+        "duration": 1.0666667222976685
+      },
+      {
+        "name": "Idle_B",
+        "duration": 2.133333444595337
+      },
+      {
+        "name": "Idle_Combat",
+        "duration": 4.266666889190674
+      },
+      {
+        "name": "Interact",
+        "duration": 1.2999999523162842
+      },
+      {
+        "name": "Jump_Full_Long",
+        "duration": 2.3333332538604736
+      },
+      {
+        "name": "Jump_Full_Short",
+        "duration": 1.1666666269302368
+      },
+      {
+        "name": "Jump_Idle",
+        "duration": 1.0666667222976685
+      },
+      {
+        "name": "Jump_Land",
+        "duration": 0.6666666865348816
+      },
+      {
+        "name": "Jump_Start",
+        "duration": 0.6000000238418579
+      },
+      {
+        "name": "Lie_Down",
+        "duration": 3
+      },
+      {
+        "name": "Lie_Idle",
+        "duration": 2.6666667461395264
+      },
+      {
+        "name": "Lie_Pose",
+        "duration": 0
+      },
+      {
+        "name": "Lie_StandUp",
+        "duration": 2.3333332538604736
+      },
+      {
+        "name": "PickUp",
+        "duration": 1.2999999523162842
+      },
+      {
+        "name": "Running_A",
+        "duration": 0.800000011920929
+      },
+      {
+        "name": "Running_B",
+        "duration": 1.0666667222976685
+      },
+      {
+        "name": "Running_C",
+        "duration": 0.800000011920929
+      },
+      {
+        "name": "Running_Strafe_Left",
+        "duration": 0.800000011920929
+      },
+      {
+        "name": "Running_Strafe_Right",
+        "duration": 0.800000011920929
+      },
+      {
+        "name": "Sit_Chair_Down",
+        "duration": 0.800000011920929
+      },
+      {
+        "name": "Sit_Chair_Idle",
+        "duration": 3.5999999046325684
+      },
+      {
+        "name": "Sit_Chair_Pose",
+        "duration": 0
+      },
+      {
+        "name": "Sit_Chair_StandUp",
+        "duration": 0.800000011920929
+      },
+      {
+        "name": "Sit_Floor_Down",
+        "duration": 1
+      },
+      {
+        "name": "Sit_Floor_Idle",
+        "duration": 4
+      },
+      {
+        "name": "Sit_Floor_Pose",
+        "duration": 0
+      },
+      {
+        "name": "Sit_Floor_StandUp",
+        "duration": 1.1333333253860474
+      },
+      {
+        "name": "Skeleton_Inactive_Standing_Pose",
+        "duration": 0
+      },
+      {
+        "name": "Skeletons_Awaken_Floor",
+        "duration": 2.299999952316284
+      },
+      {
+        "name": "Skeletons_Awaken_Floor_Long",
+        "duration": 3.8333332538604736
+      },
+      {
+        "name": "Skeletons_Awaken_Standing",
+        "duration": 1
+      },
+      {
+        "name": "Skeletons_Inactive_Floor_Pose",
+        "duration": 0
+      },
+      {
+        "name": "Spawn_Air",
+        "duration": 1.2999999523162842
+      },
+      {
+        "name": "Spawn_Ground",
+        "duration": 1.2999999523162842
+      },
+      {
+        "name": "Spawn_Ground_Skeletons",
+        "duration": 3.566666603088379
+      },
+      {
+        "name": "Spellcast_Long",
+        "duration": 2.5333333015441895
+      },
+      {
+        "name": "Spellcast_Raise",
+        "duration": 2.0999999046325684
+      },
+      {
+        "name": "Spellcast_Shoot",
+        "duration": 0.9333333373069763
+      },
+      {
+        "name": "Spellcast_Summon",
+        "duration": 4.300000190734863
+      },
+      {
+        "name": "Spellcasting",
+        "duration": 0.6666666865348816
+      },
+      {
+        "name": "T-Pose",
+        "duration": 0
+      },
+      {
+        "name": "Taunt",
+        "duration": 1.0333333015441895
+      },
+      {
+        "name": "Taunt_Longer",
+        "duration": 3
+      },
+      {
+        "name": "Throw",
+        "duration": 1.3666666746139526
+      },
+      {
+        "name": "Unarmed_Idle",
+        "duration": 1.0666667222976685
+      },
+      {
+        "name": "Unarmed_Melee_Attack_Kick",
+        "duration": 0.9333333373069763
+      },
+      {
+        "name": "Unarmed_Melee_Attack_Punch_A",
+        "duration": 1.4666666984558105
+      },
+      {
+        "name": "Unarmed_Melee_Attack_Punch_B",
+        "duration": 1.6666666269302368
+      },
+      {
+        "name": "Unarmed_Pose",
+        "duration": 0
+      },
+      {
+        "name": "Use_Item",
+        "duration": 1.600000023841858
+      },
+      {
+        "name": "Walking_A",
+        "duration": 1.0666667222976685
+      },
+      {
+        "name": "Walking_B",
+        "duration": 1.0666667222976685
+      },
+      {
+        "name": "Walking_Backwards",
+        "duration": 1.0666667222976685
+      },
+      {
+        "name": "Walking_C",
+        "duration": 1.600000023841858
+      },
+      {
+        "name": "Walking_D_Skeletons",
+        "duration": 1.600000023841858
+      }
+    ],
+    "skeletonType": "蒙皮骨骼；详见 skins.joints",
+    "formatConversionRequired": false,
+    "retargetingRequired": "使用自带片段无需跨骨骼重定向；若复用校园现有其他模型动画则需重定向，当前未做。",
+    "suggestedActionMap": {
+      "idle": "Idle",
+      "walk": "Walking_A",
+      "run": "Running_A",
+      "jump": "Jump_Full_Short",
+      "punch": "Unarmed_Melee_Attack_Punch_A"
+    },
+    "missingActions": [
+      "wave"
+    ],
+    "compatibility": "GLTFLoader 可显示，自带 AnimationMixer 动作可采样；现有 variant 白名单未注册，不能直接用 ?avatar=kaykit-skeleton-minion",
+    "adaptationNeeded": [
+      "独立 variant 注册与资源路径映射（本次未修改控制器）",
+      "按原生动作名称映射，确认循环/一次性动作、根位移及跳跃高度是否与 createAvatarActions 重复",
+      "验证 +Z 朝向，静止高度 1.72m 与脚底归零，导航半径 .30m 不随外观变化",
+      "缺少挥手动作；不得把其他骨骼动作直接套用"
+    ],
+    "knownIssues": [
+      "仅独立预览验证；未验证校园碰撞、网络同步、完整六动作或手机帧率。",
+      "原模型包含武器/配件；未删除或改色。推荐先核对空手动作下配件表现。"
+    ],
+    "licenseFile": {
+      "path": "docs/characters/licenses/kaykit-skeletons/LICENSE.txt",
+      "sha256": "5d822abca4e08c5a91d329e5372b3dc605cba8d994f752cb0f7dfdb7a0a79954"
+    }
+  },
+  {
+    "id": "kenney-female-a",
+    "revision": "9e1d48e6d7b8479ebbe84df71eb5bd8e1b3f0da546dea641890dccc8a02d0999",
+    "sourcePath": "Models/GLB format/character-female-a.glb",
+    "sourceUrl": "https://kenney.nl/assets/mini-characters",
+    "downloadUrl": "https://kenney.nl/media/pages/assets/mini-characters/bfc7e272b4-1774770718/kenney_mini-characters.zip",
+    "archiveSha256": "9e1d48e6d7b8479ebbe84df71eb5bd8e1b3f0da546dea641890dccc8a02d0999",
+    "licensePath": "docs/characters/licenses/kenney-mini-characters/License.txt",
+    "modelPath": "examples/campus-3d-v5/assets/characters/candidates/kenney-female-a/model.glb",
+    "downloadDate": "2026-10-24",
+    "displayName": "紫衣助行女孩",
+    "style": "现代卡通 / 发髻与助行器",
+    "author": "Kenney",
+    "license": "CC0-1.0",
+    "licenseScope": {
+      "model": "CC0-1.0",
+      "textures": "CC0-1.0",
+      "animations": "CC0-1.0"
+    },
+    "attributionRequired": false,
+    "attribution": "非强制；建议署名 Kenney",
+    "licenseReview": "原始资源包/逐模型授权已保留；允许修改及网站分发。作为项目内兑换皮肤候选，需先完成技术适配。",
+    "status": "可显示",
+    "validation": {
+      "downloaded": true,
+      "parseVerified": true,
+      "displayVerified": true,
+      "bundledAnimationSamplingVerified": true,
+      "campusActionsVerified": false,
+      "sampledClips": 32,
+      "changedNodeClips": 24,
+      "limitation": "每段采样一次，静态姿势可能不变化；不代表完整动作视觉审查、脚滑或校园跳跃时序验证。"
+    },
+    "totalBytes": 282154,
+    "files": [
+      {
+        "path": "examples/campus-3d-v5/assets/characters/candidates/kenney-female-a/model.glb",
+        "bytes": 273448,
+        "sha256": "8cfcff43460da8b421f2a7fdfb43ec177321cad2746db9497cbf128d5806e2a8"
+      },
+      {
+        "path": "examples/campus-3d-v5/assets/characters/candidates/kenney-female-a/Textures/colormap.png",
+        "bytes": 8706,
+        "sha256": "0d4947d34ff32acf4a359c7f22ca784e057e7e72f622170a9a77b6fc88fdb70e"
+      }
+    ],
+    "triangles": 876,
+    "vertices": 1576,
+    "materialCount": 1,
+    "materials": [
+      {
+        "name": "colormap",
+        "baseColorFactor": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "baseColorTexture": "colormap",
+        "doubleSided": true
+      }
+    ],
+    "textures": [
+      {
+        "name": "colormap",
+        "uri": "Textures/colormap.png",
+        "mimeType": "image/png",
+        "bytes": 8706,
+        "width": 512,
+        "height": 512,
+        "sha256": "0d4947d34ff32acf4a359c7f22ca784e057e7e72f622170a9a77b6fc88fdb70e"
+      }
+    ],
+    "skins": [
+      {
+        "name": "",
+        "joints": [
+          "root",
+          "leg-left",
+          "leg-right",
+          "torso",
+          "arm-left",
+          "arm-right",
+          "head"
+        ]
+      },
+      {
+        "name": "",
+        "joints": [
+          "root",
+          "leg-left",
+          "leg-right",
+          "torso",
+          "arm-left",
+          "arm-right",
+          "head"
+        ]
+      }
+    ],
+    "extensionsUsed": [
+      "KHR_texture_transform"
+    ],
+    "extensionsRequired": [],
+    "texturePaths": [
+      "examples/campus-3d-v5/assets/characters/candidates/kenney-female-a/Textures/colormap.png"
+    ],
+    "embeddedTextureCount": 0,
+    "animations": [
+      {
+        "name": "static",
+        "duration": 0.10000000149011612
+      },
+      {
+        "name": "idle",
+        "duration": 1.3333333730697632
+      },
+      {
+        "name": "walk",
+        "duration": 0.6666666865348816
+      },
+      {
+        "name": "sprint",
+        "duration": 0.5
+      },
+      {
+        "name": "jump",
+        "duration": 0.5
+      },
+      {
+        "name": "fall",
+        "duration": 0.3333333432674408
+      },
+      {
+        "name": "crouch",
+        "duration": 0.1666666716337204
+      },
+      {
+        "name": "sit",
+        "duration": 0.1666666716337204
+      },
+      {
+        "name": "drive",
+        "duration": 0.1666666716337204
+      },
+      {
+        "name": "die",
+        "duration": 0.3333333432674408
+      },
+      {
+        "name": "pick-up",
+        "duration": 0.3333333432674408
+      },
+      {
+        "name": "emote-yes",
+        "duration": 0.6666666865348816
+      },
+      {
+        "name": "emote-no",
+        "duration": 0.6666666865348816
+      },
+      {
+        "name": "holding-right",
+        "duration": 0.1666666716337204
+      },
+      {
+        "name": "holding-left",
+        "duration": 0.1666666716337204
+      },
+      {
+        "name": "holding-both",
+        "duration": 0.1666666716337204
+      },
+      {
+        "name": "holding-right-shoot",
+        "duration": 0.20000000298023224
+      },
+      {
+        "name": "holding-left-shoot",
+        "duration": 0.20000000298023224
+      },
+      {
+        "name": "holding-both-shoot",
+        "duration": 0.20000000298023224
+      },
+      {
+        "name": "attack-melee-right",
+        "duration": 0.4166666567325592
+      },
+      {
+        "name": "attack-melee-left",
+        "duration": 0.4166666567325592
+      },
+      {
+        "name": "attack-kick-right",
+        "duration": 0.5333333611488342
+      },
+      {
+        "name": "attack-kick-left",
+        "duration": 0.5333333611488342
+      },
+      {
+        "name": "interact-right",
+        "duration": 0.6666666865348816
+      },
+      {
+        "name": "interact-left",
+        "duration": 0.6666666865348816
+      },
+      {
+        "name": "wheelchair-sit",
+        "duration": 0.1666666716337204
+      },
+      {
+        "name": "wheelchair-look-left",
+        "duration": 0.3333333432674408
+      },
+      {
+        "name": "wheelchair-look-right",
+        "duration": 0.3333333432674408
+      },
+      {
+        "name": "wheelchair-move-forward",
+        "duration": 0.5
+      },
+      {
+        "name": "wheelchair-move-back",
+        "duration": 0.5
+      },
+      {
+        "name": "wheelchair-move-left",
+        "duration": 0.5
+      },
+      {
+        "name": "wheelchair-move-right",
+        "duration": 0.5
+      }
+    ],
+    "skeletonType": "蒙皮骨骼；详见 skins.joints",
+    "formatConversionRequired": false,
+    "retargetingRequired": "使用自带片段无需跨骨骼重定向；若复用校园现有其他模型动画则需重定向，当前未做。",
+    "suggestedActionMap": {
+      "idle": "idle",
+      "walk": "walk",
+      "run": "sprint",
+      "jump": "jump",
+      "punch": "attack-melee-right"
+    },
+    "missingActions": [
+      "wave"
+    ],
+    "compatibility": "GLTFLoader 可显示，自带 AnimationMixer 动作可采样；现有 variant 白名单未注册，不能直接用 ?avatar=kenney-female-a",
+    "adaptationNeeded": [
+      "独立 variant 注册与资源路径映射（本次未修改控制器）",
+      "按原生动作名称映射，确认循环/一次性动作、根位移及跳跃高度是否与 createAvatarActions 重复",
+      "验证 +Z 朝向，静止高度 1.72m 与脚底归零，导航半径 .30m 不随外观变化",
+      "缺少挥手动作；不得把其他骨骼动作直接套用"
+    ],
+    "knownIssues": [
+      "仅独立预览验证；未验证校园碰撞、网络同步、完整六动作或手机帧率。",
+      "原模型包含助行器，外观和横向占地需要产品确认；不适合直接套默认 .30m 圆形碰撞。"
+    ],
+    "licenseFile": {
+      "path": "docs/characters/licenses/kenney-mini-characters/License.txt",
+      "sha256": "28358ae5accc85b572eb42507956afc8beae05acb4648bb9026a5714d421b785"
+    }
+  },
+  {
+    "id": "kenney-male-c",
+    "revision": "9e1d48e6d7b8479ebbe84df71eb5bd8e1b3f0da546dea641890dccc8a02d0999",
+    "sourcePath": "Models/GLB format/character-male-c.glb",
+    "sourceUrl": "https://kenney.nl/assets/mini-characters",
+    "downloadUrl": "https://kenney.nl/media/pages/assets/mini-characters/bfc7e272b4-1774770718/kenney_mini-characters.zip",
+    "archiveSha256": "9e1d48e6d7b8479ebbe84df71eb5bd8e1b3f0da546dea641890dccc8a02d0999",
+    "licensePath": "docs/characters/licenses/kenney-mini-characters/License.txt",
+    "modelPath": "examples/campus-3d-v5/assets/characters/candidates/kenney-male-c/model.glb",
+    "downloadDate": "2026-10-24",
+    "displayName": "蓝帽巡逻员",
+    "style": "现代卡通 / 制服与胡须",
+    "author": "Kenney",
+    "license": "CC0-1.0",
+    "licenseScope": {
+      "model": "CC0-1.0",
+      "textures": "CC0-1.0",
+      "animations": "CC0-1.0"
+    },
+    "attributionRequired": false,
+    "attribution": "非强制；建议署名 Kenney",
+    "licenseReview": "原始资源包/逐模型授权已保留；允许修改及网站分发。作为项目内兑换皮肤候选，需先完成技术适配。",
+    "status": "可显示",
+    "validation": {
+      "downloaded": true,
+      "parseVerified": true,
+      "displayVerified": true,
+      "bundledAnimationSamplingVerified": true,
+      "campusActionsVerified": false,
+      "sampledClips": 32,
+      "changedNodeClips": 24,
+      "limitation": "每段采样一次，静态姿势可能不变化；不代表完整动作视觉审查、脚滑或校园跳跃时序验证。"
+    },
+    "totalBytes": 271810,
+    "files": [
+      {
+        "path": "examples/campus-3d-v5/assets/characters/candidates/kenney-male-c/model.glb",
+        "bytes": 263104,
+        "sha256": "672a6506f7475bbd655da1d7ff712c1729a430f134c62385a4e5d3c1378acb40"
+      },
+      {
+        "path": "examples/campus-3d-v5/assets/characters/candidates/kenney-male-c/Textures/colormap.png",
+        "bytes": 8706,
+        "sha256": "0d4947d34ff32acf4a359c7f22ca784e057e7e72f622170a9a77b6fc88fdb70e"
+      }
+    ],
+    "triangles": 793,
+    "vertices": 1455,
+    "materialCount": 1,
+    "materials": [
+      {
+        "name": "colormap",
+        "baseColorFactor": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "baseColorTexture": "colormap",
+        "doubleSided": true
+      }
+    ],
+    "textures": [
+      {
+        "name": "colormap",
+        "uri": "Textures/colormap.png",
+        "mimeType": "image/png",
+        "bytes": 8706,
+        "width": 512,
+        "height": 512,
+        "sha256": "0d4947d34ff32acf4a359c7f22ca784e057e7e72f622170a9a77b6fc88fdb70e"
+      }
+    ],
+    "skins": [
+      {
+        "name": "",
+        "joints": [
+          "root",
+          "leg-left",
+          "leg-right",
+          "torso",
+          "arm-left",
+          "arm-right",
+          "head"
+        ]
+      },
+      {
+        "name": "",
+        "joints": [
+          "root",
+          "leg-left",
+          "leg-right",
+          "torso",
+          "arm-left",
+          "arm-right",
+          "head"
+        ]
+      }
+    ],
+    "extensionsUsed": [
+      "KHR_texture_transform"
+    ],
+    "extensionsRequired": [],
+    "texturePaths": [
+      "examples/campus-3d-v5/assets/characters/candidates/kenney-male-c/Textures/colormap.png"
+    ],
+    "embeddedTextureCount": 0,
+    "animations": [
+      {
+        "name": "static",
+        "duration": 0.10000000149011612
+      },
+      {
+        "name": "idle",
+        "duration": 1.3333333730697632
+      },
+      {
+        "name": "walk",
+        "duration": 0.6666666865348816
+      },
+      {
+        "name": "sprint",
+        "duration": 0.5
+      },
+      {
+        "name": "jump",
+        "duration": 0.5
+      },
+      {
+        "name": "fall",
+        "duration": 0.3333333432674408
+      },
+      {
+        "name": "crouch",
+        "duration": 0.1666666716337204
+      },
+      {
+        "name": "sit",
+        "duration": 0.1666666716337204
+      },
+      {
+        "name": "drive",
+        "duration": 0.1666666716337204
+      },
+      {
+        "name": "die",
+        "duration": 0.3333333432674408
+      },
+      {
+        "name": "pick-up",
+        "duration": 0.3333333432674408
+      },
+      {
+        "name": "emote-yes",
+        "duration": 0.6666666865348816
+      },
+      {
+        "name": "emote-no",
+        "duration": 0.6666666865348816
+      },
+      {
+        "name": "holding-right",
+        "duration": 0.1666666716337204
+      },
+      {
+        "name": "holding-left",
+        "duration": 0.1666666716337204
+      },
+      {
+        "name": "holding-both",
+        "duration": 0.1666666716337204
+      },
+      {
+        "name": "holding-right-shoot",
+        "duration": 0.20000000298023224
+      },
+      {
+        "name": "holding-left-shoot",
+        "duration": 0.20000000298023224
+      },
+      {
+        "name": "holding-both-shoot",
+        "duration": 0.20000000298023224
+      },
+      {
+        "name": "attack-melee-right",
+        "duration": 0.4166666567325592
+      },
+      {
+        "name": "attack-melee-left",
+        "duration": 0.4166666567325592
+      },
+      {
+        "name": "attack-kick-right",
+        "duration": 0.5333333611488342
+      },
+      {
+        "name": "attack-kick-left",
+        "duration": 0.5333333611488342
+      },
+      {
+        "name": "interact-right",
+        "duration": 0.6666666865348816
+      },
+      {
+        "name": "interact-left",
+        "duration": 0.6666666865348816
+      },
+      {
+        "name": "wheelchair-sit",
+        "duration": 0.1666666716337204
+      },
+      {
+        "name": "wheelchair-look-left",
+        "duration": 0.3333333432674408
+      },
+      {
+        "name": "wheelchair-look-right",
+        "duration": 0.3333333432674408
+      },
+      {
+        "name": "wheelchair-move-forward",
+        "duration": 0.5
+      },
+      {
+        "name": "wheelchair-move-back",
+        "duration": 0.5
+      },
+      {
+        "name": "wheelchair-move-left",
+        "duration": 0.5
+      },
+      {
+        "name": "wheelchair-move-right",
+        "duration": 0.5
+      }
+    ],
+    "skeletonType": "蒙皮骨骼；详见 skins.joints",
+    "formatConversionRequired": false,
+    "retargetingRequired": "使用自带片段无需跨骨骼重定向；若复用校园现有其他模型动画则需重定向，当前未做。",
+    "suggestedActionMap": {
+      "idle": "idle",
+      "walk": "walk",
+      "run": "sprint",
+      "jump": "jump",
+      "punch": "attack-melee-right"
+    },
+    "missingActions": [
+      "wave"
+    ],
+    "compatibility": "GLTFLoader 可显示，自带 AnimationMixer 动作可采样；现有 variant 白名单未注册，不能直接用 ?avatar=kenney-male-c",
+    "adaptationNeeded": [
+      "独立 variant 注册与资源路径映射（本次未修改控制器）",
+      "按原生动作名称映射，确认循环/一次性动作、根位移及跳跃高度是否与 createAvatarActions 重复",
+      "验证 +Z 朝向，静止高度 1.72m 与脚底归零，导航半径 .30m 不随外观变化",
+      "缺少挥手动作；不得把其他骨骼动作直接套用"
+    ],
+    "knownIssues": [
+      "仅独立预览验证；未验证校园碰撞、网络同步、完整六动作或手机帧率。"
+    ],
+    "licenseFile": {
+      "path": "docs/characters/licenses/kenney-mini-characters/License.txt",
+      "sha256": "28358ae5accc85b572eb42507956afc8beae05acb4648bb9026a5714d421b785"
+    }
+  },
+  {
+    "id": "kenney-ghost",
+    "revision": "1a93613f2e5675f3310acf49ec9ef13ae7adeb756ac3b205bfb6cc9311a81062",
+    "sourcePath": "Models/GLB format/character-ghost.glb",
+    "sourceUrl": "https://kenney.nl/assets/graveyard-kit",
+    "downloadUrl": "https://kenney.nl/media/pages/assets/graveyard-kit/ba8d4b4517-1760691807/kenney_graveyard-kit_5.0.zip",
+    "archiveSha256": "1a93613f2e5675f3310acf49ec9ef13ae7adeb756ac3b205bfb6cc9311a81062",
+    "licensePath": "docs/characters/licenses/kenney-graveyard-kit/License.txt",
+    "modelPath": "examples/campus-3d-v5/assets/characters/candidates/kenney-ghost/model.glb",
+    "downloadDate": "2026-10-24",
+    "displayName": "白团幽灵",
+    "style": "抽象卡通 / 布状幽灵",
+    "author": "Kenney",
+    "license": "CC0-1.0",
+    "licenseScope": {
+      "model": "CC0-1.0",
+      "textures": "CC0-1.0",
+      "animations": "CC0-1.0"
+    },
+    "attributionRequired": false,
+    "attribution": "非强制；建议署名 Kenney",
+    "licenseReview": "原始资源包/逐模型授权已保留；允许修改及网站分发。作为项目内兑换皮肤候选，需先完成技术适配。",
+    "status": "可显示",
+    "validation": {
+      "downloaded": true,
+      "parseVerified": true,
+      "displayVerified": true,
+      "bundledAnimationSamplingVerified": true,
+      "campusActionsVerified": false,
+      "sampledClips": 32,
+      "changedNodeClips": 24,
+      "limitation": "每段采样一次，静态姿势可能不变化；不代表完整动作视觉审查、脚滑或校园跳跃时序验证。"
+    },
+    "totalBytes": 124981,
+    "files": [
+      {
+        "path": "examples/campus-3d-v5/assets/characters/candidates/kenney-ghost/model.glb",
+        "bytes": 114016,
+        "sha256": "d4334bc0c7c0ca27924e238b47fe5b0984f4f6bbaeaa55f7e75d0287e8935895"
+      },
+      {
+        "path": "examples/campus-3d-v5/assets/characters/candidates/kenney-ghost/Textures/colormap.png",
+        "bytes": 10965,
+        "sha256": "a94b4dc4f77a4b8aec96bde94f63912a1ce12aa98eec2c1e9a37c89e20a5f091"
+      }
+    ],
+    "triangles": 413,
+    "vertices": 593,
+    "materialCount": 1,
+    "materials": [
+      {
+        "name": "colormap",
+        "baseColorFactor": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "baseColorTexture": "colormap",
+        "doubleSided": true
+      }
+    ],
+    "textures": [
+      {
+        "name": "colormap",
+        "uri": "Textures/colormap.png",
+        "mimeType": "image/png",
+        "bytes": 10965,
+        "width": 512,
+        "height": 512,
+        "sha256": "a94b4dc4f77a4b8aec96bde94f63912a1ce12aa98eec2c1e9a37c89e20a5f091"
+      }
+    ],
+    "skins": [],
+    "extensionsUsed": [
+      "KHR_texture_transform"
+    ],
+    "extensionsRequired": [],
+    "texturePaths": [
+      "examples/campus-3d-v5/assets/characters/candidates/kenney-ghost/Textures/colormap.png"
+    ],
+    "embeddedTextureCount": 0,
+    "animations": [
+      {
+        "name": "static",
+        "duration": 0.10000000149011612
+      },
+      {
+        "name": "idle",
+        "duration": 1.3333333730697632
+      },
+      {
+        "name": "walk",
+        "duration": 0.6666666865348816
+      },
+      {
+        "name": "sprint",
+        "duration": 0.5
+      },
+      {
+        "name": "jump",
+        "duration": 0.5
+      },
+      {
+        "name": "fall",
+        "duration": 0.3333333432674408
+      },
+      {
+        "name": "crouch",
+        "duration": 0.1666666716337204
+      },
+      {
+        "name": "sit",
+        "duration": 0.1666666716337204
+      },
+      {
+        "name": "drive",
+        "duration": 0.1666666716337204
+      },
+      {
+        "name": "die",
+        "duration": 0.3333333432674408
+      },
+      {
+        "name": "pick-up",
+        "duration": 0.3333333432674408
+      },
+      {
+        "name": "emote-yes",
+        "duration": 0.6666666865348816
+      },
+      {
+        "name": "emote-no",
+        "duration": 0.6666666865348816
+      },
+      {
+        "name": "holding-right",
+        "duration": 0.1666666716337204
+      },
+      {
+        "name": "holding-left",
+        "duration": 0.1666666716337204
+      },
+      {
+        "name": "holding-both",
+        "duration": 0.1666666716337204
+      },
+      {
+        "name": "holding-right-shoot",
+        "duration": 0.20000000298023224
+      },
+      {
+        "name": "holding-left-shoot",
+        "duration": 0.20000000298023224
+      },
+      {
+        "name": "holding-both-shoot",
+        "duration": 0.20000000298023224
+      },
+      {
+        "name": "attack-melee-right",
+        "duration": 0.4166666567325592
+      },
+      {
+        "name": "attack-melee-left",
+        "duration": 0.4166666567325592
+      },
+      {
+        "name": "attack-kick-right",
+        "duration": 0.5333333611488342
+      },
+      {
+        "name": "attack-kick-left",
+        "duration": 0.5333333611488342
+      },
+      {
+        "name": "interact-right",
+        "duration": 0.6666666865348816
+      },
+      {
+        "name": "interact-left",
+        "duration": 0.6666666865348816
+      },
+      {
+        "name": "wheelchair-sit",
+        "duration": 0.1666666716337204
+      },
+      {
+        "name": "wheelchair-look-left",
+        "duration": 0.3333333432674408
+      },
+      {
+        "name": "wheelchair-look-right",
+        "duration": 0.3333333432674408
+      },
+      {
+        "name": "wheelchair-move-forward",
+        "duration": 0.5
+      },
+      {
+        "name": "wheelchair-move-back",
+        "duration": 0.5
+      },
+      {
+        "name": "wheelchair-move-left",
+        "duration": 0.5
+      },
+      {
+        "name": "wheelchair-move-right",
+        "duration": 0.5
+      }
+    ],
+    "skeletonType": "节点层级刚体动画；无 glTF skin",
+    "formatConversionRequired": false,
+    "retargetingRequired": "使用自带片段无需跨骨骼重定向；若复用校园现有其他模型动画则需重定向，当前未做。",
+    "suggestedActionMap": {
+      "idle": "idle",
+      "walk": "walk",
+      "run": "sprint",
+      "jump": "jump",
+      "punch": "attack-melee-right"
+    },
+    "missingActions": [
+      "wave"
+    ],
+    "compatibility": "GLTFLoader 可显示，自带 AnimationMixer 动作可采样；现有 variant 白名单未注册，不能直接用 ?avatar=kenney-ghost",
+    "adaptationNeeded": [
+      "独立 variant 注册与资源路径映射（本次未修改控制器）",
+      "按原生动作名称映射，确认循环/一次性动作、根位移及跳跃高度是否与 createAvatarActions 重复",
+      "验证 +Z 朝向，静止高度 1.72m 与脚底归零，导航半径 .30m 不随外观变化",
+      "缺少挥手动作；不得把其他骨骼动作直接套用"
+    ],
+    "knownIssues": [
+      "仅独立预览验证；未验证校园碰撞、网络同步、完整六动作或手机帧率。",
+      "不是蒙皮骨骼角色，保留自带节点动画；部分共享片段对该体型视觉意义有限。"
+    ],
+    "licenseFile": {
+      "path": "docs/characters/licenses/kenney-graveyard-kit/License.txt",
+      "sha256": "a48e274258386c6bcb5302f17eaab40304cd805cc68be2754e2452179418c70e"
+    }
+  },
+  {
+    "id": "kenney-vampire",
+    "revision": "1a93613f2e5675f3310acf49ec9ef13ae7adeb756ac3b205bfb6cc9311a81062",
+    "sourcePath": "Models/GLB format/character-vampire.glb",
+    "sourceUrl": "https://kenney.nl/assets/graveyard-kit",
+    "downloadUrl": "https://kenney.nl/media/pages/assets/graveyard-kit/ba8d4b4517-1760691807/kenney_graveyard-kit_5.0.zip",
+    "archiveSha256": "1a93613f2e5675f3310acf49ec9ef13ae7adeb756ac3b205bfb6cc9311a81062",
+    "licensePath": "docs/characters/licenses/kenney-graveyard-kit/License.txt",
+    "modelPath": "examples/campus-3d-v5/assets/characters/candidates/kenney-vampire/model.glb",
+    "downloadDate": "2026-10-24",
+    "displayName": "红领吸血鬼",
+    "style": "卡通怪物 / 黑衣红领",
+    "author": "Kenney",
+    "license": "CC0-1.0",
+    "licenseScope": {
+      "model": "CC0-1.0",
+      "textures": "CC0-1.0",
+      "animations": "CC0-1.0"
+    },
+    "attributionRequired": false,
+    "attribution": "非强制；建议署名 Kenney",
+    "licenseReview": "原始资源包/逐模型授权已保留；允许修改及网站分发。作为项目内兑换皮肤候选，需先完成技术适配。",
+    "status": "可显示",
+    "validation": {
+      "downloaded": true,
+      "parseVerified": true,
+      "displayVerified": true,
+      "bundledAnimationSamplingVerified": true,
+      "campusActionsVerified": false,
+      "sampledClips": 32,
+      "changedNodeClips": 24,
+      "limitation": "每段采样一次，静态姿势可能不变化；不代表完整动作视觉审查、脚滑或校园跳跃时序验证。"
+    },
+    "totalBytes": 259097,
+    "files": [
+      {
+        "path": "examples/campus-3d-v5/assets/characters/candidates/kenney-vampire/model.glb",
+        "bytes": 248132,
+        "sha256": "89e646e46d9a067009a548d9b120ec358fbe9fa3b0d671136b8bf930be2f2cd4"
+      },
+      {
+        "path": "examples/campus-3d-v5/assets/characters/candidates/kenney-vampire/Textures/colormap.png",
+        "bytes": 10965,
+        "sha256": "a94b4dc4f77a4b8aec96bde94f63912a1ce12aa98eec2c1e9a37c89e20a5f091"
+      }
+    ],
+    "triangles": 1100,
+    "vertices": 2034,
+    "materialCount": 1,
+    "materials": [
+      {
+        "name": "colormap",
+        "baseColorFactor": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "baseColorTexture": "colormap",
+        "doubleSided": true
+      }
+    ],
+    "textures": [
+      {
+        "name": "colormap",
+        "uri": "Textures/colormap.png",
+        "mimeType": "image/png",
+        "bytes": 10965,
+        "width": 512,
+        "height": 512,
+        "sha256": "a94b4dc4f77a4b8aec96bde94f63912a1ce12aa98eec2c1e9a37c89e20a5f091"
+      }
+    ],
+    "skins": [],
+    "extensionsUsed": [
+      "KHR_texture_transform"
+    ],
+    "extensionsRequired": [],
+    "texturePaths": [
+      "examples/campus-3d-v5/assets/characters/candidates/kenney-vampire/Textures/colormap.png"
+    ],
+    "embeddedTextureCount": 0,
+    "animations": [
+      {
+        "name": "static",
+        "duration": 0.10000000149011612
+      },
+      {
+        "name": "idle",
+        "duration": 1.3333333730697632
+      },
+      {
+        "name": "walk",
+        "duration": 0.6666666865348816
+      },
+      {
+        "name": "sprint",
+        "duration": 0.5
+      },
+      {
+        "name": "jump",
+        "duration": 0.5
+      },
+      {
+        "name": "fall",
+        "duration": 0.3333333432674408
+      },
+      {
+        "name": "crouch",
+        "duration": 0.1666666716337204
+      },
+      {
+        "name": "sit",
+        "duration": 0.1666666716337204
+      },
+      {
+        "name": "drive",
+        "duration": 0.1666666716337204
+      },
+      {
+        "name": "die",
+        "duration": 0.3333333432674408
+      },
+      {
+        "name": "pick-up",
+        "duration": 0.3333333432674408
+      },
+      {
+        "name": "emote-yes",
+        "duration": 0.6666666865348816
+      },
+      {
+        "name": "emote-no",
+        "duration": 0.6666666865348816
+      },
+      {
+        "name": "holding-right",
+        "duration": 0.1666666716337204
+      },
+      {
+        "name": "holding-left",
+        "duration": 0.1666666716337204
+      },
+      {
+        "name": "holding-both",
+        "duration": 0.1666666716337204
+      },
+      {
+        "name": "holding-right-shoot",
+        "duration": 0.20000000298023224
+      },
+      {
+        "name": "holding-left-shoot",
+        "duration": 0.20000000298023224
+      },
+      {
+        "name": "holding-both-shoot",
+        "duration": 0.20000000298023224
+      },
+      {
+        "name": "attack-melee-right",
+        "duration": 0.4166666567325592
+      },
+      {
+        "name": "attack-melee-left",
+        "duration": 0.4166666567325592
+      },
+      {
+        "name": "attack-kick-right",
+        "duration": 0.5333333611488342
+      },
+      {
+        "name": "attack-kick-left",
+        "duration": 0.5333333611488342
+      },
+      {
+        "name": "interact-right",
+        "duration": 0.6666666865348816
+      },
+      {
+        "name": "interact-left",
+        "duration": 0.6666666865348816
+      },
+      {
+        "name": "wheelchair-sit",
+        "duration": 0.1666666716337204
+      },
+      {
+        "name": "wheelchair-look-left",
+        "duration": 0.3333333432674408
+      },
+      {
+        "name": "wheelchair-look-right",
+        "duration": 0.3333333432674408
+      },
+      {
+        "name": "wheelchair-move-forward",
+        "duration": 0.5
+      },
+      {
+        "name": "wheelchair-move-back",
+        "duration": 0.5
+      },
+      {
+        "name": "wheelchair-move-left",
+        "duration": 0.5
+      },
+      {
+        "name": "wheelchair-move-right",
+        "duration": 0.5
+      }
+    ],
+    "skeletonType": "节点层级刚体动画；无 glTF skin",
+    "formatConversionRequired": false,
+    "retargetingRequired": "使用自带片段无需跨骨骼重定向；若复用校园现有其他模型动画则需重定向，当前未做。",
+    "suggestedActionMap": {
+      "idle": "idle",
+      "walk": "walk",
+      "run": "sprint",
+      "jump": "jump",
+      "punch": "attack-melee-right"
+    },
+    "missingActions": [
+      "wave"
+    ],
+    "compatibility": "GLTFLoader 可显示，自带 AnimationMixer 动作可采样；现有 variant 白名单未注册，不能直接用 ?avatar=kenney-vampire",
+    "adaptationNeeded": [
+      "独立 variant 注册与资源路径映射（本次未修改控制器）",
+      "按原生动作名称映射，确认循环/一次性动作、根位移及跳跃高度是否与 createAvatarActions 重复",
+      "验证 +Z 朝向，静止高度 1.72m 与脚底归零，导航半径 .30m 不随外观变化",
+      "缺少挥手动作；不得把其他骨骼动作直接套用"
+    ],
+    "knownIssues": [
+      "仅独立预览验证；未验证校园碰撞、网络同步、完整六动作或手机帧率。",
+      "不是蒙皮骨骼角色，保留自带节点动画；部分共享片段对该体型视觉意义有限。"
+    ],
+    "licenseFile": {
+      "path": "docs/characters/licenses/kenney-graveyard-kit/License.txt",
+      "sha256": "a48e274258386c6bcb5302f17eaab40304cd805cc68be2754e2452179418c70e"
+    }
+  },
+  {
+    "id": "fox",
+    "repo": "KhronosGroup/glTF-Sample-Assets",
+    "revision": "8f492390ddc7a2ae221a1369ef560589cf8c70fb",
+    "sourcePath": "Models/Fox/glTF-Binary/Fox.glb",
+    "sourceUrl": "https://github.com/KhronosGroup/glTF-Sample-Assets/tree/8f492390ddc7a2ae221a1369ef560589cf8c70fb/Models/Fox",
+    "licensePath": "docs/characters/licenses/fox/LICENSE.md",
+    "modelPath": "examples/campus-3d-v5/assets/characters/candidates/fox/model.glb",
+    "downloadDate": "2026-10-24",
+    "displayName": "金毛小狐狸",
+    "style": "低多边形动物 / 四足",
+    "author": "PixelMannen; tomkranis; @AsoboStudio and @scurest",
+    "license": "CC0-1.0 (model); CC-BY-4.0 (rigging, animation, glTF conversion)",
+    "licenseScope": {
+      "model": "CC0-1.0 (PixelMannen); glTF conversion CC-BY-4.0",
+      "textures": "随逐模型文件保守按 CC-BY-4.0 署名，完整作者/许可链接保留。",
+      "animations": "CC-BY-4.0 (tomkranis)"
+    },
+    "attributionRequired": true,
+    "attribution": "Fox: model by PixelMannen (CC0); rigging & animation by tomkranis (CC-BY-4.0); glTF conversion by @AsoboStudio and @scurest (CC-BY-4.0). Source and license links in docs/characters/ATTRIBUTION.md. Files unmodified.",
+    "licenseReview": "模型 CC0；绑骨、动画、glTF 转换 CC-BY-4.0。允许修改及网站分发，必须履行署名和改动说明。",
+    "status": "可显示",
+    "validation": {
+      "downloaded": true,
+      "parseVerified": true,
+      "displayVerified": true,
+      "bundledAnimationSamplingVerified": true,
+      "campusActionsVerified": false,
+      "sampledClips": 3,
+      "changedNodeClips": 3,
+      "limitation": "每段采样一次，静态姿势可能不变化；不代表完整动作视觉审查、脚滑或校园跳跃时序验证。"
+    },
+    "totalBytes": 162852,
+    "files": [
+      {
+        "path": "examples/campus-3d-v5/assets/characters/candidates/fox/model.glb",
+        "bytes": 162852,
+        "sha256": "d97044e701822bac5a62696459b27d7b375aada5de8574ed4362edbba94771f7"
+      }
+    ],
+    "triangles": 576,
+    "vertices": 1728,
+    "materialCount": 1,
+    "materials": [
+      {
+        "name": "fox_material",
+        "baseColorFactor": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "baseColorTexture": null,
+        "doubleSided": false
+      }
+    ],
+    "textures": [
+      {
+        "name": "",
+        "uri": "embedded GLB bufferView",
+        "mimeType": "image/png",
+        "bytes": 26764,
+        "width": 1024,
+        "height": 1024,
+        "sha256": "61c8b109ee7f8bf262791933380fafb1465f7b51cbe6472c2d21eff0b31f83a1"
+      }
+    ],
+    "skins": [
+      {
+        "name": "",
+        "joints": [
+          "_rootJoint",
+          "b_Root_00",
+          "b_Hip_01",
+          "b_Spine01_02",
+          "b_Spine02_03",
+          "b_Neck_04",
+          "b_Head_05",
+          "b_RightUpperArm_06",
+          "b_RightForeArm_07",
+          "b_RightHand_08",
+          "b_LeftUpperArm_09",
+          "b_LeftForeArm_010",
+          "b_LeftHand_011",
+          "b_Tail01_012",
+          "b_Tail02_013",
+          "b_Tail03_014",
+          "b_LeftLeg01_015",
+          "b_LeftLeg02_016",
+          "b_LeftFoot01_017",
+          "b_LeftFoot02_018",
+          "b_RightLeg01_019",
+          "b_RightLeg02_020",
+          "b_RightFoot01_021",
+          "b_RightFoot02_022"
+        ]
+      }
+    ],
+    "extensionsUsed": [],
+    "extensionsRequired": [],
+    "texturePaths": [],
+    "embeddedTextureCount": 1,
+    "animations": [
+      {
+        "name": "Survey",
+        "duration": 3.4166667461395264
+      },
+      {
+        "name": "Walk",
+        "duration": 0.7083333134651184
+      },
+      {
+        "name": "Run",
+        "duration": 1.1583333015441895
+      }
+    ],
+    "skeletonType": "四足蒙皮骨骼",
+    "formatConversionRequired": false,
+    "retargetingRequired": "使用自带片段无需跨骨骼重定向；若复用校园现有其他模型动画则需重定向，当前未做。",
+    "suggestedActionMap": {
+      "idle": "Survey",
+      "walk": "Walk",
+      "run": "Run"
+    },
+    "missingActions": [
+      "jump",
+      "wave",
+      "punch"
+    ],
+    "compatibility": "GLTFLoader 可显示，自带 AnimationMixer 动作可采样；现有 variant 白名单未注册，不能直接用 ?avatar=fox",
+    "adaptationNeeded": [
+      "独立 variant 注册与资源路径映射（本次未修改控制器）",
+      "按原生动作名称映射，确认循环/一次性动作、根位移及跳跃高度是否与 createAvatarActions 重复",
+      "验证 +Z 朝向，静止高度 1.72m 与脚底归零，导航半径 .30m 不随外观变化",
+      "缺少挥手动作；不得把其他骨骼动作直接套用"
+    ],
+    "knownIssues": [
+      "仅独立预览验证；未验证校园碰撞、网络同步、完整六动作或手机帧率。",
+      "四足体型：预览按 1.72m 归一明显偏大；上线应单独定尺寸及镜头目标，缺跳跃、挥手、挥拳。"
+    ],
+    "licenseFile": {
+      "path": "docs/characters/licenses/fox/LICENSE.md",
+      "sha256": "9ddaa2edd6a8f72117eec9709d38cd7d284f61f77752d342c32c828e61f78eae"
+    }
+  }
+]
