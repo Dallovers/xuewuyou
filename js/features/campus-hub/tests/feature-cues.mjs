@@ -5,7 +5,7 @@ assert.equal(cue({interior:'classroom',nearest:{id:'academy.seat-1'}}).action,'�
 assert.equal(cue({seated:{feature:'courses'}}).action,'开始刷题');
 assert.equal(cue({seated:{feature:'courses'}}).step,2);
 assert.equal(cue({interior:'classroom',nearest:{id:'academy.door.classroom'}}),null);
-assert.equal(cue({interior:'classroom',nearest:{id:'academy.equipment'}}),null);
+assert.equal(cue({interior:'classroom',nearest:{id:'academy.equipment'}}).action,'打开教室设备');
 assert.equal(cue({nearest:{id:'social.desk'}}).action,'打开好友与学习搭子');
 assert.equal(cue({nearest:{id:'social.board'}}).action,'打开校园留言板');
 assert.equal(cue({nearest:{id:'study.entry'}}).action,'打开在线自习房间');

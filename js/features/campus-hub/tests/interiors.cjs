@@ -14,7 +14,7 @@ const fs=require('node:fs/promises'),path=require('node:path'),assert=require('n
  async function move(key,predicate){await page.keyboard.down(key);try{await page.waitForFunction(predicate,null,{timeout:15000});}finally{await page.keyboard.up(key);}}
  const libraryFrame=()=>page.frames().find(f=>f.url().includes('campusPanel='));
  try{
-  const url='http://127.0.0.1:4184/js/features/campus-hub/index.html';await page.goto(url);await page.waitForFunction(()=>window.__campusHub?.snapshot().ready&&window.__campusHub.snapshot().frames>3,null,{timeout:120000});
+  const url=new URL('js/features/campus-hub/index.html',process.env.CAMPUS_TEST_BASE||'http://127.0.0.1:4184/').href;await page.goto(url);await page.waitForFunction(()=>window.__campusHub?.snapshot().ready&&window.__campusHub.snapshot().frames>3,null,{timeout:120000});
   const start=await snap();check('complete academy, library furniture and study contents share one campus',start.rooms.academySeats===24&&start.rooms.librarySeats===8&&start.rooms.shelves===4&&await page.locator('canvas').count()===1);
   await page.screenshot({path:path.join(out,'overview.png')});
   if(!process.env.INTERIORS_FROM_LIBRARY){

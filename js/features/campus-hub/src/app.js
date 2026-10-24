@@ -14,6 +14,7 @@ import {createVisualEffects} from './visual-effects.js';
 import {createSkyEnvironment} from './sky-environment.js';
 import {createCampusPresence} from './presence.js';
 import {createFeatureCue,describeFeatureCue} from './feature-cues.js';
+import {createInteractionSelection,createInteractionChoices} from './interaction-selection.js';
 
 const $=selector=>document.querySelector(selector),canvas=$('#world'),scene=new T.Scene(),camera=new T.PerspectiveCamera(49,innerWidth/innerHeight,.1,350);
 const renderer=new T.WebGLRenderer({canvas,antialias:true,powerPreference:'high-performance'});
@@ -28,6 +29,11 @@ const coarsePointer=matchMedia('(pointer:coarse)');
 const ray=new T.Raycaster(),aim=new T.Vector3(),direction=new T.Vector3(),targetCamera=new T.Vector3();
 const bridge=createBusinessBridge({clearInput,route:goTo,equipment:()=>world?.interiors.systems,status:()=>{if(bridge.paused)avatar?.cancelAction();syncControls();}});
 const featureCue=createFeatureCue($('#context-actions'));
+const interactionSelection=createInteractionSelection();
+const interactionChoices=createInteractionChoices($('#context-actions'),id=>{
+ findNearest();const selected=interactionSelection.choose(id);if(!selected)return;
+ nearest=selected;activate();
+});
 let seatControlsMode;
 function syncControls(){
  const walking=state.ready&&state.mode==='walk',paused=bridge.paused,fixed=!!state.seated||!!state.stance;
@@ -91,7 +97,8 @@ function teleportTo(id){
 }
 function exitSite(){clearInput();try{sessionStorage.removeItem(KEY);}catch{}location.assign(new URL('../../../index.html#home',document.baseURI).href);return{ok:true};}
 function findNearest(){
- nearest=null;if(!state.ready||state.mode!=='walk'||bridge.paused)return;
+ nearest=null;if(!state.ready||state.mode!=='walk'||bridge.paused){interactionSelection.clear();return;}
+ if(state.seated||state.stance||avatar.actionState.current||(pickerEnabled&&(studyPicker.isHolding()||studyPicker.getAim())))interactionSelection.clear();
  /* 姿态动作（wave/punch）播放期间原来会整体吞掉提示，作答位这里要例外：
    人是锁在站位上的，动作一播完还会再按，提示中途消失会让人以为卡住了。 */
  if(pickerEnabled&&(studyPicker.isHolding()||studyPicker.getAim())){nearest={id:'study.pick',label:studyPicker.isHolding()?'放回 · '+studyPicker.getHeldLabel():'拿起 · '+studyPicker.getAim().label,action:()=>{studyPicker.isHolding()?studyPicker.putBack():studyPicker.take();return{ok:true};}};return;}
@@ -102,7 +109,7 @@ function findNearest(){
  if(avatar.actionState.current)return;
  const entries=ENTRIES.map(e=>({id:e.id,label:'进入'+e.label,distance:Math.hypot(state.x-e.at[0],state.z-e.at[1]),radius:2.3,action:()=>world.enter(e.id)}));
  for(const item of world.interactions){if(item.disabled)continue;const p=item.object.getWorldPosition(new T.Vector3());entries.push({...item,distance:Math.hypot(state.x-p.x,state.z-p.z)});}
- nearest=entries.filter(i=>i.distance<=i.radius).sort((a,b)=>a.distance-b.distance)[0]||null;
+ nearest=interactionSelection.update(entries);
 }
 async function activate(){if(!state.ready||bridge.paused)return;if(state.mode==='overview'){setMode('walk');toast('漫游已开启，走近设施后按 E，或点击底部互动按钮。');return;}if(!nearest)return;clearInput();try{const result=await nearest.action?.();if(result?.kind==='seat'){state.seated=result;state.pitch=0;state.yaw=Math.atan2(result.directions[0][0],-result.directions[0][2]);toast(result.feature==='courses'?'已入座 · 按 E 开始刷题，Esc 起身。题库和学习记录与网站一致。':'已坐下，拖动环顾，按 E 或 Esc 起身。');}else if(result?.kind==='pose'){
    /* 擂台作答位（arena-district.js 的 arena.stage.jia / .yi）。
@@ -254,16 +261,19 @@ function frame(){
   world.update(paused?0:dt,{x:state.x,z:state.z});effects.fitShadow(state);if(state.mode==='overview')orbit.update();else updateCamera(dt);
   if(inside==='study'&&!pickerEnabled){studyPicker?.enable();pickerEnabled=!!studyPicker;}else if(inside!=='study'&&pickerEnabled){studyPicker.disable();pickerEnabled=false;}
   if(pickerEnabled)studyPicker.update(paused?0:dt);
-  $('#room-exit').hidden=!inside||bridge.paused;findNearest();syncControls();
+  $('#room-exit').hidden=!inside||bridge.paused;$('#room-equipment').hidden=inside!=='classroom'||bridge.paused||state.mode!=='walk';findNearest();syncControls();
   const cue=describeFeatureCue({interior:inside,nearest,seated:state.seated});
   $('#enter').disabled=bridge.paused||(state.mode!=='overview'&&!nearest);$('#enter').textContent=state.mode==='overview'?'开始漫游 · 开启互动':nearest?'E · '+(cue?.action||nearest.label):'走近设施后按 E 互动';$('#jump').disabled=!!avatar.actionState.current||!!state.seated||!!state.stance;
   $('#location').textContent=inside?({classroom:'教学楼 · 刷题教室',library:'知识图书馆',study:'自习室'})[inside]:state.seated?(state.seated.label||'社交广场 · 休息'):state.stance?state.stance.name:state.z<-15?'教学楼前庭':state.x<-20&&state.z<15?'图书馆前庭':state.x<-20&&state.z>=15?'自习室前庭':state.x>28?'竞技场':state.x>7&&state.z<14?'社交广场':'中央庭院';
-  $('#instructions').textContent=state.mode==='overview'?'拖动旋转，滚轮缩放':state.stance?'作答中 · E 举手抢答 · Esc 起身':state.seated?.feature==='courses'?'E 开始刷题 · Esc 起身':state.seated?'拖动环顾，E / Esc 起身':(coarsePointer.matches||innerWidth<700)?'方向键移动，拖动画面转向':'WASD 移动 · Shift 快跑 · E 互动';
+  interactionChoices.update(interactionSelection.items,nearest);
+  $('#instructions').textContent=state.mode==='overview'?'拖动旋转，滚轮缩放':state.stance?'作答中 · E 举手抢答 · Esc 起身':state.seated?.feature==='courses'?'E 开始刷题 · Esc 起身':state.seated?'拖动环顾，E / Esc 起身':interactionSelection.items.length>1?'E 使用当前目标 · F 切换 · 也可点选附近互动':(coarsePointer.matches||innerWidth<700)?'方向键移动，拖动画面转向':'WASD 移动 · Shift 快跑 · E 互动';
   if(!paused&&(moving||avatar.actionState.current||opponent?.moving||world.interiors.moving())&&performance.now()-lastShadow>110){renderer.shadowMap.needsUpdate=true;lastShadow=performance.now();}state.frames++;
  }
  presence?.update(dt);effects.render();
 }
 const roomExit=document.createElement('button');roomExit.id='room-exit';roomExit.hidden=true;roomExit.textContent='回庭院';roomExit.onclick=()=>goTo(world.inside(state)||'classroom');$('#context-actions').append(roomExit);
+const roomActions=document.createElement('div');roomActions.id='room-actions';roomActions.append(roomExit);$('#context-actions').append(roomActions);
+const roomEquipment=document.createElement('button');roomEquipment.id='room-equipment';roomEquipment.type='button';roomEquipment.hidden=true;roomEquipment.textContent='教室设备 · 投影 / 灯光';roomEquipment.onclick=()=>bridge.openFeature('equipment');roomActions.append(roomEquipment);
 const seatTools=document.createElement('div');seatTools.id='seat-tools';seatTools.hidden=true;seatTools.setAttribute('role','group');seatTools.setAttribute('aria-label','座位工具');$('#context-actions').append(seatTools);
 for(const [label,fn,kind]of [['选择学科',()=>state.seated?.feature==='courses'?bridge.openFeature('courses'):state.seated?.feature==='study'?bridge.openFeature('rooms'):bridge.openFeature('library',{mode:'catalog',seated:true}),'primary'],['阅读计时',()=>bridge.openFeature('library',{mode:'focus',seated:true}),'reading'],['书签摘记',()=>bridge.openFeature('library',{mode:'shelf',seated:true}),'reading'],['起身',stand]]){const b=document.createElement('button');b.type='button';b.textContent=label;b.onclick=fn;if(kind==='primary')b.id='seat-feature';if(kind==='reading')b.dataset.readingTool='';seatTools.append(b);}
 const bookActions=document.createElement('div');bookActions.id='book-actions';bookActions.hidden=true;bookActions.setAttribute('role','group');bookActions.setAttribute('aria-label','手中书本');$('#context-actions').append(bookActions);for(const [label,fn]of [['翻书 Q',()=>studyPicker.toggleOpen()],['举起细看',()=>studyPicker.setInspect(!studyPicker.isInspecting())],['放下 G',()=>studyPicker.drop()]]){const b=document.createElement('button');b.textContent=label;b.onclick=()=>{fn();focusScene();};bookActions.append(b);}
@@ -293,6 +303,7 @@ addEventListener('keydown',e=>{
  if(duelPanel?.isOpen&&duelPanel.handleKey(e)){e.preventDefault();return;}
  if(e.code==='Escape'){if(!$('#places').hidden){e.preventDefault();setPlaces(false,true);return;}stand();clearInput();return;}
  if(state.mode!=='walk'){if(e.code==='KeyE'&&!e.repeat){e.preventDefault();activate();}return;}
+ if(e.code==='KeyF'&&!e.repeat&&!e.ctrlKey&&!e.metaKey&&!e.altKey){e.preventDefault();findNearest();nearest=interactionSelection.cycle();syncControls();return;}
  if(!e.repeat&&pickerEnabled&&['KeyQ','KeyR','KeyG'].includes(e.code)){e.preventDefault();if(e.code==='KeyQ')studyPicker.toggleOpen();else studyPicker.drop();return;}
  if(!e.repeat&&e.code==='KeyC'&&world.inside(state)==='study'){e.preventDefault();if(state.seated){stand();return;}const seats=world.interactions.filter(i=>i.id.startsWith('study.seat.')).map(i=>({i,d:i.object.getWorldPosition(new T.Vector3()).distanceTo(new T.Vector3(state.x,0,state.z))})).sort((a,b)=>a.d-b.d);if(seats[0]?.d<1.65){nearest=seats[0].i;activate();}return;}
  if(['KeyW','KeyA','KeyS','KeyD','ArrowUp','ArrowDown','ArrowLeft','ArrowRight','ShiftLeft','ShiftRight','KeyJ','KeyL'].includes(e.code)){e.preventDefault();focusScene();keys.add(e.code);state.path=null;}
@@ -339,6 +350,7 @@ $('#loading').hidden=true;clock.getDelta();renderer.setAnimationLoop(frame);if(s
 window.__campusHub={snapshot:()=>({ready:state.ready,mode:state.mode,pos:[state.x,groundAt(state.x,state.z),state.z],yaw:state.yaw,path:state.path,modal:bridge.paused,returnRestored:state.returnRestored,seated:!!state.seated,stance:state.stance?.id||null,ground:smoothGround,opponent:opponent?.snapshot()||null,duel:duel?.snapshot||null,frames:state.frames,interior:world?.inside(state),rooms:world?.interiors.snapshot(),picker:studyPicker?{held:studyPicker.isHolding(),open:studyPicker.isBookOpen(),aim:studyPicker.getAim()}:null,entries:ENTRIES,nearest:nearest?.id||null,avatar:avatar?.snapshot(),boxes:world?.boxes.length,render:renderer.info.render}),route:id=>goTo(id),teleport:id=>teleportTo(id),setPose:(x,z,yaw=0,pitch=0)=>{if(!navigation||navigation.blocked(x,z))return false;clearInput();setMode('walk');Object.assign(state,{x,z,yaw,pitch});lastX=x;lastZ=z;return true;},blocked:(x,z)=>navigation?.blocked(x,z),entry:id=>world?.enter(id),openFeature:(...args)=>bridge.openFeature(...args),dispose};
 window.__campusHub.studyObjects=()=>{const out=[];world?.study.root.updateMatrixWorld(true);world?.study.root.traverse(n=>{if(n.userData.pickables)for(const ids of n.userData.pickables.groups.slice(0,16)){const m=new T.Matrix4();n.getMatrixAt(ids[0],m);out.push({label:n.userData.pickables.label,position:new T.Vector3().setFromMatrixPosition(m).applyMatrix4(n.matrixWorld).toArray()});}});return out;};
 window.__campusHub.interactions=()=>world?.interactions.map(i=>({id:i.id,label:i.label,position:i.object.getWorldPosition(new T.Vector3()).toArray(),radius:i.radius}));
+window.__campusHub.nearbyInteractions=()=>interactionSelection.items.map(i=>({id:i.id,label:i.label,distance:i.distance,radius:i.radius}));
 window.__campusHub.courtyard=()=>world?.courtyard.snapshot();
 window.__campusHub.districts=()=>world?.districts.map(d=>{
  const features={},plaqueNormals=[];d.root.updateMatrixWorld(true);

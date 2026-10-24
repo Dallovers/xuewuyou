@@ -4,6 +4,7 @@ const cues={
  seated:{title:'已入座 · 按 E 开始刷题',detail:'答题、解析、错题本沿用网站记录。Esc 起身。',tag:'网站正式题库',steps:['已到课桌','已入座','E 刷题'],step:2,action:'开始刷题'},
  courses:{title:'正式题库与学习笔记',detail:'选择高数、线代或概率，直接打开网站刷题功能。',tag:'网站功能',action:'选择学科开始刷题'},
  bank:{title:'打开网站正式题库',detail:'在校园内继续答题、查看解析和错题。',tag:'网站功能',action:'打开正式题库'},
+ equipment:{title:'灯光、卷帘与投影',detail:'按 E 打开设备面板。也可以点击“教室设备”，入座后仍可使用。',tag:'教室设备',action:'打开教室设备'},
  library:{title:'查阅资料与阅读',detail:'使用网站馆藏检索、阅读器、书签和摘记。',tag:'网站功能'},
  study:{title:'进入在线自习房间',detail:'打开网站自习室，选择房间和学习同伴。',tag:'网站功能',action:'打开在线自习房间'},
  friends:{title:'好友与学习搭子',detail:'打开网站好友功能，查找同学、发起学习邀请。',tag:'网站功能',action:'打开好友与学习搭子'},
@@ -22,6 +23,7 @@ export function describeFeatureCue({interior,nearest,seated}){
  if(id.startsWith('academy.seat-'))return cues.chair;
  if(id==='academy.courses')return cues.courses;
  if(id==='academy.practice')return cues.bank;
+ if(id==='academy.equipment')return cues.equipment;
  if(id==='social.desk')return cues.friends;
  if(id==='social.board')return cues.posts;
  if(id==='arena'||id==='arena.ring')return cues.arena;
