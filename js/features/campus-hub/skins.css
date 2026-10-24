@@ -14,3 +14,7 @@
 #skin-shop-dialog .skin-card[aria-pressed=true]{background:#3a5142;color:#edf3ef}.skin-preview details{margin-top:8px}.skin-preview summary{cursor:pointer;color:#d5c79d}.skin-preview a{color:#d5c79d}
 
 #actions{display:flex;flex-wrap:wrap;gap:8px;max-width:calc(100vw - 170px)}.bank-coin-reward{display:block;padding:10px 0;color:#d4be81}
+
+.skin-head{position:sticky;top:0;z-index:2;background:#203530;border-radius:10px}.skin-preview .skin-message{color:#e5d3a5;font-size:13px}
+
+#avatar-wave,#avatar-punch{display:grid;align-content:center;justify-items:center;gap:6px;padding:8px;min-width:56px}#actions kbd{border:none;padding:0;font-size:11px;color:#c1d0c3}

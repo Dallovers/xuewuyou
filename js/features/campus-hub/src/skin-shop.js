@@ -20,7 +20,7 @@ export function createSkinShop({avatar,clearInput,status,toast,openAccount}){
  <div class="skin-layout"><section class="skin-preview" aria-label="人物和动作预览"><canvas aria-label="所选人物三维预览"></canvas><p data-loading role="status"></p><h3 data-name></h3><div class="skin-motion" aria-label="试播动作"></div><p data-credit></p><button data-equip></button></section>
  <section class="skin-library" aria-label="皮肤列表"><label>浏览形象 <select data-filter><option value="all">全部形象</option><option value="owned">我的衣橱</option><option value="vrm">二次元</option><option value="other">卡通与抽象</option></select></label><div class="skin-grid"></div></section></div><p class="skin-message" role="status" aria-live="polite"></p>`;
  document.body.append(dialog);
- const find=s=>dialog.querySelector(s),grid=find('.skin-grid'),message=find('.skin-message');
+ const find=s=>dialog.querySelector(s),grid=find('.skin-grid'),message=find('.skin-message');find('[data-equip]').after(message);
  const toolbar=document.createElement('button');toolbar.id='skin-shop';toolbar.textContent='皮肤商城';toolbar.setAttribute('aria-haspopup','dialog');document.querySelector('#controls-help').before(toolbar);
  let restoreGeneration=0;
  let wallet=null,selected=catalog.skins[0],preview=null,renderer=null,scene=null,camera=null,clock=null,request=0,disposed=false,busy=false,lastToken='',opening=0;
