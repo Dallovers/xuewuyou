@@ -42,7 +42,7 @@ export async function createWorld(scene,openFeature,progress,getPose){
  progress('连接自习室、社交广场和竞技场…');
  // Runtime imports preserve each author's import.meta.url asset bases.
  const [study,social,arena,landscape]=await Promise.all([
-  import(new URL('../study/district.js?v=study-roof-88',document.baseURI).href),import(new URL('../social/social-district.js?campus=hub1',document.baseURI).href),import(new URL('../arena/arena-district.js?campus=arena89-round4',document.baseURI).href),import(new URL('../social/social-landscape.js',document.baseURI).href)
+  import(new URL('../study/district.js?v=study-look-89',document.baseURI).href),import(new URL('../social/social-district.js?campus=hub1',document.baseURI).href),import(new URL('../arena/arena-district.js?campus=arena89-round4',document.baseURI).href),import(new URL('../social/social-landscape.js',document.baseURI).href)
  ]);
  const studyDistrict=study.createDistrict({THREE:T,openFeature,mode:'runtime'});studyDistrict.root.position.set(STUDY_PLACEMENT.x,0,STUDY_PLACEMENT.z);studyDistrict.root.rotation.y=STUDY_PLACEMENT.yaw;
  // Reuse B's room furniture and measured doorway/furniture colliders.

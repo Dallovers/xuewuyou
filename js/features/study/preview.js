@@ -72,34 +72,14 @@ controls.maxPolarAngle = Math.PI / 2 - 0.03;
 controls.minDistance = 2;
 controls.maxDistance = 40;
 
-// —— 灯光：B 从左侧大窗采光 ——
-const hemi = new THREE.HemisphereLight(0xdfe7ea, 0xb9b4a6, 0.28);
-scene.add(hemi);
-
-const sun = new THREE.DirectionalLight(0xfff4e2, 2.10);
-sun.position.set(-9, 8.5, 5.5);
-sun.castShadow = true;
-sun.shadow.mapSize.set(2048, 2048);
-sun.shadow.camera.left = -18;
-sun.shadow.camera.right = 18;
-sun.shadow.camera.top = 18;
-sun.shadow.camera.bottom = -34;
-sun.shadow.camera.near = 1;
-sun.shadow.camera.far = 90;
-sun.shadow.bias = -0.0002;
-sun.shadow.normalBias = 0.02;
-sun.target.position.set(0, 0.8, -12);
-scene.add(sun, sun.target);
-
-const fill = new THREE.DirectionalLight(0xdce6e8, 0.30);
-fill.position.set(7, 5, -6);
-scene.add(fill);
-
-// 从窗侧打一盏柔光进来，交代「B 从左侧大窗采光」的室内方向感
-const windowBounce = new THREE.DirectionalLight(0xfff2df, 0.55);
-windowBounce.position.set(-6, 2.6, 0);
-windowBounce.target.position.set(2, 1.2, -6);
-scene.add(windowBounce, windowBounce.target);
+/* —— 灯光：B 从左侧大窗采光 ——
+ * 整套灯（半球光 / 太阳 / 补光 / 窗侧柔光 / 阴影精度）收在 room.createInteriorLighting 里：
+ * 单文件版母页自己建 scene，原本这里和那边各写一份，改一处另一处就漂。
+ *
+ * **不要给它传 offset**。阴影视锥的 ±18 / 18…−34 是按「整屋在 z=−26、
+ * 预览页那组样件在 z≈0」一起框出来的；整体平移 26 m 会把这栋楼挤出视锥，
+ * 结果是太阳不再被窗边几何挡住，墙上那道"光斑"整片消失（踩过）。 */
+SD.room.createInteriorLighting(THREE, scene);
 
 /* —— 室外：天空 / 雾 / 远景 / 地坪 ——
  *
