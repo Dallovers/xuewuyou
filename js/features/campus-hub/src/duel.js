@@ -163,7 +163,20 @@ export function createArenaDuel(options = {}) {
           io=await loadClient();if(closed)return null;
           socket=io(apiBase()+'/community',{auth:cb=>cb({token:s.token}),reconnection:true,reconnectionDelay:700,reconnectionDelayMax:5000,timeout:10000});
         }
-        bind('connect', () => { if (!closed) ensureJoined(); });
+        /* 连接建立/恢复时做两件事：补 join，以及把"我还在等"重新说一遍。
+         * 匹配队列是服务端的**内存表**：服务重启（每次上线都会重启）或网络抖一下，
+         * 队列就空了，而人还站在台上、界面还写着「正在匹配对手」——
+         * 对面按下 E 时服务端根本不知道我在等，于是两个人各自等各自的，永远配不上。
+         * 所以只要确认还在等（matching）且没有已经坐进去的挑战，就重新入队一次。 */
+        bind('connect', () => {
+          if (closed) return;
+          ensureJoined().then(() => {
+            if (closed || !socket?.connected || !matching || challenge) return;
+            socket.emit('duel:match', { station: station || 'jia' }, (value) => {
+              if (value?.matched) onMatched({ challenge: value.challenge, station: value.station });
+            });
+          });
+        });
         bind('duel:seats', onSeats);
         bind('duel:seat', (m) => { if (m?.id) upsertSeat(m); onSeats(m); });
         bind('duel:state', onState);
@@ -423,6 +436,8 @@ export function createArenaDuel(options = {}) {
       return (await onMatched({ challenge: result.challenge, station: result.station })) || { ok: false, error: '配对成功但落座失败' };
     }
     matching = true;
+    /* 记下我在哪个位等：重连之后要靠它把自己重新放回队列（见 connect 里的处理）。 */
+    station = seat;
     emit();
     return { ok: true, waiting: true, station: seat };
   }

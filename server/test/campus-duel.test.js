@@ -197,3 +197,50 @@ test('a second connection for the same account does not tear the room down',asyn
   sa=again;   // 后面的事都用这条
 });
 
+/* 第二十一轮复查补的一条：**排队的人，其"另一条连接"断开不该把队摘掉**。
+ *
+ * 真实场景：整合版校园一个页面开两条连接（化身上报一条、擂台一条）。
+ * 以前 leave() 无条件 queue.delete(uid)，于是化身那条一断，
+ * 正在等的队列行就没了——人还坐在台上、界面还写着「正在匹配对手」，
+ * 服务端却已经不记得他在等，后来的人只能自己跟自己排队，两个人都配不上。
+ * 同一条链上还有「15 秒没上报位置就判掉线」，站着不动等的人也会被踢，
+ * 那条已经删掉（位置只在走动时上报，站着不动是常态）。 */
+test('another connection dropping does not dequeue or unseat the waiting account',async()=>{
+  const f=await register('双连己'),g=await register('双连庚');
+  await req(f,'profile','PUT',card('己同学'));await req(g,'profile','PUT',card('庚同学'));
+  const startWaiting=campusLive.snapshot().waiting;
+
+  const presence=(await connect(f)).socket;    // 化身那条
+  /* 第二条走带重试的 join：同账号刚 join 过会被 800ms 节流挡回来，那是防刷不是失败。 */
+  const arena=io(base+'/community',{auth:{token:f.token},transports:['websocket'],reconnection:false});
+  sockets.push(arena);await once(arena,'connect');
+  let joined=null;
+  for(let i=0;i<6;i++){
+    try{joined=await arena.timeout(4000).emitWithAck('campus:join',{world:'campus-hub-v1',avatar:'anime',pose});}catch{joined=null;}
+    if(joined?.ok)break;
+    await pause(400);
+  }
+  assert.equal(joined?.ok,true,'第二条连接能加入同场:'+JSON.stringify(joined));
+
+  const queued=await ack(arena,'duel:match',{station:'jia'});
+  assert.equal(queued.ok,true);
+  assert.equal(queued.waiting,true,'只有一个人时进等待队列');
+  assert.equal(campusLive.snapshot().waiting,startWaiting+1);
+
+  presence.disconnect();   // 另一条连接断了（顶号、切后台、网络抖一下都长这样）
+  await pause(250);
+  assert.equal(campusLive.snapshot().waiting,startWaiting+1,'账号还在等，队列行不能跟着断');
+
+  /* 再来一个人：应该配到"只剩一条连接"的己，而且配对结果要发给还在的那条连接。 */
+  const sg=(await connect(g)).socket;
+  const announced=wait(arena,'duel:matched');
+  const matched=await ack(sg,'duel:match',{station:'yi'});
+  assert.equal(matched.matched,true,'后来的能跟还在等的那个人配上');
+  const got=await announced;
+  assert.equal(got.challenge,matched.challenge,'配对结果发到这个账号还在的那条连接上');
+  const detail=await req(f,'challenge?id='+matched.challenge);
+  assert.equal(detail.challenge.status,'active','真的建了一场挑战，不是本地演出');
+  await req(f,'challenge/cancel','PUT',{id:matched.challenge});
+  assert.equal(campusLive.snapshot().waiting,0,'配完队列清空');
+});
+
