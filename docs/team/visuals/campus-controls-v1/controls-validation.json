@@ -1,0 +1,24 @@
+{
+  "passed": true,
+  "checks": [
+    "initial campus stays clear with collapsed accessible destination menu",
+    "desktop toolbar and main actions fit with no overlaps",
+    "destination drawer opens and announces expanded state",
+    "Esc closes drawer and restores keyboard focus",
+    "view toggle correctly announces walking mode",
+    "new help panel pauses movement and hides movement controls",
+    "help is a labelled dialog with styled content and no iframe",
+    "help closes with focus restored",
+    "390x844 walking controls stay separated and touch sized",
+    "844x390 walking controls stay separated and touch sized",
+    "1024x768 walking controls stay separated and touch sized",
+    "real touch movement works in relocated direction pad",
+    "relocated jump button launches original jump",
+    "selecting destination closes menu and starts actual route",
+    "seated toolbar replaces direction pad and jump controls",
+    "grouped equipment presets still change real classroom state",
+    "grouped note actions preserve actual local saving",
+    "no uncaught browser errors"
+  ],
+  "errors": []
+}
