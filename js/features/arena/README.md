@@ -1254,6 +1254,99 @@ const isLive = (c) => c.status==='active' && (!c.expiresAt || c.expiresAt>Date.n
   B 的画面里对面甲同学举起了手）。
   对照修复前：`status=connecting`、`peer=null`、`opponent.visible=false`。
 
+## 第十六轮：台上直接答题（2026-10-24）
+
+第十五轮做到的是"两个真人站在同一座擂台上、互相看得见、能同步举手"，但真正答题还得回主站——
+台上两个人只是站着。这一轮把最后一段接上：**就位即出面板，5 道选择就地作答、就地交卷，
+面板上实时看得到对面「作答中 / 已交卷」。**
+
+### 边界：谁算分
+
+一句话：**题目、判分、计时、胜负全在服务端**（`server/community/index.js`）。
+`js/features/campus-hub/src/duel-panel.js` 只做三件事——把服务端给的题目画出来、把用户选了什么送回去、
+把服务端的结果显示出来。它**不**自己算分、不自己判对错、不自己决定谁赢。
+
+本地唯一"算"的是倒计时显示：用服务端给的 `startedAt + maxMinutes` 反推剩余时间，把秒数画成 `mm:ss`。
+代价是每次作答都要一次 HTTP 请求；收益是刷新页面、换设备、对面看到的分数永远一致——
+3D 侧没有第二套状态可以跟它打架。
+
+### 三个服务端约定（探测时踩出来的，写下来免得再踩）
+
+| 约定 | 后果 |
+| --- | --- |
+| `questions` 只在「我已 start 且未交卷」时由 `GET /challenge?id=` 返回 | 没 start 就拉不到题，面板得先替人 start |
+| `answers` 的值必须是 `'A'`/`'B'`/`'C'`/`'D'` **字母** | 传选项原文服务端判 `ok:false` |
+| 交卷只能一次（第二次 `recorded:0`），`review` 要双方都交完才给 | 交卷必须有二次确认；交完自己那份看不到答案 |
+
+第二条里最坑的是"都交完才给 `review`"：**先交卷那位在对面交完之前，服务端既不给 `questions`
+也不给 `review`**。如果面板只是照抄服务端返回，人一点交卷，题目当场变空——所以面板自己留了一份
+`lastQuestions`，交完只锁不改。
+
+### 这一轮修掉的三个 bug（都只有"两个真人两个浏览器"才现形）
+
+| bug | 单测能不能发现 | 为什么 |
+| --- | --- | --- |
+| `submitted` 的键是 uid，客户端读的是玩家 id | 不能 | 单测里没人读 `submitted`，接口层也不关心键名 |
+| 挑战变 `completed` 时最后一帧 `duel:state` 没发 | 不能 | 单测只断言服务端状态，不测"对面界面有没有更新" |
+| KaTeX 从来没被 load 过 | 不能 | 数据层里题目本来就是对的，只有渲染层空转 |
+
+**1. `submitted` 的键与客户端不在一个 id 空间。**
+`sessions` 按 uid 存，`duel:state` 的 `submitted` 也照抄 uid；但客户端拿到的座位、动作、`self`
+全是 `m.id`（`randomUUID()` 的玩家 id）。于是 `submitted.get(peer.id)` 永远是 `undefined`——
+对面交了卷，自己面板上还是「作答中」。改法：服务端投影时就用玩家 id，
+`for(const m of members.values()) if(c.sessions?.[m.uid]?.finishedAt) out[m.id]=true`。
+**两个 id 空间不许混用**，这条写进注释了。
+
+**2. 挑战变 `completed` 的那一刻，最后一帧 `duel:state` 根本没发出去。**
+`duelChallenge()` 开头是 `if(!isLive(challenge)) { rooms.delete(); return; }`，而 `isLive` 要求
+`status==='active'`。双方都交完 = `completed` = 不是 live = 直接 return ——
+于是**先交卷那位永远停在「等对面交完」**，分数服务端早就算好了，只是没人告诉他。
+改法：拆房之前先补发最后一帧（`emit` 在 `rooms.delete` 之前；topic 是 socket 自己 join 的房间名，
+与 `rooms` 这张表无关，删表不影响送达）。
+
+**3. `typeset()` 里的 KaTeX 永远没就绪。**
+`typeset()` 开头 `if(!window.renderMathInElement) return`，而负责加载的 `loadMath()` 谁也没调用 ——
+题目里的 `\(- 1 < \alpha < 3\)` 全裸着显示。改法：KaTeX 未就绪时 `loadMath().then()` 回来补一次
+`typeset`（节点还在文档里才补）。**这类"渲染层空转"接口测试一辈子看不见。**
+
+### 界面上三处"别骗人"
+
+1. **底部操作栏写着「E 举手抢答」，那答题时 E 就得真能用。** 面板的 `handleKey` 把 `KeyE`
+   交回宿主（`return false`），宿主的全局 keydown 改成尊重这个返回值。移动键仍然全部吃掉——
+   人锁在作答位上，不该边走边答。面板开着按 E 依然能举手，对面照样收到 `act=cheer`。
+2. **交完自己那份不能把卷面清空**（原因见上）；「下台」也任何时候都在——
+   结果页想走只有它和 Esc，不能藏。
+3. **结果区放在题目上面。** 写在 5 道题下面时，得滚到底才知道自己赢没赢。
+
+### 验证
+
+`_shots/cdp-duel-answer.mjs`：两个隔离的浏览器进程、两个真实账号、全程走 UI
+（`setPose` 到甲乙位 → 按 E → 点选项 → 连点两次交卷），**31/31 通过**：
+
+```
+甲就位后面板自动打开 phase=answering  · 5 道题 · KaTeX 节点 28 · 倒计时 14:49
+乙没开始过，就位后面板替他把 start 走掉 phase=answering
+甲 已答 5 / 5 · 第一次点交卷只进确认态(label=确认交卷) · 确认后 phase=waiting 且卷面仍是 5 题
+乙 实时看到「甲同学 · 已交卷」(rival.state=submitted)
+乙交完 → 乙 done「你 2 分（00:07）· 对面 1 分 · 已分胜负」
+甲的对面一交 → 甲自动从 waiting 切 done「你 1 分（00:16）· 对面 2 分」
+结果区在第一屏内可见（不用滚）
+答题中按 E 仍能举手 → 对面 peer.act=cheer，且面板没被关掉
+点「下台」→ 面板关闭、stance 清空
+```
+
+- 服务端：`campus-duel` 6 + `campus-presence` 6 + `campus` 8 + `campus-ui` 3 = **23/23 通过**。
+- 截图：`answer-a-questions.png` / `answer-b-questions.png` / `answer-b-sees-submitted.png` /
+  `answer-a-done.png` / `answer-b-done.png`。最后两张里正解标绿、自己错选标红、题干右上角有「答对/答错」。
+
+### 明确没做
+
+- **复盘仍要回主站**：面板只在双方都交完后标对错，没有解析文本、没有"错题进册"。
+- **只有 5 道客观选择题**（服务端 `bank.slice(0, 5)`），填空/大题不在这一轮。
+- **超时不会自动交卷**：倒计时归零只是变红，服务端 15 分钟后按空卷记 0 分
+  （`elapsed <= 15*60000 ? answers : {}`）。要"到点替人交"得再加一条本地到点触发。
+- **拿不到对手的答案**，也不该拿：`review` 只给正解和自己的选择。
+
 
 
 `?with=social` 下两片场地共用一个 renderer、一个相机、一套碰撞判定（`preview.html` 里 `collide()` 对两个板块是同一个函数，避免两套判定不一致）。
@@ -1267,10 +1360,10 @@ const isLive = (c) => c.status==='active' && (!c.expiresAt || c.expiresAt>Date.n
 
 ## 未完成 / 明确不做
 
-- **台上是真人，但只同步"在场"**：第十五轮起甲乙两个位坐的是**真实玩家**（服务端 `duel:*` 事件），
-  没有 NPC 也没有机器人。但同步的只是"谁在哪个位、在做什么动作"——
-  谁作答、答对没有、比分多少，仍归服务端与 DOM 面板，3D 侧不写第二套状态。
-  台上没有观众、没有对打动画，也没有 3D 里的计时器。
+- **台上是真人，同步的也还只是"表现"**：第十五轮起甲乙两个位坐的是**真实玩家**（服务端 `duel:*` 事件），
+  没有 NPC 也没有机器人。第十六轮把答题面板搬上台，但**判分、计时、胜负仍然只有服务端一份**，
+  3D 侧不写第二套状态，面板也不自己算分。
+  台上没有观众、没有对打动画，也没有 3D 里的计时器（计时器在 DOM 面板上）。
 - **对手化身的资源挂在 hub**：`js/features/campus-hub/src/arena-opponent.js` 只在 `campus-hub` 里渲染；
   独立入口页（第一人称）复用的是 `campus-hub/src/duel.js` 的现场层，但不画对手的 GLB 模型。
   竞技场模块本身只报站位与动作，不带人物资源。
@@ -1280,7 +1373,8 @@ const isLive = (c) => c.status==='active' && (!c.expiresAt || c.expiresAt>Date.n
 - **只有白天**：4 盏灯笼只有 `emissiveIntensity` 的呼吸（0.26±0.08）加一张加色 Sprite 灯晕供观感，
   没有实际照明（不加 PointLight：每盏灯都会让全场景材质的着色成本上升）、没有夜景。
   台心那圈八角是**贴片自发光**，同样不投光，只把台面点亮。
-- **答题与复盘不在这一页**：需要数学排版，仍回主站。这一页只做「读列表 / 发起 / 开始 / 取消 / 处理邀请」这五个不需要排版动作。
+- **独立入口页仍不答题**：`js/features/arena/index.html`（第一人称那页）只做「读列表 / 发起 / 开始 / 取消 / 处理邀请」。
+  就地作答在整合版 `campus-hub` 的作答面板里（第十六轮）；逐题解析这类需要数学排版的复盘，仍旧主站。
 - **没有实时推送**：主站靠 Socket + 15 秒兜底轮询，这一页只在打开面板那一刻取一次。看完关掉再开才会刷新。
 - **没有后处理，也就没有浅景深 / SSAO / Bloom**：`vendor/three/` 里没有 `EffectComposer`，不为了一个景深去引整条后处理链。
   边缘虚化用 `backdrop-filter` 试过，被 `mask-image` 一挡就整层不绘制（详见第五轮）。现在的「镜头感」只有暗角 + 胶片颗粒。
