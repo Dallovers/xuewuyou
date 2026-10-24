@@ -1,0 +1,67 @@
+{
+  "pack": "Animated Mech Pack",
+  "author": "Quaternius",
+  "version": "March 2021",
+  "retrievedDate": "2026-10-24",
+  "authorPage": "https://quaternius.com/packs/animatedmech.html",
+  "authorPageSnapshotSha256": "9c1138fabf668721038d7fefb00049b9c785cb7cf749132ce53bdb5f0d851b92",
+  "authorPageSnapshotCache": "character-skin-download-cache/wave2/animatedmech-source.html (D: worktree sibling, not a runtime dependency)",
+  "downloadFolder": "https://drive.google.com/drive/folders/1sueV_4CGMpZC8y30mWfgKK9UaT3mkHBX",
+  "texturedFolder": "https://drive.google.com/drive/folders/1yPT_YFnldh32oShv7FOmX30HC9TmuirE",
+  "gltfFolder": "https://drive.google.com/drive/folders/1NgFuPs8O0dtl5CwSLjlBpgeC10VWYsDu",
+  "license": {
+    "scope": [
+      "models",
+      "embedded textures",
+      "included animations"
+    ],
+    "identifier": "CC0-1.0",
+    "path": "docs/characters/licenses/quaternius-mechs/License.txt",
+    "sha256": "83d8959f9fc56353ed571fbe2dc52e4bcd64508e2399501cd45ac2ce3df0bf8c",
+    "downloadUrl": "https://drive.google.com/uc?export=download&id=1za89GDUfFtTyq8f2uL0_U0Nw_anSzGir"
+  },
+  "sourceFiles": [
+    {
+      "id": "quaternius-mech-george",
+      "sourcePath": "George.gltf",
+      "downloadUrl": "https://drive.google.com/uc?export=download&id=1-LVJXIGatBYD9ldy_BgCvr-rcpWss_wW",
+      "sourceBytes": 5152038,
+      "sourceSha256": "eccc45d82701f32d67b4480346757b1656c649d9d40e4a1484f57d660596285e",
+      "modelPath": "examples/campus-3d-v5/assets/characters/candidates/quaternius-mech-george/model.glb",
+      "conversionPerformed": "glTF data URI→GLB：仅移除 buffer URI 并添加 GLB 容器，JSON 其余内容及原始二进制 buffer 逐字节验证一致。"
+    },
+    {
+      "id": "quaternius-mech-leela",
+      "sourcePath": "Leela.gltf",
+      "downloadUrl": "https://drive.google.com/uc?export=download&id=1Q1YGX60Ze2WI5oCSel8tYUy8DduEoaCC",
+      "sourceBytes": 3382594,
+      "sourceSha256": "79f9afe3172f9157c91aaa272f7aacc9bbb279bfd947a5f8c18ec3ced44b938b",
+      "modelPath": "examples/campus-3d-v5/assets/characters/candidates/quaternius-mech-leela/model.glb",
+      "conversionPerformed": "glTF data URI→GLB：仅移除 buffer URI 并添加 GLB 容器，JSON 其余内容及原始二进制 buffer 逐字节验证一致。"
+    },
+    {
+      "id": "quaternius-mech-mike",
+      "sourcePath": "Mike.gltf",
+      "downloadUrl": "https://drive.google.com/uc?export=download&id=1XekqFS2x8IRz3W_vYuAvbz0mfDMvD74a",
+      "sourceBytes": 4423046,
+      "sourceSha256": "cc742d3b4960e79e7772c06a465e20958353ab7bd3e6e50c3f46ebccb2a94fa5",
+      "modelPath": "examples/campus-3d-v5/assets/characters/candidates/quaternius-mech-mike/model.glb",
+      "conversionPerformed": "glTF data URI→GLB：仅移除 buffer URI 并添加 GLB 容器，JSON 其余内容及原始二进制 buffer 逐字节验证一致。"
+    },
+    {
+      "id": "quaternius-mech-stan",
+      "sourcePath": "Stan.gltf",
+      "downloadUrl": "https://drive.google.com/uc?export=download&id=1Wkj9SVzI3SMD-leUFWeREo0PfudxmG8Z",
+      "sourceBytes": 3787080,
+      "sourceSha256": "e6903fee7458bbd804395c0d9dcc7545e3716bde865d05138e769d18299610b7",
+      "modelPath": "examples/campus-3d-v5/assets/characters/candidates/quaternius-mech-stan/model.glb",
+      "conversionPerformed": "glTF data URI→GLB：仅移除 buffer URI 并添加 GLB 容器，JSON 其余内容及原始二进制 buffer 逐字节验证一致。"
+    }
+  ],
+  "conversionTool": "tools/characters/gltf_pack.py",
+  "conversionInvariant": "Parsed scene JSON unchanged except removal of single buffer data URI; original binary buffer bytes unchanged; GLB header and padding only.",
+  "acquisitionOrder": [
+    "Downloaded George, Leela, Mike and license; parsed and rendered first three before expanding.",
+    "After wave2-first-three.json passed, downloaded Stan and ran full wave2 + cumulative checks."
+  ]
+}

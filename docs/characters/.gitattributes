@@ -1,0 +1,2 @@
+# Preserve downloaded upstream license and README bytes, including their original whitespace.
+licenses/** -text -whitespace
