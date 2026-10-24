@@ -1,0 +1,106 @@
+{
+  "scope": "Four specific old VRoid beta samples only; current VRoid samples and repository code licenses are not used to infer model licenses.",
+  "binarySource": "Pinned third-party mirror, checked against official model-specific pixiv permissions and embedded VRM CC0 metadata. No official binary checksum available for comparison.",
+  "models": [
+    {
+      "id": "vroid-vivi",
+      "author": "pixiv Inc. / VRoid Project",
+      "officialArticleUrl": "https://vroid.pixiv.help/hc/en-us/articles/360014900273-%CE%B2-Ver-AvatarSample-2",
+      "officialArticleApiUrl": "https://vroid.pixiv.help/api/v2/help_center/en-us/articles/360014900273.json",
+      "officialArticleUpdatedAt": "2024-12-26T05:11:04Z",
+      "officialArticleBodySha256": "963b9ea4e024c35d87f35aa602581fa6dc99cbcc29aef01b34b378288b989d86",
+      "retainedLicenseFragment": {
+        "path": "docs/characters/licenses/vroid-beta/Vivi.official-license.html",
+        "sha256": "e604795f9f0753b5435a98cee22dff5a937d1dedaeb21dc199c442fe890caafa"
+      },
+      "embeddedMetaFile": {
+        "path": "docs/characters/licenses/vroid-beta/Vivi.embedded-meta.json",
+        "sha256": "e7d9b0db98a5b3b3a835745c06e218a1743e468ee88c66ffab770798b8cbd221"
+      },
+      "mirrorRepo": "madjin/vrm-samples",
+      "mirrorCommit": "e16eb187100149a315ad92c3c9968f1d5baa6c7d",
+      "mirrorPath": "vroid/beta/Vivi.vrm",
+      "downloadUrl": "https://raw.githubusercontent.com/madjin/vrm-samples/e16eb187100149a315ad92c3c9968f1d5baa6c7d/vroid/beta/Vivi.vrm",
+      "sourceBytes": 18089136,
+      "sourceSha256": "eaf902e041a7a810f1423599ae75682f61184ab6ef0206da9a8ed9caa8ec3a9d",
+      "modelBytesUnmodified": true,
+      "licenseNameInVrm": "CC0",
+      "retrievedDate": "2026-10-24"
+    },
+    {
+      "id": "vroid-vita",
+      "author": "pixiv Inc. / VRoid Project",
+      "officialArticleUrl": "https://vroid.pixiv.help/hc/en-us/articles/360014900113-%CE%B2-Ver-AvatarSample-3",
+      "officialArticleApiUrl": "https://vroid.pixiv.help/api/v2/help_center/en-us/articles/360014900113.json",
+      "officialArticleUpdatedAt": "2026-10-04T04:46:27Z",
+      "officialArticleBodySha256": "6c421ce50732224d223ff5e1587a98f108dc0d0eeeabf6350c9a63a4341da325",
+      "retainedLicenseFragment": {
+        "path": "docs/characters/licenses/vroid-beta/Vita.official-license.html",
+        "sha256": "f1920fb807579d41c974b4169558cd24326e2e8c469e496d12fb0e5a474569a7"
+      },
+      "embeddedMetaFile": {
+        "path": "docs/characters/licenses/vroid-beta/Vita.embedded-meta.json",
+        "sha256": "9ee935b765e33550ad4fccab1bc4a9e22c0e430535a8bac561b3b201f7a160a3"
+      },
+      "mirrorRepo": "madjin/vrm-samples",
+      "mirrorCommit": "e16eb187100149a315ad92c3c9968f1d5baa6c7d",
+      "mirrorPath": "vroid/beta/Vita.vrm",
+      "downloadUrl": "https://raw.githubusercontent.com/madjin/vrm-samples/e16eb187100149a315ad92c3c9968f1d5baa6c7d/vroid/beta/Vita.vrm",
+      "sourceBytes": 14359044,
+      "sourceSha256": "f2bf78f28a24e2f75f5ca0b6c3b646654c394e4b03592dfaa0d0633ef0972b4d",
+      "modelBytesUnmodified": true,
+      "licenseNameInVrm": "CC0",
+      "retrievedDate": "2026-10-24"
+    },
+    {
+      "id": "vroid-victoria",
+      "author": "pixiv Inc. / VRoid Project",
+      "officialArticleUrl": "https://vroid.pixiv.help/hc/en-us/articles/360014900233-%CE%B2-Ver-AvatarSample-4",
+      "officialArticleApiUrl": "https://vroid.pixiv.help/api/v2/help_center/en-us/articles/360014900233.json",
+      "officialArticleUpdatedAt": "2024-12-26T05:12:18Z",
+      "officialArticleBodySha256": "97fa0a334a2b795f3264a91761d8d54b742f265b0905b9b18dfaa68d2a56b589",
+      "retainedLicenseFragment": {
+        "path": "docs/characters/licenses/vroid-beta/Victoria_Rubin.official-license.html",
+        "sha256": "91a8769ee37aabc27dc484cea5c759fcdecbc89a06af61949a57272693bc2086"
+      },
+      "embeddedMetaFile": {
+        "path": "docs/characters/licenses/vroid-beta/Victoria_Rubin.embedded-meta.json",
+        "sha256": "d79d8f891c77047a52a26f307375f8faa0b69e6fb1bfe2f1c6e0ad2a6fb70945"
+      },
+      "mirrorRepo": "madjin/vrm-samples",
+      "mirrorCommit": "e16eb187100149a315ad92c3c9968f1d5baa6c7d",
+      "mirrorPath": "vroid/beta/Victoria_Rubin.vrm",
+      "downloadUrl": "https://raw.githubusercontent.com/madjin/vrm-samples/e16eb187100149a315ad92c3c9968f1d5baa6c7d/vroid/beta/Victoria_Rubin.vrm",
+      "sourceBytes": 15479480,
+      "sourceSha256": "b1372131bdbf233f46320146d565f342a7e4f6f4b8f2aefb301f1a283ec07e1e",
+      "modelBytesUnmodified": true,
+      "licenseNameInVrm": "CC0",
+      "retrievedDate": "2026-10-24"
+    },
+    {
+      "id": "vroid-fumiriya",
+      "author": "pixiv Inc. / VRoid Project",
+      "officialArticleUrl": "https://vroid.pixiv.help/hc/en-us/articles/360014788554-Sakurada-Fumiriya",
+      "officialArticleApiUrl": "https://vroid.pixiv.help/api/v2/help_center/en-us/articles/360014788554.json",
+      "officialArticleUpdatedAt": "2025-05-30T06:35:55Z",
+      "officialArticleBodySha256": "f563b4bea7aeb02de4f74400dec352c310e05f8d7ac01ceb59e77c9a577645b9",
+      "retainedLicenseFragment": {
+        "path": "docs/characters/licenses/vroid-beta/Sakurada_Fumiriya.official-license.html",
+        "sha256": "859e410c5a73366a38762ccd7b94e061765582200b00ec13816af7e35dfb2a75"
+      },
+      "embeddedMetaFile": {
+        "path": "docs/characters/licenses/vroid-beta/Sakurada_Fumiriya.embedded-meta.json",
+        "sha256": "528033c64c15174f1536aeb44ba0be88b555851aa785f43b3cd2bfb89df952bd"
+      },
+      "mirrorRepo": "madjin/vrm-samples",
+      "mirrorCommit": "e16eb187100149a315ad92c3c9968f1d5baa6c7d",
+      "mirrorPath": "vroid/beta/Sakurada_Fumiriya.vrm",
+      "downloadUrl": "https://raw.githubusercontent.com/madjin/vrm-samples/e16eb187100149a315ad92c3c9968f1d5baa6c7d/vroid/beta/Sakurada_Fumiriya.vrm",
+      "sourceBytes": 19342280,
+      "sourceSha256": "d8fb05f33e377df028cb6b9d58c441ce68326c41fa23f6c735d40c65ae3dc710",
+      "modelBytesUnmodified": true,
+      "licenseNameInVrm": "CC0",
+      "retrievedDate": "2026-10-24"
+    }
+  ]
+}
