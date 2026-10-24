@@ -89,6 +89,15 @@ export async function createStudentAvatar(scene,options={}){
  model.scale.setScalar(skin.height/height);model.updateMatrixWorld(true);
  const scaledBounds=new T.Box3().setFromObject(model);model.position.y=-scaledBounds.min.y;
  model.updateMatrixWorld(true);vrm?.springBoneManager?.reset();
+ // Anchor overlays to the animated head, not the catalog's nominal height.
+ // Some imported rigs have conservative skinned bounds much taller than the
+ // visible model. Sample precise bounds once; never scan vertices per frame.
+ let headBone=vrm?.humanoid.getRawBoneNode('head');
+ model.traverse(node=>{if(!headBone&&node.isBone&&/^(?:mixamorig[:_]?)?head$/i.test(node.name))headBone=node;});
+ const visibleBounds=new T.Box3().setFromObject(model,true),headPoint=new T.Vector3();
+ const headOffset=headBone?T.MathUtils.clamp(visibleBounds.max.y-headBone.getWorldPosition(headPoint).y,.02,.35):0;
+ const fallbackHead=root.worldToLocal(new T.Vector3(0,visibleBounds.max.y,0));
+ function headPosition(target){if(headBone){headBone.getWorldPosition(target);target.y+=headOffset;return target;}return root.localToWorld(target.copy(fallbackHead));}
  const contactCanvas=document.createElement('canvas');contactCanvas.width=contactCanvas.height=128;const cc=contactCanvas.getContext('2d'),fade=cc.createRadialGradient(64,64,4,64,64,62);fade.addColorStop(0,'rgba(255,255,255,.85)');fade.addColorStop(.4,'rgba(255,255,255,.35)');fade.addColorStop(1,'rgba(255,255,255,0)');cc.fillStyle=fade;cc.fillRect(0,0,128,128);const contactMap=new T.CanvasTexture(contactCanvas);
  const shadow=new T.Mesh(new T.PlaneGeometry(.90,.64),new T.MeshBasicMaterial({color:0x18221c,map:contactMap,transparent:true,opacity:.18,depthWrite:false}));
  shadow.rotation.x=-Math.PI/2;shadow.position.y=.018;root.add(shadow);
@@ -96,7 +105,7 @@ export async function createStudentAvatar(scene,options={}){
  const probeNames=['head','hips','leftUpperArm','leftLowerArm','leftHand','rightUpperArm','rightLowerArm','rightHand','leftUpperLeg','leftLowerLeg','leftFoot','leftToes','rightUpperLeg','rightLowerLeg','rightFoot','rightToes','leftMiddleProximal','leftMiddleDistal','rightMiddleProximal','rightMiddleDistal'];
  function jointPositions(){if(!vrm)return undefined;model.updateMatrixWorld(true);return Object.fromEntries(probeNames.map(name=>[name,vrm.humanoid.getRawBoneNode(name)?.getWorldPosition(new T.Vector3()).toArray()]));}
  return{
-  root,model,variant,height:skin.height,clips:[...actions.keys()],
+  root,model,variant,height:skin.height,headPosition,clips:[...actions.keys()],
   get clip(){return activeName;},get actionState(){return gestures.snapshot();},get locksMovement(){return gestures.locksMovement;},get jumpHeight(){return gestures.height;},
   act(name,ground=0){return gestures.start(name,ground);},cancelAction(){gestures.cancel();},
   snapshot(){let meshes=0,triangles=0,skinned=0;let head=vrm?.humanoid.getRawBoneNode('head'),leg=vrm?.humanoid.getRawBoneNode('leftUpperLeg'),arm=vrm?.humanoid.getRawBoneNode('rightUpperArm');model.traverse(n=>{if(n.isMesh){meshes++;triangles+=(n.geometry.index?.count||n.geometry.attributes.position.count)/3;if(n.isSkinnedMesh)skinned++;}if(!head&&/head/i.test(n.name))head=n;if(!leg&&/upper.?leg|thigh/i.test(n.name))leg=n;});return{asset,avatar:variant,visible:root.visible,position:root.position.toArray(),yaw:root.rotation.y,height:skin.height,clip:activeName,time:active?.time,action:gestures.snapshot(),joints:jointPositions(),meshes,triangles,skinned,texturedMaterials:[...adjusted].filter(m=>m.map).length,head:head?.quaternion.toArray(),leg:leg?.quaternion.toArray(),arm:arm?.quaternion.toArray(),bounds:new T.Box3().setFromObject(model).getSize(new T.Vector3()).toArray()};},

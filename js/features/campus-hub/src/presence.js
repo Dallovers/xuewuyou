@@ -1,6 +1,7 @@
 import * as T from 'three';
 import {createStudentAvatar} from './avatar.js';
 import {VERSION} from './layout.js';
+import {createCampusChat} from './chat.js';
 
 let clientLibrary;
 function loadClient(){
@@ -11,16 +12,17 @@ function loadClient(){
  });return clientLibrary;
 }
 const token=()=>{try{const t=localStorage.getItem('xwy_token')||'';return t.startsWith('local.')?'':t;}catch{return '';}};
-export function createCampusPresence({scene,camera,getPose,setSpawn,openAccount,shadowChanged,prepareAvatar=async()=>{}}){
+export function createCampusPresence({scene,camera,getPose,setSpawn,openAccount,shadowChanged,clearInput=()=>{},chatChanged=()=>{},getOwnHead=()=>null,prepareAvatar=async()=>{}}){
  const panel=document.createElement('section');panel.id='presence';panel.setAttribute('aria-label','校园同场');
  const status=document.createElement('span'),button=document.createElement('button');status.id='presence-status';status.setAttribute('role','status');button.id='presence-toggle';panel.append(status,button);document.body.append(panel);
  const labels=document.createElement('div');labels.id='peer-labels';labels.setAttribute('aria-hidden','true');document.body.append(labels);
- const peers=new Map(),project=new T.Vector3();let socket,selfId='',joined=false,wanted=true,disposed=false,generation=0,lastToken=token(),lastSend=0,lastSnapshot=0,loading=false,remoteRevision=0,painted='';
+ const peers=new Map(),project=new T.Vector3(),headPoint=new T.Vector3();let socket,selfId='',joined=false,wanted=true,disposed=false,generation=0,lastToken=token(),lastSend=0,lastSnapshot=0,loading=false,remoteRevision=0,painted='';
  let activeDuels=[],appearanceTimer;
+ const chat=createCampusChat({panel,camera,selfId:()=>selfId,clearInput,changed:chatChanged,join:()=>{if(!token())openAccount();else{wanted=true;connect();}},send:body=>new Promise(resolve=>{if(!joined||!socket?.connected)return resolve({ok:false,error:'请先加入同场'});socket.timeout(8000).emit('campus:chat/send',body,(error,value)=>resolve(error?{ok:false,error:'发送超时，请重试'}:value));}),getHead:id=>{if(id===selfId)return getOwnHead();const peer=peers.get(id);if(!peer?.avatar)return null;const p=peer.avatar.headPosition(headPoint),me=getPose();return {x:p.x,y:p.y,z:p.z,visible:peer.avatar.root.visible&&Math.hypot(p.x-me.x,p.z-me.z)<24};}});
  const cap=()=>innerWidth<700?2:4;
  function paint(text,action){const value=text+'|'+action;if(value===painted)return;painted=value;status.textContent=text;button.textContent=action;}
  function release(peer){peer.cancelled=true;peer.avatar?.dispose();peer.label?.remove();peers.delete(peer.id);shadowChanged();}
- function clear(){for(const peer of [...peers.values()])release(peer);selfId='';joined=false;lastSnapshot=0;}
+ function clear(){for(const peer of [...peers.values()])release(peer);selfId='';joined=false;lastSnapshot=0;chat.setJoined(false);}
  function disconnect(){generation++;if(socket){socket.removeAllListeners();socket.disconnect();socket=null;}clear();}
  function setIdle(){paint(lastToken?'单人漫游':'单人漫游 · 登录后可同场',lastToken?'加入同场':'登录加入');}
  function receive(message){
@@ -39,7 +41,7 @@ export function createCampusPresence({scene,camera,getPose,setSpawn,openAccount,
   const sent=getPose(),activeSocket=socket,current=generation;socket.timeout(8000).emit('campus:join',{world:VERSION,avatar:sent.avatar,pose:sent},(error,result)=>{
    if(disposed||current!==generation||socket!==activeSocket||!socket?.connected||!wanted)return;
    if(error||!result?.ok){paint(result?.error||'同场连接超时','重新连接');return;}
-   selfId=result.self.id;activeDuels=result.duels||[];joined=true;setSpawn(result.self,sent);receive({world:VERSION,players:result.players});publish(true);
+   selfId=result.self.id;activeDuels=result.duels||[];joined=true;chat.setJoined(true);chat.history(result.chat);setSpawn(result.self,sent);receive({world:VERSION,players:result.players});publish(true);
   });
  }
  async function connect(){
@@ -50,7 +52,7 @@ export function createCampusPresence({scene,camera,getPose,setSpawn,openAccount,
    const io=await loadClient();if(disposed||current!==generation||!wanted||document.hidden)return;
    const base=String(window.WG_DEPLOY?.apiBase||location.origin).replace(/\/$/,'');
    socket=io(base+'/community',{auth:cb=>cb({token:token()}),reconnection:true,reconnectionDelay:700,reconnectionDelayMax:5000,timeout:10000});
-   socket.on('connect',join);socket.on('campus:state',receive);
+   socket.on('connect',join);socket.on('campus:state',receive);socket.on('campus:chat',message=>{if(joined)chat.receive(message);});
    socket.on('campus:left',p=>{const peer=peers.get(p.id);if(peer)release(peer);});
    socket.on('disconnect',()=>{generation++;clear();if(wanted)paint('连接已断开，正在重连…','取消连接');});
    socket.on('connect_error',error=>{clear();paint(/登录|账号/.test(error.message)?'登录已失效，请重新登录':'暂时无法连接同场，可继续漫游',/登录|账号/.test(error.message)?'重新登录':'重新连接');});
@@ -72,7 +74,7 @@ export function createCampusPresence({scene,camera,getPose,setSpawn,openAccount,
   if((joined&&button.textContent!=='重新连接')||button.textContent==='取消连接'){wanted=false;disconnect();setIdle();return;}
   wanted=true;connect();
  };
- function syncAuth(){const next=token();if(next!==lastToken){lastToken=next;wanted=true;connect();}else if(joined)publish();}
+ function syncAuth(){const next=token();if(next!==lastToken){chat.reset();lastToken=next;wanted=true;connect();}else if(joined)publish();}
  function visibility(){if(document.hidden)disconnect();else if(wanted)connect();}
  function online(){if(wanted)connect();}
  addEventListener('storage',syncAuth);addEventListener('online',online);document.addEventListener('visibilitychange',visibility);
@@ -88,10 +90,11 @@ export function createCampusPresence({scene,camera,getPose,setSpawn,openAccount,
    for(const peer of peers.values()){
     if(peer.avatar&&!visible.has(peer.id)){peer.avatar.dispose();peer.avatar=null;peer.label?.remove();peer.label=null;shadowChanged();}
     if(!peer.avatar)continue;const p=interpolate(peer,now);peer.avatar.setVisible(true);peer.avatar.update({position:{x:p.x,z:p.z,groundY:p.y},yaw:p.yaw,dt:Math.min(dt,.1),remoteState:p});
-    const distance=Math.hypot(p.x-me.x,p.z-me.z);project.set(p.x,p.y+p.height+2.05,p.z).project(camera);
+    const distance=Math.hypot(p.x-me.x,p.z-me.z);peer.avatar.headPosition(project);project.y+=.06;project.project(camera);
     peer.label.hidden=distance>20||project.z< -1||project.z>1||Math.abs(project.x)>1||Math.abs(project.y)>1;
     const text=peer.nick+(p.studying?' · 学习中':'');if(peer.label.textContent!==text)peer.label.textContent=text;peer.label.style.transform=`translate(-50%,-100%) translate(${(project.x*.5+.5)*innerWidth}px,${(-project.y*.5+.5)*innerHeight}px)`;
    }
+   chat.update();
    const pending=near.find(p=>!p.avatar&&!p.loading&&(!p.retryAt||now>=p.retryAt));
    if(pending&&!loading){loading=true;pending.loading=true;const peer=pending;
     createStudentAvatar(scene,{variant:peer.variant,castShadow:false}).then(async avatar=>{
@@ -103,10 +106,11 @@ export function createCampusPresence({scene,camera,getPose,setSpawn,openAccount,
    }
   },
   snapshot:()=>({joined,wanted,selfId,players:peers.size+Number(joined),loaded:[...peers.values()].filter(p=>p.avatar).length,remoteRevision,peers:[...peers.values()].map(p=>({id:p.id,nick:p.nick,variant:p.variant,pose:p.to,rendered:p.avatar?.root.position.toArray(),clip:p.avatar?.snapshot().clip})),status:status.textContent}),
+  get chatOpen(){return chat.isOpen;},openChat:chat.open,closeChat:chat.close,chatSnapshot:chat.snapshot,
   async connection(){wanted=true;if(!socket?.connected)await connect();const until=performance.now()+10000;while(!joined&&!disposed&&wanted&&performance.now()<until)await new Promise(r=>setTimeout(r,60));if(!joined)return null;return {socket,selfId,duels:activeDuels};},
   hasPeer:id=>joined&&peers.has(id),
   appearance(){clearTimeout(appearanceTimer);appearanceTimer=setTimeout(()=>{if(joined&&socket?.connected)socket.timeout(8000).emit('campus:appearance',{avatar:getPose().avatar},()=>{});},600);},
   teleport,
-  dispose(){disposed=true;wanted=false;clearTimeout(appearanceTimer);disconnect();clearInterval(authTimer);removeEventListener('storage',syncAuth);removeEventListener('online',online);document.removeEventListener('visibilitychange',visibility);panel.remove();labels.remove();}
+  dispose(){disposed=true;wanted=false;clearTimeout(appearanceTimer);disconnect();chat.dispose();clearInterval(authTimer);removeEventListener('storage',syncAuth);removeEventListener('online',online);document.removeEventListener('visibilitychange',visibility);panel.remove();labels.remove();}
  };
 }
