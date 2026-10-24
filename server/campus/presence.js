@@ -43,6 +43,7 @@ module.exports=function({authUser,store,namespace}){
   function stopIdleTimer(){if(!members.size&&!rooms.size){clearInterval(timer);timer=null;}}
   function leave(socket){
     const m=members.get(socket.data.uid);
+    queue.delete(socket.data.uid);
     if(m?.socket===socket){members.delete(socket.data.uid);socket.leave(ROOM);ns.to(ROOM).emit('campus:left',{id:m.id});duelLeave(m.id);}
     stopIdleTimer();
   }
@@ -80,10 +81,19 @@ module.exports=function({authUser,store,namespace}){
     }
   }
   function duelEnter(socket,challengeId,stationId){
-    const room=rooms.get(challengeId);
-    if(!room)return {ok:false,error:'这场挑战不在进行中'};
     const m=members.get(socket.data.uid);
     if(!m||m.socket!==socket)return {ok:false,error:'请先加入校园同场'};
+    let room=rooms.get(challengeId);
+    if(!room){
+      /* 「rooms 里没有」不等于「挑战不在进行中」：服务重启过、刚被匹配上、
+       * 或者两个人都还没坐上来，这三种情况下 rooms 里都没有这条。
+       * 挑战还活着、我又是成员，那么坐上来这一步本身就该把房建起来。
+       * 以前这里直接报「这场挑战不在进行中」，于是"坐不上→没法开始→更坐不上"死锁。 */
+      const c=challengeById.get(challengeId);
+      if(!enterable(c))return {ok:false,error:'这场挑战不在进行中'};
+      if(!(c.members||[]).includes(socket.data.uid))return {ok:false,error:'这不是你的挑战'};
+      room=openRoom(c);
+    }
     if(!room.members.includes(socket.data.uid))return {ok:false,error:'这不是你的挑战'};
     /* 同一个位只能坐一个人：对面那位先就位了，你就只能去另一位，都有人就直说。 */
     for(const [uid,seat] of room.seats)if(seat.station===stationId&&seat.id!==m.id)return {ok:false,error:'这个作答位已经有人了'};
@@ -103,6 +113,46 @@ module.exports=function({authUser,store,namespace}){
     socket.to(topic(challengeId)).emit('duel:seat',{challenge:challengeId,id:m.id,nick:m.nick,station:stationId,seats:seated});
     stopIdleTimer();
     return {ok:true,challenge:challengeId,station:stationId,seats:seated,topic:room.topic};
+  }
+  /* ---------- 现场匹配（第十九轮） ----------
+   * 好友挑战要求先加学习搭子，两个只是"都在竞技场"的人根本凑不成一场，
+   * 台上永远是空的——用户看到的就是「匹配不上、答不了题」。
+   *
+   * 这里做一个最朴素的等待队列：**两个人都自己点了「开始匹配」**才配成一对，
+   * 所以不需要"对方同意"这一步（点匹配本身就是同意）。
+   * 配对成功后，真正的挑战仍由 community 建（题库、判分、计分一分都不在这里），
+   * 本模块只负责"谁在等、把哪两个人凑一起"。
+   */
+  let challengeFactory=null;
+  const queue=new Map();   // uid → {uid,playerId,nick,socket,station,topic,since}
+  const QUEUE_TTL=120000;
+  async function duelMatch(socket,body,ack){
+    const reply=value=>{if(typeof ack==='function')ack(value);};
+    const m=members.get(socket.data.uid);
+    if(!m||m.socket!==socket)return reply({ok:false,error:'请先加入校园同场'});
+    const at=station(body);if(!at)return reply({ok:false,error:'作答位无效'});
+    if(!challengeFactory)return reply({ok:false,error:'现场匹配暂不可用，请稍后再试'});
+    const now=Date.now();
+    /* 清掉等太久的、断线的、被同账号顶掉的——队列里不留"已经不在的人"，
+     * 否则后来者会跟一个幽灵配成一场没人答题的挑战。 */
+    for(const [uid,row] of [...queue])if(now-row.since>QUEUE_TTL||!row.socket.connected||members.get(uid)?.socket!==row.socket)queue.delete(uid);
+    queue.delete(socket.data.uid);      // 连点两次以最后一次的位为准
+    const partner=[...queue.values()][0]||null;
+    if(!partner){
+      queue.set(socket.data.uid,{uid:socket.data.uid,playerId:m.id,nick:m.nick,socket,station:at.station,topic:typeof body?.topic==='string'?body.topic:'',since:now});
+      return reply({ok:true,waiting:true,count:queue.size});
+    }
+    queue.delete(partner.uid);
+    let challenge;
+    try{ challenge=await store.run(()=>challengeFactory(partner.uid,socket.data.uid,partner.topic||body?.topic||'')); }
+    catch(error){ return reply({ok:false,error:error?.message||'匹配失败，请重试'}); }
+    if(!challenge?.id)return reply({ok:false,error:'匹配失败，请重试'});
+    /* 位子怎么分：**先等的人保持自己要的位**，后来的人去另一边。
+     * 两个人都站在甲位按 E 时，后来的那位会被挪到乙位（客户端会跟着挪人），
+     * 而不是两个人叠在同一个位子上然后互相顶掉。 */
+    const partnerSeat=partner.station,mySeat=partnerSeat==='jia'?'yi':'jia';
+    if(partner.socket.connected)partner.socket.emit('duel:matched',{challenge:challenge.id,station:partnerSeat,topic:challenge.topic||''});
+    reply({ok:true,matched:true,challenge:challenge.id,station:mySeat,topic:challenge.topic||''});
   }
   function duelAct(socket,body){
     const challengeId=typeof body?.challenge==='string'?body.challenge:'';
@@ -126,13 +176,31 @@ module.exports=function({authUser,store,namespace}){
   /* 挑战「开了」和「有人在答」是两件事：
    *   创建挑战时 status 就已经是 active，但那只是邀请发出去了，台上还没有人；
    *   真有人在答的标志是 sessions[*].startedAt。
-   * 房间按后者建——所以「邀请还没被接受/还没点开始」的时候，台上没有房可进，
-   * 也就不会出现一个空擂台让人以为对面正在准备。 */
+   * 但**「能不能坐上去」只看前一半**：坐着的人还没点开始（面板刚打开、题还没拉到）时，
+   * 服务端如果拿 started 当门禁，就会出现死锁——坐不上就不能开始，不开始就坐不上。
+   * 真实用户就是这样卡住的（以前只有测试先替人 start 过才走得通）。 */
   const started=(c)=>Object.values(c?.sessions||{}).some((s)=>!!s?.startedAt);
-  /* 「这间房该不该存在」的唯一判定。房间归挑战，不归座位：
-   * 只要挑战还 active、没过期、并且真有人点了开始作答，房就该在，
-   * 哪怕此刻 seats 是空的（另一位还没就位）。 */
-  const isLive=(c)=>!!c&&c.status==='active'&&(!c.expiresAt||c.expiresAt>Date.now())&&started(c);
+  /* 挑战还活着（可以进、可以坐）。这是「进得去」的唯一条件。 */
+  const enterable=(c)=>!!c&&c.status==='active'&&(!c.expiresAt||c.expiresAt>Date.now());
+  /* 「这间房该不该留着」：活着的挑战，并且**真有人在里面**（有人开始了，或有人坐着）。
+   * 房间归挑战，不归座位——房间空着但挑战有人在答，也要留着等另一个人坐进来。 */
+  const isLive=(c)=>{
+    const room=c?.id?rooms.get(c.id):null;
+    return enterable(c)&&(started(c)||!!(room&&room.seats.size));
+  };
+  /* 建房：把挑战的两个成员都拉进 topic，并广播一次当前座位表。
+   * duelChallenge（服务端推）和 duelEnter（人就位时懒建）共用这一个实现。 */
+  function openRoom(challenge){
+    const id=challenge.id;
+    const room=rooms.get(id)||{members:[],seats:new Map(),topic:'',status:challenge.status};
+    room.members=[...(challenge.members||[])];room.status=challenge.status;room.topic=challenge.topic||room.topic;
+    rooms.set(id,room);
+    for(const uid of room.members){
+      const m=[...members.values()].find(x=>x.uid===uid);
+      if(m)m.socket.join(topic(id));
+    }
+    return room;
+  }
   function duelChallenge(challenge){
     if(!challenge||typeof challenge!=='object'||typeof challenge.id!=='string')return;
     challengeById.set(challenge.id,challenge);
@@ -153,15 +221,9 @@ module.exports=function({authUser,store,namespace}){
       stopIdleTimer();
       return;
     }
-    const room=rooms.get(challenge.id)||{members:[...(challenge.members||[])],seats:new Map(),topic:challenge.topic||'',status:challenge.status};
-    room.members=[...(challenge.members||[])];room.status=challenge.status;room.topic=challenge.topic||room.topic;
-    rooms.set(challenge.id,room);
+    const room=openRoom(challenge);
     /* 有人开始作答那一刻就把两个人拉进房：即使还没就位，duel:seats 的空表也会告诉他们
      * "对手在线、还没到"，这比让他们对着一个静止的占位模型猜要诚实。 */
-    for(const uid of room.members){
-      const m=[...members.values()].find(x=>x.uid===uid);
-      if(m)m.socket.join(topic(challenge.id));
-    }
     const seated=[...room.seats.values()];
     ns?.to(topic(challenge.id)).emit('duel:state',{challenge:challenge.id,topic:room.topic,status:challenge.status,submitted:submitted(challenge),seats:seated});
     stopIdleTimer();
@@ -188,8 +250,14 @@ module.exports=function({authUser,store,namespace}){
         const identity=await store.run(()=>{
           const user=authUser({headers:{authorization:'Bearer '+(socket.handshake.auth?.token||'')}});
           if(!user)return null;
-          const profile=store.get('community','main',{}).profiles?.[user.id];
-          return {uid:user.id,nick:profile?.visible?String(profile.nick||'同学').replace(/[\u0000-\u001f\u007f]/g,'').slice(0,24):''};
+          const data=store.get('community','main',{})||{};
+          const profile=data.profiles?.[user.id];
+          /* 顺手把我**还活着的挑战**读出来一起带出去。
+           * 为什么要在 join 时读：rooms 是内存表，服务一重启就空了；挑战却还在库里。
+           * 不读这一下，重启之后两个人都"有挑战、没房间"，按 E 一律被拒——
+           * 用户看到的就是「匹配不上、答不了题」。 */
+          const live=(data.challenges||[]).filter(c=>Array.isArray(c.members)&&c.members.includes(user.id)&&c.status==='active'&&(!c.expiresAt||c.expiresAt>Date.now()));
+          return {uid:user.id,nick:profile?.visible?String(profile.nick||'同学').replace(/[\u0000-\u001f\u007f]/g,'').slice(0,24):'',challenges:live};
         },{readOnly:true});
         if(closed||!identity||!socket.connected)return reply({ok:false,error:'请登录有效的云端账号'});
         const old=members.get(identity.uid);
@@ -198,9 +266,12 @@ module.exports=function({authUser,store,namespace}){
         if(old){leave(old.socket);old.socket.emit('campus:replaced');}
         const id=randomUUID(),m={id,uid:identity.uid,socket,nick:identity.nick||'同学 '+id.slice(0,4),avatar:body.avatar,pose:spawn(initial),seq:0,lastSeen:Date.now(),lastPose:0};
         members.set(identity.uid,m);socket.join(ROOM);startTimer();
-        /* 进来时顺手把已经在进行的挑战房全部补上：刷新页面不该丢掉「我在台上」这件事。 */
+        const mine=identity.challenges||[];
+        /* 进来时顺手把已经在进行的挑战房全部补上：刷新页面不该丢掉「我在台上」这件事。
+         * 这一趟也顺带重建 rooms——重启后的第一份真相来自库，不是内存。 */
+        for(const c of mine)duelChallenge(c);
         for(const [challengeId,room] of rooms)if(room.members.includes(identity.uid))socket.join(topic(challengeId));
-        reply({ok:true,self:publicPlayer(m),players:players(),duels:[...rooms].filter(([,r])=>r.members.includes(identity.uid)).map(([challengeId,r])=>({challenge:challengeId,topic:r.topic,status:r.status}))});
+        reply({ok:true,self:publicPlayer(m),players:players(),duels:mine.map(c=>({challenge:c.id,topic:c.topic||'',status:c.status}))});
       }catch{reply({ok:false,error:'校园连接暂不可用，请重试'});}finally{joining=false;}
     });
     socket.on('campus:pose',body=>{
@@ -230,6 +301,10 @@ module.exports=function({authUser,store,namespace}){
       try{reply(duelEnter(socket,body.challenge,at.station));}catch{reply({ok:false,error:'就位失败，请重试'});}
     });
     socket.on('duel:act',body=>{if(!closed)duelAct(socket,body);});
+    /* 现场匹配：两个人都点了才配成一对。ack 只回答"我在等"或"配到了"，
+     * 配到之后仍走 duel:enter 就位——一条路进房，不做第二套。 */
+    socket.on('duel:match',(body,ack)=>{if(closed){if(typeof ack==='function')ack({ok:false,error:'服务暂不可用'});return;}duelMatch(socket,body,ack).catch(()=>{if(typeof ack==='function')ack({ok:false,error:'匹配失败，请重试'});});});
+    socket.on('duel:match/cancel',()=>{queue.delete(socket.data.uid);});
     /* duel:leave 也回 ack：客户端"起身"之后要立刻知道自己已经不在位上，
      * 不接 ack 的话它只能靠猜，或者干等超时（测试里就是这么暴露出来的）。 */
     socket.on('duel:leave',(body,ack)=>{
@@ -254,13 +329,16 @@ module.exports=function({authUser,store,namespace}){
     /* 挑战变了（community 那边提交后回调）：把它翻译成「这间房还开不开」。
      * 对外只暴露这一个入口，hooks 留给测试用，避免别处又塞第二套状态进来。 */
     duel(challenge){duelChallenge(challenge);},
+    /* 建挑战的手（server.js 接到 community.createLiveChallenge）：
+     * 匹配配对成功后才调用，题库/计分/落库全在 community，这里不复制一份。 */
+    setChallengeFactory(fn){challengeFactory=fn;},
     onChallengeEvent(fn){hooks.add(fn);return()=>hooks.delete(fn);},
     close(){
       closed=true;clearInterval(timer);timer=null;
       for(const m of [...members.values()])leave(m.socket);
-      rooms.clear();stationOwner.clear();challengeById.clear();hooks.clear();
+      rooms.clear();stationOwner.clear();challengeById.clear();hooks.clear();queue.clear();
     },
-    snapshot:()=>({world:WORLD,count:members.size,max:MAX_PLAYERS,rooms:[...rooms].map(([challenge,r])=>({challenge,members:r.members.length,seats:[...r.seats.values()].map(s=>({station:s.station,id:s.id}))}))})
+    snapshot:()=>({world:WORLD,count:members.size,max:MAX_PLAYERS,waiting:queue.size,rooms:[...rooms].map(([challenge,r])=>({challenge,members:r.members.length,seats:[...r.seats.values()].map(s=>({station:s.station,id:s.id}))}))})
   };
 };
 module.exports.validPose=pose;

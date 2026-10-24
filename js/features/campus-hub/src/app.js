@@ -129,17 +129,41 @@ async function activate(){if(!state.ready||bridge.paused)return;if(state.mode===
        online=false & 无 challenge → 根本还没有进行中的挑战，台上没房
        online=true               → 我真的坐下了，peer 有值就是对面已经有人 */
    const posed=await duel?.enter(result.station).catch(()=>null);
-   const hint=!posed?' · 本地站位（未登录云端）'
-     :!posed.ok?' · '+posed.message
-     :!posed.online?(posed.challenge?' · 正在连接擂台现场':' · 还没有进行中的挑战')
-     :posed.peer?' · 对面是 '+posed.peer.nick+'（'+posed.peer.seat+'位）'
-     :' · 已在'+posed.station+'位，正在等搭子就位';
-   toast((result.message||'已就位')+hint+' · 按 E 举手，Esc 起身');
-   /* 坐到作答位就把题目端上来：真正「在台上一起答题」靠的就是这一步。
-     只有真的坐到台上（online）才开面板；离线/没有挑战时台上只有人、没有题。 */
-   if(posed?.online&&posed.challenge)openDuelPanel();
+   if(posed?.online&&posed.challenge){
+     const hint=posed.peer?' · 对面是 '+posed.peer.nick+'（'+posed.peer.seat+'位）':' · 已在'+posed.station+'位，正在等搭子就位';
+     toast((result.message||'已就位')+hint+' · 按 E 举手，Esc 起身');
+     openDuelPanel();
+   }else if(posed?.online){
+     /* 台上没有现成的挑战：直接进「现场匹配」。
+        第十九轮之前这里只提示一句「还没有进行中的挑战」就结束了，
+        而挑战只有「学习搭子」之间才建得起来——两个只是都在竞技场的人永远开不了局，
+        用户看到的就是「匹配不上、答不了题」。现在两个人都点一次 E 就配成一场。 */
+     const matched=await duel.match(result.station).catch(()=>null);
+     if(matched?.matched){
+       if(matched.station&&matched.station!==result.station)seatPose(matched.station);
+       toast('已匹配到对手'+(duel?.peer?'：'+duel.peer.nick:'')+' · 题目已端上擂台');
+       openDuelPanel();
+     }else if(matched?.waiting){
+       toast('已站上擂台 · 正在匹配对手，另一边也坐上来就开局 · Esc 下台');
+     }else{
+       toast('未能匹配：'+((matched&&matched.message)||'请稍后重试'));
+     }
+   }else{
+     const hint=!posed?' · 本地站位（未登录云端）':!posed.ok?' · '+posed.message:' · 正在连接擂台现场';
+     toast((result.message||'已就位')+hint+' · 按 E 举手，Esc 起身');
+   }
   }else if(result?.kind==='equipment'){bridge.openFeature('equipment');}else if(result?.kind==='note'){bridge.openFeature('note',{text:result.text});}else if(result?.message)toast(result.message);}catch(error){toast('操作未完成：'+error.message);}finally{focusScene();}}
 function jump(){if(state.mode==='walk'&&!bridge.paused&&!state.seated&&!state.stance)avatar?.act('jump',smoothGround);}
+/* 匹配分到的位和我站的那个不一样时，人得跟着挪过去：
+ * 服务端只管座位表（谁在哪个位），3D 里人在哪归这里。
+ * 两个人都站在甲位按 E 时，后来的那位会被挪到乙位——不挪的话两个人叠在同一个点上。 */
+function seatPose(stationId){
+ const spot=DUEL_STATIONS[stationId];if(!spot)return;
+ state.x=spot.x;state.z=spot.z;state.yaw=spot.yaw;state.pitch=0;
+ lastX=spot.x;lastZ=spot.z;smoothGround=groundAt(spot.x,spot.z);studentYaw=Math.PI-spot.yaw;
+ avatar.cancelAction();avatar.update({position:{x:spot.x,z:spot.z,groundY:smoothGround},yaw:studentYaw,dt:0});
+ state.stance={id:'arena.stage.'+stationId,name:'擂台上 · '+(spot.seat||'')+'位作答'};
+}
 /* ---------- 擂台现场：把服务端的状态落到 3D 上（第十五轮） ----------
  * 这一段是"真人 vs 真人"的落地处，规则只有三条：
  *   1) 对面有人在那个位 → 在那个位生成他的化身；没人 → 撤掉，并挂一块等候提示；
@@ -191,7 +215,7 @@ function showDuelHint(text){
  * 坐到作答位上就把题目端出来，人在台上直接答题、直接交卷。
  * 面板只负责显示和收集选择；判分/计时/胜负全在服务端（见 duel-panel.js 顶部说明）。
  * 打开期间角色不能走：WASD 会被面板吃掉，键盘交给选项和交卷。 */
-function openDuelPanel(){if(!duelPanel)return;clearInput();duelPanel.open();}
+function openDuelPanel(){if(!duelPanel||duelPanel.isOpen)return;clearInput();duelPanel.open();}
 function closeDuelPanel(){duelPanel?.close();}
 /* 面板开着时，键盘归面板：移动键、E、空格都不该再驱动角色。 */
 const duelPanelOpen=()=>!!duelPanel?.isOpen;
@@ -304,7 +328,12 @@ duelHint=document.createElement('p');duelHint.id='duel-hint';duelHint.hidden=tru
 /* 作答面板（第十六轮）：坐到作答位上就打开，题目从服务端取，交卷回服务端判。
    它订阅 duel 的变化而不是在每帧里轮询——对面交卷、双方交完出结果都是事件驱动的。 */
 duelPanel=createDuelPanel({duel,onStand:()=>stand(),toast});
-duel.onChange(()=>{if(duelPanel?.isOpen)duelPanel.sync();});
+duel.onChange(()=>{
+  if(duelPanel?.isOpen)duelPanel.sync();
+  /* 匹配是"另一边坐上来"才成功的——那一刻我不在任何一个 await 里，
+   * 所以只能靠这次变化把面板端上来。人还在台上（state.stance）才算，下台了不该弹。 */
+  else if(state.stance&&duel.snapshot.status==='seated')openDuelPanel();
+});
 $('#loading').hidden=true;clock.getDelta();renderer.setAnimationLoop(frame);if(state.returnRestored)toast('已返回对应入口。');
  }catch(error){console.error(error);$('#loading strong').textContent='校园暂时无法加载';$('#progress').textContent=error.message;$('#retry').hidden=false;}}
 window.__campusHub={snapshot:()=>({ready:state.ready,mode:state.mode,pos:[state.x,groundAt(state.x,state.z),state.z],yaw:state.yaw,path:state.path,modal:bridge.paused,returnRestored:state.returnRestored,seated:!!state.seated,stance:state.stance?.id||null,ground:smoothGround,opponent:opponent?.snapshot()||null,duel:duel?.snapshot||null,frames:state.frames,interior:world?.inside(state),rooms:world?.interiors.snapshot(),picker:studyPicker?{held:studyPicker.isHolding(),open:studyPicker.isBookOpen(),aim:studyPicker.getAim()}:null,entries:ENTRIES,nearest:nearest?.id||null,avatar:avatar?.snapshot(),boxes:world?.boxes.length,render:renderer.info.render}),route:id=>goTo(id),teleport:id=>teleportTo(id),setPose:(x,z,yaw=0,pitch=0)=>{if(!navigation||navigation.blocked(x,z))return false;clearInput();setMode('walk');Object.assign(state,{x,z,yaw,pitch});lastX=x;lastZ=z;return true;},blocked:(x,z)=>navigation?.blocked(x,z),entry:id=>world?.enter(id),openFeature:(...args)=>bridge.openFeature(...args),dispose};
@@ -321,6 +350,6 @@ window.__campusHub.visuals=()=>({...effects.snapshot(),memory:{...renderer.info.
 window.__campusHub.presence=()=>presence?.snapshot();
 /* 擂台现场的自检入口：把 duel 本体的接口和 enter() 的**原始返回值**交出来。
    只读，不改状态；排查"人在台上但对面看不见"的时候，看这个比看 3D 快得多。 */
-window.__campusHub.duelApi=()=>duel?{snapshot:duel.snapshot,challenge:duel.challenge,peer:duel.peer,peerAct:duel.peerAct,enter:seat=>duel.enter(seat),act:kind=>duel.act(kind),connect:()=>duel.connect()}:null;
+window.__campusHub.duelApi=()=>duel?{snapshot:duel.snapshot,challenge:duel.challenge,peer:duel.peer,peerAct:duel.peerAct,enter:seat=>duel.enter(seat),match:seat=>duel.match(seat),act:kind=>duel.act(kind),connect:()=>duel.connect()}:null;
 window.__campusHub.duelEnter=async(seat,id)=>{if(!duel)return{error:'duel 未初始化'};try{return await duel.enter(seat,id);}catch(error){return{thrown:true,message:String(error&&error.message||error),stack:String(error&&error.stack||'').split('\n').slice(0,4)};}};
 init();

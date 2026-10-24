@@ -664,6 +664,10 @@ studyRooms.attach(campusLive.attach(community.attach(server)));
  * 房间的生命周期归 presence 管（有人就位才建，人走光就散），这里只把「挑战变了」告诉它：
  * 挑战与同场用的是同一个登录态，uid 就是两边的公共键。 */
 community.onChallengeEvent((challenge) => campusLive.duel(challenge));
+/* 擂台现场匹配（第十九轮）：两个人在竞技场上各自点「开始匹配」，配对成功后
+ * 由 presence 调这里建一场挑战。**建挑战只有 community 一条路**——
+ * presence 不写题库、不判分，它只负责把两个人凑到一起。 */
+campusLive.setChallengeFactory((a, b, topic) => community.createLiveChallenge(a, b, topic));
 server.requestTimeout = 30000;
 async function start(port=PORT,host=process.env.HOST || '127.0.0.1') {
   await store.init();

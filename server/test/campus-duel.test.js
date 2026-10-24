@@ -5,8 +5,9 @@
  * 这个测试盯住的就是这两件事的边界：不是挑战成员不能就位、一个位只能一个人、
  * 动作只发一次且不落库、离开/断线立刻清位。
  *
- * 房间在「有人真的点了开始作答」时才建：挑战一创建 status 就是 active，
- * 但那只是邀请发了，台上还没人——所以邀请阶段不该有房可进。
+ * 房间是**懒建**的：没人就位就不占内存；但「挑战还活着」就允许就位，
+ * 不再要求"有人先开始作答"——那条前置条件会造成「坐不上→没法开始→更坐不上」的死锁。
+ * 另外两个不是学习搭子的人也要能开一局（现场匹配，见文件末尾）。
  */
 const {test,before,after}=require('node:test'),assert=require('node:assert/strict');
 const fs=require('node:fs'),os=require('node:os'),path=require('node:path');
@@ -28,6 +29,8 @@ const register=username=>req(null,'register','POST',{username,password:'DuelTest
 const card=(nick)=>({nick,visible:true,subjects:['高等数学'],goal:'一起练习',availability:'晚上'});
 async function connect(who){const s=io(base+'/community',{auth:{token:who.token},transports:['websocket'],reconnection:false});sockets.push(s);await once(s,'connect');const joined=await ack(s,'campus:join',{world:'campus-hub-v1',avatar:'anime',pose});assert.equal(joined.ok,true);return {socket:s,self:joined.self};}
 const roomOf=id=>campusLive.snapshot().rooms.find(r=>r.challenge===id);
+/* 直接读库里的 friends 表：key 是两个 id 排序后拼起来（见 community/index.js 的 key()）。 */
+function friendship(x,y){const data=require('../lib/store').get('community','main',{})||{};return !!(data.friends||{})[[x,y].sort().join(':')];}
 
 before(async()=>{
   process.env.DATA_DIR=temp;process.env.JWT_SECRET='duel-test-secret';
@@ -44,15 +47,19 @@ before(async()=>{
 });
 after(async()=>{for(const s of sockets)s.disconnect();campusLive.close();await community.close();await integrations.close();fs.rmSync(temp,{recursive:true,force:true});});
 
-test('no room exists until somebody actually starts the challenge',async()=>{
-  assert.equal(roomOf(challenge.id),undefined,'邀请阶段台上没有房');
+test('a live challenge can be seated on before anybody starts, and sitting down is what opens the room',async()=>{
+  /* 没人就位时台上没有房：房间是懒建的，不为"只是发了邀请"的挑战占内存。 */
+  assert.equal(roomOf(challenge.id),undefined,'没人就位时台上还没有房');
+  /* 但**进得去**。以前这里要求"有人先 start"，于是「坐不上→没法开始→更坐不上」死锁：
+   * 真实用户就这么卡在台上，看到的是"答不了题"。坐着的人一开面板就会 start。 */
   const early=await ack(sa,'duel:enter',{challenge:challenge.id,station:'jia'});
-  assert.equal(early.ok,false,'没人开始作答时进不去');
-  await req(a,'challenge/start','POST',{id:challenge.id});
+  assert.equal(early.ok,true,'挑战还活着就能坐上去:'+JSON.stringify(early));
   const room=roomOf(challenge.id);
-  assert.ok(room,'有人开始作答，房才建');
+  assert.ok(room,'人就位这一步把房建起来');
   assert.equal(room.members,2);
-  assert.deepEqual(room.seats,[],'房建了但没人就位');
+  assert.deepEqual(room.seats.map(s=>s.station),['jia'],'坐着的人已经在座位上');
+  await req(a,'challenge/start','POST',{id:challenge.id});
+  assert.ok(roomOf(challenge.id),'开始作答后房还在');
 });
 
 test('a started challenge only lets its own members take a station',async()=>{
@@ -112,6 +119,46 @@ test('leaving or disconnecting frees the station',async()=>{
    * 另外甲（sa）一直坐在 jia 没动，所以这里只剩他一个座位。 */
   assert.ok(room,'座位空了不代表挑战结束，房要留着');
   assert.deepEqual(room.seats.map(s=>s.station),['jia'],'断线的乙清了位，甲的位还在');
+});
+
+/* 第十九轮：两个**不是学习搭子**的人，只是都在竞技场，也要能开一局。
+ * 好友挑战那条路要求先加搭子，所以台上等人永远等不到——这就是用户说的「匹配不上」。 */
+test('two strangers on the arena can be matched into one real challenge',async()=>{
+  const d=await register('匹配丁'),e=await register('匹配戊');
+  await req(d,'profile','PUT',card('丁同学'));await req(e,'profile','PUT',card('戊同学'));
+  const sd=(await connect(d)).socket,se=(await connect(e)).socket;
+
+  const waiting=await ack(sd,'duel:match',{station:'jia'});
+  assert.equal(waiting.ok,true);
+  assert.equal(waiting.waiting,true,'只有一个人时进等待队列');
+  assert.equal(campusLive.snapshot().waiting,1);
+
+  /* 先挂好监听再让第二个人点——emit 就在 ack 之前，慢一步就永远等不到。 */
+  const announcedP=wait(sd,'duel:matched');
+  const matched=await ack(se,'duel:match',{station:'jia'});
+  assert.equal(matched.ok,true);
+  assert.equal(matched.matched,true,'第二个人一到就配成一对');
+  const announced=await announcedP;
+  assert.equal(announced.challenge,matched.challenge,'两边拿到的是同一场挑战');
+  assert.equal(announced.station,'jia','先等的人保持自己要的位');
+  assert.equal(matched.station,'yi','两个人都点了甲位时，后来的去乙位，不叠在一起');
+  assert.equal(campusLive.snapshot().waiting,0,'配对成功后队列清空');
+
+  /* 配对结果必须是一条**真的**挑战：落在 community 里、五道题、两边都是成员。 */
+  const detail=await req(d,'challenge?id='+matched.challenge);
+  assert.equal(detail.challenge.status,'active');
+  assert.equal(detail.challenge.count,5,'五道题，和好友挑战同一套题库');
+  assert.equal(detail.challenge.topic,'函数与极限','没指定主题时用默认主题');
+  /* 从头到尾没有发过好友申请——现场匹配不要求先加学习搭子 */
+  assert.equal(friendship(d.user.id,e.user.id),false,'两人不是学习搭子');
+
+  const seatD=await ack(sd,'duel:enter',{challenge:matched.challenge,station:'jia'});
+  const seatE=await ack(se,'duel:enter',{challenge:matched.challenge,station:'yi'});
+  assert.equal(seatD.ok,true,'匹配到就能坐下:'+JSON.stringify(seatD));
+  assert.equal(seatE.ok,true);
+  assert.equal(roomOf(matched.challenge).seats.length,2,'两个真人都坐在台上');
+
+  await req(d,'challenge/cancel','PUT',{id:matched.challenge});
 });
 
 /* 这一条盯的是一个真实踩过的坑：
