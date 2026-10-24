@@ -1,0 +1,32 @@
+/* Shared answer typography. Formula scrolling stays inside the answer, including on phones. */
+.ai-rich-text { min-width: 0; max-width: 100%; white-space: normal; overflow-wrap: anywhere; line-height: 1.8; }
+.ai-note-a > .ai-rich-text { white-space: normal; }
+.ai-msg.bot.ai-rich-text { min-width: 0; }
+.ai-rich-text > :first-child { margin-top: 0; }
+.ai-rich-text > :last-child { margin-bottom: 0; }
+.ai-rich-text p { margin: .55em 0; }
+.ai-rich-text :is(h1,h2,h3,h4,h5,h6) { margin: 1em 0 .4em; color: inherit; font-size: 1.08em; font-weight: 700; line-height: 1.5; }
+.ai-rich-text :is(ol,ul) { margin: .55em 0; padding-inline-start: 1.6em; }
+.ai-rich-text li { margin: .35em 0; padding-inline-start: .1em; }
+.ai-rich-text li > p { margin: .25em 0; }
+.ai-rich-text blockquote { margin: .75em 0; padding: .25em .8em; border-inline-start: 3px solid var(--acc, #0b7d70); color: var(--muted, #52635c); }
+.ai-rich-text a { color: var(--acc, #0b7d70); text-decoration: underline; text-underline-offset: 3px; }
+.ai-rich-text a:focus-visible { outline: 2px solid currentColor; outline-offset: 3px; }
+.ai-rich-text pre { max-width: 100%; overflow-x: auto; padding: .75em; border: 1px solid var(--rule, #c8cbb5); border-radius: 8px; background: rgba(11,125,112,.05); white-space: pre; }
+.ai-rich-text code { font-size: .92em; }
+.ai-rich-text :not(pre) > code { padding: .08em .25em; border-radius: 4px; background: rgba(11,125,112,.06); }
+.ai-rich-text .ai-math { display: inline-block; max-width: 100%; overflow-x: auto; vertical-align: middle; white-space: normal; overflow-wrap: normal; word-break: normal; }
+.ai-rich-text .ai-math-wide { display: inline-block; max-width: 100%; overflow-x: auto; vertical-align: middle; }
+.ai-rich-text .ai-math-block { max-width: 100%; margin: .7em 0; overflow-x: auto; overflow-y: hidden; }
+.ai-rich-text .katex { font-size: 1.08em; text-align: initial; }
+.ai-rich-text .katex-display { margin: .45em 0; }
+.ai-rich-text .ai-math-block .katex-display > .katex,
+.ai-rich-text .ai-math-wide .katex-display > .katex { display: inline-block; min-width: 100%; }
+.ai-rich-text .ai-math-fallback { white-space: pre-wrap; overflow-wrap: anywhere; color: inherit; }
+.ai-rich-text .ai-format-fallback { white-space: pre-wrap; }
+.ai-rich-text table { display: block; max-width: 100%; overflow-x: auto; border-collapse: collapse; margin: .7em 0; }
+.ai-rich-text :is(th,td) { padding: .4em .65em; border: 1px solid var(--rule, #c8cbb5); text-align: start; }
+.ai-rich-text th { background: rgba(11,125,112,.06); }
+@media (max-width: 600px) {
+  .ai-msg.bot.ai-rich-text { font-size: 1rem; }
+}
