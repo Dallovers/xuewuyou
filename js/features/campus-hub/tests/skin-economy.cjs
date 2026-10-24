@@ -20,14 +20,14 @@ const app=require(path.join(root,'server/server')),{questions}=require(path.join
   // Exercise the actual answer button using one deterministic question from the
   // production bank; the HTTP grading endpoint and wallet remain unmocked.
   await pa.evaluate(()=>window.__campusHub.openFeature('bank',{moduleId:'b3'}));
-  const frame=pa.frameLocator('#business-frame');await frame.locator('#view-module').waitFor({state:'visible',timeout:30000});
+  await pa.waitForURL(/#bank\/b3$/);const frame=pa;await frame.locator('#view-module').waitFor({state:'visible',timeout:60000});if(await frame.locator('.atlas-practice-settings').count())await frame.locator('.atlas-practice-settings').evaluate(d=>d.open=true);
   await frame.locator('#modFilter [data-form="choice"]').click();await frame.locator('#subGrid [data-topic]:not(.mod-card-empty)').first().click();await frame.locator('.bank-opt').first().waitFor({state:'visible'});
-  const quiz=pa.frames().find(f=>f.url().includes('embedded=campus')),q=bank[15];
+  const quiz=pa,q=bank[15];
   await quiz.evaluate(qid=>{WG_Gaoshu.start({mistakeIds:[qid]},{onStats:()=>{},onEnd:()=>{}});},q.id);
   await frame.locator('.bank-opt').nth(q.answer.charCodeAt(0)-65).click();
   await pa.waitForFunction(async()=>{const r=await fetch('/api/skins/wallet',{headers:{Authorization:'Bearer '+localStorage.getItem('xwy_token')}});return (await r.json()).wallet.balance===160;});
   check('real question button credits server wallet from 150 to 160',true);
-  await pa.click('#close-business');await pa.click('#skin-shop');
+  await pa.goto(base+'/js/features/campus-hub/index.html');await pa.waitForFunction(()=>window.__campusHub?.snapshot().frames>3,null,{timeout:120000});await pa.waitForFunction(()=>window.__campusHub.presence()?.loaded===1,null,{timeout:60000});await pa.click('#skin-shop');
   await pa.locator('[data-skin="vroid-vita"]').click();await pa.waitForFunction(()=>window.__campusSkins.snapshot().preview?.avatar==='vroid-vita',null,{timeout:60000});
   await pa.click('[data-equip]');await pa.waitForFunction(()=>window.__campusHub.snapshot().avatar?.avatar==='vroid-vita',null,{timeout:60000});
   const wallet=(await api('skins/wallet',null,a.token)).wallet;check('shop redeems and equips exact server price',wallet.balance===0&&wallet.equipped==='vroid-vita'&&wallet.owned.includes('vroid-vita'));

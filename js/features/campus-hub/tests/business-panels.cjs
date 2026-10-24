@@ -7,8 +7,9 @@ const path=require('node:path');
    2. 刷题：课程面板只是「选哪一科」，仍然是小窗；**点科目直接整页跳进主站题库**，
       不再塞进 #business 的 iframe。所以后半段的断言都对着顶层页面做，
       并且要确认校园页那套 dialog 在跳转后根本不存在了。 */
-const CAMPUS='http://127.0.0.1:4184/js/features/campus-hub/index.html';
-const SITE='http://127.0.0.1:4184/index.html';
+const base=process.env.CAMPUS_TEST_BASE||'http://127.0.0.1:4184/';
+const CAMPUS=new URL('js/features/campus-hub/index.html',base).href;
+const SITE=new URL('index.html',base).href;
 
 (async()=>{
  const browser=await chromium.launch({channel:'msedge',headless:true,args:['--use-angle=d3d11','--ignore-gpu-blocklist']});
