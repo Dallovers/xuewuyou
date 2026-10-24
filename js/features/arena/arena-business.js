@@ -244,7 +244,7 @@ export function createPanels(refs) {
       if (!mine.startedAt) {
         button(acts, '开始挑战', function () { return start(c.id); }, true);
       } else {
-        el(acts, 'span', '已开始计时 · 去主站作答', 'biz-meta');
+        el(acts, 'span', '已开始计时 · 回主站作答', 'biz-meta');
       }
     }
     link(acts, c.status === 'completed' ? '去主站看复盘' : '在主站继续', site('arena'));
@@ -256,7 +256,7 @@ export function createPanels(refs) {
   async function start(id) {
     try {
       await call('POST', 'challenge/start', { id: id });
-      toast('已开始，计时走服务端：15 分钟内到主站交卷。');
+      toast('已开始作答 · 到擂台的甲/乙位就位，对面那位会和你同场 15 分钟。');
       await ring({});
     } catch (err) {
       toast(explain(err));

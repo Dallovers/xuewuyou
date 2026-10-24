@@ -68,3 +68,4 @@ dialog[open]{display:flex;flex-direction:column}dialog::backdrop{background:#0c2
 }
 @media(prefers-reduced-motion:reduce){button,select,.views a{transition:none}.spinner{animation:none}}
 @media(forced-colors:active){button,select,.views a{border:1px solid ButtonText}dialog::backdrop{backdrop-filter:none}}
+#duel-hint{position:fixed;left:50%;top:112px;transform:translateX(-50%);margin:0;padding:7px 16px;border-radius:99px;background:#2b4a3ee8;color:#fff;font-size:12.5px;line-height:1.6;letter-spacing:.4px;white-space:nowrap;z-index:6;pointer-events:none;box-shadow:0 4px 16px #22332d33}@media(max-width:700px){#duel-hint{top:168px;font-size:12px;padding:6px 12px;max-width:calc(100vw - 24px);overflow:hidden;text-overflow:ellipsis}}
