@@ -1,167 +1,140 @@
-# 学无忧 · 校园互动版
+# 学无忧 · 3D 开放校园与在线学习
 
-2026-10-19：新增 [可运行的课程学院 3D 参考 v5](examples/campus-3d-v5/README.md)，包含源码、GLB、Blender 工程、PBR 素材和三组 Cycles 光照图。A/B 运行只需 Node.js，无需安装 3D 渲染环境。当前按 [三人功能板块分工](docs/team/README.md) 推进：A 好友社交、B 自习室、负责人图书馆与总装；[A/B 风格图](docs/team/visuals/ab-style-v1/README.md) 由负责人统一提供。渲染效果不理想可把源文件和截图发给负责人修改，所有生成图片需求直接找负责人。该 3D 样板为独立参考，主站入口保持原行为。
+学无忧将可探索的三维校园与在线学习工具结合：走进教室练题，到图书馆阅读，在自习室与同伴专注，也可以在广场交流、到竞技场进行答题挑战。校园空间与原网站共用账号和学习业务，用户可以按自己的习惯选择空间入口或清晰的网页列表。
 
-2026-10-18：主导航收敛为「今日校园 / 课程与资料 / 错题与复习 / 自习室 / 同伴」。资料与问答、错题与到期复习、个人与多人自习分别在同一板块内切换；首页保留地图、真实学习数据和下一步任务，移除重复的题库/资料卡片及“敬请期待”。独立 AI 演示页已移除，练习中的 AI 讲题和资料问答入口继续使用。地图地点 `lab` 保持稳定 ID，改为可直接开始随机练习的「随机训练场」；3D 灰盒仍是独立演示，主站接入见 [合并后的 3D 地点规划](docs/team/feature-consolidation-3d.md)。
+**[打开网站](https://dallovers.github.io/xuewuyou/) · [进入 3D 校园](https://dallovers.github.io/xuewuyou/js/features/campus-hub/index.html) · [前往竞技场](https://dallovers.github.io/xuewuyou/js/features/campus-hub/index.html?at=arena)**
 
-2026-10-16：更新[四人协作执行单](docs/team/README.md)：A 负责后端、学习业务与题库，B 专注全站 UI，C 独立负责真实 3D 校园与玩家移动，你负责美术参考与验收。新增[题库盘点与扩充计划](docs/team/question-bank-plan.md)、[3D 场景与移动契约](docs/team/world-3d-contract.md)。这些是下一轮计划，3D、续学和新增题库不作为现有功能宣传。
+![公共校园场景运行截图](docs/team/visuals/campus-interiors-v6/overview.png)
 
-2026-10-13 新增真实多人自习室：公开或邀请制房间、好友邀请确认、共同计时、个人目标、成员状态、真实鼓励和结束记录。专注营地显示实际正在共同专注的人数；原个人自习保留。入口与双账号演示见 [多人自习室使用说明](多人自习室使用说明.md)。
+## 校园里可以做什么
 
-留言墙已换用用户生成的石墙藤蔓背景和五色手工纸便签。图片压缩后网页资源合计约 2 MB，保留真实文字、公式和互动；绿色便签已修成真正透明背景。素材及处理提示词见 [留言墙素材说明](vendor/message-wall/README.md)。
+中央庭院连接五处功能空间。教学楼、图书馆和自习室可以直接步行进入，社交广场与竞技场沿室外道路连通。
 
-2026-10-09 界面更新：已移除学习工作台整页及知识图、排程、数学实验的页面入口；题目白板保留在练习、复习和挑战复盘中，章节地图继续展示真实学习状态。校园留言改成木框软木便签墙，支持展开回复、长文、题目讨论和手机单列。原学习工作台的技术记录与数据仍保留，下面涉及它的旧操作路径不再适用于当前界面。可选背景素材见 [留言板美术提示词](留言板美术提示词.md)。
+| 空间 | 互动与学习入口 |
+| --- | --- |
+| 中央庭院 | 漫游、导览、长椅休息、开关圆形喷泉；通过校园出口或“返回网站”回到主站 |
+| 教学楼 | 开门、入座、控制灯光、卷帘和投影；在课程面板选择科目，或入座后按 E 进入正式题库 |
+| 图书馆 | 书架分类、馆藏检索、资料阅读、阅读计时、书签和摘记 |
+| 自习室 | 入座、拿书、翻书；从签到台进入网站自习房间，设置目标，与同伴共同计时 |
+| 社交广场 | 从学习搭子服务台和留言板打开好友、邀请、校园留言与回复 |
+| 竞技场 | 走近甲、乙作答位按 E 参与现场匹配；匹配后作答同一组五道题，交卷查看服务端判分和结果 |
 
-网站：[打开学无忧](https://dallovers.github.io/xuewuyou/) · 后端：[健康检查](https://1.94.225.173/api/health)。前端与 3D 资源继续由 GitHub Pages 托管，后端迁至华为云，使用免费公网 IP HTTPS 证书。账号数据库和登录密钥保持一致，迁移说明与回退步骤见 [华为云后端交接](docs/team/huawei-backend.md)。
+教学楼目前可进入首层门厅和一间示范教室。正式刷题使用主站整页题库；阅读、自习、好友等功能在相应面板中打开。图书馆书签、摘记及部分场景内示范记录保存在当前浏览器，不等同于账号云端学习记录。
 
-[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/Dallovers/xuewuyou)
+校园中还保留少量彩蛋与隐藏互动，欢迎自行探索。
 
-完整后端部署见 [部署与队友分享](部署与队友分享.md)。免费方案使用 Render 后端＋Neon PostgreSQL，配置 DATABASE_URL 后，账号、留言、挑战、学习记录与上传资料保存到数据库。免费后端会休眠，首次访问可能需要约一分钟。详见 [免费后端搭建指南](免费后端搭建指南.md)。
+## 人物、皮肤与同场互动
 
-![校园地图](docs/campus-preview.png)
+- **人物与动作**：支持二次元、学生、机器人、卡通等形象。可在皮肤商城查看实际三维模型、旋转预览并试播动作；各模型支持的动作不同，以可用按钮为准。
+- **学习币与换装**：初始形象可免费使用；登录后可兑换、穿戴皮肤，余额和衣橱随账号保存。正式题库中，可由服务端自动判分的选择题，每题每天首次答对奖励 10 学习币，每日上限 200，按北京时间计算。
+- **多人同场**：不同账号连接同一后端并加入同场后，可以看到附近同学的人物、移动、动作和换装。同一账号新窗口加入时会接替旧窗口。
+- **聊天与头顶气泡**：点击“聊天”或按 Enter 输入，发送内容同时出现在聊天栏和可见角色头顶。聊天面向当前校园同场用户，记录为临时保存。
+- **答题竞技**：现场匹配无需先加好友；两位用户分别操作作答位即可进入匹配。主站仍保留邀请学习搭子的异步五题挑战。挥拳等人物动作属于表现动画，竞技结果由答题判分决定。
 
-以用户确认的 [Dallovers/xuewuyou](https://github.com/Dallovers/xuewuyou) `main` 为基础，基线提交 `fb98d7118906b982cd5c1745d9d7dd69251e0885`（2026-09-09）。保留原生页面、题库、自习室、错题本和学习资料，以及已接入的智能复习、课程问答、文档解析、知识图、自动排程、BKT 掌握度、数学实验室和题目白板。新增 Phaser 等距校园地图、课程地图、章节关卡与真实学习状态同步。
+## 主网站功能
 
-首页 8 个分区对应课程学院、知识图书馆、实验研究所、社交广场、好友竞技场、专注营地、错题修复工坊和成长中心。已接入你提供的手绘海岛底图和透明图书馆；尚未提供建筑素材的分区使用地点标记。课程地图包含 14 个实际模块；数学模块进入专属章节地图。每个分区可以配置多个入口，后续增加功能无需重画底图。
+不进入 3D 场景，也可从主站导航使用学习工具：
 
-新增学习搭子、校园留言与题目讨论、异步五题好友挑战。通过 Socket.IO 接收邀请与挑战更新通知，通过 markdown-it 排版留言；挑战由服务器判分并同步原答题记录、错题本和 FSRS。作答、专注、成果与互动数量会在地图同步后更新；可以继续使用原来的列表页面。
+| 导航 | 功能 |
+| --- | --- |
+| 今日校园 | 3D 校园入口、学习概况与常用功能 |
+| 课程与资料 | 课程目录、题库练习、随机组卷、学习资料、AI 助手 |
+| 错题与复习 | 错题归集与重做、FSRS 智能复习、学情报告、AI 备考计划入口 |
+| 自习室 | 个人自习、公开或邀请制多人房间、共同目标与计时 |
+| 同伴 | 学习搭子、邀请确认、留言和回复、好友答题挑战 |
 
-[校园互动与 GitHub 选型](校园互动与GitHub选型.md) 说明开源选择和双账号演示步骤；[地图美术素材指南](地图美术素材指南.md) 给出继续生图与替换步骤；[地图设计与开源参考](地图设计与开源参考.md) 说明状态映射。当前属于学习状态孪生原型，地图没有测绘真实校园，BKT 使用未校准的固定参数估计。
+多人共同计时需至少两位成员在线并准备，由房主开始；离开页面、休息或断线会影响有效计时。AI 回答取决于后端模型配置。资料上传后的解析、索引与基于资料的问答需要额外服务，见下方配置说明。
 
-## 启动网站
+## 基本操作
 
-需要 Node.js 22.12 或更新版本，以及 Python 3.10–3.14。Windows 下双击 **启动网站.cmd**：首次安装 Node 依赖和独立的 Python 学习引擎，并在没有 `.env` 时从模板创建配置。首次安装需要联网；项目包已带本地地图、白板和数学实验室静态资源。也可手动运行：
+| 操作 | 桌面端 |
+| --- | --- |
+| 移动 / 快跑 | WASD 或方向键 / 按住 Shift |
+| 调整视角 / 跳跃 | 拖动画面 / 空格 |
+| 使用设施 | 靠近后按 E，或点击底部互动按钮 |
+| 切换附近目标 | F，或点击“附近互动”中的目标 |
+| 招呼 / 挥拳 | Z / X，依当前形象支持的动作 |
+| 聊天 | Enter 打开并发送，Shift + Enter 换行 |
+| 关闭当前面板 / 起身 | Esc |
+
+手机提供方向、跳跃和互动按钮。顶部地点菜单可选择步行导航或“移动”到入口。需要刷题时，先到教室入座，再按 E；需要现场对战时，请进入整合校园的竞技场作答位。旧独立竞技场页提供“去台上坐下答题”入口。
+
+## 本地运行
+
+需要 **Node.js 22.12 或更新版本**。仓库已包含校园构建产物，体验现有场景无需安装 Blender。
+
+### 推荐：隔离本地预览
+
+在仓库根目录执行：
+
+```powershell
+npm ci --prefix server
+node server/scripts/campus-preview-dev.cjs
+```
+
+打开 [本地校园](http://127.0.0.1:4184/js/features/campus-hub/index.html) 或 [本地主站](http://127.0.0.1:4184/)。预览脚本将前端连接到同一个本地后端，默认使用 `server/data/campus-hub-preview` 保存隔离数据；请注册本地测试账号。该方式不读取 `server/.env`，运行环境也不要设置生产 `DATABASE_URL`。多人体验可使用普通窗口和无痕窗口，分别登录不同账号。
+
+### 完整站点与学习引擎
+
+Windows 可运行根目录的 `启动网站.cmd`，它会安装依赖并准备 Python 学习引擎。此方式还需要 **Python 3.10–3.14**。也可手动启动后端：
 
 ```powershell
 cd server
-Copy-Item .env.example .env # 仅首次，没有已有配置文件时执行
+if (!(Test-Path .env)) { Copy-Item .env.example .env }
 npm ci
-npm run vendor:math # 项目包已带资源时可跳过；源码缺少数学资源时执行
-powershell -NoProfile -ExecutionPolicy Bypass -File ../services/Setup-Learning.ps1
 npm start
 ```
 
-打开 **http://localhost:3000**，注册或登录云端账号。端口在 `server/.env` 中修改。通过 Node 服务打开网站；双击 `index.html` 或部署到 GitHub Pages 无法运行后端功能。
+默认访问 [http://localhost:3000](http://localhost:3000)。使用完整启动方式进行本地开发时，还需将本地 `js/deploy-config.js` 的 `apiBase` 设为 `http://localhost:3000`，使前端连接本地 API；仓库发布配置默认指向线上后端。
 
-**学习搭子、留言、好友挑战，以及知识图、排程、掌握估计、数学实验、白板、智能复习和 TXT/MD 预览，都无需外部模型密钥。** Socket.IO 使用网站同一端口，无需额外部署服务。OR-Tools / pyBKT 使用本机 Python 虚拟环境；数学实验的 Python 在浏览器里运行。课程问答需要 RAGFlow，PDF/Office/图片解析需要 MinerU；未配置时页面明确显示状态。
+需要 Python 学习引擎时，在仓库根目录运行 `services/Setup-Learning.ps1`；Linux/macOS 可按 `services/learning/requirements.txt` 创建虚拟环境，并通过 `LEARNING_PYTHON` 指定解释器。
 
-## 操作路径和功能
-
-| 接入 | 操作路径 | 实际行为 |
-| --- | --- | --- |
-| [Socket.IO](https://github.com/socketio/socket.io) 4.8.4 | 社交广场 → 学习搭子；好友竞技场 | 邀请、好友与挑战更新通知，公开名片在线状态；使用现有登录和同一 Node 服务 |
-| [markdown-it](https://github.com/markdown-it/markdown-it) 15.0.2 | 社交广场 → 留言亭；练习或复盘 → 题目讨论 | Markdown、数学公式、回复和作者删除；讨论按题号隔离 |
-| [Phaser](https://github.com/phaserjs/phaser) 4.2.1 | 校园地图 → 课程探索区 → 数学模块 → 章节地点 | 等距地图、地点选择、角色移动、缩放与查看；真实学习状态同步；可替换手动生图素材 |
-| [ts-fsrs](https://github.com/open-spaced-repetition/ts-fsrs) 5.4.2 | 题库产生错题 → 错题本「按复习计划重做错题」或导航「智能复习」 | 到期队列、提交答案与熟练程度、计算下次时间、保存调度日志 |
-| [RAGFlow](https://github.com/infiniflow/ragflow) | 学习资料「上传课程资料并提问」或导航「课程问答」 → 上传 → 等待索引 → 提问 | 每人独立知识库，选定资料范围，返回引用片段；模型未配置时返回检索依据 |
-| [MinerU](https://github.com/opendatalab/MinerU) 4.x V1 | 课程问答 → 上传 PDF、DOCX、PPTX 或图片 → 查看文本 | 上传源文件、创建解析任务、限时轮询、取得 Markdown、交给 RAGFlow 建索引 |
-| 本地 [KaTeX](https://katex.org/docs/browser) 0.19.0 | 复习题干、选项和解析 | 保留公式内容进行排版，无需外部公式 CDN |
-| [Cytoscape.js](https://github.com/cytoscape/cytoscape.js) 3.34.3 | 导航「学习工作台」→ 知识地图 | 25 个真实题库主题、课程过滤、先修箭头、缩放、错题统计、点击节点或主题按钮开始练习 |
-| [OR-Tools](https://github.com/google/or-tools) 9.15.6755 | 学习工作台 → 备考计划 → 填写日期、学习窗口、课表占用 → 生成 | 真实 CP-SAT 求解；到期错题和薄弱点优先，避开占用，先修主题优先；保留已完成任务，时间不足明确列出；导出 ICS |
-| [pyBKT](https://github.com/CAHLR/pyBKT) 1.4.3 | 答客观题 → 学习工作台「更新学情」 | 贝叶斯知识追踪估计、样本量、下一题答对概率；FSRS 日志与前端镜像去重、自评题排除 |
-| [Pyodide](https://github.com/pyodide/pyodide) 314.0.7 | 学习工作台 → 数学实验室 | 运行可编辑 Python；NumPy / SymPy / Matplotlib 本地资源；求导、积分、矩阵、概率模拟、出图；保存、重开、复现、导出代码和图片 |
-| [Excalidraw](https://github.com/excalidraw/excalidraw) 0.18.1 | 题库练习或智能复习 →「题目白板」；地图主题 →「打开白板」 | 绘图、自由笔、文本、图片和撤销；按账号及题号保存；关闭自动保存，重新打开恢复；PNG 导出；版本冲突保护 |
-
-复习与好友挑战中的选择题由服务器用原题库标准答案判定，客观复习答错强制按「不会」调度。证明题等明确标为自评。客观复习与挑战提交同步回原学情记录；主观自评不会被当成机器判分。快答题补齐稳定题号与答案快照，避免不同快答错题合并成一条。
-
-## 校园互动演示
-
-用两个浏览器或一个普通窗口和一个无痕窗口注册不同账号 → 社交广场公开搭子名片 → 按课程找到同学 → 邀请并由对方接受 → 发起五题挑战 → 双方分别开始并交卷 → 查看服务器分数与用时 → 展开解析、进入题目讨论或打开白板 → 回到地图查看新增作答和错题。
-
-挑战允许双方在不同时间完成，每人开始后限时 15 分钟，整场有效期 24 小时。双方交卷后才展示完整解析和双方成绩；先比较答对数，再比较用时。留言支持校园公共讨论与专属题目讨论。当前专注营地仍为原个人自习室；地图人物代表当前用户，没有实现多人同屏角色或实时对战。
-
-## 学习工作台使用说明
-
-建议演示路径：答几道题 → 更新学情 → 查看主题掌握估计 → 输入备考时间生成计划 → 进入专项练习 → 在题目白板保留推导 → 把同一道题关联到数学实验室，修改代码核对计算 → 保存实验与导出草稿。
-
-- BKT 使用固定参数：先验 0.2、学习概率 0.1、猜测概率 0.25、失误概率 0.1、遗忘概率 0。参数未用真实学生群体校准，页面中的概率是模型估计，不是考试成绩或已验证预测准确率。少于 5 次客观作答显示样本较少；未作答主题显示未评估，不伪造掌握度。
-- 只统计题库内有标准选项答案的客观题，以及其 FSRS 客观复习；不把证明题、自评题、未知题号计为客观正误。历史范围受原网站保留记录数量限制。
-- 知识关系为人工课程先修关系，配置在 `server/learning/topics.js`；可按教师授课顺序修改。地图和同等操作的主题按钮都可打开练习。
-- 计划最多 30 天，每天最多 4 小时；课表占用手动填写。每项 20 分钟、相邻起点相隔 25 分钟。任务从到期错题和主题练习生成；一个计划中每个任务最多安排一次，重新排程保留已完成项及其时段。复习日期按北京时间，ICS 使用 UTC 时间，日历软件会转换为本地时间。
-- 数学实验只在浏览器工作线程执行，服务器仅保存结果快照。运行最多 20 秒，可停止死循环并重新初始化。首次加载的环境准备时间单独计算；限制输出 10 万字符、3 张图，每个实验最多 2 MB，每人最多 50 个实验。
-- 白板按题号绑定原题库，最多 1500 个元素、20 张图片、2 MB。保存失败会保留打开的白板以便重试或导出；其他窗口覆盖版本会提示冲突。切换账号清理页面中的上一账号内容。
-
-数学库已包含在 `vendor/pyodide/`，浏览器无需访问 Python CDN。地图和白板按需加载，题库首页不会载入 React 或 Python 运行时。重新构建白板时执行 `cd widgets/whiteboard; npm ci; npm run build`。修改了间接依赖的版本覆盖以修复已知问题，版本由 lockfile 固定。
-
-Linux/macOS 手动环境：`python3 -m venv services/learning/.venv`，然后使用该环境的 `bin/pip install -r services/learning/requirements.txt`；安装 Node 依赖并 `npm start`。也可在 `.env` 设置 `LEARNING_PYTHON` 为已有环境的绝对路径。
-
-## 启动 RAGFlow
-
-安装并启动 Docker Desktop / WSL2，在项目根目录运行：
+### 修改校园源码后重建
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File services/Setup-RAGFlow.ps1
+npm ci --prefix js/features/campus-hub
+npm run build --prefix js/features/campus-hub
 ```
 
-脚本下载官方默认分支并使用上游 Compose，控制台端口改为 8088，部分数据库端口也调整以减少冲突。镜像、硬件和模型要求以 [官方部署说明](https://github.com/infiniflow/ragflow#-quick-start) 为准。
+源码与构建入口位于 `js/features/campus-hub/`。直接双击 HTML 无法运行完整网站；请通过 HTTP 服务打开。
 
-1. 打开 **http://127.0.0.1:8088**，创建账号，配置可用的 Embedding 模型并设为默认。
-2. 在 RAGFlow 控制台创建 API Key。
-3. 在 `server/.env` 填写以下内容后重启网站：
+## 服务配置与部署
 
-```dotenv
-RAGFLOW_BASE_URL=http://127.0.0.1:9380
-RAGFLOW_API_KEY=你的本地密钥
-```
+线上前端和 3D 资源由 **GitHub Pages** 提供，API 与实时连接由 **华为云后端**提供。`js/deploy-config.js` 统一配置 API 地址。GitHub Pages 本身不运行 Node 服务，合并前端代码也不会自动更新华为云后端镜像。
 
-已上传的「文本已解析」资料可点「重试」建立索引。网站自动为每个云端账号创建 Dataset，无需先建立聊天助手；使用 [Dataset / Retrieval HTTP API](https://ragflow.io/docs/http_api_reference)。服务启动后仍需完成 Embedding 模型配置才能检索。
+| 配置 | 用途 |
+| --- | --- |
+| `PORT`、`HOST` | Node 服务端口与监听地址 |
+| `DATA_DIR` | 本地 JSON 模式的数据目录 |
+| `DATABASE_URL`、`JWT_SECRET` | PostgreSQL 存储与登录校验；数据库模式需固定登录密钥 |
+| `AI_PROVIDER`、`AI_API_KEY`、`AI_BASE_URL`、`AI_MODEL` | 站内 AI 助手与生成式回答 |
+| `RAGFLOW_BASE_URL`、`RAGFLOW_API_KEY` | 课程资料索引、检索与资料问答，需在 RAGFlow 配置 Embedding 模型 |
+| `MINERU_BASE_URL`、`MINERU_API_KEY`、`MINERU_TIER` | PDF、Office、图片等上传资料的解析服务 |
+| `LEARNING_PYTHON` | 可选 Python 学习引擎解释器路径 |
 
-## 启动 MinerU
+配置模板见 [`server/.env.example`](server/.env.example)。密钥只放在服务端环境中。题库、错题、FSRS、社交、人物同场和学习币不依赖外部生成模型；TXT/MD 文本解析可独立使用。已有资料的浏览与阅读，不要求用户自行部署解析模型。
 
-需要 Python 3.10–3.14，在另一个终端运行：
+可选服务的启动脚本为 [`services/Setup-RAGFlow.ps1`](services/Setup-RAGFlow.ps1) 和 [`services/Start-MinerU.ps1`](services/Start-MinerU.ps1)。知识图、CP-SAT 排程、BKT 和数学实验的历史代码仍保留在仓库中；当前主导航已移除原“学习工作台”入口，不将旧操作路径作为现有菜单说明。
+
+部署操作见 [华为云后端说明](docs/team/huawei-backend.md) 和 [后端镜像发布清单](docs/team/2026-10-24-后端镜像发布清单.md)。Render 部署文件保留作可选方案，当前线上 API 使用华为云。
+
+## 技术与资源
+
+- **网站与服务**：原生 HTML / CSS / JavaScript、Node.js、Socket.IO；支持 JSON 和 PostgreSQL 存储。
+- **校园与人物**：Three.js、GLB / glTF、VRM、three-vrm；共享场景统一管理相机、输入和渲染循环。
+- **学习工具**：ts-fsrs、KaTeX、markdown-it、Excalidraw；RAGFlow、MinerU 与 Python 学习引擎按需配置。
+- **模型来源与授权**：[人物资源清单](docs/characters/INVENTORY.md)、[素材署名](docs/characters/ATTRIBUTION.md)、[来源记录](docs/characters/sources.json)。人物、动作、贴图及第三方代码遵循各自授权，复用时保留相应许可和署名。
+
+## 检查与维护
+
+在仓库根目录执行：
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File services/Start-MinerU.ps1
+npm run check --prefix server
+npm test --prefix server
+npm run test:presence --prefix server
 ```
 
-脚本创建虚拟环境，安装 `mineru>=4,<5`，启动本机 8000 端口 V1 API。默认 Basic，首次 PDF/图片解析可能下载模型；Office 按官方接口使用 Flash 层。硬件、引擎和模型要求见 [官方 SDK/API 说明](https://opendatalab.github.io/MinerU/usage/sdk_api/)。
+完整服务端测试需要相应 Python 学习引擎环境；数据库专项测试还需独立的测试 PostgreSQL。CI 配置见 [`.github/workflows/verify.yml`](.github/workflows/verify.yml)。校园浏览器专项的运行条件见 [`js/features/campus-hub/README.md`](js/features/campus-hub/README.md)；具体脚本以各目录的 `package.json` 为准。
 
-在 `server/.env` 填写后重启网站：
-
-```dotenv
-MINERU_BASE_URL=http://127.0.0.1:8000
-MINERU_TIER=basic
-MINERU_API_KEY=
-```
-
-若使用解析服务密钥，在启动 MinerU 的终端设置同一个 `MINERU_API_KEY` 并填写到网站 `.env`。地址是 `/v1` 之前的根地址；本版不使用旧 `/file_parse`。文件上传目的地必须与配置服务同源。
-
-## 配置 AI 回答与原有 AI 助手
-
-在 `server/.env` 配置后重启：
-
-```dotenv
-AI_PROVIDER=zhipu
-AI_API_KEY=你的本地密钥
-AI_BASE_URL=
-AI_MODEL=
-```
-
-`AI_BASE_URL` 是 `/chat/completions` 之前的地址，`AI_MODEL` 为实际可用模型名称。可使用兼容接口的本地或云端模型。没有模型密钥时，FSRS、解析、检索依据仍能使用，不会假装生成回答。原有 AI 统一经后端调用，已移除前后端内置密钥及浏览器直连回退。原仓库公开过的内置密钥若仍在使用，应到服务商撤销或轮换。
-
-## 数据和复用
-
-- 默认数据目录 `server/data`，保留原账号和学习数据结构。新增卡片、日志和资料元数据存入 `integrations.json`，源文件存入 `uploads/<用户编号>/`。重启保留数据。
-- 白板、计划和实验存入同一数据目录下的 `learning.json`，按账号隔离。迁移时连同账号和其他数据文件一起备份；原 FSRS 的导出按钮不包含这个新文件。用户可直接导出白板 PNG、实验 Python/PNG 与计划 ICS。
-- 搭子名片、邀请、好友关系、留言和挑战存入 `community.json`。名片默认不公开；好友请求需对方确认。互动数据和账号、学习记录需要一起备份，FSRS 导出不包含互动数据。
-- 「智能复习 → 导出记录」下载自己的调度日志、资料文本和元数据 JSON，适合展示与分析；不是一键恢复包，不含原文件或模型密钥。
-- TXT/MD 使用 UTF-8；每份不超过 8 MB，解析文本不超过 30 万字符，每人最多 50 份资料。删除同时移除远端索引和本地源文件。
-- 引用指向解析后的文档和检索片段，本版未实现原 PDF 页码映射。失败可重试，索引重试复用远端文档编号。
-- JSON 存储适合单进程演示和小规模使用；多进程需迁移数据库与持久任务队列。重启中断的解析任务变为可重试。
-- 后端适配在 `server/integrations/`，页面在 `js/integrations.js`、`css/integrations.css`；可复用到其他课程场景。依赖版本锁定在 `server/package-lock.json`。
-
-## 验证范围
-
-2026-10-08，Windows / Node.js 24.17 / Python 3.14.6 / Edge：
-
-- `cd server; npm test`：29 项测试通过，覆盖真实 FSRS、pyBKT 贝叶斯更新、CP-SAT 排程、成果与账号隔离、校园状态聚合及资料接入；新增互动测试验证显式邀请确认、Socket.IO 身份与通知隔离、按题回复、服务器判分、提交幂等、限时和重启后的学习记录补写。
-- `npm run check`：入口和新增页面脚本语法检查通过。
-- 浏览器完成登录同步、客观题复习、下次时间保存、UTF-8 资料上传与预览；桌面和 375/390 px 手机页面无横向溢出。
-- 新浏览器流程实测知识地图与 BKT 显示、白板真实绘图/保存/重开/PNG 导出、计划勾选/日历导出、Pyodide 求导/积分/函数出图、实验保存重开、死循环停止与重新运行、实际题库工具入口。375/390 px 地图、计划、实验页面无横向溢出，无页面脚本异常或本地资源失败。
-- 校园浏览器流程验证真实 Phaser Canvas 渲染、8 个功能建筑、14 个课程模块、课程过滤、章节进入原题库、缩放、键盘选择、地图说明、列表视图、手机导航与 375/390 px 无溢出；新增作答自动同步到状态快照，退出登录清除云端快照。截图与结果见 `previews/atlas-browser-check.json`。
-- 两个独立浏览器账号完成公开名片、实时邀请、好友确认、公式留言和回复、同一组五题挑战与按题讨论；实际服务器判分 3/5 与 5/5，并验证新增 5 次作答、2 道错题和地图搭子数量。375/390 px 三个互动页无横向溢出，退出登录清理互动表单与私有结果。见 `previews/community-browser-check.json`。
-- 学习引擎安装脚本已在 Windows PowerShell 5.1 验证；新增三种计算引擎均实际运行。
-- server 和白板依赖 `npm audit` 均未发现已报告漏洞。
-- **RAGFlow、MinerU 和模型联调使用本地模拟服务，不代表已完成真实模型推理。** 当前机器没有 Docker，未启动真实 RAGFlow，未安装 MinerU 模型。代码和脚本已准备，真实服务启动后仍需模型联调。
-
-截图和浏览器记录在 `previews/`。完整项目目录保留原仓库资料 PDF 和音频。
+校园提供多档画质，实际流畅度受设备和网络影响。账号学习数据由后端保存；本地书签、示范笔记、临时同场状态等按各模块的保存方式处理。更新后端时请保留数据库、数据目录和环境配置。
