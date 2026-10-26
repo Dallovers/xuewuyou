@@ -2,6 +2,12 @@
 
 网站入口仍为 https://dallovers.github.io/xuewuyou/，3D 资源继续放在 Pages。公开 API 改为 https://1.94.225.173；Render 原地址暂时保留供回退。前端共用 `js/deploy-config.js`，主站、管理页、校园、竞技场和图书馆入口一起更新配置版本，避免缓存导致连接不同后端。
 
+## 当前在线版本（2026-10-24 晚间更新）
+
+- 在线 API 镜像：`xuewuyou-api:arena-bbe8d74`，源码 `bbe8d7416fe0561b6fb1cdf2c7cb54c1e184f736`，已包含 #118 匹配队列修复与同场聊天。
+- 上一版实际为 `xuewuyou-api:chat-2adc8ee`，并非早期清单里的 f393a37。不要以旧交接文档推断当前版本；可在服务器读取 `/app/.xwy-release` 核实。
+- 完整发布验收及回退路径见 `2026-10-24-竞技场后端发布验收.md`。下方「运行部署」保留首次迁移记录，其中 f393a37 为历史版本。
+
 ## 运行部署
 
 - 华为云北京四，Ubuntu 24.04.4，2 vCPU / 4 GiB，40 GiB 系统盘。
