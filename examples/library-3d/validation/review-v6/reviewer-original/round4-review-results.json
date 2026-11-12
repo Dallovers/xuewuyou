@@ -1,0 +1,102 @@
+{
+  "date": "2026-10-20T12:24:47.301Z",
+  "errors": [],
+  "failedResources": [],
+  "stages": {
+    "baseline": {
+      "mode": "baseline",
+      "localFillCandela": 0,
+      "contactShadowMap": 1024,
+      "globalExposure": 1,
+      "graphics": {
+        "quality": "high",
+        "exposure": 1,
+        "pixelRatio": 1,
+        "ambientOcclusion": true,
+        "buffer": [
+          1440,
+          960
+        ],
+        "samples": 143,
+        "fps": 74.2,
+        "mean_ms": 13.474825175075264,
+        "p95_ms": 24.900000035762787,
+        "max_ms": 150.0999999642372,
+        "drawCalls": 213,
+        "triangles": 252181,
+        "shadowUpdates": 2,
+        "submit_ms": 1.9000000357627869
+      }
+    },
+    "contact": {
+      "mode": "contact",
+      "localFillCandela": 26,
+      "contactShadowMap": 1024,
+      "globalExposure": 1,
+      "graphics": {
+        "quality": "high",
+        "exposure": 1,
+        "pixelRatio": 1,
+        "ambientOcclusion": true,
+        "buffer": [
+          1440,
+          960
+        ],
+        "samples": 240,
+        "fps": 73.6,
+        "mean_ms": 13.582916666567325,
+        "p95_ms": 21.80000001192093,
+        "max_ms": 150.0999999642372,
+        "drawCalls": 213,
+        "triangles": 252181,
+        "shadowUpdates": 3,
+        "submit_ms": 1.5
+      }
+    },
+    "final": {
+      "mode": "final",
+      "localFillCandela": 26,
+      "contactShadowMap": 1024,
+      "globalExposure": 1,
+      "graphics": {
+        "quality": "high",
+        "exposure": 1,
+        "pixelRatio": 1,
+        "ambientOcclusion": true,
+        "buffer": [
+          1440,
+          960
+        ],
+        "samples": 240,
+        "fps": 74.6,
+        "mean_ms": 13.410833333184321,
+        "p95_ms": 17.30000001192093,
+        "max_ms": 42.39999997615814,
+        "drawCalls": 213,
+        "triangles": 252181,
+        "shadowUpdates": 4,
+        "submit_ms": 1.4000000357627869
+      }
+    }
+  },
+  "seatingCycles": 24,
+  "fluid": {
+    "quality": "fluid",
+    "exposure": 1,
+    "pixelRatio": 0.85,
+    "ambientOcclusion": false,
+    "buffer": [
+      1224,
+      816
+    ],
+    "samples": 134,
+    "fps": 108.2,
+    "mean_ms": 9.244776119491947,
+    "p95_ms": 12.600000023841858,
+    "max_ms": 44.5,
+    "drawCalls": 103,
+    "triangles": 153176,
+    "shadowUpdates": 4,
+    "submit_ms": 0.9000000357627869
+  }
+}

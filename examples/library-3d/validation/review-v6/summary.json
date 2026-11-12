@@ -1,0 +1,73 @@
+{
+  "baseCommit": "38de7b5d12a08e0b333769075f5f49b3f944a6c5",
+  "preview": "http://127.0.0.1:4796",
+  "browser": "headless Chromium / ANGLE D3D11",
+  "runs": [
+    {
+      "run": 1,
+      "passed": true,
+      "seatingCycles": 24,
+      "disposeChecks": [
+        {
+          "call": 1,
+          "before": 535,
+          "after": 535
+        },
+        {
+          "call": 2,
+          "before": 535,
+          "after": 535
+        },
+        {
+          "call": 3,
+          "before": 535,
+          "after": 535
+        }
+      ]
+    },
+    {
+      "run": 2,
+      "passed": true,
+      "seatingCycles": 24,
+      "disposeChecks": [
+        {
+          "call": 1,
+          "before": 444,
+          "after": 444
+        },
+        {
+          "call": 2,
+          "before": 444,
+          "after": 444
+        },
+        {
+          "call": 3,
+          "before": 444,
+          "after": 444
+        }
+      ]
+    },
+    {
+      "run": 3,
+      "passed": true,
+      "seatingCycles": 24,
+      "disposeChecks": [
+        {
+          "call": 1,
+          "before": 444,
+          "after": 444
+        },
+        {
+          "call": 2,
+          "before": 444,
+          "after": 444
+        },
+        {
+          "call": 3,
+          "before": 444,
+          "after": 444
+        }
+      ]
+    }
+  ]
+}
