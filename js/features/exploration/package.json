@@ -1,0 +1,15 @@
+{
+  "name": "xuewuyou-exploration-workspace",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "学无忧 B 角色 · 自主探究工作区（单摆 / 矩阵变换）",
+  "scripts": {
+    "build": "node build.mjs",
+    "check": "node --test tests/*.test.mjs && node tests/check-files.mjs",
+    "serve": "node tests/serve.mjs"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2"
+  }
+}

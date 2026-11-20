@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>学无忧 · 自主探究工作区</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%23e5457a'/%3E%3Ctext x='16' y='23' font-size='20' text-anchor='middle' fill='white'%3E%E5%AD%A6%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="./styles.css">
+<script type="importmap">
+{"imports":{"three":"./vendor/three.module.js"}}
+</script>
+</head>
+<body>
+<div class="xwy-shell" id="appRoot">
+
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">学</span>
+      <div><strong>学无忧</strong><small>自主探究工作区 · B 场景编辑器</small></div>
+    </div>
+    <nav class="model-tabs" aria-label="模型切换">
+      <button type="button" data-model="pendulum" class="active">单摆探究</button>
+      <button type="button" data-model="matrix2d">矩阵变换</button>
+    </nav>
+    <div class="status-cluster">
+      <span class="badge" id="modelStatus">模型：检测中</span>
+      <span class="badge" id="apiStatus">接口：检测中</span>
+      <span class="badge" id="saveStatus">未保存</span>
+    </div>
+    <div class="top-actions">
+      <button type="button" id="btnBack" class="ghost">返回</button>
+      <button type="button" id="btnHelp" class="ghost">使用说明</button>
+    </div>
+  </header>
+
+  <div class="workspace">
+    <aside class="panel panel-left" aria-label="器材与案例">
+      <section class="panel-section">
+        <h3>器材与案例</h3>
+        <div id="presetList" class="preset-list"></div>
+      </section>
+      <section class="panel-section">
+        <h3>场景组件 <span class="count" id="objectCount"></span></h3>
+        <div id="objectList" class="object-list"></div>
+        <div class="row"><button type="button" id="btnAddObject" class="soft">＋ 添加组件</button></div>
+      </section>
+      <section class="panel-section">
+        <h3>场景标题</h3>
+        <input type="text" id="sceneTitle" maxlength="80" aria-label="场景标题">
+        <p class="field-note">1–80 字符，标题会随记录保存。</p>
+      </section>
+    </aside>
+
+    <main class="center">
+      <div class="stage-wrap">
+        <canvas id="stage3d" aria-label="三维实验区域"></canvas>
+        <div class="stage-hint" id="stageHint">点击组件选中 · 暂停后拖动摆球改变初始角 · 滚轮缩放</div>
+        <div class="toast" id="toast" role="status" hidden></div>
+      </div>
+
+      <div class="toolbar" role="toolbar" aria-label="运行控制">
+        <button type="button" id="btnRun" class="primary">▶ 开始</button>
+        <button type="button" id="btnPause" class="soft">⏸ 暂停</button>
+        <button type="button" id="btnReset" class="soft">↺ 重置</button>
+        <label class="inline-label">速度
+          <select id="speed" aria-label="播放速度">
+            <option value="0.5">0.5×</option>
+            <option value="1" selected>1×</option>
+            <option value="2">2×</option>
+            <option value="4">4×</option>
+          </select>
+        </label>
+        <span class="clock" id="clock">t = 0.0 s</span>
+        <span class="toolbar-spacer"></span>
+        <button type="button" id="btnUndo" class="soft" title="Ctrl+Z">↶ 撤销上一步</button>
+      </div>
+
+      <div class="timeline">
+        <label for="timeline">时间轴回放</label>
+        <input type="range" id="timeline" min="0" max="0" value="0">
+        <span id="timelineInfo">0 / 0 帧</span>
+        <small>每 0.1 秒记录真实样本与快照，最多 30 秒；拖动可恢复历史状态并继续运行。</small>
+      </div>
+
+      <div class="lower">
+        <div class="chart-box">
+          <div class="box-head">
+            <h3 id="chartTitle">角度曲线</h3>
+            <button type="button" id="btnCompare" class="linklike">与上一轮对照</button>
+          </div>
+          <canvas id="chart" aria-label="角度曲线"></canvas>
+          <div id="chartLegend" class="chart-legend">实线为本轮，虚线为上一轮；每条曲线标注自己的摆长。</div>
+        </div>
+        <div class="result-box">
+          <div class="box-head"><h3>结果与观测</h3></div>
+          <div id="resultBox"><p class="empty-hint">运行后显示结果</p></div>
+        </div>
+      </div>
+    </main>
+
+    <aside class="panel panel-right" aria-label="参数与AI">
+      <section class="panel-section">
+        <h3>选中对象参数 <span class="count" id="selectedId">未选中</span></h3>
+        <div id="paramEditor"><p class="empty-hint">点击左侧组件或三维物体后编辑参数。</p></div>
+      </section>
+      <section class="panel-section">
+        <h3>环境参数</h3>
+        <div id="envEditor"></div>
+      </section>
+      <section class="panel-section">
+        <h3>AI 与自然语言</h3>
+        <textarea id="aiInput" rows="3" placeholder="例如：创建两个摆长分别为 1 米和 2 米的单摆，初始角都是 10 度"></textarea>
+        <div class="row">
+          <button type="button" id="btnPlan" class="primary">生成并应用</button>
+          <button type="button" id="btnExplain" class="soft">解释结果</button>
+        </div>
+        <div id="aiOutput" class="ai-output"><p class="empty-hint">AI 计划会先显示修改了哪些组件与默认值；接口不可用时标注演示模式。</p></div>
+      </section>
+      <section class="panel-section">
+        <h3>探究记录</h3>
+        <label class="stack-label">问题<textarea id="noteQuestion" rows="2" placeholder="我想研究什么？"></textarea></label>
+        <label class="stack-label">预测<textarea id="notePrediction" rows="2" placeholder="我的预测是……"></textarea></label>
+        <label class="stack-label">结论<textarea id="noteConclusion" rows="2" placeholder="观察曲线后我的结论是……"></textarea></label>
+        <button type="button" id="btnAutoNote" class="soft">引用本轮配置与观测</button>
+      </section>
+    </aside>
+  </div>
+
+  <footer class="actionbar">
+    <button type="button" id="btnSave" class="primary">保存记录</button>
+    <button type="button" id="btnOpen" class="soft">打开记录</button>
+    <button type="button" id="btnCopy" class="soft">复制到本机</button>
+    <button type="button" id="btnExport" class="soft">导出 JSON</button>
+    <label class="filebtn soft">导入 JSON<input type="file" id="importFile" accept="application/json,.json" hidden></label>
+    <div id="recordList" class="record-list" hidden></div>
+  </footer>
+</div>
+
+<div class="modal" id="helpModal" hidden>
+  <div class="modal-card">
+    <button type="button" class="modal-close" id="btnCloseHelp" aria-label="关闭">×</button>
+    <h2>自主探究工作区使用说明</h2>
+    <ol>
+      <li>从左侧案例载入或直接用 AI 输入“创建两个摆长分别为 1 米和 2 米的单摆，初始角都是 10 度”。</li>
+      <li>点击组件或三维物体选中；暂停后可拖动摆球改变初始角，右侧可精确输入数值或拖动滑块。</li>
+      <li>点击“开始”运行，观察角度曲线与周期、能量数据；修改参数会自动开始新一轮，旧轮曲线保留为虚线。</li>
+      <li>拖动时间轴回到 5 秒等历史时刻，模型会恢复真实快照，再次点击“开始”即可从该时刻继续。</li>
+      <li>填写问题、预测、结论，点击“引用本轮配置与观测”，再保存记录；刷新后可从“打开记录”恢复。</li>
+    </ol>
+    <p class="modal-note">模型来源与 AI 接口状态显示在顶栏。标注“预览/演示”时表示 C 的计算模块或 A 的接口尚未接入，界面仍按共同协议运行。</p>
+  </div>
+</div>
+
+<script type="module">
+  // 优先使用已构建的 app.bundle.js；未构建时自动退回源码模块，保证首次打开即可用。
+  let booted = false;
+  try {
+    const response = await fetch('./app.bundle.js', { method: 'HEAD' });
+    if (response.ok) {
+      await import('./app.bundle.js');
+      booted = !!window.__XWY_EXPLORATION_BOOTED;
+    }
+  } catch (error) {
+    console.info('[exploration] 未找到构建包，使用源码模块', error.message);
+  }
+  if (!booted) await import('./src/app.js');
+</script>
+</body>
+</html>
