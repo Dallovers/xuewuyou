@@ -170,3 +170,18 @@ th { color: var(--muted); font-weight: 600; }
   .status-cluster { order: 5; width: 100%; margin-left: 0; }
   #stage3d { height: 320px; }
 }
+
+
+/* 保存错误 / 冲突提示 */
+.save-notice { flex-basis: 100%; border: 1px solid #f3c2cf; background: #fff5f8; color: #8f1f43; border-radius: 10px; padding: 9px 12px; font-size: 12px; line-height: 1.7; }
+.save-notice[hidden] { display: none; }
+.save-notice .notice-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
+.save-notice button { border: 1px solid #e5457a; background: #fff; color: #b91c4f; border-radius: 8px; padding: 4px 10px; font-size: 12px; }
+.save-notice.warn { border-color: #f0d19a; background: #fffaf0; color: #8a5a00; }
+.save-notice.warn button { border-color: #d99a2b; color: #8a5a00; }
+
+/* 启动失败面板 */
+.boot-error { position: fixed; inset: 0; z-index: 100; background: rgba(243,246,251,.96); display: grid; place-content: center; justify-items: center; gap: 10px; padding: 24px; text-align: center; }
+.boot-error h2 { margin: 0; font-size: 18px; color: #1f2937; }
+.boot-error p { margin: 0; max-width: 560px; color: #64748b; font-size: 13px; line-height: 1.8; }
+.boot-error button { border: 1px solid #e5457a; background: #e5457a; color: #fff; border-radius: 9px; padding: 8px 16px; font-weight: 600; }

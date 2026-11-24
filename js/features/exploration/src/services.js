@@ -1,24 +1,77 @@
 /*
  * A 的前端服务封装：plan / explain / scenes 接口。
- * 未登录或未配置 AI 时降级为明确标注的“演示模式”（本地规则解析 + 本地存储），
- * 保证手动编辑、案例加载和模型运行始终可用；真实接口恢复后自动切换。
+ * 地址与凭据复用站点现有部署配置（js/deploy-config.js）和会话（js/api.js）：
+ *   - 后端来源：window.WG_DEPLOY.apiBase；未配置时退回同源根路径
+ *   - 会话：window.WG_API.getToken()，退回 localStorage 的 xwy_token
+ * 网络不可用才降级为明确标注的“演示模式”；401/403/409 等业务错误原样上抛，
+ * 由界面保留场景与草稿并给出对应提示，绝不把失败伪装成本机保存成功。
  */
 import { cloneScene, degToRad, MODEL_SPECS, makeId } from './contract.js';
 
 const STORAGE_KEY = 'xwy.exploration.records.v1';
+const DEFAULT_TIMEOUT = 20000;
 
-function apiBase() {
+export class ApiError extends Error {
+  constructor(status, code, message, detail) {
+    super(message || `请求失败（HTTP ${status}）`);
+    this.name = 'ApiError';
+    this.status = status;
+    this.code = code || (status === 401 ? 'AUTH_REQUIRED' : status === 403 ? 'FORBIDDEN' : status === 409 ? 'CONFLICT' : 'API_ERROR');
+    this.detail = detail || null;
+  }
+}
+
+export class UnavailableError extends Error {
+  constructor(code, message, cause) {
+    super(message || '后端不可用');
+    this.name = 'UnavailableError';
+    this.code = code || 'NETWORK';
+    this.cause = cause || null;
+  }
+}
+
+function pageRoot() {
   const path = typeof location !== 'undefined' ? location.pathname : '/js/features/exploration/index.html';
   const marker = '/js/features/exploration/';
   const index = path.indexOf(marker);
-  const root = index >= 0 ? path.slice(0, index) : '';
-  return `${root}/api/exploration`;
+  return index >= 0 ? path.slice(0, index) : '';
+}
+
+/** 后端 exploration 接口根地址；每次调用重新计算，账号/部署切换后立即生效 */
+export function resolveApiBase() {
+  if (typeof window !== 'undefined' && window.__XWY_API_BASE__) {
+    return String(window.__XWY_API_BASE__).replace(/\/$/, '');
+  }
+  const configured = typeof window !== 'undefined' && window.WG_DEPLOY && window.WG_DEPLOY.apiBase;
+  if (configured) {
+    try {
+      return `${new URL(configured).origin}/api/exploration`;
+    } catch (error) {
+      /* 配置非法时退回同源，避免整页不可用 */
+    }
+  }
+  return `${pageRoot()}/api/exploration`;
+}
+
+/** 每次请求都读取当前会话，账号切换后不使用旧 token */
+export function currentToken() {
+  try {
+    if (typeof window !== 'undefined' && window.WG_API && typeof window.WG_API.getToken === 'function') {
+      return window.WG_API.getToken() || '';
+    }
+  } catch (error) { /* 忽略并退回本地读取 */ }
+  try {
+    return localStorage.getItem('xwy_token') || '';
+  } catch (error) {
+    return '';
+  }
 }
 
 function readLocalRecords() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : [];
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed : [];
   } catch (error) {
     return [];
   }
@@ -57,7 +110,7 @@ function clampToSpec(name, value, modelId) {
   return Math.min(spec.max, Math.max(spec.min, value));
 }
 
-/** 演示模式规则解析：只覆盖比赛中明确列出的示例指令，原文回显未识别部分 */
+/** 演示模式规则解析：只覆盖任务书列出的示例指令，并显式标注来源 */
 function previewPlan(message, scene) {
   const text = String(message || '').trim();
   if (!text) return { plan: null, error: '请输入操作指令' };
@@ -185,63 +238,136 @@ export function createServices({ onStatus } = {}) {
   let apiAvailable = null;
 
   function report(mode, detail) {
-    onStatus && onStatus({ mode, detail });
+    onStatus && onStatus({ mode, detail, apiBase: resolveApiBase(), token: !!currentToken() });
+  }
+
+  function markAvailable(available, detail) {
+    if (apiAvailable !== available) {
+      apiAvailable = available;
+      report(available ? 'api' : 'preview', detail || (available ? '已连接后端接口' : '后端不可用，使用演示模式'));
+    }
   }
 
   async function request(path, options = {}) {
+    const base = resolveApiBase();
+    const url = `${base}${path}`;
+    const token = currentToken();
     const controller = new AbortController();
     controllers.add(controller);
+    const timeout = setTimeout(() => controller.abort(), options.timeoutMs || (typeof window !== 'undefined' && window.__XWY_API_TIMEOUT__) || DEFAULT_TIMEOUT);
+    let sameOrigin = true;
+    try { sameOrigin = new URL(url).origin === location.origin; } catch (error) { /* 测试环境无 location */ }
+
     try {
-      const response = await fetch(`${apiBase()}${path}`, {
+      const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) };
+      if (token) headers.Authorization = `Bearer ${token}`;
+      const response = await fetch(url, {
         ...options,
         signal: controller.signal,
-        credentials: 'same-origin',
-        headers: { 'Content-Type': 'application/json', ...(options.headers || {}) }
+        credentials: sameOrigin ? 'same-origin' : 'omit',
+        headers
       });
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      const data = await response.json();
-      if (!data || data.ok !== true) throw new Error((data && data.error) || '接口返回失败');
-      apiAvailable = true;
-      report('api', '已连接 A 的真实接口');
+      let data = null;
+      try { data = await response.json(); } catch (error) { /* 非 JSON 响应 */ }
+      if (!response.ok) {
+        throw new ApiError(response.status, data && data.code, (data && data.error) || `请求失败（HTTP ${response.status}）`, data);
+      }
+      if (!data || data.ok !== true) {
+        throw new ApiError(response.status, data && data.code, (data && data.error) || '接口返回失败', data);
+      }
+      markAvailable(true, '已连接后端接口');
       return data;
     } catch (error) {
-      if (error.name === 'AbortError') throw error;
-      if (apiAvailable !== false) report('preview', `接口不可用（${error.message}），已切换演示模式`);
-      apiAvailable = false;
-      return null;
+      if (error instanceof ApiError) {
+        apiAvailable = false;
+        report('error', `${error.status} ${error.code || ''} ${error.message}`);
+        throw error;
+      }
+      if (error.name === 'AbortError') {
+        markAvailable(false, '请求超时');
+        throw new UnavailableError('TIMEOUT', '请求超时：后端未在限定时间内响应');
+      }
+      markAvailable(false, '网络不可用');
+      throw new UnavailableError('NETWORK', '网络连接失败：请检查网络或后端服务', error);
     } finally {
+      clearTimeout(timeout);
       controllers.delete(controller);
     }
   }
 
+  function localRecord(record) {
+    return { ...cloneScene(record), id: record.id || makeId(), revision: 1, savedAt: new Date().toISOString(), local: true };
+  }
+
   return {
+    apiBase: resolveApiBase,
+    hasToken: () => !!currentToken(),
+    mode: () => apiAvailable,
+
     async plan(message, scene) {
-      const data = await request('/plan', { method: 'POST', body: JSON.stringify({ message, scene }) });
-      if (data && data.plan) return { ...data, source: 'api' };
-      const preview = previewPlan(message, scene);
-      return { ...preview, source: 'preview' };
+      try {
+        const data = await request('/plan', { method: 'POST', body: JSON.stringify({ message, scene }) });
+        if (data && data.plan) return { ...data, source: 'api' };
+        throw new ApiError(200, 'INVALID_PLAN', '后端未返回可执行计划');
+      } catch (error) {
+        if (error instanceof UnavailableError) {
+          return { ...previewPlan(message, scene), source: 'preview', notice: '后端不可用，已使用演示模式' };
+        }
+        throw error;
+      }
     },
 
     async explain(question, scene, observations) {
-      const data = await request('/explain', {
-        method: 'POST',
-        body: JSON.stringify({ question, scene, observations })
-      });
-      if (data && typeof data.answer === 'string') return { ...data, source: 'api' };
-      return previewExplain(question, scene, observations);
+      try {
+        const data = await request('/explain', { method: 'POST', body: JSON.stringify({ question, scene, observations }) });
+        if (data && typeof data.answer === 'string') return { ...data, source: 'api' };
+        throw new ApiError(200, 'INVALID_ANSWER', '后端未返回解释内容');
+      } catch (error) {
+        if (error instanceof UnavailableError) return { ...previewExplain(question, scene, observations), notice: '后端不可用，已使用演示模式' };
+        throw error;
+      }
     },
 
     async listScenes() {
-      const data = await request('/scenes');
-      if (data && Array.isArray(data.scenes)) return { source: 'api', scenes: data.scenes };
-      return { source: 'local', scenes: readLocalRecords() };
+      try {
+        const data = await request('/scenes');
+        return { source: 'api', scenes: Array.isArray(data.scenes) ? data.scenes : [] };
+      } catch (error) {
+        if (error instanceof UnavailableError) return { source: 'local', scenes: readLocalRecords(), notice: '后端不可用，显示本机记录' };
+        throw error;
+      }
     },
+
+    listLocalRecords() { return readLocalRecords(); },
+    getLocalRecord(id) { return readLocalRecords().find(item => item.id === id) || null; },
 
     async saveRecord(record) {
       const data = await request('/scenes', { method: 'POST', body: JSON.stringify(record) });
-      if (data && data.record) return { source: 'api', record: data.record };
+      if (!data.record) throw new ApiError(200, 'INVALID_RECORD', '保存成功但未返回记录');
+      return { source: 'api', record: data.record };
+    },
+
+    async updateRecord(id, payload) {
+      const data = await request(`/scene?id=${encodeURIComponent(id)}`, { method: 'PUT', body: JSON.stringify(payload) });
+      if (!data.record) throw new ApiError(200, 'INVALID_RECORD', '更新成功但未返回记录');
+      return { source: 'api', record: data.record };
+    },
+
+    async getRecord(id) {
+      try {
+        const data = await request(`/scene?id=${encodeURIComponent(id)}`);
+        if (data.record) return { source: 'api', record: data.record };
+        throw new ApiError(200, 'INVALID_RECORD', '接口未返回记录');
+      } catch (error) {
+        if (error instanceof UnavailableError) return { source: 'local', record: readLocalRecords().find(item => item.id === id) || null };
+        throw error;
+      }
+    },
+
+    /** 明确的用户选择：保存到本机，不调用云端 */
+    saveLocalRecord(record) {
       const records = readLocalRecords();
-      const stored = { ...cloneScene(record), id: record.id || makeId(), revision: 1, savedAt: new Date().toISOString(), local: true };
+      const stored = localRecord(record);
       const index = records.findIndex(item => item.id === stored.id);
       if (index >= 0) records[index] = stored;
       else records.unshift(stored);
@@ -249,25 +375,16 @@ export function createServices({ onStatus } = {}) {
       return { source: 'local', record: stored };
     },
 
-    async getRecord(id) {
-      const data = await request(`/scene?id=${encodeURIComponent(id)}`);
-      if (data && data.record) return { source: 'api', record: data.record };
-      return { source: 'local', record: readLocalRecords().find(item => item.id === id) || null };
-    },
-
-    async updateRecord(id, payload) {
-      const data = await request(`/scene?id=${encodeURIComponent(id)}`, { method: 'PUT', body: JSON.stringify(payload) });
-      if (data && data.record) return { source: 'api', record: data.record };
+    async updateLocalRecord(id, payload) {
       const records = readLocalRecords();
       const index = records.findIndex(item => item.id === id);
-      if (index < 0) return { source: 'local', record: null, error: '本地未找到该记录' };
+      if (index < 0) return { source: 'local', record: null, error: '本机未找到该记录' };
       const stored = { ...records[index], ...payload, revision: (records[index].revision || 1) + 1, savedAt: new Date().toISOString(), local: true };
       records[index] = stored;
       writeLocalRecords(records);
       return { source: 'local', record: stored };
     },
 
-    mode: () => apiAvailable,
     dispose() {
       controllers.forEach(controller => controller.abort());
       controllers.clear();

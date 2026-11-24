@@ -8,7 +8,7 @@ import {
 } from './contract.js';
 import { createStore, proposePosition } from './state.js';
 import { createModelHost } from './model-host.js';
-import { createServices } from './services.js';
+import { createServices, ApiError, UnavailableError } from './services.js';
 import { createView3D } from './view3d.js';
 import { createCharts } from './charts.js';
 
@@ -20,8 +20,8 @@ const el = {};
   'btnPause', 'btnReset', 'speed', 'clock', 'btnUndo', 'timeline', 'timelineInfo',
   'chart', 'chartTitle', 'resultBox', 'btnCompare', 'selectedId', 'paramEditor', 'envEditor', 'aiInput',
   'btnPlan', 'btnExplain', 'aiOutput', 'noteQuestion', 'notePrediction', 'noteConclusion',
-  'btnAutoNote', 'btnSave', 'btnOpen', 'btnCopy', 'btnExport', 'importFile', 'recordList',
-  'helpModal', 'btnCloseHelp'
+  'btnAutoNote', 'btnSave', 'btnSaveLocal', 'btnOpen', 'btnCopy', 'btnExport', 'importFile',
+  'recordList', 'saveNotice', 'helpModal', 'btnCloseHelp'
 ].forEach(id => { el[id] = $(id); });
 
 let modelId = 'pendulum';
@@ -41,6 +41,9 @@ let lastSnapshotTime = -1;
 let latestSample = null;
 let currentRecordId = null;
 let currentRevision = null;
+let recordSource = 'cloud';
+let lastSavePayload = null;
+let bootCount = 0;
 let rebuildToken = 0;
 let dragTheta = null;
 let dragResume = false;
@@ -58,9 +61,10 @@ const modelHost = createModelHost({
 });
 const services = createServices({
   onStatus(info) {
-    el.apiStatus.textContent = `接口：${info.mode === 'api' ? '已连接' : '演示模式'}`;
+    const mode = info.mode === 'api' ? '已连接' : info.mode === 'error' ? '接口错误' : '演示模式';
+    el.apiStatus.textContent = `接口：${mode}`;
     el.apiStatus.className = `badge ${info.mode === 'api' ? 'ok' : 'warn'}`;
-    el.apiStatus.title = info.detail || '';
+    el.apiStatus.title = [info.detail, info.apiBase ? `地址 ${info.apiBase}` : '', info.token ? '已读取登录 token' : '未读取到 token'].filter(Boolean).join(' · ');
   }
 });
 const view3d = createView3D({
@@ -307,6 +311,7 @@ function renderPresetList() {
       store.replace(next, { source: 'preset' });
       currentRecordId = null;
       currentRevision = null;
+      recordSource = 'cloud';
       setSaveStatus('未保存');
       toast(`已载入案例：${preset.label}`);
     });
@@ -464,6 +469,9 @@ function switchModel(next, keepName = true) {
     button.classList.toggle('active', button.dataset.model === next);
   });
   previousRun = null;
+  currentRecordId = null;
+  currentRevision = null;
+  recordSource = 'cloud';
   store.replace(createDefaultScene(next, keepName ? scene.title : '自主探究'), { source: 'model-switch' });
   selectedId = store.getScene().objects[0].id;
   charts.setModel(next);
@@ -583,42 +591,179 @@ function doUndo() {
   toast('已撤销上一步配置修改');
 }
 
-async function doSave() {
-  const snapshot = modelHost.snapshot();
-  const record = {
+function buildRecordPayload() {
+  return {
     id: currentRecordId || makeId(),
     title: scene.title,
     scene: cloneScene(scene),
-    runtimeSnapshot: snapshot,
+    runtimeSnapshot: modelHost.snapshot(),
     runtimeSeries: samples.slice(-600),
     runtimeSnapshots: snapshots.slice(-300),
     observations: charts.summarize(latestSample),
     notes: currentNotes(),
     savedAt: new Date().toISOString()
   };
-  if (currentRecordId && currentRevision) record.revision = currentRevision;
-  try {
-    const result = await services.saveRecord(record);
-    currentRecordId = result.record.id;
-    currentRevision = result.record.revision;
-    setSaveStatus(`已保存 · ${result.source === 'api' ? '云端' : '本机'} · ${new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}`);
-    toast(result.source === 'api' ? '已保存到云端记录' : '已保存到本机（接口未连接）');
-  } catch (error) {
-    toast(`保存失败：${error.message}`);
+}
+
+function hideSaveNotice() {
+  el.saveNotice.hidden = true;
+  el.saveNotice.innerHTML = '';
+}
+
+function showSaveNotice(message, kind, actions = []) {
+  el.saveNotice.hidden = false;
+  el.saveNotice.className = `save-notice${kind === 'warn' ? ' warn' : ''}`;
+  el.saveNotice.innerHTML = '';
+  const text = document.createElement('div');
+  text.textContent = message;
+  el.saveNotice.appendChild(text);
+  if (actions.length) {
+    const row = document.createElement('div');
+    row.className = 'notice-actions';
+    actions.forEach(({ label, action }) => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.textContent = label;
+      button.addEventListener('click', action);
+      row.appendChild(button);
+    });
+    el.saveNotice.appendChild(row);
   }
 }
 
+function describeApiError(error) {
+  if (error instanceof ApiError) {
+    if (error.status === 401) return '登录状态已失效，请重新登录；当前草稿仍保留。';
+    if (error.status === 403) return '当前账号无权访问这条记录；当前草稿仍保留。';
+    if (error.status === 409) return '云端记录已被更新（版本冲突 409）；当前草稿仍保留。';
+    return `接口返回 ${error.status}：${error.message}；当前草稿仍保留。`;
+  }
+  if (error instanceof UnavailableError) {
+    return error.code === 'TIMEOUT'
+      ? '请求超时，云端保存未完成；当前草稿仍保留。'
+      : '网络不可用，云端保存未完成；当前草稿仍保留。';
+  }
+  return `保存失败：${error.message}；当前草稿仍保留。`;
+}
+
+async function refreshRecordRevision() {
+  if (!currentRecordId || recordSource !== 'cloud') { toast('当前不是云端记录'); return; }
+  try {
+    const result = await services.getRecord(currentRecordId);
+    if (!result.record) throw new Error('云端未找到该记录');
+    currentRevision = result.record.revision;
+    hideSaveNotice();
+    setSaveStatus(`已同步云端修订 ${currentRevision}`);
+    toast('已读取最新版本号，可重新保存');
+  } catch (error) {
+    showSaveNotice(describeApiError(error), 'warn', [
+      { label: '重试', action: refreshRecordRevision },
+      { label: '保留草稿', action: hideSaveNotice }
+    ]);
+  }
+}
+
+function handleSaveError(error) {
+  if (error instanceof ApiError && error.status === 409) {
+    setSaveStatus('保存冲突');
+    showSaveNotice(describeApiError(error), 'warn', [
+      { label: '读取最新版本号', action: refreshRecordRevision },
+      { label: '重新保存', action: doSave },
+      { label: '保留草稿', action: hideSaveNotice }
+    ]);
+    return;
+  }
+  if (error instanceof ApiError && (error.status === 401 || error.status === 403)) {
+    setSaveStatus(error.status === 401 ? '未登录' : '无权限');
+    showSaveNotice(describeApiError(error), 'warn', [
+      { label: '重新登录', action: () => { location.href = new URL('../../../index.html?login=1', document.baseURI).href; } },
+      { label: '保存到本机', action: doSaveLocal },
+      { label: '保留草稿', action: hideSaveNotice }
+    ]);
+    return;
+  }
+  setSaveStatus('保存失败');
+  showSaveNotice(describeApiError(error), 'warn', [
+    { label: '重试', action: doSave },
+    { label: '保存到本机', action: doSaveLocal },
+    { label: '保留草稿', action: hideSaveNotice }
+  ]);
+}
+
+async function doSave() {
+  const payload = buildRecordPayload();
+  lastSavePayload = payload;
+  try {
+    const result = (recordSource === 'cloud' && currentRecordId && currentRevision)
+      ? await services.updateRecord(currentRecordId, {
+        revision: currentRevision,
+        title: payload.title,
+        scene: payload.scene,
+        runtimeSnapshot: payload.runtimeSnapshot,
+        runtimeSeries: payload.runtimeSeries,
+        runtimeSnapshots: payload.runtimeSnapshots,
+        observations: payload.observations,
+        notes: payload.notes
+      })
+      : await services.saveRecord(payload);
+    currentRecordId = result.record.id || currentRecordId;
+    currentRevision = result.record.revision != null ? result.record.revision : currentRevision;
+    recordSource = 'cloud';
+    hideSaveNotice();
+    setSaveStatus(`已保存 · 云端 · 修订 ${currentRevision} · ${new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}`);
+    toast(`已保存到云端记录（${result.record.revision ? `修订 ${result.record.revision}` : '新建'}）`);
+  } catch (error) {
+    handleSaveError(error);
+  }
+}
+
+function doSaveLocal() {
+  const payload = buildRecordPayload();
+  if (recordSource !== 'local') {
+    payload.id = makeId();
+  }
+  const result = services.saveLocalRecord(payload);
+  currentRecordId = result.record.id;
+  currentRevision = result.record.revision;
+  recordSource = 'local';
+  hideSaveNotice();
+  setSaveStatus(`已保存 · 本机 · ${new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}`);
+  toast('已由你的选择保存到本机（不写入云端）');
+}
+
 async function doOpenList() {
-  const result = await services.listScenes();
+  let cloud = [];
+  let notice = '';
+  try {
+    const result = await services.listScenes();
+    cloud = result.scenes;
+    notice = result.notice || '';
+  } catch (error) {
+    notice = describeApiError(error);
+  }
+  const local = services.listLocalRecords().map(item => ({ ...item, local: true }));
+  const seen = new Set(cloud.map(item => item.id));
+  const records = [...cloud, ...local.filter(item => !seen.has(item.id))];
   el.recordList.innerHTML = '';
-  if (!result.scenes.length) {
-    el.recordList.innerHTML = '<span class="empty-hint">暂无记录，先点击“保存记录”。</span>';
+  if (notice) {
+    const hint = document.createElement('span');
+    hint.className = 'empty-hint';
+    hint.textContent = notice;
+    el.recordList.appendChild(hint);
+  }
+  if (!records.length) {
+    const empty = document.createElement('span');
+    empty.className = 'empty-hint';
+    empty.textContent = '暂无记录，先点击“保存记录”。';
+    el.recordList.appendChild(empty);
   } else {
-    result.scenes.forEach((record) => {
+    records.forEach((record) => {
       const button = document.createElement('button');
       button.type = 'button';
       button.className = 'record-item';
-      button.textContent = `${record.title || record.scene?.title || '未命名'} · ${new Date(record.savedAt || Date.now()).toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}`;
+      const source = record.local ? '本机' : '云端';
+      const revision = record.revision ? ` · 修订 ${record.revision}` : '';
+      button.textContent = `${record.title || record.scene?.title || '未命名'} · ${source}${revision} · ${new Date(record.savedAt || Date.now()).toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}`;
       button.addEventListener('click', () => loadRecord(record));
       el.recordList.appendChild(button);
     });
@@ -627,9 +772,19 @@ async function doOpenList() {
 }
 
 async function loadRecord(record) {
-  const detail = record.scene ? record : (await services.getRecord(record.id)).record;
+  let detail = record;
+  if (!record.scene) {
+    try {
+      if (record.local) detail = services.getLocalRecord(record.id);
+      else detail = (await services.getRecord(record.id)).record;
+    } catch (error) {
+      toast(describeApiError(error));
+      return;
+    }
+  }
   if (!detail) { toast('记录不存在或不属于当前账号'); return; }
   store.replace(detail.scene, { source: 'record' });
+  recordSource = detail.local ? 'local' : 'cloud';
   currentRecordId = detail.id;
   currentRevision = detail.revision;
   const notes = detail.notes || {};
@@ -641,7 +796,7 @@ async function loadRecord(record) {
     detail.runtimeSnapshot.runtimeSnapshots = detail.runtimeSnapshots || [];
     await rebuild({ notify: false, snapshot: detail.runtimeSnapshot });
   }
-  setSaveStatus(`已打开 · 修订 ${detail.revision || 1}`);
+  setSaveStatus(`已打开 · ${recordSource === 'local' ? '本机' : '云端'} · 修订 ${detail.revision || 1}`);
   el.recordList.hidden = true;
   toast('记录已恢复，可继续编辑与运行');
 }
@@ -683,6 +838,7 @@ function doImport(file) {
       }
       currentRecordId = null;
       currentRevision = null;
+      recordSource = 'cloud';
       setSaveStatus('导入后未保存');
       toast('JSON 已导入并通过协议校验');
     } catch (error) {
@@ -696,8 +852,8 @@ function doImport(file) {
 
 function backTarget() {
   const from = new URLSearchParams(location.search).get('from');
-  if (from === 'campus') return '../../../examples/campus-integration/preview.html';
-  return '../../../index.html';
+  if (from === 'campus') return new URL('../campus-hub/index.html', document.baseURI).href;
+  return new URL('../../../index.html', document.baseURI).href;
 }
 
 function bindEvents() {
@@ -758,12 +914,13 @@ function bindEvents() {
     toast('已把本轮配置与观测追加到探究记录');
   });
   el.btnSave.addEventListener('click', doSave);
+  el.btnSaveLocal.addEventListener('click', doSaveLocal);
   el.btnOpen.addEventListener('click', doOpenList);
   el.btnCopy.addEventListener('click', async () => {
     currentRecordId = null;
     currentRevision = null;
+    recordSource = 'cloud';
     await doSave();
-    toast('已复制到本机，可作为新一轮实验');
   });
   el.btnExport.addEventListener('click', doExport);
   el.importFile.addEventListener('change', () => { if (el.importFile.files[0]) doImport(el.importFile.files[0]); });
@@ -799,6 +956,8 @@ function dispose() {
 }
 
 async function init() {
+  bootCount += 1;
+  window.__XWY_BOOT_COUNT__ = bootCount;
   renderPresetList();
   bindEvents();
   view3d.resize();
@@ -808,9 +967,21 @@ async function init() {
   await rebuild({ notify: false });
   store.commit([], { source: 'first' });
   window.__XWY_EXPLORATION_BOOTED = true;
+  const errorPanel = document.querySelector('.boot-error');
+  if (errorPanel) errorPanel.remove();
 }
 
-init().catch((error) => {
-  toast(`工作区初始化失败：${error.message}`, 8000);
-  console.error('[exploration] init failed', error);
-});
+let bootstrapPromise = null;
+
+/** 入口唯一启动点：HTML 必须 await 本 Promise，避免导入即判定完成。 */
+export function bootstrap() {
+  if (!bootstrapPromise) {
+    bootstrapPromise = init().catch((error) => {
+      window.__XWY_BOOT_ERROR__ = error;
+      console.error('[exploration] init failed', error);
+      try { dispose(); } catch (cleanupError) { console.error('[exploration] cleanup failed', cleanupError); }
+      throw error;
+    });
+  }
+  return bootstrapPromise;
+}

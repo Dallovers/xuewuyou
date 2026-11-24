@@ -9,7 +9,7 @@ const required = [
   'vendor/three.module.js', 'vendor/THREE-LICENSE.txt', 'entry-inject.js',
   'src/app.js', 'src/contract.js', 'src/state.js', 'src/model-host.js',
   'src/preview-models.js', 'src/services.js', 'src/view3d.js', 'src/charts.js',
-  'tests/contract.test.mjs', 'tests/serve.mjs'
+  'tests/contract.test.mjs', 'tests/api.test.mjs', 'tests/serve.mjs'
 ];
 let failed = false;
 required.forEach((file) => {

@@ -1,79 +1,72 @@
-# 学无忧 · 自主探究工作区（B 角色交付）
+# 学无忧 · 自主探究工作区（B 角色）
 
-面向 10 天任务的 B01–B05 前端模块：单摆 / 二维矩阵场景的工作区、三维组件、拖动调参、撤销、曲线、回放、AI 调用、保存恢复与主站 / 校园入口。
+单摆 / 二维矩阵场景的工作区：三维组件、拖动调参、撤销、曲线、0.1 s 快照回放、AI 与保存、主站 / 公共校园入口。
 
-## 1. 目录定位与放置方式
+本目录对应 PR #125（`feature/exploration-workplace`）。2026-11-24 的 PR125 修复在原有基础上处理了五项问题，详见第 3 节。
 
-本交付是一组**新增文件**，不修改现有项目文件。把整个 `js/features/exploration/` 目录复制到目标仓库的同名路径即可。
+## 1. 实际入口
 
-```
-目标仓库/
-├─ index.html                         ← 只加一行入口脚本（见第 4 节）
-├─ examples/campus-integration/...     ← 校园页只加一行入口脚本
-└─ js/features/exploration/            ← 本目录整体复制
-```
+| 来源 | 入口位置 | 实际链接 |
+| --- | --- | --- |
+| 主站 | 侧栏「课程与资料 → 自主探究」、首页「全部功能入口 → 自主探究工作区」 | `index.html` 底部加载 `js/features/exploration/entry-inject.js`，链接为 `js/features/exploration/index.html?from=main` |
+| 公共校园 | `js/features/campus-hub/index.html` 顶部工具栏「自主探究」 | 同目录加载 `../../../js/features/exploration/entry-inject.js`，链接带 `?from=campus` |
+| 直接访问 | `js/features/exploration/index.html` | 默认 `from=main`，顶栏「返回」回主站 |
 
-## 2. 启动与构建
+`entry-inject.js` 按自身 `src` 推导站点根，`/xuewuyou/` 子路径无需改代码；重复加载不会生成重复入口。返回按钮按来源回到 `../../../index.html` 或 `../campus-hub/index.html`。
 
-在本模块目录执行：
+## 2. 启动、构建与检查
 
 ```bash
-node tests/serve.mjs                  # 预览：http://127.0.0.1:4186/index.html
-node --test tests/*.test.mjs          # 单元测试
+cd js/features/exploration
+node tests/serve.mjs                  # 独立预览 http://127.0.0.1:4186/index.html
+node --test tests/*.test.mjs          # 协议 / 状态 / 模型 / 接口 17 项
 node tests/check-files.mjs            # 静态交付检查
-npm install                           # 仅构建时需要 esbuild
-npm run build                         # 生成 app.bundle.js（可选优化产物）
+npm ci && npm run build               # 生成 app.bundle.js（仓库已附带构建产物）
 ```
 
-- 预览服务默认端口 4186，与共同约定中 B 的端口一致；可用 `PORT=4187 node tests/serve.mjs` 覆盖。
-- **不构建也能打开**：`index.html` 会先探测 `app.bundle.js`，不存在时自动加载 `src/app.js`，Three.js 通过 importmap 指向随包携带的 `vendor/three.module.js`（r170，与校园模块一致）。
-- 在 `/xuewuyou/` 子路径部署时，所有资源与接口地址都按当前路径推导，无需改代码。
+完整站点预览（需要 Node 22.12+ 与服务端依赖）：
 
-## 3. 功能与验收点（B01–B05）
+```powershell
+$env:DATA_DIR = 'F:\连小理\学无忧v2\运行数据\PR125'
+$env:PORT = '4186'
+node server/scripts/campus-preview-dev.cjs
+```
 
-| 编号 | 已交付 | 实际验收步骤 |
+然后打开 `http://127.0.0.1:4186/js/features/exploration/index.html`，主站入口为 `http://127.0.0.1:4186/`。原预览脚本会拒绝带 `DATABASE_URL` 的终端环境，需在对应终端清除该变量。
+
+## 3. PR125 五项修复
+
+| 项 | 改动 | 复验结果 |
 | --- | --- | --- |
-| B01 | 独立工作区页面、器材/案例栏、三维区、参数区、运行工具栏、曲线/结果区、AI 输入与状态反馈；主站与校园无侵入入口；子路径资源定位 | 从主站侧栏「课程与资料 → 自主探究」进入；从校园悬浮按钮进入（URL 带 `?from=campus`）；点顶栏「返回」回到原入口 |
-| B02 | 单摆支架+绳+摆球 1–4 组；矩阵网格+坐标轴+原向量/结果向量；点选、增删、位置；暂停后拖动摆球改变初始角；数值+滑块双输入；配置历史与撤销 | 载入「两摆对照」→ 选 pendulum-1 → 把摆长调到 1.5 m → 点撤销恢复 1 m；拖动左边摆球看初始角显示；添加第 3 个摆 |
-| B03 | 开始/暂停/重置/速度；每 0.1 s 真实样本+快照，30 s 上限；角度曲线与周期/能量；矩阵结果与进度；时间轴恢复继续；上一轮虚线对照；资源释放 | 运行 10 s → 暂停 → 时间轴回到 5 s → 再点开始；改摆长后再运行，实线/虚线各有自己的摆长标注 |
-| B04 | plan / explain / scenes 接口封装；计划摘要与默认值显示；请求状态与失败保留场景；保存、打开、复制、JSON 导入导出；可编辑问题/预测/结论并引用本轮数据 | 输入「创建两个摆长分别为 1 米和 2 米的单摆，初始角都是 10 度」→「左边改成 1.5 米」→「重力改成 3.71」→ 保存 → 刷新 → 打开记录 |
-| B05 | 浅色响应式布局、键盘 Ctrl+Z / Esc、触屏拖动摆球、滚轮缩放、弹层关闭、页面卸载释放渲染器/模型/监听 | 窄屏打开；连续切换模型 3 次；导入导出后再运行；查看控制台无资源泄漏报错 |
+| 统一启动 | `index.html` 改为 `await module.bootstrap()`；`app.js` 导出唯一启动 Promise，初始化完成才写 `__XWY_EXPLORATION_BOOTED`；构建包缺失才回退源码，初始化失败显示错误并清理 | 构建模式启动写入 1 次、WebGL2 上下文 1 个、`__XWY_BOOT_COUNT__=1`；源码模式同样 1 次；构建包 404 时回退源码成功 |
+| 地址与会话 | `services.js` 读取 `WG_DEPLOY.apiBase` 与 `WG_API.getToken()`，每次请求读取当前 token 并带 `Authorization: Bearer`；401/403/409/超时/网络错误分别提示并保留草稿；仅网络不可用才降级演示模式 | 请求发往配置后端；连续保存 `POST → PUT → PUT`，三次均带测试 token；409、401 均保留草稿；无 token 时原样上抛 401 |
+| 模型路径 | `model-host.js` 以 `document.baseURI` 定位 `./models/index.mjs`，不再受 `import.meta.url` 在 bundle 中位置影响；支持 `window.__XWY_MODEL_URL__` 覆盖 | 构建 / 源码 / `/xuewuyou/` 三种模式均请求 `js/features/exploration/models/index.mjs`；临时模块工厂被调用，来源显示「真实 C 模块」 |
+| 保存与更新 | 首次保存 `POST /api/exploration/scenes`；已有云端记录 `PUT /api/exploration/scene?id=…` 并带 `revision`；新增「保存到本机」由用户显式触发；「复制实验」创建新 ID；409 可读取最新版本号后重试 | `POST(rev1) → PUT(rev1→2) → PUT(rev2→3)`；409 提示冲突并保留草稿；401 提示登录并保留草稿；本机保存显示「本机」来源 |
+| 主站 / 校园 | 主站 `index.html` 与 `js/features/campus-hub/index.html` 各加一行 `entry-inject.js`；脚本注入侧栏、功能入口与校园工具栏入口；返回路径改为 `campus-hub/index.html` | 主站与校园点击均进入 `?from=main` / `?from=campus`；返回目标分别为主站与 campus-hub，HTTP 200；根路径与 `/xuewuyou/` 子路径均通过 |
 
-**接口降级规则**：C 的 `models/index.mjs` 不存在时自动使用同协议的 `src/preview-models.js`，顶栏显示「预览模型」；A 的 `/api/exploration` 不可用/未登录时自动使用 `src/services.js` 中的演示模式解析器与本机存储，顶栏显示「演示模式」。降级状态在界面明确标注，不会伪装成真实调用。
+验证使用受控 exploration 接口（明确标注，不代表 A 的真实后端）与临时 C 模块；真实 A 后端 / C 正式模型尚不在本 PR 中，联调状态见 `复验记录_PR125.md` 第 4 节。
 
-## 4. 主站与校园入口接入（不改动现有文件逻辑）
+## 4. 接口与降级规则
 
-在两处页面各加一行即可：
-
-```html
-<script src="js/features/exploration/entry-inject.js"></script>
-```
-
-- 主站 `index.html`：脚本自动在「课程与资料」侧栏加「自主探究」，在首页「全部功能入口」加按钮。
-- 校园 `examples/campus-integration/preview.html`：脚本识别校园页并给出「进入自主探究工作区」按钮，跳转 URL 带 `?from=campus`；工作区顶栏「返回」回到校园。
-- 脚本按自身路径推导基础地址，`/xuewuyou/` 子路径同样有效；重复引入不会生成重复入口。
-
-也可以完全手动接入，链接地址为：
-
-```
-js/features/exploration/index.html?from=main
-js/features/exploration/index.html?from=campus
-```
+- 配置来源：`js/deploy-config.js` 的 `window.WG_DEPLOY.apiBase`；未配置时退回同源根路径 `<root>/api/exploration`。
+- 会话来源：`window.WG_API.getToken()`，退回 `localStorage.xwy_token`；每次请求重新读取，账号切换后不使用旧 token。
+- C 模型缺失或初始化失败：使用 `src/preview-models.js`，顶栏明确显示「预览模型」，手动编辑与运行不受影响。
+- A 接口网络不可用：plan/explain 使用演示模式并标注；**401/403/409 不降级**，保存不会伪装成本机成功。
+- 本机保存只在用户点击「保存到本机」时发生，记录和状态均标「本机」。
 
 ## 5. 协议与文件边界
 
-- 场景结构、操作格式、参数范围、快照接口严格遵循《00-共同接口约定.md》，本地实现位于 `src/contract.js`；A 交付 `shared/exploration-contract.cjs` 后由 A 的实现替换。
-- 模型只通过 `src/model-host.js` 创建，渲染只读取 `sample()`；C 的模块放在 `js/features/exploration/models/`，存在即自动接管。
-- B 拥有本模块 HTML / CSS / 构建 / `src/` 视图与编辑器；A 拥有 `server/exploration/` 与 `src/services/`（服务端侧）；C 拥有 `models/`。
+- 场景结构、操作、参数范围、快照接口遵循《共同接口约定》，本地实现位于 `src/contract.js`；A 交付 `shared/exploration-contract.cjs` 后替换。
+- C 的模型放在 `js/features/exploration/models/`，存在即由 `src/model-host.js` 接管。
 - 角度界面用度、配置用弧度；位置各分量 -5 到 5；单摆 1–4 组；一次最多 16 个原子操作。
 
-## 6. 已知边界与联调状态
+## 6. 已知边界
 
-- 预览模型采用半隐式欧拉，仅用于界面与交互验证；正式数值以 C 的模块为准。
-- 演示模式解析器只覆盖任务书列出的示例指令与常见参数说法，复杂语句需 A 的真实 plan 接口。
-- 本机存储回退不提供账号隔离；登录后由 A 的 scenes 接口接管。
-- 浏览器实机交互（拖动、时间轴、触屏）需在目标演示电脑上复核；单元测试与静态检查已通过，见 `B角色交付核对表.md` 的记录栏。
+- 预览模型采用半隐式欧拉，仅用于交互验证；正式数值以 C 的模块为准。
+- 演示模式解析器只覆盖任务书示例与常见说法，复杂语句依赖 A 的真实 plan。
+- 本机记录不提供账号隔离；云端记录以 A 的 scenes 接口为准。
+- 目标演示电脑的触屏拖动、真实后端登录与 C 正式模型联调仍需现场复核。
 
 ## 7. 资源来源
 
-`vendor/three.module.js` 来自仓库现有 `examples/campus-integration/vendor/three.module.js`（Three.js r170，MIT），许可文本见 `vendor/THREE-LICENSE.txt`。
+`vendor/three.module.js` 来自仓库现有 `examples/campus-integration/vendor/three.module.js`（Three.js r170，MIT），许可见 `vendor/THREE-LICENSE.txt`。

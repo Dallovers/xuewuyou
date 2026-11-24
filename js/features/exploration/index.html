@@ -6,6 +6,9 @@
 <title>学无忧 · 自主探究工作区</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%23e5457a'/%3E%3Ctext x='16' y='23' font-size='20' text-anchor='middle' fill='white'%3E%E5%AD%A6%3C/text%3E%3C/svg%3E">
 <link rel="stylesheet" href="./styles.css">
+<!-- 复用站点现有部署配置与会话客户端；缺失时工作区仍可独立打开 -->
+<script src="../../../js/deploy-config.js"></script>
+<script src="../../../js/api.js"></script>
 <script type="importmap">
 {"imports":{"three":"./vendor/three.module.js"}}
 </script>
@@ -128,10 +131,12 @@
 
   <footer class="actionbar">
     <button type="button" id="btnSave" class="primary">保存记录</button>
+    <button type="button" id="btnSaveLocal" class="soft">保存到本机</button>
     <button type="button" id="btnOpen" class="soft">打开记录</button>
-    <button type="button" id="btnCopy" class="soft">复制到本机</button>
+    <button type="button" id="btnCopy" class="soft">复制实验</button>
     <button type="button" id="btnExport" class="soft">导出 JSON</button>
     <label class="filebtn soft">导入 JSON<input type="file" id="importFile" accept="application/json,.json" hidden></label>
+    <div id="saveNotice" class="save-notice" role="status" hidden></div>
     <div id="recordList" class="record-list" hidden></div>
   </footer>
 </div>
@@ -152,18 +157,45 @@
 </div>
 
 <script type="module">
-  // 优先使用已构建的 app.bundle.js；未构建时自动退回源码模块，保证首次打开即可用。
+  // 单一启动所有权：先尝试构建包，构建包缺失时才用源码入口。
+  // 必须等待模块导出的 bootstrap() 完成，不能只看导入是否返回。
+  const sources = ['./app.bundle.js', './src/app.js'];
   let booted = false;
-  try {
-    const response = await fetch('./app.bundle.js', { method: 'HEAD' });
-    if (response.ok) {
-      await import('./app.bundle.js');
-      booted = !!window.__XWY_EXPLORATION_BOOTED;
+  let lastError = null;
+  for (const source of sources) {
+    let module;
+    try {
+      module = await import(source);
+    } catch (error) {
+      lastError = error;
+      console.info('[exploration] ' + source + ' 不可用，尝试下一入口', error.message);
+      continue;
     }
-  } catch (error) {
-    console.info('[exploration] 未找到构建包，使用源码模块', error.message);
+    try {
+      if (typeof module.bootstrap === 'function') await module.bootstrap();
+    } catch (error) {
+      // 初始化真实失败：保留错误，不再启动第二个入口，避免重复渲染器与监听器
+      lastError = error;
+      break;
+    }
+    if (window.__XWY_EXPLORATION_BOOTED) { booted = true; break; }
+    lastError = new Error(source + ' 未完成初始化');
   }
-  if (!booted) await import('./src/app.js');
+  if (!booted) {
+    window.__XWY_BOOT_ERROR__ = lastError || new Error('工作区启动失败');
+    const panel = document.createElement('div');
+    panel.className = 'boot-error';
+    const title = document.createElement('h2');
+    title.textContent = '工作区启动失败';
+    const detail = document.createElement('p');
+    detail.textContent = String(window.__XWY_BOOT_ERROR__.message || window.__XWY_BOOT_ERROR__);
+    const retry = document.createElement('button');
+    retry.type = 'button';
+    retry.textContent = '重新加载';
+    retry.addEventListener('click', () => location.reload());
+    panel.append(title, detail, retry);
+    document.body.appendChild(panel);
+  }
 </script>
 </body>
 </html>
